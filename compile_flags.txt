@@ -1,0 +1,4 @@
+--target=wasm32
+-std=c23
+-msimd128
+-mbulk-memory

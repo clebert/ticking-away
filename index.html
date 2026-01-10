@@ -1,0 +1,273 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ticking Away</title>
+
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Arial,
+          sans-serif;
+        background: #000;
+        color: #e0e0e0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        padding: 12px 20px;
+        background: #0a0a0a;
+        border-bottom: 1px solid #222;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      header h1 {
+        font-size: 18px;
+        font-weight: 500;
+      }
+
+      header a {
+        color: #6699ff;
+        text-decoration: none;
+        font-size: 13px;
+      }
+
+      header a:hover {
+        text-decoration: underline;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+
+      #canvas-container {
+        flex: 1;
+        position: relative;
+        background: #000;
+      }
+
+      #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #controls {
+        width: 280px;
+        background: #0a0a0a;
+        border-left: 1px solid #222;
+        padding: 16px;
+        overflow-y: auto;
+      }
+
+      .control-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .control-group label {
+        font-size: 13px;
+        color: #aaa;
+      }
+
+      .control-group input[type="range"] {
+        width: 100%;
+        accent-color: #6699ff;
+      }
+
+      .control-group input[type="checkbox"] {
+        accent-color: #6699ff;
+      }
+
+      .control-group select {
+        width: 100%;
+        padding: 6px 8px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        border: 1px solid #333;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+
+      .control-group select:focus {
+        outline: none;
+        border-color: #6699ff;
+      }
+
+      .action-button {
+        background: #3366cc;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+        width: 100%;
+        transition: background 0.2s;
+      }
+
+      .action-button:hover {
+        background: #4477dd;
+      }
+
+      .action-button.secondary {
+        background: #333;
+      }
+
+      .action-button.secondary:hover {
+        background: #444;
+      }
+
+      .button-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .button-row .action-button {
+        flex: 1;
+      }
+
+      .section-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #555;
+        letter-spacing: 0.5px;
+        margin-top: 8px;
+      }
+
+      .active,
+      .inactive {
+        margin-left: 8px;
+        font-size: 11px;
+      }
+
+      .active {
+        color: #4caf50;
+      }
+
+      .inactive {
+        color: #888;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Ticking Away</h1>
+    </header>
+
+    <main>
+      <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+      <aside id="controls">
+        <div class="control-panel">
+          <!-- Live Mode Toggle -->
+          <div class="section-title">Mode</div>
+          <div class="control-group">
+            <label
+              ><input type="checkbox" data-bind="checked:liveMode, change:toggleLiveMode" /> Live
+              Mode <span data-bind="textContent:wakeLockText, className:wakeLockClass"></span
+            ></label>
+          </div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:acceleratedTime, change:toggleAcceleratedTime"
+              />
+              Accelerated</label
+            >
+          </div>
+          <div class="control-group" data-bind="hidden:accelerationHidden">
+            <label>Speed</label>
+            <select data-bind="value:accelerationFactor, change:setAccelerationFactor">
+              <option value="1">1 min/sec</option>
+              <option value="10">10 min/sec</option>
+              <option value="30">30 min/sec</option>
+              <option value="60">1 hour/sec</option>
+              <option value="120">2 hours/sec</option>
+            </select>
+          </div>
+
+          <!-- Time Controls (hidden in live mode) -->
+          <div class="section-title" data-bind="hidden:liveMode">Time</div>
+          <div class="control-group" data-bind="hidden:liveMode">
+            <label>Hour: <span data-bind="textContent:hours">10</span></label>
+            <input type="range" min="0" max="11" data-bind="value:hours, input:setHours" />
+          </div>
+          <div class="control-group" data-bind="hidden:liveMode">
+            <label>Minute: <span data-bind="textContent:minutes">10</span></label>
+            <input type="range" min="0" max="59" data-bind="value:minutes, input:setMinutes" />
+          </div>
+          <div class="button-row" data-bind="hidden:liveMode">
+            <button class="action-button" data-bind="click:setNow">Set to Now</button>
+          </div>
+
+          <!-- Prism Controls -->
+          <div class="section-title">Prism</div>
+          <div class="control-group">
+            <label>Size: <span data-bind="textContent:prismSize">60</span>%</label>
+            <input type="range" min="10" max="90" data-bind="value:prismSize, input:setPrismSize" />
+          </div>
+          <div class="control-group">
+            <label>Rainbow Spread: <span data-bind="textContent:rainbowSpread">50</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:rainbowSpread, input:setRainbowSpread"
+            />
+          </div>
+
+          <!-- Display Options -->
+          <div class="section-title">Display</div>
+          <div class="control-group">
+            <label
+              ><input type="checkbox" data-bind="checked:minimalMode, change:toggleMinimalMode" />
+              Minimal Mode (hide markers)</label
+            >
+          </div>
+          <div class="control-group">
+            <label
+              ><input type="checkbox" data-bind="checked:pebbleMode, change:togglePebbleMode" />
+              Pebble Mode (260x260)</label
+            >
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/app.ts"></script>
+  </body>
+</html>

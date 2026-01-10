@@ -1,0 +1,30 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": { "level": "on", "options": { "groups": ["**"] } }
+      }
+    }
+  },
+  "css": {
+    "parser": { "tailwindDirectives": true }
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "lineWidth": 100
+  },
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noImportantStyles": "off",
+        "useLiteralKeys": "off"
+      }
+    }
+  },
+  "vcs": {
+    "clientKind": "git",
+    "enabled": true,
+    "useIgnoreFile": true
+  }
+}

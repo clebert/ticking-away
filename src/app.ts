@@ -1,0 +1,406 @@
+import { createBinder, createStore } from "./statewire.js";
+
+// =================================================================================================
+// Constants
+// =================================================================================================
+
+const WATCH_WIDTH = 260;
+const WATCH_HEIGHT = 260;
+const STORAGE_KEY = "settings";
+
+// =================================================================================================
+// WASM Interface
+// =================================================================================================
+
+interface Wasm {
+  render_watchface(
+    fb: number,
+    width: number,
+    height: number,
+    hour: number,
+    minute: number,
+    prism_size_percent: number,
+    rainbow_spread: number,
+    minimal_mode: number,
+  ): void;
+}
+
+let wasmModule: Wasm | null = null;
+let wasmMemory: WebAssembly.Memory | null = null;
+
+async function initWasm(): Promise<void> {
+  wasmMemory = new WebAssembly.Memory({ initial: 32, maximum: 1024 }); // 2MB initial, 64MB max
+
+  const response = await fetch("/index.wasm");
+  const bytes = await response.arrayBuffer();
+
+  const result = await WebAssembly.instantiate(bytes, { env: { memory: wasmMemory } });
+
+  wasmModule = result.instance.exports as unknown as Wasm;
+}
+
+// =================================================================================================
+// State
+// =================================================================================================
+
+interface AppState {
+  hours: number;
+  minutes: number;
+  prismSize: number; // 10-90 (%)
+  rainbowSpread: number; // 0-100 (maps to 0.0-1.0)
+  liveMode: boolean;
+  acceleratedTime: boolean; // true = use accelerationFactor, false = real time
+  accelerationFactor: number; // minutes per second when accelerated
+  accelerationHidden: boolean; // derived: !acceleratedTime (for hiding dropdown)
+  pebbleMode: boolean;
+  minimalMode: boolean;
+  wakeLockText: string;
+  wakeLockClass: string;
+}
+
+interface PersistedSettings {
+  prismSize: number;
+  rainbowSpread: number;
+  acceleratedTime: boolean;
+  accelerationFactor: number;
+  pebbleMode: boolean;
+  minimalMode: boolean;
+}
+
+function loadSettings(): Partial<PersistedSettings> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored) as PersistedSettings;
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+  return {};
+}
+
+function saveSettings(state: AppState): void {
+  try {
+    const settings: PersistedSettings = {
+      prismSize: state.prismSize,
+      rainbowSpread: state.rainbowSpread,
+      acceleratedTime: state.acceleratedTime,
+      accelerationFactor: state.accelerationFactor,
+      pebbleMode: state.pebbleMode,
+      minimalMode: state.minimalMode,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+const now = new Date();
+const savedSettings = loadSettings();
+
+const defaultState: AppState = {
+  hours: now.getHours() % 12,
+  minutes: now.getMinutes(),
+  prismSize: savedSettings.prismSize ?? 60,
+  rainbowSpread: savedSettings.rainbowSpread ?? 30,
+  liveMode: false,
+  acceleratedTime: savedSettings.acceleratedTime ?? true,
+  accelerationFactor: savedSettings.accelerationFactor ?? 1,
+  accelerationHidden: !(savedSettings.acceleratedTime ?? true),
+  pebbleMode: savedSettings.pebbleMode ?? false,
+  minimalMode: savedSettings.minimalMode ?? false,
+  wakeLockText: "",
+  wakeLockClass: "",
+};
+
+// =================================================================================================
+// Globals
+// =================================================================================================
+
+let canvas: HTMLCanvasElement;
+let ctx: CanvasRenderingContext2D;
+let fbDataPtr = 0;
+let store: ReturnType<typeof createStore<AppState>>;
+let liveAnimationFrame: number | null = null;
+let acceleratedStartTime = 0;
+let acceleratedStartMinutes = 0;
+let wakeLock: WakeLockSentinel | null = null;
+
+function updateWakeLockState(active: boolean): void {
+  store.publish((s) => ({
+    ...s,
+    wakeLockText: active ? "(screen stays awake)" : "(screen may dim)",
+    wakeLockClass: active ? "active" : "inactive",
+  }));
+}
+
+function startLiveAnimation(): void {
+  const state = store.getState();
+
+  if (state.acceleratedTime) {
+    // Accelerated: advance N minutes per second (based on accelerationFactor), starting from current time
+    acceleratedStartTime = performance.now();
+    acceleratedStartMinutes = state.hours * 60 + state.minutes;
+    const factor = state.accelerationFactor;
+
+    const animate = (): void => {
+      const elapsed = (performance.now() - acceleratedStartTime) / 1000; // seconds
+      const totalMinutes = acceleratedStartMinutes + elapsed * factor; // N minutes per second
+      const wrappedMinutes = totalMinutes % (12 * 60); // wrap at 12 hours
+      const newHours = Math.floor(wrappedMinutes / 60);
+      const newMinutes = wrappedMinutes % 60;
+
+      store.publish((s) => ({ ...s, hours: newHours, minutes: newMinutes }));
+      render(store.getState());
+      liveAnimationFrame = requestAnimationFrame(animate);
+    };
+
+    liveAnimationFrame = requestAnimationFrame(animate);
+  } else {
+    // Real time: sync to actual clock with fractional seconds for smooth animation
+    const animate = (): void => {
+      const now = new Date();
+      const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
+      const fractionalMinutes = now.getMinutes() + seconds / 60;
+
+      store.publish((s) => ({ ...s, hours: now.getHours() % 12, minutes: fractionalMinutes }));
+      render(store.getState());
+      liveAnimationFrame = requestAnimationFrame(animate);
+    };
+
+    liveAnimationFrame = requestAnimationFrame(animate);
+  }
+}
+
+function stopLiveAnimation(): void {
+  if (liveAnimationFrame !== null) {
+    cancelAnimationFrame(liveAnimationFrame);
+    liveAnimationFrame = null;
+  }
+}
+
+// =================================================================================================
+// Canvas Setup
+// =================================================================================================
+
+function resizeCanvas(pebbleMode: boolean): void {
+  const container = canvas.parentElement as HTMLElement;
+  const rect = container.getBoundingClientRect();
+
+  let width: number;
+  let height: number;
+
+  if (pebbleMode) {
+    width = WATCH_WIDTH;
+    height = WATCH_HEIGHT;
+    canvas.style.width = `${WATCH_WIDTH}px`;
+    canvas.style.height = `${WATCH_HEIGHT}px`;
+    canvas.style.position = "absolute";
+    canvas.style.top = "50%";
+    canvas.style.left = "50%";
+    canvas.style.transform = "translate(-50%, -50%)";
+    // Match the WASM background color (RGB 35,35,35) so canvas blends with container
+    container.style.background = "#232323";
+  } else {
+    const dpr = window.devicePixelRatio || 1;
+    width = Math.max(Math.floor(rect.width * dpr), 100);
+    height = Math.max(Math.floor(rect.height * dpr), 100);
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    canvas.style.position = "static";
+    canvas.style.top = "";
+    canvas.style.left = "";
+    canvas.style.transform = "";
+    container.style.background = "#000";
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+
+  // Ensure memory is large enough.
+  // WASM memory layout:
+  //   0-66591:     stack space
+  //   66592:       initial stack pointer
+  //   1048576+:    framebuffer (1MB offset, safely above stack)
+  const FB_OFFSET = 1048576; // 1MB
+  if (wasmMemory) {
+    const fbSize = width * height * 4;
+    const neededBytes = FB_OFFSET + fbSize;
+    const currentBytes = wasmMemory.buffer.byteLength;
+    if (currentBytes < neededBytes) {
+      const pagesToGrow = Math.ceil((neededBytes - currentBytes) / 65536);
+      wasmMemory.grow(pagesToGrow);
+    }
+  }
+  fbDataPtr = FB_OFFSET;
+}
+
+// =================================================================================================
+// Rendering
+// =================================================================================================
+
+function render(state: AppState): void {
+  if (!wasmModule || !wasmMemory) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+
+  // Call WASM to render
+  wasmModule.render_watchface(
+    fbDataPtr,
+    width,
+    height,
+    state.hours,
+    state.minutes,
+    state.prismSize,
+    state.rainbowSpread / 100.0, // Convert 0-100 to 0.0-1.0
+    state.minimalMode ? 1 : 0,
+  );
+
+  // Copy framebuffer to canvas
+  const fbArray = new Uint8ClampedArray(wasmMemory.buffer, fbDataPtr, width * height * 4);
+  const imageData = new ImageData(fbArray, width, height);
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// =================================================================================================
+// Actions
+// =================================================================================================
+
+const actions = {
+  setHours(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, hours: value }));
+    render(store.getState());
+  },
+
+  setMinutes(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, minutes: value }));
+    render(store.getState());
+  },
+
+  setPrismSize(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, prismSize: value }));
+    render(store.getState());
+  },
+
+  setRainbowSpread(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, rainbowSpread: value }));
+    render(store.getState());
+  },
+
+  setNow(): void {
+    const now = new Date();
+    store.publish((s) => ({ ...s, hours: now.getHours() % 12, minutes: now.getMinutes() }));
+    render(store.getState());
+  },
+
+  async toggleLiveMode(): Promise<void> {
+    const newLiveMode = !store.getState().liveMode;
+    store.publish((s) => ({ ...s, liveMode: newLiveMode }));
+
+    if (newLiveMode) {
+      // Request wake lock to prevent screen dimming
+      if ("wakeLock" in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", () => {
+            wakeLock = null;
+            updateWakeLockState(false);
+          });
+        } catch {
+          // Wake lock request failed (e.g., low battery, tab not visible)
+        }
+      }
+      updateWakeLockState(wakeLock !== null);
+
+      startLiveAnimation();
+    } else {
+      // Release wake lock
+      if (wakeLock !== null) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+      updateWakeLockState(false);
+
+      stopLiveAnimation();
+
+      // Round minutes to nearest integer for the slider
+      store.publish((s) => ({ ...s, minutes: Math.round(s.minutes) % 60 }));
+      render(store.getState());
+    }
+  },
+
+  toggleAcceleratedTime(): void {
+    store.publish((s) => ({
+      ...s,
+      acceleratedTime: !s.acceleratedTime,
+      accelerationHidden: s.acceleratedTime, // inverse of new value
+    }));
+
+    // Restart interval if live mode is active
+    if (store.getState().liveMode) {
+      stopLiveAnimation();
+      startLiveAnimation();
+    }
+  },
+
+  setAccelerationFactor(e: Event): void {
+    const value = parseInt((e.target as HTMLSelectElement).value, 10);
+    store.publish((s) => ({ ...s, accelerationFactor: value }));
+
+    // Restart animation if live mode is active
+    if (store.getState().liveMode) {
+      stopLiveAnimation();
+      startLiveAnimation();
+    }
+  },
+
+  togglePebbleMode(): void {
+    const newPebbleMode = !store.getState().pebbleMode;
+    store.publish((s) => ({ ...s, pebbleMode: newPebbleMode }));
+    resizeCanvas(newPebbleMode);
+    render(store.getState());
+  },
+
+  toggleMinimalMode(): void {
+    store.publish((s) => ({ ...s, minimalMode: !s.minimalMode }));
+    render(store.getState());
+  },
+};
+
+// =================================================================================================
+// Initialization
+// =================================================================================================
+
+async function init(): Promise<void> {
+  canvas = document.getElementById("canvas") as HTMLCanvasElement;
+  ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+
+  // Initialize WASM
+  await initWasm();
+
+  // Create store
+  store = createStore(defaultState);
+
+  // Persist settings on change
+  store.subscribe(saveSettings);
+
+  // Bind controls
+  createBinder(store, actions)(document.body);
+
+  // Initial setup
+  resizeCanvas(store.getState().pebbleMode);
+  render(store.getState());
+
+  // Handle resize
+  window.addEventListener("resize", () => {
+    resizeCanvas(store.getState().pebbleMode);
+    render(store.getState());
+  });
+}
+
+init();
