@@ -42,7 +42,25 @@
 
       header h1 {
         font-size: 18px;
-        font-weight: 500;
+        font-weight: 600;
+        background: linear-gradient(
+          90deg,
+          #ff0000,
+          #ff8000,
+          #ffff00,
+          #00ff00,
+          #0080ff,
+          #8000ff
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      header .subtitle {
+        font-size: 13px;
+        font-style: italic;
+        color: #666;
       }
 
       header a {
@@ -184,6 +202,7 @@
   <body>
     <header>
       <h1>Ticking Away</h1>
+      <span class="subtitle">the moments that make up a dull day.</span>
     </header>
 
     <main>
