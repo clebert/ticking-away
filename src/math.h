@@ -378,22 +378,24 @@ typedef struct {
   float bounce_x, bounce_y; // Bounce point coordinates (valid only if needs_bounce=1)
 } BounceInfo;
 
-// Determine which face or vertex the entry point is on using parametric edge info.
+// Classify a hit point on a prism edge as either a face or vertex location.
 //
 // Parameters:
 //   edge_idx: Which edge was hit (0=right v0→v1, 1=bottom v1→v2, 2=left v2→v0)
 //   u: Parametric position along edge (0.0=start vertex, 1.0=end vertex)
 //
 // Returns:
-//   0-2: Entry is on a face (0=right, 1=bottom, 2=left)
-//   3-5: Entry is at a vertex (3=v0, 4=v1, 5=v2)
+//   0-2: Point is on a face (0=right, 1=bottom, 2=left)
+//   3-5: Point is at a vertex (3=v0, 4=v1, 5=v2)
 //
-// Vertex detection uses a scale-independent threshold: if u < 0.02 or u > 0.98,
-// the entry point is considered to be at the start or end vertex of the edge.
-// This 2% threshold is small enough to only trigger very close to vertices.
-static int determine_entry_location(int edge_idx, float u) {
-  // Threshold: within 2% of edge length counts as "at vertex"
-  const float VERTEX_THRESHOLD = 0.02f;
+// Vertex detection uses a scale-independent threshold: if u < 0.05 or u > 0.95,
+// the point is considered to be at the start or end vertex of the edge.
+// This 5% threshold provides stability against floating-point variation at 60fps.
+static int classify_edge_position(int edge_idx, float u) {
+  // Threshold: within 5% of edge length counts as "at vertex"
+  // Increased from 2% to provide stability margin for floating-point variation
+  // during 60fps animation (fixes glitch at 08:00-08:01)
+  const float VERTEX_THRESHOLD = 0.05f;
 
   if (u < VERTEX_THRESHOLD) {
     // At start vertex of edge: edge 0→v0, edge 1→v1, edge 2→v2
@@ -443,9 +445,9 @@ static BounceInfo compute_bounce_info(
   // Get actual exit edge from geometry (not angle-based approximation).
   // This ensures the bounce decision matches the rendered exit point.
   RayHit exit_hit = find_prism_exit_from_center(cx, cy, hour_angle, prism);
-  int exit_edge = exit_hit.edge_idx;
 
-  int entry_location = determine_entry_location(entry_edge, entry_u);
+  int entry_location = classify_edge_position(entry_edge, entry_u);
+  int exit_location = classify_edge_position(exit_hit.edge_idx, exit_hit.u);
 
   int needs_bounce = 0;
   int bounce_idx = -1;
@@ -466,18 +468,40 @@ static BounceInfo compute_bounce_info(
       return info;  // No meaningful interior path possible; accept dark prism
     }
 
-    // For vertex entry, bounce unless exit is on the opposite face (V+1)%3.
+    // For vertex entry, bounce unless exit touches the opposite face (V+1)%3.
     // Face V starts at vertex V, face (V+2)%3 ends at vertex V.
     int opposite_face = (vertex_idx + 1) % 3;
 
-    if (exit_edge != opposite_face) {
+    // Check if exit touches opposite face (handles vertex boundaries like v2 at 08:00)
+    int exit_touches_opposite = 0;
+    if (exit_location >= 3) {
+      // Exit at vertex - vertex V touches face V and face (V+2)%3
+      int exit_vertex = exit_location - 3;
+      exit_touches_opposite = (exit_vertex == opposite_face) ||
+                              ((exit_vertex + 2) % 3 == opposite_face);
+    } else {
+      // Exit on a face
+      exit_touches_opposite = (exit_location == opposite_face);
+    }
+
+    if (!exit_touches_opposite) {
       needs_bounce = 1;
-      bounce_idx = (exit_edge + 2) % 3;
+      bounce_idx = (exit_hit.edge_idx + 2) % 3;
     }
   } else {
     // Entry on a face (0=right, 1=bottom, 2=left)
-    // Bounce when entry face == exit face (path would run along the edge).
-    if (entry_location == exit_edge) {
+    // Bounce when exit touches entry face (path would run along the edge).
+    int exit_touches_entry = 0;
+    if (exit_location >= 3) {
+      // Exit at vertex - vertex V touches face V and face (V+2)%3
+      int exit_vertex = exit_location - 3;
+      exit_touches_entry = (exit_vertex == entry_location) ||
+                           ((exit_vertex + 2) % 3 == entry_location);
+    } else {
+      exit_touches_entry = (exit_location == entry_location);
+    }
+
+    if (exit_touches_entry) {
       needs_bounce = 1;
       bounce_idx = (entry_location + 2) % 3;
     }
