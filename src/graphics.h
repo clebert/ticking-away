@@ -110,28 +110,57 @@ static inline void set_pixel_alpha(
 }
 
 // =================================================================================================
-// Line Drawing (Bresenham)
+// Geometry Helpers
 // =================================================================================================
 
-static void draw_line_additive(
-  uint8_t* fb, int width, int height,
-  int x0, int y0, int x1, int y1,
-  uint8_t r, uint8_t g, uint8_t b, uint8_t a
+// Compute distance from point (px, py) to line segment (x0, y0)-(x1, y1)
+static float point_to_segment_distance(
+  float px, float py,
+  float x0, float y0, float x1, float y1
 ) {
-  int dx = x1 > x0 ? x1 - x0 : x0 - x1;
-  int dy = y1 > y0 ? y1 - y0 : y0 - y1;
-  int sx = x0 < x1 ? 1 : -1;
-  int sy = y0 < y1 ? 1 : -1;
-  int err = dx - dy;
+  float dx = x1 - x0;
+  float dy = y1 - y0;
+  float len_sq = dx * dx + dy * dy;
 
-  while (1) {
-    set_pixel_additive(fb, width, height, x0, y0, r, g, b, a);
-    if (x0 == x1 && y0 == y1) break;
-    int e2 = 2 * err;
-    if (e2 > -dy) { err -= dy; x0 += sx; }
-    if (e2 < dx) { err += dx; y0 += sy; }
+  if (len_sq < EPS_NORM) {
+    // Degenerate segment (point)
+    float d = (px - x0) * (px - x0) + (py - y0) * (py - y0);
+    return sqrtf_impl(d);
   }
+
+  // Project point onto line, clamped to segment
+  float t = ((px - x0) * dx + (py - y0) * dy) / len_sq;
+  if (t < 0.0f) t = 0.0f;
+  if (t > 1.0f) t = 1.0f;
+
+  float proj_x = x0 + t * dx;
+  float proj_y = y0 + t * dy;
+
+  float dist_x = px - proj_x;
+  float dist_y = py - proj_y;
+  return sqrtf_impl(dist_x * dist_x + dist_y * dist_y);
 }
+
+// Check if point is inside triangle using barycentric coordinates
+static int point_in_triangle(
+  float px, float py,
+  float x0, float y0,
+  float x1, float y1,
+  float x2, float y2
+) {
+  float denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+  if (denom > -EPS_NORM && denom < EPS_NORM) return 0;
+
+  float a = ((y1 - y2) * (px - x2) + (x2 - x1) * (py - y2)) / denom;
+  float b = ((y2 - y0) * (px - x2) + (x0 - x2) * (py - y2)) / denom;
+  float c = 1.0f - a - b;
+
+  return (a >= 0.0f && b >= 0.0f && c >= 0.0f);
+}
+
+// =================================================================================================
+// Line Drawing (Bresenham)
+// =================================================================================================
 
 static void draw_line_alpha(
   uint8_t* fb, int width, int height,
@@ -157,11 +186,10 @@ static void draw_line_alpha(
 // Line Drawing with Glow (Distance Field)
 // =================================================================================================
 
-// Compute distance from point (px, py) to line segment (x0, y0)-(x1, y1)
-// Note: This is a forward declaration - the actual implementation is in the prism glow section
-static float point_to_segment_distance(float px, float py, float x0, float y0, float x1, float y1);
-
 // Draw a line with glow effect using distance field approach
+// clip_triangle: if non-NULL, points to 6 floats (v0x,v0y,v1x,v1y,v2x,v2y) to clip glow inside
+// clip_circle: if non-NULL, points to 3 floats (cx,cy,radius) to clip glow inside circle
+// exclude_triangle: if non-NULL, points to 6 floats to exclude glow from inside this triangle
 // glow_width: how far the glow extends perpendicular to the line (in pixels)
 // intensity: 0.0-1.0 multiplier for glow brightness
 // falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
@@ -171,7 +199,10 @@ static void draw_line_with_glow(
   uint8_t r, uint8_t g, uint8_t b,
   float glow_width,
   float intensity,
-  int falloff
+  int falloff,
+  const float* clip_triangle,
+  const float* clip_circle,
+  const float* exclude_triangle
 ) {
   // Compute bounding box expanded by glow width
   float min_x = (x0 < x1 ? x0 : x1) - glow_width;
@@ -195,6 +226,31 @@ static void draw_line_with_glow(
     for (int x = x_start; x < x_end; x++) {
       float px = (float)x + 0.5f;
       float py = (float)y + 0.5f;
+
+      // Skip pixels outside the clipping triangle (if provided)
+      if (clip_triangle && !point_in_triangle(px, py,
+          clip_triangle[0], clip_triangle[1],
+          clip_triangle[2], clip_triangle[3],
+          clip_triangle[4], clip_triangle[5])) {
+        continue;
+      }
+
+      // Skip pixels outside the clipping circle (if provided)
+      if (clip_circle) {
+        float dx = px - clip_circle[0];
+        float dy = py - clip_circle[1];
+        if (dx * dx + dy * dy > clip_circle[2] * clip_circle[2]) {
+          continue;
+        }
+      }
+
+      // Skip pixels inside the exclusion triangle (if provided)
+      if (exclude_triangle && point_in_triangle(px, py,
+          exclude_triangle[0], exclude_triangle[1],
+          exclude_triangle[2], exclude_triangle[3],
+          exclude_triangle[4], exclude_triangle[5])) {
+        continue;
+      }
 
       // Compute distance to line segment
       float dist = point_to_segment_distance(px, py, x0, y0, x1, y1);
@@ -227,8 +283,8 @@ static void draw_line_with_glow(
     }
   }
 
-  // Draw crisp line on top for definition
-  draw_line_additive(fb, width, height,
+  // Draw crisp line on top for definition (alpha blend like prism stroke)
+  draw_line_alpha(fb, width, height,
     (int)(x0 + 0.5f), (int)(y0 + 0.5f),
     (int)(x1 + 0.5f), (int)(y1 + 0.5f),
     r, g, b, 255);
@@ -325,51 +381,6 @@ static void stroke_prism(
 // =================================================================================================
 // Prism Inner Glow (Distance Field)
 // =================================================================================================
-
-// Compute distance from point (px, py) to line segment (x0, y0)-(x1, y1)
-static float point_to_segment_distance(
-  float px, float py,
-  float x0, float y0, float x1, float y1
-) {
-  float dx = x1 - x0;
-  float dy = y1 - y0;
-  float len_sq = dx * dx + dy * dy;
-
-  if (len_sq < EPS_NORM) {
-    // Degenerate segment (point)
-    float d = (px - x0) * (px - x0) + (py - y0) * (py - y0);
-    return sqrtf_impl(d);
-  }
-
-  // Project point onto line, clamped to segment
-  float t = ((px - x0) * dx + (py - y0) * dy) / len_sq;
-  if (t < 0.0f) t = 0.0f;
-  if (t > 1.0f) t = 1.0f;
-
-  float proj_x = x0 + t * dx;
-  float proj_y = y0 + t * dy;
-
-  float dist_x = px - proj_x;
-  float dist_y = py - proj_y;
-  return sqrtf_impl(dist_x * dist_x + dist_y * dist_y);
-}
-
-// Check if point is inside triangle using barycentric coordinates
-static int point_in_triangle(
-  float px, float py,
-  float x0, float y0,
-  float x1, float y1,
-  float x2, float y2
-) {
-  float denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
-  if (denom > -EPS_NORM && denom < EPS_NORM) return 0;
-
-  float a = ((y1 - y2) * (px - x2) + (x2 - x1) * (py - y2)) / denom;
-  float b = ((y2 - y0) * (px - x2) + (x0 - x2) * (py - y2)) / denom;
-  float c = 1.0f - a - b;
-
-  return (a >= 0.0f && b >= 0.0f && c >= 0.0f);
-}
 
 // Compute minimum distance from point to any prism edge
 static float min_distance_to_prism_edge(float px, float py, const Prism* prism) {
@@ -725,6 +736,9 @@ static void render_watchface_scene(
     return;
   }
 
+  // Clipping data for external rays (entry ray and rainbow rays)
+  float circle_clip[3] = { cx, cy, radius };
+
   // Draw white entry ray (from minute position to prism entry)
   {
     float clip_x0, clip_y0, clip_x1, clip_y1;
@@ -735,7 +749,8 @@ static void render_watchface_scene(
     )) {
       draw_line_with_glow(fb, width, height,
         clip_x0, clip_y0, clip_x1, clip_y1,
-        200, 200, 200, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
+        200, 200, 200, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+        0, circle_clip, prism->vertices);
     }
   }
 
@@ -745,6 +760,15 @@ static void render_watchface_scene(
     hour_angle,
     prism
   );
+
+  // Draw entry→bounce segment once (if bouncing) - all wavelengths share this path
+  if (bounce.needs_bounce) {
+    draw_line_with_glow(fb, width, height,
+      prism_entry.px, prism_entry.py,
+      bounce.bounce_x, bounce.bounce_y,
+      prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+      prism->vertices, 0, 0);
+  }
 
   // Draw colored rays (internal fan + exit rays)
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
@@ -768,28 +792,23 @@ static void render_watchface_scene(
       float internal_exit_x = prism_exit.px + cosf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
-      // Draw internal ray: either direct (entry->exit) or bounced (entry->bounce->exit)
+      // Draw internal ray: either direct (entry->exit) or bounced (bounce->exit)
+      // Note: entry->bounce is drawn once outside the loop
+      // Glow is clipped to stay inside the prism
       if (bounce.needs_bounce) {
-        // Bounced path: entry -> bounce -> exit
-        // No spread on first segment - all colors converge to same bounce point
-
-        // Draw entry -> bounce
-        draw_line_with_glow(fb, width, height,
-          prism_entry.px, prism_entry.py,
-          bounce.bounce_x, bounce.bounce_y,
-          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
-
-        // Draw bounce -> exit (spread happens here)
+        // Bounced path: bounce -> exit (spread happens here)
         draw_line_with_glow(fb, width, height,
           bounce.bounce_x, bounce.bounce_y,
           internal_exit_x, internal_exit_y,
-          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
+          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          prism->vertices, 0, 0);
       } else {
         // Direct path: entry -> exit
         draw_line_with_glow(fb, width, height,
           prism_entry.px, prism_entry.py,
           internal_exit_x, internal_exit_y,
-          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
+          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          prism->vertices, 0, 0);
       }
 
       // Draw exit ray (from prism exit to circle edge) with actual rainbow color
@@ -811,7 +830,8 @@ static void render_watchface_scene(
         )) {
           draw_line_with_glow(fb, width, height,
             clip_x0, clip_y0, clip_x1, clip_y1,
-            color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
+            color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+            0, circle_clip, prism->vertices);
         }
       }
     }
