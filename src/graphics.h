@@ -502,6 +502,7 @@ static float compute_exit_angle(
 // - minimal_mode: if true, hide watch overlay (hour markers, chevron)
 // - gradient_rays: if true, use gradient+alpha for internal rays; if false, use non-gradient+additive
 // - prism_gray: gray value (0-255) for prism stroke and internal rays
+// - show_seconds: if true, show seconds sparkle on prism edge
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -512,7 +513,8 @@ static void render_watchface_scene(
   const Prism* prism,
   int minimal_mode,
   int gradient_rays,
-  uint8_t prism_gray
+  uint8_t prism_gray,
+  int show_seconds
 ) {
   // Initialize background
   init_watch_framebuffer(fb, width, height, cx, cy, radius);
@@ -755,8 +757,8 @@ static void render_watchface_scene(
   // Draw prism outline
   stroke_prism(fb, width, height, prism, prism_gray, prism_gray, prism_gray, 200);
 
-  // Draw seconds sparkle on prism edge
-  {
+  // Draw seconds sparkle on prism edge (if enabled)
+  if (show_seconds) {
     float sparkle_x, sparkle_y;
     compute_sparkle_position(second, prism, &sparkle_x, &sparkle_y);
     draw_sparkle(fb, width, height, sparkle_x, sparkle_y, radius);

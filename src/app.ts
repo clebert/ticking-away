@@ -25,6 +25,7 @@ interface Wasm {
     minimal_mode: number,
     gradient_rays: number,
     prism_gray: number,
+    show_seconds: number,
   ): void;
 }
 
@@ -60,6 +61,7 @@ interface AppState {
   minimalMode: boolean;
   gradientRays: boolean; // true = gradient+alpha internal rays, false = non-gradient+additive
   prismGray: number; // 0-255 gray value for prism stroke and internal rays
+  showSeconds: boolean; // true = show seconds sparkle on prism edge
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -73,6 +75,7 @@ interface PersistedSettings {
   minimalMode: boolean;
   gradientRays: boolean;
   prismGray: number;
+  showSeconds: boolean;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -98,6 +101,7 @@ function saveSettings(state: AppState): void {
       minimalMode: state.minimalMode,
       gradientRays: state.gradientRays,
       prismGray: state.prismGray,
+      showSeconds: state.showSeconds,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -122,6 +126,7 @@ const defaultState: AppState = {
   minimalMode: savedSettings.minimalMode ?? false,
   gradientRays: savedSettings.gradientRays ?? true,
   prismGray: savedSettings.prismGray ?? 80,
+  showSeconds: savedSettings.showSeconds ?? true,
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -278,6 +283,7 @@ function render(state: AppState): void {
     state.minimalMode ? 1 : 0,
     state.gradientRays ? 1 : 0,
     state.prismGray,
+    state.showSeconds ? 1 : 0,
   );
 
   // Copy framebuffer to canvas
@@ -411,6 +417,11 @@ const actions = {
 
   toggleGradientRays(): void {
     store.publish((s) => ({ ...s, gradientRays: !s.gradientRays }));
+    render(store.getState());
+  },
+
+  toggleShowSeconds(): void {
+    store.publish((s) => ({ ...s, showSeconds: !s.showSeconds }));
     render(store.getState());
   },
 

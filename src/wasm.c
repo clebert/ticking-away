@@ -25,9 +25,11 @@
 //   minimal_mode: 0 or 1 (hide watch overlay when 1)
 //   gradient_rays: 0 or 1 (1 = gradient+alpha internal rays, 0 = non-gradient+additive)
 //   prism_gray: 0-255 gray value for prism stroke and internal rays
+//   show_seconds: 0 or 1 (1 = show seconds sparkle on prism edge)
 WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, float minute,
                                   float second, float prism_size_percent, float rainbow_spread,
-                                  int minimal_mode, int gradient_rays, int prism_gray) {
+                                  int minimal_mode, int gradient_rays, int prism_gray,
+                                  int show_seconds) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -51,5 +53,5 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
   // Render the watchface scene
   render_watchface_scene(fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle,
                          rainbow_spread, second, &prism, minimal_mode, gradient_rays,
-                         (uint8_t)prism_gray);
+                         (uint8_t)prism_gray, show_seconds);
 }
