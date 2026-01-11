@@ -490,18 +490,12 @@ static BounceInfo compute_bounce_info(
     }
   } else {
     // Entry on a face (0=right, 1=bottom, 2=left)
-    // Bounce when exit touches entry face (path would run along the edge).
-    int exit_touches_entry = 0;
-    if (exit_location >= 3) {
-      // Exit at vertex - vertex V touches face V and face (V+2)%3
-      int exit_vertex = exit_location - 3;
-      exit_touches_entry = (exit_vertex == entry_location) ||
-                           ((exit_vertex + 2) % 3 == entry_location);
-    } else {
-      exit_touches_entry = (exit_location == entry_location);
-    }
+    // Bounce only when exit is also on the same face (not at a vertex).
+    // When exit is at a vertex, the path from face to corner always traverses
+    // the prism interior, so no bounce is needed.
+    int same_face_exit = (exit_location < 3) && (exit_location == entry_location);
 
-    if (exit_touches_entry) {
+    if (same_face_exit) {
       needs_bounce = 1;
       bounce_idx = (entry_location + 2) % 3;
     }
