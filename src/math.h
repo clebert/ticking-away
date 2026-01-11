@@ -425,11 +425,6 @@ static int classify_edge_position(int edge_idx, float u) {
 // IMPORTANT: We use find_prism_exit_from_center to determine the exit edge instead of
 // angle-based determination. This ensures consistency with the actual rendered geometry,
 // especially at vertex boundaries where angle-based methods can disagree with ray-casting.
-//
-// Special case: At exactly 12:00 (hour_angle ≈ -π/2), entry is at v0 and exit is also near v0.
-// This degenerate case has no meaningful interior path, so we skip the bounce and accept a
-// momentarily dark prism. The 0.1 radian (~5.7°) threshold covers roughly ±17 minutes around
-// 12:00, which is brief enough to be unnoticeable during normal clock operation.
 static BounceInfo compute_bounce_info(
   int entry_edge,
   float entry_u,
@@ -456,48 +451,59 @@ static BounceInfo compute_bounce_info(
     // Entry at a vertex (3=v0, 4=v1, 5=v2)
     int vertex_idx = entry_location - 3;
 
-    // Vertex angles: v0 at 12 o'clock, v1 at 4 o'clock, v2 at 8 o'clock
-    float vertex_angles[3] = {-PI / 2.0f, PI / 6.0f, 5.0f * PI / 6.0f};
-    float vertex_angle = vertex_angles[vertex_idx];
-
-    // Degenerate case: entry and exit at essentially the same point.
-    // This occurs when the hour angle is near a vertex angle (e.g., 12:00 for v0).
-    // 0.1 rad ≈ 5.7° ≈ ±17 minutes on clock face - brief enough to be unnoticeable.
-    float angle_diff = ang_dist(hour_angle, vertex_angle);
-    if (angle_diff < 0.1f) {
-      return info;  // No meaningful interior path possible; accept dark prism
-    }
-
-    // For vertex entry, bounce unless exit touches the opposite face (V+1)%3.
-    // Face V starts at vertex V, face (V+2)%3 ends at vertex V.
-    int opposite_face = (vertex_idx + 1) % 3;
-
-    // Check if exit touches opposite face (handles vertex boundaries like v2 at 08:00)
-    int exit_touches_opposite = 0;
-    if (exit_location >= 3) {
-      // Exit at vertex - vertex V touches face V and face (V+2)%3
-      int exit_vertex = exit_location - 3;
-      exit_touches_opposite = (exit_vertex == opposite_face) ||
-                              ((exit_vertex + 2) % 3 == opposite_face);
-    } else {
-      // Exit on a face
-      exit_touches_opposite = (exit_location == opposite_face);
-    }
-
-    if (!exit_touches_opposite) {
+    if (vertex_idx == 0) {
+      // Entry at v0 (near 12:00): always bounce to avoid direct path through apex.
+      // Before 12:00 bounce through v1, after 12:00 bounce through v2.
+      if (reduce_angle(hour_angle - (-PI / 2.0f)) < 0) {
+        bounce_idx = 1;  // v1
+      } else {
+        bounce_idx = 2;  // v2
+      }
       needs_bounce = 1;
-      bounce_idx = (exit_hit.edge_idx + 2) % 3;
+    } else {
+      // Entry at v1 or v2 - bounce unless exit touches opposite face
+      int opposite_face = (vertex_idx + 1) % 3;
+
+      int exit_touches_opposite = 0;
+      if (exit_location >= 3) {
+        // Exit at vertex - vertex V touches face V and face (V+2)%3
+        int exit_vertex = exit_location - 3;
+        exit_touches_opposite = (exit_vertex == opposite_face) ||
+                                ((exit_vertex + 2) % 3 == opposite_face);
+      } else {
+        // Exit on a face
+        exit_touches_opposite = (exit_location == opposite_face);
+      }
+
+      if (!exit_touches_opposite) {
+        needs_bounce = 1;
+        bounce_idx = (exit_hit.edge_idx + 2) % 3;
+      }
     }
   } else {
     // Entry on a face (0=right, 1=bottom, 2=left)
-    // Bounce only when exit is also on the same face (not at a vertex).
-    // When exit is at a vertex, the path from face to corner always traverses
-    // the prism interior, so no bounce is needed.
     int same_face_exit = (exit_location < 3) && (exit_location == entry_location);
 
     if (same_face_exit) {
+      // Same face entry/exit: bounce through opposite vertex
       needs_bounce = 1;
       bounce_idx = (entry_location + 2) % 3;
+    } else {
+      // Check if entry and exit both touch v0 (faces 0, 2, or vertex v0 itself).
+      // Near 12:00, the direct path is too short - bounce through v1 or v2.
+      // Note: entry can't be v0 here (we'd be in vertex branch), but exit can be.
+      int entry_touches_v0 = (entry_location == 0 || entry_location == 2);
+      int exit_touches_v0 = (exit_location == 0 || exit_location == 2 || exit_location == 3);
+
+      if (entry_touches_v0 && exit_touches_v0 && entry_location != exit_location) {
+        // Before 12:00: bounce through v1; after 12:00: bounce through v2
+        if (reduce_angle(hour_angle - (-PI / 2.0f)) < 0) {
+          bounce_idx = 1;  // v1
+        } else {
+          bounce_idx = 2;  // v2
+        }
+        needs_bounce = 1;
+      }
     }
   }
 
