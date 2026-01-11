@@ -452,14 +452,19 @@ static BounceInfo compute_bounce_info(
     int vertex_idx = entry_location - 3;
 
     if (vertex_idx == 0) {
-      // Entry at v0 (near 12:00): always bounce to avoid direct path through apex.
-      // Before 12:00 bounce through v1, after 12:00 bounce through v2.
-      if (reduce_angle(hour_angle - (-PI / 2.0f)) < 0) {
-        bounce_idx = 1;  // v1
-      } else {
-        bounce_idx = 2;  // v2
+      // Entry at v0: bounce if exit is at/near v0 (on face 0, face 2, or vertex v0).
+      // These paths would hug the edge. At other times (e.g., 04:00 with exit at v1),
+      // the direct path through the interior is valid.
+      int exit_touches_v0 = (exit_location == 0 || exit_location == 2 || exit_location == 3);
+      if (exit_touches_v0) {
+        // Before 12:00 bounce through v1, after 12:00 bounce through v2.
+        if (reduce_angle(hour_angle - (-PI / 2.0f)) < 0) {
+          bounce_idx = 1;  // v1
+        } else {
+          bounce_idx = 2;  // v2
+        }
+        needs_bounce = 1;
       }
-      needs_bounce = 1;
     } else {
       // Entry at v1 or v2 - bounce unless exit touches opposite face
       int opposite_face = (vertex_idx + 1) % 3;
@@ -488,14 +493,12 @@ static BounceInfo compute_bounce_info(
       // Same face entry/exit: bounce through opposite vertex
       needs_bounce = 1;
       bounce_idx = (entry_location + 2) % 3;
-    } else {
-      // Check if entry and exit both touch v0 (faces 0, 2, or vertex v0 itself).
-      // Near 12:00, the direct path is too short - bounce through v1 or v2.
-      // Note: entry can't be v0 here (we'd be in vertex branch), but exit can be.
+    } else if (exit_location == 3) {
+      // Exit at vertex v0: if entry is on a face touching v0 (face 0 or 2),
+      // the direct path is too short - bounce through v1 or v2.
       int entry_touches_v0 = (entry_location == 0 || entry_location == 2);
-      int exit_touches_v0 = (exit_location == 0 || exit_location == 2 || exit_location == 3);
 
-      if (entry_touches_v0 && exit_touches_v0 && entry_location != exit_location) {
+      if (entry_touches_v0) {
         // Before 12:00: bounce through v1; after 12:00: bounce through v2
         if (reduce_angle(hour_angle - (-PI / 2.0f)) < 0) {
           bounce_idx = 1;  // v1
