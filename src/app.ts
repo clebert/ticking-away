@@ -64,6 +64,7 @@ interface AppState {
   gradientRays: boolean; // true = gradient+alpha internal rays, false = non-gradient+additive
   prismGray: number; // 0-255 gray value for prism stroke and internal rays
   showSeconds: boolean; // true = show seconds sparkle on prism edge
+  secondsDisabled: boolean; // derived: liveMode && acceleratedTime (disable toggle in accelerated live mode)
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -131,6 +132,7 @@ const defaultState: AppState = {
   gradientRays: savedSettings.gradientRays ?? true,
   prismGray: savedSettings.prismGray ?? 80,
   showSeconds: savedSettings.showSeconds ?? true,
+  secondsDisabled: false, // initially not in live mode, so not disabled
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -288,7 +290,7 @@ function render(state: AppState): void {
     state.minimalMode ? 1 : 0,
     state.gradientRays ? 1 : 0,
     state.prismGray,
-    state.showSeconds ? 1 : 0,
+    state.showSeconds && !state.secondsDisabled ? 1 : 0,
   );
 
   // Copy framebuffer to canvas
@@ -345,7 +347,12 @@ const actions = {
 
   async toggleLiveMode(): Promise<void> {
     const newLiveMode = !store.getState().liveMode;
-    store.publish((s) => ({ ...s, liveMode: newLiveMode, fullscreenHidden: !newLiveMode }));
+    store.publish((s) => ({
+      ...s,
+      liveMode: newLiveMode,
+      fullscreenHidden: !newLiveMode,
+      secondsDisabled: newLiveMode && s.acceleratedTime,
+    }));
 
     if (newLiveMode) {
       // Request wake lock to prevent screen dimming
@@ -384,11 +391,15 @@ const actions = {
   },
 
   toggleAcceleratedTime(): void {
-    store.publish((s) => ({
-      ...s,
-      acceleratedTime: !s.acceleratedTime,
-      accelerationHidden: s.acceleratedTime, // inverse of new value
-    }));
+    store.publish((s) => {
+      const newAcceleratedTime = !s.acceleratedTime;
+      return {
+        ...s,
+        acceleratedTime: newAcceleratedTime,
+        accelerationHidden: !newAcceleratedTime,
+        secondsDisabled: s.liveMode && newAcceleratedTime,
+      };
+    });
 
     // Restart interval if live mode is active
     if (store.getState().liveMode) {

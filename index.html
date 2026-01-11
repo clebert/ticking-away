@@ -299,7 +299,10 @@
           <div class="section-title">Display</div>
           <div class="control-group">
             <label
-              ><input type="checkbox" data-bind="checked:showSeconds, change:toggleShowSeconds" />
+              ><input
+                type="checkbox"
+                data-bind="checked:showSeconds, change:toggleShowSeconds, disabled:secondsDisabled"
+              />
               Show Seconds</label
             >
           </div>
