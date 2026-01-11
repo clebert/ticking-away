@@ -19,6 +19,7 @@ interface Wasm {
     height: number,
     hour: number,
     minute: number,
+    second: number,
     prism_size_percent: number,
     rainbow_spread: number,
     minimal_mode: number,
@@ -48,6 +49,7 @@ async function initWasm(): Promise<void> {
 interface AppState {
   hours: number;
   minutes: number;
+  seconds: number;
   prismSize: number; // 10-90 (%)
   rainbowSpread: number; // 0-100 (maps to 0.0-1.0)
   liveMode: boolean;
@@ -109,6 +111,7 @@ const savedSettings = loadSettings();
 const defaultState: AppState = {
   hours: now.getHours() % 12,
   minutes: now.getMinutes(),
+  seconds: now.getSeconds(),
   prismSize: savedSettings.prismSize ?? 60,
   rainbowSpread: savedSettings.rainbowSpread ?? 30,
   liveMode: false,
@@ -159,8 +162,10 @@ function startLiveAnimation(): void {
       const wrappedMinutes = totalMinutes % (12 * 60); // wrap at 12 hours
       const newHours = Math.floor(wrappedMinutes / 60);
       const newMinutes = wrappedMinutes % 60;
+      // Seconds advance at 60x the minute rate (60 seconds per minute)
+      const newSeconds = (newMinutes * 60) % 60;
 
-      store.publish((s) => ({ ...s, hours: newHours, minutes: newMinutes }));
+      store.publish((s) => ({ ...s, hours: newHours, minutes: newMinutes, seconds: newSeconds }));
       render(store.getState());
       liveAnimationFrame = requestAnimationFrame(animate);
     };
@@ -170,10 +175,15 @@ function startLiveAnimation(): void {
     // Real time: sync to actual clock with fractional seconds for smooth animation
     const animate = (): void => {
       const now = new Date();
-      const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
-      const fractionalMinutes = now.getMinutes() + seconds / 60;
+      const fractionalSeconds = now.getSeconds() + now.getMilliseconds() / 1000;
+      const fractionalMinutes = now.getMinutes() + fractionalSeconds / 60;
 
-      store.publish((s) => ({ ...s, hours: now.getHours() % 12, minutes: fractionalMinutes }));
+      store.publish((s) => ({
+        ...s,
+        hours: now.getHours() % 12,
+        minutes: fractionalMinutes,
+        seconds: fractionalSeconds,
+      }));
       render(store.getState());
       liveAnimationFrame = requestAnimationFrame(animate);
     };
@@ -262,6 +272,7 @@ function render(state: AppState): void {
     height,
     state.hours,
     state.minutes,
+    state.seconds,
     state.prismSize,
     state.rainbowSpread / 100.0, // Convert 0-100 to 0.0-1.0
     state.minimalMode ? 1 : 0,
@@ -292,6 +303,12 @@ const actions = {
     render(store.getState());
   },
 
+  setSeconds(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, seconds: value }));
+    render(store.getState());
+  },
+
   setPrismSize(e: Event): void {
     const value = parseInt((e.target as HTMLInputElement).value, 10);
     store.publish((s) => ({ ...s, prismSize: value }));
@@ -306,7 +323,12 @@ const actions = {
 
   setNow(): void {
     const now = new Date();
-    store.publish((s) => ({ ...s, hours: now.getHours() % 12, minutes: now.getMinutes() }));
+    store.publish((s) => ({
+      ...s,
+      hours: now.getHours() % 12,
+      minutes: now.getMinutes(),
+      seconds: now.getSeconds(),
+    }));
     render(store.getState());
   },
 
@@ -340,8 +362,12 @@ const actions = {
 
       stopLiveAnimation();
 
-      // Round minutes to nearest integer for the slider
-      store.publish((s) => ({ ...s, minutes: Math.round(s.minutes) % 60 }));
+      // Round minutes and seconds to nearest integer for the sliders
+      store.publish((s) => ({
+        ...s,
+        minutes: Math.round(s.minutes) % 60,
+        seconds: Math.round(s.seconds) % 60,
+      }));
       render(store.getState());
     }
   },

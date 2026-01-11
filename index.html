@@ -249,6 +249,10 @@
             <label>Minute: <span data-bind="textContent:minutes">10</span></label>
             <input type="range" min="0" max="59" data-bind="value:minutes, input:setMinutes" />
           </div>
+          <div class="control-group" data-bind="hidden:liveMode">
+            <label>Second: <span data-bind="textContent:seconds">0</span></label>
+            <input type="range" min="0" max="59" data-bind="value:seconds, input:setSeconds" />
+          </div>
           <div class="button-row" data-bind="hidden:liveMode">
             <button class="action-button" data-bind="click:setNow">Set to Now</button>
           </div>

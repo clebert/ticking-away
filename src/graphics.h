@@ -340,6 +340,87 @@ static void draw_watch_overlay(
   }
 }
 
+// =================================================================================================
+// Seconds Sparkle on Prism Edge
+// =================================================================================================
+
+// Compute position on prism edge for a given second (0-60).
+// The sparkle travels clockwise from the apex:
+//   0-20s: Edge 0 (v0→v1, apex to bottom-right)
+//   20-40s: Edge 1 (v1→v2, bottom-right to bottom-left)
+//   40-60s: Edge 2 (v2→v0, bottom-left back to apex)
+static void compute_sparkle_position(
+  float second,
+  const Prism* prism,
+  float* out_x, float* out_y
+) {
+  // Wrap seconds to [0, 60)
+  while (second >= 60.0f) second -= 60.0f;
+  while (second < 0.0f) second += 60.0f;
+
+  int edge;
+  float t;
+
+  if (second < 20.0f) {
+    edge = 0;  // v0 → v1
+    t = second / 20.0f;
+  } else if (second < 40.0f) {
+    edge = 1;  // v1 → v2
+    t = (second - 20.0f) / 20.0f;
+  } else {
+    edge = 2;  // v2 → v0
+    t = (second - 40.0f) / 20.0f;
+  }
+
+  int v_start = edge;
+  int v_end = (edge + 1) % 3;
+
+  float x0 = prism->vertices[v_start * 2];
+  float y0 = prism->vertices[v_start * 2 + 1];
+  float x1 = prism->vertices[v_end * 2];
+  float y1 = prism->vertices[v_end * 2 + 1];
+
+  *out_x = x0 + t * (x1 - x0);
+  *out_y = y0 + t * (y1 - y0);
+}
+
+// Draw a sparkle (glowing point) at the given position using additive blending.
+// Creates a small bright spot with falloff for a gem-like highlight effect.
+static void draw_sparkle(
+  uint8_t* fb, int width, int height,
+  float x, float y,
+  float radius_scale  // Scale factor based on watch radius (for size consistency)
+) {
+  int cx = (int)(x + 0.5f);
+  int cy = (int)(y + 0.5f);
+
+  // Scale sparkle size based on watch radius
+  float base_size = radius_scale / 50.0f;  // Adjust divisor for desired size
+  if (base_size < 1.0f) base_size = 1.0f;
+  if (base_size > 4.0f) base_size = 4.0f;
+
+  int r = (int)(base_size + 0.5f);
+
+  // Draw bright center
+  set_pixel_additive(fb, width, height, cx, cy, 255, 255, 255, 255);
+
+  // Draw surrounding glow with falloff
+  for (int dy = -r; dy <= r; dy++) {
+    for (int dx = -r; dx <= r; dx++) {
+      if (dx == 0 && dy == 0) continue;  // Already drew center
+
+      float dist = sqrtf_impl((float)(dx * dx + dy * dy));
+      if (dist > (float)r) continue;
+
+      // Intensity falls off with distance
+      float intensity = 1.0f - (dist / ((float)r + 0.5f));
+      uint8_t alpha = (uint8_t)(intensity * 200.0f);
+
+      set_pixel_additive(fb, width, height, cx + dx, cy + dy, 255, 255, 255, alpha);
+    }
+  }
+}
+
 static void draw_chevron(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -417,6 +498,7 @@ static float compute_exit_angle(
 // - entry_x, entry_y: minute hand position (light source)
 // - hour_angle: angle to hour position from center
 // - rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
+// - second: 0.0-59.999 for seconds sparkle position on prism edge
 // - minimal_mode: if true, hide watch overlay (hour markers, chevron)
 // - gradient_rays: if true, use gradient+alpha for internal rays; if false, use non-gradient+additive
 // - prism_gray: gray value (0-255) for prism stroke and internal rays
@@ -426,6 +508,7 @@ static void render_watchface_scene(
   float entry_x, float entry_y,
   float hour_angle,
   float rainbow_spread,
+  float second,
   const Prism* prism,
   int minimal_mode,
   int gradient_rays,
@@ -671,6 +754,13 @@ static void render_watchface_scene(
 
   // Draw prism outline
   stroke_prism(fb, width, height, prism, prism_gray, prism_gray, prism_gray, 200);
+
+  // Draw seconds sparkle on prism edge
+  {
+    float sparkle_x, sparkle_y;
+    compute_sparkle_position(second, prism, &sparkle_x, &sparkle_y);
+    draw_sparkle(fb, width, height, sparkle_x, sparkle_y, radius);
+  }
 
   // Draw watch overlay (hour markers, chevron) unless minimal mode
   if (!minimal_mode) {
