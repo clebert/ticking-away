@@ -59,6 +59,8 @@ static RGB wavelength_to_rgb(float wavelength_nm) {
 // Pixel Operations
 // =================================================================================================
 
+// Additive blending: adds color to existing pixels, creating glow effects.
+// Use for single continuous lines (light beams) where pixels aren't drawn twice.
 static inline void set_pixel_additive(
   uint8_t* fb, int width, int height,
   int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a
@@ -79,6 +81,8 @@ static inline void set_pixel_additive(
   fb[idx + 2] = nb > 255 ? 255 : (uint8_t)nb;
 }
 
+// Alpha blending: standard "over" compositing for solid elements.
+// Use for multi-segment lines (gradients) to avoid bright dots at segment overlaps.
 static inline void set_pixel_alpha(
   uint8_t* fb, int width, int height,
   int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a
