@@ -238,6 +238,153 @@ static void stroke_prism(
   }
 }
 
+// =================================================================================================
+// Prism Inner Glow (Distance Field)
+// =================================================================================================
+
+// Compute distance from point (px, py) to line segment (x0, y0)-(x1, y1)
+static float point_to_segment_distance(
+  float px, float py,
+  float x0, float y0, float x1, float y1
+) {
+  float dx = x1 - x0;
+  float dy = y1 - y0;
+  float len_sq = dx * dx + dy * dy;
+
+  if (len_sq < EPS_NORM) {
+    // Degenerate segment (point)
+    float d = (px - x0) * (px - x0) + (py - y0) * (py - y0);
+    return sqrtf_impl(d);
+  }
+
+  // Project point onto line, clamped to segment
+  float t = ((px - x0) * dx + (py - y0) * dy) / len_sq;
+  if (t < 0.0f) t = 0.0f;
+  if (t > 1.0f) t = 1.0f;
+
+  float proj_x = x0 + t * dx;
+  float proj_y = y0 + t * dy;
+
+  float dist_x = px - proj_x;
+  float dist_y = py - proj_y;
+  return sqrtf_impl(dist_x * dist_x + dist_y * dist_y);
+}
+
+// Check if point is inside triangle using barycentric coordinates
+static int point_in_triangle(
+  float px, float py,
+  float x0, float y0,
+  float x1, float y1,
+  float x2, float y2
+) {
+  float denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+  if (denom > -EPS_NORM && denom < EPS_NORM) return 0;
+
+  float a = ((y1 - y2) * (px - x2) + (x2 - x1) * (py - y2)) / denom;
+  float b = ((y2 - y0) * (px - x2) + (x0 - x2) * (py - y2)) / denom;
+  float c = 1.0f - a - b;
+
+  return (a >= 0.0f && b >= 0.0f && c >= 0.0f);
+}
+
+// Compute minimum distance from point to any prism edge
+static float min_distance_to_prism_edge(float px, float py, const Prism* prism) {
+  float min_dist = 1e9f;
+
+  for (int i = 0; i < 3; i++) {
+    int j = (i + 1) % 3;
+    float x0 = prism->vertices[i * 2];
+    float y0 = prism->vertices[i * 2 + 1];
+    float x1 = prism->vertices[j * 2];
+    float y1 = prism->vertices[j * 2 + 1];
+
+    float dist = point_to_segment_distance(px, py, x0, y0, x1, y1);
+    if (dist < min_dist) min_dist = dist;
+  }
+
+  return min_dist;
+}
+
+// Draw prism with inner glow effect
+// glow_width: how far the glow extends inward (in pixels)
+// intensity: 0.0-1.0 multiplier for glow brightness
+// falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+static void draw_prism_glow(
+  uint8_t* fb, int width, int height,
+  const Prism* prism,
+  uint8_t r, uint8_t g, uint8_t b,
+  float glow_width,
+  float intensity,
+  int falloff
+) {
+  // Get prism vertices
+  float v0x = prism->vertices[0], v0y = prism->vertices[1];
+  float v1x = prism->vertices[2], v1y = prism->vertices[3];
+  float v2x = prism->vertices[4], v2y = prism->vertices[5];
+
+  // Compute bounding box
+  float min_x = v0x < v1x ? (v0x < v2x ? v0x : v2x) : (v1x < v2x ? v1x : v2x);
+  float max_x = v0x > v1x ? (v0x > v2x ? v0x : v2x) : (v1x > v2x ? v1x : v2x);
+  float min_y = v0y < v1y ? (v0y < v2y ? v0y : v2y) : (v1y < v2y ? v1y : v2y);
+  float max_y = v0y > v1y ? (v0y > v2y ? v0y : v2y) : (v1y > v2y ? v1y : v2y);
+
+  // Clamp to screen bounds
+  int x_start = (int)min_x - 1;
+  int x_end = (int)max_x + 2;
+  int y_start = (int)min_y - 1;
+  int y_end = (int)max_y + 2;
+
+  if (x_start < 0) x_start = 0;
+  if (y_start < 0) y_start = 0;
+  if (x_end > width) x_end = width;
+  if (y_end > height) y_end = height;
+
+  // Iterate over bounding box
+  for (int y = y_start; y < y_end; y++) {
+    for (int x = x_start; x < x_end; x++) {
+      float px = (float)x + 0.5f;
+      float py = (float)y + 0.5f;
+
+      // Check if inside triangle
+      if (!point_in_triangle(px, py, v0x, v0y, v1x, v1y, v2x, v2y)) {
+        continue;
+      }
+
+      // Compute distance to nearest edge
+      float dist = min_distance_to_prism_edge(px, py, prism);
+
+      // Apply glow: intensity falls off with distance from edge
+      if (dist < glow_width) {
+        float t = dist / glow_width;
+        float falloff_value;
+
+        switch (falloff) {
+          case 0:  // Linear
+            falloff_value = 1.0f - t;
+            break;
+          case 1:  // Quadratic
+            falloff_value = (1.0f - t) * (1.0f - t);
+            break;
+          case 2:  // Cubic
+            falloff_value = (1.0f - t) * (1.0f - t) * (1.0f - t);
+            break;
+          case 3:  // Exponential
+            falloff_value = fast_powf(2.718281828f, -3.0f * t) * (1.0f - t);
+            break;
+          default:
+            falloff_value = (1.0f - t) * (1.0f - t);
+        }
+
+        uint8_t alpha = (uint8_t)(falloff_value * intensity * 255.0f);
+        set_pixel_additive(fb, width, height, x, y, r, g, b, alpha);
+      }
+    }
+  }
+
+  // Draw the edge line on top for crisp boundary
+  stroke_prism(fb, width, height, prism, r, g, b, 255);
+}
+
 static int clip_segment_to_circle(
   float x0, float y0, float x1, float y1,
   float cx, float cy, float radius,
@@ -460,7 +607,10 @@ static void render_watchface_scene(
   const Prism* prism,
   int minimal_mode,
   uint8_t prism_gray,
-  int show_seconds
+  int show_seconds,
+  float glow_width_percent,
+  float glow_intensity,
+  int glow_falloff
 ) {
   // Initialize background
   init_watch_framebuffer(fb, width, height, cx, cy, radius);
@@ -475,7 +625,8 @@ static void render_watchface_scene(
 
   if (!prism_entry.hit) {
     // Ray doesn't hit prism - just draw overlay and return
-    stroke_prism(fb, width, height, prism, prism_gray, prism_gray, prism_gray, 200);
+    draw_prism_glow(fb, width, height, prism, prism_gray, prism_gray, prism_gray,
+                    radius * glow_width_percent, glow_intensity, glow_falloff);
     if (!minimal_mode) {
       draw_watch_overlay(fb, width, height, cx, cy, radius);
     }
@@ -576,8 +727,9 @@ static void render_watchface_scene(
     }
   }
 
-  // Draw prism outline
-  stroke_prism(fb, width, height, prism, prism_gray, prism_gray, prism_gray, 200);
+  // Draw prism with inner glow
+  draw_prism_glow(fb, width, height, prism, prism_gray, prism_gray, prism_gray,
+                  radius * glow_width_percent, glow_intensity, glow_falloff);
 
   // Draw seconds sparkle on prism edge (if enabled)
   if (show_seconds) {

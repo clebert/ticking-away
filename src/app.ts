@@ -25,6 +25,9 @@ interface Wasm {
     minimal_mode: number,
     prism_gray: number,
     show_seconds: number,
+    glow_width_percent: number,
+    glow_intensity: number,
+    glow_falloff: number,
   ): void;
 }
 
@@ -63,6 +66,9 @@ interface AppState {
   prismGray: number; // 0-255 gray value for prism stroke and internal rays
   showSeconds: boolean; // true = show seconds sparkle on prism edge
   secondsDisabled: boolean; // derived: liveMode && acceleratedTime (disable toggle in accelerated live mode)
+  glowWidth: number; // 5-50 (% of radius)
+  glowIntensity: number; // 10-100 (%)
+  glowFalloff: number; // 0=linear, 1=quadratic, 2=cubic, 3=exponential
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -76,6 +82,9 @@ interface PersistedSettings {
   minimalMode: boolean;
   prismGray: number;
   showSeconds: boolean;
+  glowWidth: number;
+  glowIntensity: number;
+  glowFalloff: number;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -101,6 +110,9 @@ function saveSettings(state: AppState): void {
       minimalMode: state.minimalMode,
       prismGray: state.prismGray,
       showSeconds: state.showSeconds,
+      glowWidth: state.glowWidth,
+      glowIntensity: state.glowIntensity,
+      glowFalloff: state.glowFalloff,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -128,6 +140,9 @@ const defaultState: AppState = {
   prismGray: savedSettings.prismGray ?? 80,
   showSeconds: savedSettings.showSeconds ?? true,
   secondsDisabled: false, // initially not in live mode, so not disabled
+  glowWidth: savedSettings.glowWidth ?? 15,
+  glowIntensity: savedSettings.glowIntensity ?? 100,
+  glowFalloff: savedSettings.glowFalloff ?? 1, // quadratic by default
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -285,6 +300,9 @@ function render(state: AppState): void {
     state.minimalMode ? 1 : 0,
     state.prismGray,
     state.showSeconds && !state.secondsDisabled ? 1 : 0,
+    state.glowWidth / 100.0, // Convert 5-50 to 0.05-0.50
+    state.glowIntensity / 100.0, // Convert 10-100 to 0.1-1.0
+    state.glowFalloff,
   );
 
   // Copy framebuffer to canvas
@@ -441,6 +459,24 @@ const actions = {
   setPrismGray(e: Event): void {
     const value = parseInt((e.target as HTMLInputElement).value, 10);
     store.publish((s) => ({ ...s, prismGray: value }));
+    render(store.getState());
+  },
+
+  setGlowWidth(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, glowWidth: value }));
+    render(store.getState());
+  },
+
+  setGlowIntensity(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, glowIntensity: value }));
+    render(store.getState());
+  },
+
+  setGlowFalloff(e: Event): void {
+    const value = parseInt((e.target as HTMLSelectElement).value, 10);
+    store.publish((s) => ({ ...s, glowFalloff: value }));
     render(store.getState());
   },
 };

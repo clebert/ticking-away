@@ -288,6 +288,33 @@
               data-bind="value:prismGray, input:setPrismGray"
             />
           </div>
+          <div class="control-group">
+            <label>Glow Width: <span data-bind="textContent:glowWidth">15</span>%</label>
+            <input
+              type="range"
+              min="5"
+              max="50"
+              data-bind="value:glowWidth, input:setGlowWidth"
+            />
+          </div>
+          <div class="control-group">
+            <label>Glow Intensity: <span data-bind="textContent:glowIntensity">100</span>%</label>
+            <input
+              type="range"
+              min="10"
+              max="100"
+              data-bind="value:glowIntensity, input:setGlowIntensity"
+            />
+          </div>
+          <div class="control-group">
+            <label>Glow Falloff</label>
+            <select data-bind="value:glowFalloff, change:setGlowFalloff">
+              <option value="0">Linear</option>
+              <option value="1">Quadratic</option>
+              <option value="2">Cubic</option>
+              <option value="3">Exponential</option>
+            </select>
+          </div>
 
           <!-- Display Options -->
           <div class="section-title">Display</div>
