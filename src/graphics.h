@@ -394,6 +394,9 @@ static void draw_chevron(
 // Internal fan spread factor (how much colors separate inside prism)
 #define INTERNAL_FAN_FACTOR 0.15f
 
+// Prism color (used for stroke and non-gradient internal rays)
+#define PRISM_GRAY 80
+
 // Compute the exit angle for a given wavelength index.
 // Returns angle that fans around the hour_angle based on spread.
 static float compute_exit_angle(
@@ -444,7 +447,7 @@ static void render_watchface_scene(
     // Ray doesn't hit prism - just draw overlay and return
     float hour_x = cx + cosf_approx(hour_angle) * radius;
     float hour_y = cy + sinf_approx(hour_angle) * radius;
-    stroke_prism(fb, width, height, prism, 80, 80, 80, 200);
+    stroke_prism(fb, width, height, prism, PRISM_GRAY, PRISM_GRAY, PRISM_GRAY, 200);
     if (!minimal_mode) {
       draw_watch_overlay(fb, width, height, cx, cy, radius, hour_x, hour_y);
       draw_chevron(fb, width, height, cx, cy, radius, hour_x, hour_y);
@@ -501,7 +504,7 @@ static void render_watchface_scene(
         // Gradient mode: white at entry fading to gray at exit (Dark Side of the Moon style)
         #define GRADIENT_STEPS 64
         float white_r = 200.0f, white_g = 200.0f, white_b = 200.0f;
-        float gray_r = 80.0f, gray_g = 80.0f, gray_b = 80.0f;
+        float gray_r = (float)PRISM_GRAY, gray_g = (float)PRISM_GRAY, gray_b = (float)PRISM_GRAY;
 
         if (bounce.needs_bounce) {
           // Spread bounce points along edges adjacent to bounce vertex
@@ -625,19 +628,19 @@ static void render_watchface_scene(
           draw_line_additive(fb, width, height,
             (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
             (int)(actual_bounce_x + 0.5f), (int)(actual_bounce_y + 0.5f),
-            200, 200, 200, 255);
+            PRISM_GRAY, PRISM_GRAY, PRISM_GRAY, 255);
 
           // Draw bounce -> exit
           draw_line_additive(fb, width, height,
             (int)(actual_bounce_x + 0.5f), (int)(actual_bounce_y + 0.5f),
             (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-            200, 200, 200, 255);
+            PRISM_GRAY, PRISM_GRAY, PRISM_GRAY, 255);
         } else {
           // Direct path: entry -> exit
           draw_line_additive(fb, width, height,
             (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
             (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-            200, 200, 200, 255);
+            PRISM_GRAY, PRISM_GRAY, PRISM_GRAY, 255);
         }
       }
 
@@ -668,7 +671,7 @@ static void render_watchface_scene(
   }
 
   // Draw prism outline
-  stroke_prism(fb, width, height, prism, 80, 80, 80, 200);
+  stroke_prism(fb, width, height, prism, PRISM_GRAY, PRISM_GRAY, PRISM_GRAY, 200);
 
   // Draw watch overlay (hour markers, chevron) unless minimal mode
   if (!minimal_mode) {
