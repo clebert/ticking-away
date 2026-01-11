@@ -7,6 +7,8 @@
 #define PI 3.14159265358979323846f
 #define TAU (2.0f * PI)
 #define EPS_NORM 1e-9f
+#define EPS_PARALLEL 1e-7f  // Scale factor for parallel detection (relative to vector magnitudes)
+#define EPS_REL 1e-5f       // Scale factor for tolerances (t in world units, u dimensionless)
 #define T_MAX 1e30f
 
 // =================================================================================================
@@ -159,6 +161,19 @@ typedef struct {
   float vertices[6];  // 3 vertices x 2 coords
 } Prism;
 
+// Compute characteristic length of prism (average edge length).
+// Used for scale-aware epsilon calculations.
+static inline float prism_scale(const Prism* prism) {
+  float total = 0.0f;
+  for (int i = 0; i < 3; i++) {
+    int j = (i + 1) % 3;
+    float ex = prism->vertices[j * 2] - prism->vertices[i * 2];
+    float ey = prism->vertices[j * 2 + 1] - prism->vertices[i * 2 + 1];
+    total += sqrtf_impl(ex * ex + ey * ey);
+  }
+  return total / 3.0f;
+}
+
 // Create an isosceles triangle prism with apex at top, centered at (cx, cy).
 // apex_angle_deg: angle at the apex (top vertex)
 // size: width of the base
@@ -200,11 +215,12 @@ typedef struct {
 } RayHit;
 
 // Intersect ray (ox, oy) + t*(dx, dy) with line segment (ax, ay)-(bx, by).
-// Returns hit info if intersection found with t > eps.
+// Returns hit info if intersection found with t > eps_t.
+// eps_u: tolerance for segment parameter (typically 1e-5f for robustness)
 static RayHit ray_segment_intersect(
   float ox, float oy, float dx, float dy,
   float ax, float ay, float bx, float by,
-  float eps
+  float eps_t, float eps_u
 ) {
   RayHit result = {0, 0.0f, -1.0f, -1, 0.0f, 0.0f};
 
@@ -216,24 +232,31 @@ static RayHit ray_segment_intersect(
   float perp_y = dx;
 
   float denom = ex * perp_x + ey * perp_y;
-  if (fabsf_impl(denom) < EPS_NORM) return result;  // Parallel
+
+  // Scale-aware parallel check: compare denom against product of vector magnitudes
+  float edge_len = sqrtf_impl(ex * ex + ey * ey);
+  float dir_len = sqrtf_impl(dx * dx + dy * dy);
+  float eps_denom = EPS_PARALLEL * edge_len * dir_len;
+  if (eps_denom < EPS_NORM) eps_denom = EPS_NORM;
+  if (fabsf_impl(denom) < eps_denom) return result;  // Parallel
 
   float vx = ox - ax;
   float vy = oy - ay;
 
   float t = (ex * vy - ey * vx) / denom;
-  if (t < eps) return result;  // Behind ray origin
+  if (t < eps_t) return result;  // Behind ray origin
 
   float u = (vx * perp_x + vy * perp_y) / denom;
   // Use tolerance to avoid missing vertex hits due to floating-point noise
-  if (u < -1e-6f || u > 1.0f + 1e-6f) return result;  // Outside segment
+  if (u < -eps_u || u > 1.0f + eps_u) return result;  // Outside segment
   u = clampf(u, 0.0f, 1.0f);
 
   result.hit = 1;
   result.t = t;
   result.u = u;  // Store parametric position along edge
-  result.px = ox + dx * t;
-  result.py = oy + dy * t;
+  // Compute hit point from clamped u to ensure it lies exactly on segment
+  result.px = ax + ex * u;
+  result.py = ay + ey * u;
   return result;
 }
 
@@ -244,7 +267,11 @@ static RayHit find_prism_entry(
   const Prism* prism
 ) {
   RayHit best = {0, T_MAX, -1.0f, -1, 0.0f, 0.0f};
-  float eps = 1e-6f;
+
+  // Scale-aware epsilons based on prism size
+  float scale = prism_scale(prism);
+  float eps_t = EPS_REL * scale;  // t tolerance in world units
+  float eps_u = EPS_REL;          // u tolerance (segment parameter, dimensionless)
 
   for (int i = 0; i < 3; i++) {
     int j = (i + 1) % 3;
@@ -253,7 +280,7 @@ static RayHit find_prism_entry(
     float bx = prism->vertices[j * 2];
     float by = prism->vertices[j * 2 + 1];
 
-    RayHit hit = ray_segment_intersect(ox, oy, dx, dy, ax, ay, bx, by, eps);
+    RayHit hit = ray_segment_intersect(ox, oy, dx, dy, ax, ay, bx, by, eps_t, eps_u);
     if (hit.hit && hit.t < best.t) {
       best = hit;
       best.edge_idx = i;  // Store which edge was hit
@@ -275,7 +302,11 @@ static RayHit find_prism_exit_from_center(
   // From center (inside triangle), there's exactly one forward boundary hit.
   // Take the farthest t for stability in degenerate cases (vertex ties / tiny noise).
   RayHit best = {0, 0.0f, -1.0f, -1, 0.0f, 0.0f};
-  float eps = 1e-6f;
+
+  // Scale-aware epsilons based on prism size
+  float scale = prism_scale(prism);
+  float eps_t = EPS_REL * scale;
+  float eps_u = EPS_REL;
 
   for (int i = 0; i < 3; i++) {
     int j = (i + 1) % 3;
@@ -284,7 +315,7 @@ static RayHit find_prism_exit_from_center(
     float bx = prism->vertices[j * 2];
     float by = prism->vertices[j * 2 + 1];
 
-    RayHit hit = ray_segment_intersect(cx, cy, dx, dy, ax, ay, bx, by, eps);
+    RayHit hit = ray_segment_intersect(cx, cy, dx, dy, ax, ay, bx, by, eps_t, eps_u);
     if (hit.hit && hit.t > best.t) {
       best = hit;
       best.edge_idx = i;
@@ -316,17 +347,26 @@ static int ray_circle_intersection(
   float c = fx * fx + fy * fy - radius * radius;
   float discriminant = b * b - 4.0f * c;
 
-  if (discriminant < 0.0f) return 0;
+  // Clamp tiny negative discriminants to 0 (floating-point noise near tangent)
+  float eps_disc = EPS_REL * radius * radius;
+  if (discriminant < 0.0f) {
+    if (discriminant > -eps_disc) {
+      discriminant = 0.0f;
+    } else {
+      return 0;
+    }
+  }
 
   float sqrt_disc = sqrtf_impl(discriminant);
   float t1 = (-b + sqrt_disc) * 0.5f;
   float t2 = (-b - sqrt_disc) * 0.5f;
 
-  float eps = 1e-6f;
+  // Scale-aware epsilon for self-intersection rejection
+  float eps_t = EPS_REL * radius;
   float t;
-  if (t2 > eps) {
+  if (t2 > eps_t) {
     t = t2;
-  } else if (t1 > eps) {
+  } else if (t1 > eps_t) {
     t = t1;
   } else {
     return 0;
@@ -442,6 +482,9 @@ static BounceInfo compute_bounce_info(
   const Prism* prism
 ) {
   BounceInfo info = {0, -1, 0.0f, 0.0f};
+
+  // Validate entry_edge
+  if (entry_edge < 0 || entry_edge > 2) return info;
 
   // Compute prism center from vertices
   float cx = (prism->vertices[0] + prism->vertices[2] + prism->vertices[4]) / 3.0f;
