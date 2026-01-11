@@ -23,6 +23,7 @@ interface Wasm {
     rainbow_spread: number,
     minimal_mode: number,
     gradient_rays: number,
+    prism_gray: number,
   ): void;
 }
 
@@ -56,6 +57,7 @@ interface AppState {
   pebbleMode: boolean;
   minimalMode: boolean;
   gradientRays: boolean; // true = gradient+alpha internal rays, false = non-gradient+additive
+  prismGray: number; // 0-255 gray value for prism stroke and internal rays
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -68,6 +70,7 @@ interface PersistedSettings {
   pebbleMode: boolean;
   minimalMode: boolean;
   gradientRays: boolean;
+  prismGray: number;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -92,6 +95,7 @@ function saveSettings(state: AppState): void {
       pebbleMode: state.pebbleMode,
       minimalMode: state.minimalMode,
       gradientRays: state.gradientRays,
+      prismGray: state.prismGray,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -114,6 +118,7 @@ const defaultState: AppState = {
   pebbleMode: savedSettings.pebbleMode ?? false,
   minimalMode: savedSettings.minimalMode ?? false,
   gradientRays: savedSettings.gradientRays ?? true,
+  prismGray: savedSettings.prismGray ?? 80,
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -261,6 +266,7 @@ function render(state: AppState): void {
     state.rainbowSpread / 100.0, // Convert 0-100 to 0.0-1.0
     state.minimalMode ? 1 : 0,
     state.gradientRays ? 1 : 0,
+    state.prismGray,
   );
 
   // Copy framebuffer to canvas
@@ -379,6 +385,12 @@ const actions = {
 
   toggleGradientRays(): void {
     store.publish((s) => ({ ...s, gradientRays: !s.gradientRays }));
+    render(store.getState());
+  },
+
+  setPrismGray(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, prismGray: value }));
     render(store.getState());
   },
 };

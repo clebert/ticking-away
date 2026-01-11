@@ -274,6 +274,15 @@
               Gradient Rays</label
             >
           </div>
+          <div class="control-group">
+            <label>Prism Gray: <span data-bind="textContent:prismGray">80</span></label>
+            <input
+              type="range"
+              min="0"
+              max="255"
+              data-bind="value:prismGray, input:setPrismGray"
+            />
+          </div>
 
           <!-- Display Options -->
           <div class="section-title">Display</div>
