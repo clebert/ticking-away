@@ -154,9 +154,9 @@ const defaultState: AppState = {
   seconds: now.getSeconds(),
   prismSize: savedSettings.prismSize ?? 60,
   rainbowSpread: savedSettings.rainbowSpread ?? 30,
-  liveMode: false,
+  liveMode: true,
   fullscreen: false,
-  fullscreenHidden: true, // hidden until live mode is active
+  fullscreenHidden: false, // derived: !liveMode
   acceleratedTime: savedSettings.acceleratedTime ?? true,
   accelerationFactor: savedSettings.accelerationFactor ?? 1,
   accelerationHidden: !(savedSettings.acceleratedTime ?? true),
@@ -166,7 +166,7 @@ const defaultState: AppState = {
   prismBlueTint: savedSettings.prismBlueTint ?? 0,
   showSeconds: savedSettings.showSeconds ?? true,
   sparkleSize: savedSettings.sparkleSize ?? 200,
-  secondsDisabled: false, // initially not in live mode, so not disabled
+  secondsDisabled: savedSettings.acceleratedTime ?? true, // derived: liveMode && acceleratedTime
   glowWidth: savedSettings.glowWidth ?? 15,
   glowIntensity: savedSettings.glowIntensity ?? 100,
   glowFalloff: savedSettings.glowFalloff ?? 1, // quadratic by default
@@ -583,6 +583,9 @@ async function init(): Promise<void> {
   // Initial setup
   resizeCanvas(store.getState().pebbleMode);
   render(store.getState());
+
+  // Start live animation immediately
+  startLiveAnimation();
 
   // Handle resize
   window.addEventListener("resize", () => {
