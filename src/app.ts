@@ -23,7 +23,9 @@ interface Wasm {
     prism_size_percent: number,
     rainbow_spread: number,
     minimal_mode: number,
-    prism_gray: number,
+    prism_r: number,
+    prism_g: number,
+    prism_b: number,
     show_seconds: number,
     glow_width_percent: number,
     glow_intensity: number,
@@ -64,6 +66,7 @@ interface AppState {
   pebbleMode: boolean;
   minimalMode: boolean;
   prismGray: number; // 0-255 gray value for prism stroke and internal rays
+  prismBlueTint: number; // 0-50 blue tint amount (reduces red/green to create cool bluish gray)
   showSeconds: boolean; // true = show seconds sparkle on prism edge
   secondsDisabled: boolean; // derived: liveMode && acceleratedTime (disable toggle in accelerated live mode)
   glowWidth: number; // 5-50 (% of radius)
@@ -81,6 +84,7 @@ interface PersistedSettings {
   pebbleMode: boolean;
   minimalMode: boolean;
   prismGray: number;
+  prismBlueTint: number;
   showSeconds: boolean;
   glowWidth: number;
   glowIntensity: number;
@@ -109,6 +113,7 @@ function saveSettings(state: AppState): void {
       pebbleMode: state.pebbleMode,
       minimalMode: state.minimalMode,
       prismGray: state.prismGray,
+      prismBlueTint: state.prismBlueTint,
       showSeconds: state.showSeconds,
       glowWidth: state.glowWidth,
       glowIntensity: state.glowIntensity,
@@ -138,6 +143,7 @@ const defaultState: AppState = {
   pebbleMode: savedSettings.pebbleMode ?? false,
   minimalMode: savedSettings.minimalMode ?? false,
   prismGray: savedSettings.prismGray ?? 80,
+  prismBlueTint: savedSettings.prismBlueTint ?? 0,
   showSeconds: savedSettings.showSeconds ?? true,
   secondsDisabled: false, // initially not in live mode, so not disabled
   glowWidth: savedSettings.glowWidth ?? 15,
@@ -287,6 +293,12 @@ function render(state: AppState): void {
   const width = canvas.width;
   const height = canvas.height;
 
+  // Calculate prism RGB from gray + blue tint
+  // Blue tint reduces red more than green, creating a cool bluish appearance
+  const prismR = Math.max(0, state.prismGray - state.prismBlueTint);
+  const prismG = Math.max(0, state.prismGray - Math.floor(state.prismBlueTint / 2));
+  const prismB = state.prismGray;
+
   // Call WASM to render
   wasmModule.render_watchface(
     fbDataPtr,
@@ -298,7 +310,9 @@ function render(state: AppState): void {
     state.prismSize,
     state.rainbowSpread / 100.0, // Convert 0-100 to 0.0-1.0
     state.minimalMode ? 1 : 0,
-    state.prismGray,
+    prismR,
+    prismG,
+    prismB,
     state.showSeconds && !state.secondsDisabled ? 1 : 0,
     state.glowWidth / 100.0, // Convert 5-50 to 0.05-0.50
     state.glowIntensity / 100.0, // Convert 10-100 to 0.1-1.0
@@ -459,6 +473,12 @@ const actions = {
   setPrismGray(e: Event): void {
     const value = parseInt((e.target as HTMLInputElement).value, 10);
     store.publish((s) => ({ ...s, prismGray: value }));
+    render(store.getState());
+  },
+
+  setPrismBlueTint(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, prismBlueTint: value }));
     render(store.getState());
   },
 

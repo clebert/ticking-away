@@ -289,6 +289,15 @@
             />
           </div>
           <div class="control-group">
+            <label>Blue Tint: <span data-bind="textContent:prismBlueTint">0</span></label>
+            <input
+              type="range"
+              min="0"
+              max="50"
+              data-bind="value:prismBlueTint, input:setPrismBlueTint"
+            />
+          </div>
+          <div class="control-group">
             <label>Glow Width: <span data-bind="textContent:glowWidth">15</span>%</label>
             <input
               type="range"

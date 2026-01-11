@@ -595,7 +595,7 @@ static float compute_exit_angle(
 // - rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
 // - second: 0.0-59.999 for seconds sparkle position on prism edge
 // - minimal_mode: if true, hide watch overlay (hour markers, chevron)
-// - prism_gray: gray value (0-255) for prism stroke and internal rays
+// - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke and internal rays
 // - show_seconds: if true, show seconds sparkle on prism edge
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
@@ -606,7 +606,9 @@ static void render_watchface_scene(
   float second,
   const Prism* prism,
   int minimal_mode,
-  uint8_t prism_gray,
+  uint8_t prism_r,
+  uint8_t prism_g,
+  uint8_t prism_b,
   int show_seconds,
   float glow_width_percent,
   float glow_intensity,
@@ -625,7 +627,7 @@ static void render_watchface_scene(
 
   if (!prism_entry.hit) {
     // Ray doesn't hit prism - just draw overlay and return
-    draw_prism_glow(fb, width, height, prism, prism_gray, prism_gray, prism_gray,
+    draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
                     radius * glow_width_percent, glow_intensity, glow_falloff);
     if (!minimal_mode) {
       draw_watch_overlay(fb, width, height, cx, cy, radius);
@@ -686,19 +688,19 @@ static void render_watchface_scene(
         draw_line_additive(fb, width, height,
           (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
           (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
-          prism_gray, prism_gray, prism_gray, 255);
+          prism_r, prism_g, prism_b, 255);
 
         // Draw bounce -> exit (spread happens here)
         draw_line_additive(fb, width, height,
           (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
           (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-          prism_gray, prism_gray, prism_gray, 255);
+          prism_r, prism_g, prism_b, 255);
       } else {
         // Direct path: entry -> exit
         draw_line_additive(fb, width, height,
           (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
           (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-          prism_gray, prism_gray, prism_gray, 255);
+          prism_r, prism_g, prism_b, 255);
       }
 
       // Draw exit ray (from prism exit to circle edge) with actual rainbow color
@@ -728,7 +730,7 @@ static void render_watchface_scene(
   }
 
   // Draw prism with inner glow
-  draw_prism_glow(fb, width, height, prism, prism_gray, prism_gray, prism_gray,
+  draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
                   radius * glow_width_percent, glow_intensity, glow_falloff);
 
   // Draw seconds sparkle on prism edge (if enabled)
