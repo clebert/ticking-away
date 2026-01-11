@@ -49,9 +49,12 @@ static RGB wavelength_to_rgb(float wavelength_nm) {
   }
 
   RGB result;
-  result.r = (uint8_t)(fast_powf(r * factor, 0.8f) * 255.0f);
-  result.g = (uint8_t)(fast_powf(g * factor, 0.8f) * 255.0f);
-  result.b = (uint8_t)(fast_powf(b * factor, 0.8f) * 255.0f);
+  float out_r = fast_powf(r * factor, 0.8f) * 255.0f;
+  float out_g = fast_powf(g * factor, 0.8f) * 255.0f;
+  float out_b = fast_powf(b * factor, 0.8f) * 255.0f;
+  result.r = out_r > 255.0f ? 255 : (uint8_t)out_r;
+  result.g = out_g > 255.0f ? 255 : (uint8_t)out_g;
+  result.b = out_b > 255.0f ? 255 : (uint8_t)out_b;
   return result;
 }
 
