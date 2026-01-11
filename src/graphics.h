@@ -640,41 +640,83 @@ static void compute_sparkle_position(
   *out_y = y0 + t * (y1 - y0);
 }
 
-// Draw a sparkle (glowing point) at the given position using additive blending.
-// Creates a small bright spot with falloff for a gem-like highlight effect.
+// Draw a diamond-like sparkle with 4-pointed star rays and twinkling animation.
+// Creates a gem-like highlight that pops above other glow effects.
 static void draw_sparkle(
   uint8_t* fb, int width, int height,
   float x, float y,
-  float radius_scale  // Scale factor based on watch radius (for size consistency)
+  float radius,        // Watch radius for base scaling
+  float size_percent,  // 1.0-10.0 size multiplier
+  float second         // Fractional second for twinkle animation
 ) {
   int cx = (int)(x + 0.5f);
   int cy = (int)(y + 0.5f);
 
   // Scale sparkle size based on watch radius
-  float base_size = radius_scale / 50.0f;  // Adjust divisor for desired size
+  float base_size = radius / 50.0f;  // Base size from radius
   if (base_size < 1.0f) base_size = 1.0f;
   if (base_size > 4.0f) base_size = 4.0f;
 
-  int r = (int)(base_size + 0.5f);
+  // Apply user size multiplier
+  base_size *= size_percent;
 
-  // Draw bright center
-  set_pixel_additive(fb, width, height, cx, cy, 255, 255, 255, 255);
+  // Twinkle animation: pulsing intensity based on fractional seconds
+  // Use a fast sine wave for sparkle effect (cycles ~4 times per second)
+  float frac = second - (float)(int)second;  // 0.0 to 1.0
+  float twinkle = 0.7f + 0.3f * sinf_approx(frac * TAU * 4.0f);
 
-  // Draw surrounding glow with falloff
-  for (int dy = -r; dy <= r; dy++) {
-    for (int dx = -r; dx <= r; dx++) {
-      if (dx == 0 && dy == 0) continue;  // Already drew center
+  // Star ray lengths (4-pointed star)
+  int ray_length = (int)(base_size * 2.0f);
+  int short_ray = (int)(base_size * 1.2f);  // Diagonal rays slightly shorter
+  int core_radius = (int)(base_size * 0.6f);
+  if (core_radius < 1) core_radius = 1;
 
+  // Draw the 4 main star rays (vertical and horizontal)
+  // These are the signature diamond sparkle lines
+  for (int i = 1; i <= ray_length; i++) {
+    float falloff = 1.0f - ((float)i / (float)(ray_length + 1));
+    falloff = falloff * falloff;  // Quadratic falloff for sharper rays
+    uint8_t alpha = (uint8_t)(falloff * twinkle * 255.0f);
+
+    // Vertical rays
+    set_pixel_additive(fb, width, height, cx, cy - i, 255, 255, 255, alpha);
+    set_pixel_additive(fb, width, height, cx, cy + i, 255, 255, 255, alpha);
+    // Horizontal rays
+    set_pixel_additive(fb, width, height, cx - i, cy, 255, 255, 255, alpha);
+    set_pixel_additive(fb, width, height, cx + i, cy, 255, 255, 255, alpha);
+  }
+
+  // Draw 4 diagonal rays (45 degree angles) - slightly shorter
+  for (int i = 1; i <= short_ray; i++) {
+    float falloff = 1.0f - ((float)i / (float)(short_ray + 1));
+    falloff = falloff * falloff * falloff;  // Cubic falloff for even sharper diagonals
+    uint8_t alpha = (uint8_t)(falloff * twinkle * 200.0f);
+
+    set_pixel_additive(fb, width, height, cx - i, cy - i, 255, 255, 255, alpha);
+    set_pixel_additive(fb, width, height, cx + i, cy - i, 255, 255, 255, alpha);
+    set_pixel_additive(fb, width, height, cx - i, cy + i, 255, 255, 255, alpha);
+    set_pixel_additive(fb, width, height, cx + i, cy + i, 255, 255, 255, alpha);
+  }
+
+  // Draw bright glowing core
+  for (int dy = -core_radius; dy <= core_radius; dy++) {
+    for (int dx = -core_radius; dx <= core_radius; dx++) {
       float dist = sqrtf_impl((float)(dx * dx + dy * dy));
-      if (dist > (float)r) continue;
+      if (dist > (float)core_radius) continue;
 
-      // Intensity falls off with distance
-      float intensity = 1.0f - (dist / ((float)r + 0.5f));
-      uint8_t alpha = (uint8_t)(intensity * 200.0f);
+      // Intense core with soft edge
+      float intensity = 1.0f - (dist / ((float)core_radius + 0.5f));
+      intensity = intensity * intensity;  // Concentrate brightness at center
+      uint8_t alpha = (uint8_t)(intensity * twinkle * 255.0f);
 
       set_pixel_additive(fb, width, height, cx + dx, cy + dy, 255, 255, 255, alpha);
     }
   }
+
+  // Draw super-bright center pixels (the diamond's "fire")
+  uint8_t center_alpha = (uint8_t)(twinkle * 255.0f);
+  set_pixel_additive(fb, width, height, cx, cy, 255, 255, 255, center_alpha);
+  set_pixel_additive(fb, width, height, cx, cy, 255, 255, 255, center_alpha);  // Double-add for extra brightness
 }
 
 // =================================================================================================
@@ -714,6 +756,7 @@ static float compute_exit_angle(
 // - minimal_mode: if true, hide watch overlay (hour markers, chevron)
 // - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke and internal rays
 // - show_seconds: if true, show seconds sparkle on prism edge
+// - sparkle_size_percent: 1.0-10.0 scale factor for sparkle size
 // - ray_glow_width: glow width for rays in pixels
 // - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
 // - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
@@ -731,6 +774,7 @@ static void render_watchface_scene(
   uint8_t prism_g,
   uint8_t prism_b,
   int show_seconds,
+  float sparkle_size_percent,
   float glow_width_percent,
   float glow_intensity,
   int glow_falloff,
@@ -871,7 +915,7 @@ static void render_watchface_scene(
   if (show_seconds) {
     float sparkle_x, sparkle_y;
     compute_sparkle_position(second, prism, &sparkle_x, &sparkle_y);
-    draw_sparkle(fb, width, height, sparkle_x, sparkle_y, radius);
+    draw_sparkle(fb, width, height, sparkle_x, sparkle_y, radius, sparkle_size_percent, second);
   }
 
   // Draw watch overlay (hour markers) unless minimal mode

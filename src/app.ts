@@ -27,6 +27,7 @@ interface Wasm {
     prism_g: number,
     prism_b: number,
     show_seconds: number,
+    sparkle_size_percent: number,
     glow_width_percent: number,
     glow_intensity: number,
     glow_falloff: number,
@@ -72,6 +73,7 @@ interface AppState {
   prismGray: number; // 0-255 gray value for prism stroke and internal rays
   prismBlueTint: number; // 0-50 blue tint amount (reduces red/green to create cool bluish gray)
   showSeconds: boolean; // true = show seconds sparkle on prism edge
+  sparkleSize: number; // 100-1000 (% of default size)
   secondsDisabled: boolean; // derived: liveMode && acceleratedTime (disable toggle in accelerated live mode)
   glowWidth: number; // 5-50 (% of radius)
   glowIntensity: number; // 10-100 (%)
@@ -94,6 +96,7 @@ interface PersistedSettings {
   prismGray: number;
   prismBlueTint: number;
   showSeconds: boolean;
+  sparkleSize: number;
   glowWidth: number;
   glowIntensity: number;
   glowFalloff: number;
@@ -127,6 +130,7 @@ function saveSettings(state: AppState): void {
       prismGray: state.prismGray,
       prismBlueTint: state.prismBlueTint,
       showSeconds: state.showSeconds,
+      sparkleSize: state.sparkleSize,
       glowWidth: state.glowWidth,
       glowIntensity: state.glowIntensity,
       glowFalloff: state.glowFalloff,
@@ -161,6 +165,7 @@ const defaultState: AppState = {
   prismGray: savedSettings.prismGray ?? 80,
   prismBlueTint: savedSettings.prismBlueTint ?? 0,
   showSeconds: savedSettings.showSeconds ?? true,
+  sparkleSize: savedSettings.sparkleSize ?? 200,
   secondsDisabled: false, // initially not in live mode, so not disabled
   glowWidth: savedSettings.glowWidth ?? 15,
   glowIntensity: savedSettings.glowIntensity ?? 100,
@@ -334,6 +339,7 @@ function render(state: AppState): void {
     prismG,
     prismB,
     state.showSeconds && !state.secondsDisabled ? 1 : 0,
+    state.sparkleSize / 100.0, // Convert 100-1000 to 1.0-10.0
     state.glowWidth / 100.0, // Convert 5-50 to 0.05-0.50
     state.glowIntensity / 100.0, // Convert 10-100 to 0.1-1.0
     state.glowFalloff,
@@ -483,6 +489,12 @@ const actions = {
 
   toggleShowSeconds(): void {
     store.publish((s) => ({ ...s, showSeconds: !s.showSeconds }));
+    render(store.getState());
+  },
+
+  setSparkleSize(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, sparkleSize: value }));
     render(store.getState());
   },
 
