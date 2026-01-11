@@ -182,18 +182,40 @@ static void draw_line_alpha(
   }
 }
 
+static void draw_line_additive(
+  uint8_t* fb, int width, int height,
+  int x0, int y0, int x1, int y1,
+  uint8_t r, uint8_t g, uint8_t b, uint8_t a
+) {
+  int dx = x1 > x0 ? x1 - x0 : x0 - x1;
+  int dy = y1 > y0 ? y1 - y0 : y0 - y1;
+  int sx = x0 < x1 ? 1 : -1;
+  int sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy;
+
+  while (1) {
+    set_pixel_additive(fb, width, height, x0, y0, r, g, b, a);
+    if (x0 == x1 && y0 == y1) break;
+    int e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
+
 // =================================================================================================
-// Line Drawing with Glow (Distance Field)
+// Line Drawing with Glow (Distance Field, Additive Blending)
 // =================================================================================================
 
-// Draw a line with glow effect using distance field approach
+// Draw a line with glow effect using distance field approach and additive blending.
+// Uses additive blending for both glow and crisp line - designed for light rays where
+// drawing multiple overlapping rays (e.g., per-wavelength) accumulates to correct brightness.
 // clip_triangle: if non-NULL, points to 6 floats (v0x,v0y,v1x,v1y,v2x,v2y) to clip glow inside
 // clip_circle: if non-NULL, points to 3 floats (cx,cy,radius) to clip glow inside circle
 // exclude_triangle: if non-NULL, points to 6 floats to exclude glow from inside this triangle
 // glow_width: how far the glow extends perpendicular to the line (in pixels)
 // intensity: 0.0-1.0 multiplier for glow brightness
 // falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
-static void draw_line_with_glow(
+static void draw_line_with_glow_additive(
   uint8_t* fb, int width, int height,
   float x0, float y0, float x1, float y1,
   uint8_t r, uint8_t g, uint8_t b,
@@ -283,8 +305,8 @@ static void draw_line_with_glow(
     }
   }
 
-  // Draw crisp line on top for definition (alpha blend like prism stroke)
-  draw_line_alpha(fb, width, height,
+  // Draw crisp line on top for definition (additive for wavelength mixing)
+  draw_line_additive(fb, width, height,
     (int)(x0 + 0.5f), (int)(y0 + 0.5f),
     (int)(x1 + 0.5f), (int)(y1 + 0.5f),
     r, g, b, 255);
@@ -695,6 +717,7 @@ static float compute_exit_angle(
 // - ray_glow_width: glow width for rays in pixels
 // - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
 // - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+// - internal_ray_real_colors: if true, use wavelength-based colors for internal rays
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -713,7 +736,8 @@ static void render_watchface_scene(
   int glow_falloff,
   float ray_glow_width,
   float ray_glow_intensity,
-  int ray_glow_falloff
+  int ray_glow_falloff,
+  int internal_ray_real_colors
 ) {
   // Initialize background
   init_watch_framebuffer(fb, width, height, cx, cy, radius);
@@ -739,20 +763,13 @@ static void render_watchface_scene(
   // Clipping data for external rays (entry ray and rainbow rays)
   float circle_clip[3] = { cx, cy, radius };
 
-  // Draw white entry ray (from minute position to prism entry)
-  {
-    float clip_x0, clip_y0, clip_x1, clip_y1;
-    if (clip_segment_to_circle(
-      entry_x, entry_y, prism_entry.px, prism_entry.py,
-      cx, cy, radius,
-      &clip_x0, &clip_y0, &clip_x1, &clip_y1
-    )) {
-      draw_line_with_glow(fb, width, height,
-        clip_x0, clip_y0, clip_x1, clip_y1,
-        200, 200, 200, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-        0, circle_clip, prism->vertices);
-    }
-  }
+  // Clip incoming ray once (shared by all wavelengths)
+  float clip_x0, clip_y0, clip_x1, clip_y1;
+  int has_clipped_entry = clip_segment_to_circle(
+    entry_x, entry_y, prism_entry.px, prism_entry.py,
+    cx, cy, radius,
+    &clip_x0, &clip_y0, &clip_x1, &clip_y1
+  );
 
   // Compute bounce decision once using guiding ray (before wavelength loop)
   BounceInfo bounce = compute_bounce_info(
@@ -761,19 +778,20 @@ static void render_watchface_scene(
     prism
   );
 
-  // Draw entry→bounce segment once (if bouncing) - all wavelengths share this path
-  if (bounce.needs_bounce) {
-    draw_line_with_glow(fb, width, height,
-      prism_entry.px, prism_entry.py,
-      bounce.bounce_x, bounce.bounce_y,
-      prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-      prism->vertices, 0, 0);
-  }
-
-  // Draw colored rays (internal fan + exit rays)
+  // Draw all rays per-wavelength for consistent brightness (additive blending)
+  // Outside ray: always white (all wavelengths add to white)
+  // Internal rays: use wavelength colors if toggle on, otherwise prism color
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
     float wavelength = WAVELENGTHS[i];
     RGB color = wavelength_to_rgb(wavelength);
+
+    // Draw incoming ray (outside prism) - white for all wavelengths, adds up via blending
+    if (has_clipped_entry) {
+      draw_line_with_glow_additive(fb, width, height,
+        clip_x0, clip_y0, clip_x1, clip_y1,
+        200, 200, 200, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+        0, circle_clip, prism->vertices);
+    }
 
     // Compute exit angle for this wavelength
     float exit_angle = compute_exit_angle(hour_angle, rainbow_spread, i);
@@ -792,22 +810,30 @@ static void render_watchface_scene(
       float internal_exit_x = prism_exit.px + cosf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
-      // Draw internal ray: either direct (entry->exit) or bounced (bounce->exit)
-      // Note: entry->bounce is drawn once outside the loop
-      // Glow is clipped to stay inside the prism
+      // Use wavelength colors if internal_ray_real_colors is set, otherwise use prism colors
+      uint8_t internal_r = internal_ray_real_colors ? color.r : prism_r;
+      uint8_t internal_g = internal_ray_real_colors ? color.g : prism_g;
+      uint8_t internal_b = internal_ray_real_colors ? color.b : prism_b;
+
       if (bounce.needs_bounce) {
+        // Draw entry→bounce segment per-wavelength for consistent brightness
+        draw_line_with_glow_additive(fb, width, height,
+          prism_entry.px, prism_entry.py,
+          bounce.bounce_x, bounce.bounce_y,
+          internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          prism->vertices, 0, 0);
         // Bounced path: bounce -> exit (spread happens here)
-        draw_line_with_glow(fb, width, height,
+        draw_line_with_glow_additive(fb, width, height,
           bounce.bounce_x, bounce.bounce_y,
           internal_exit_x, internal_exit_y,
-          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
       } else {
         // Direct path: entry -> exit
-        draw_line_with_glow(fb, width, height,
+        draw_line_with_glow_additive(fb, width, height,
           prism_entry.px, prism_entry.py,
           internal_exit_x, internal_exit_y,
-          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
       }
 
@@ -828,7 +854,7 @@ static void render_watchface_scene(
           cx, cy, radius,
           &clip_x0, &clip_y0, &clip_x1, &clip_y1
         )) {
-          draw_line_with_glow(fb, width, height,
+          draw_line_with_glow_additive(fb, width, height,
             clip_x0, clip_y0, clip_x1, clip_y1,
             color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
             0, circle_clip, prism->vertices);

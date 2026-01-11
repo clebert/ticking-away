@@ -328,6 +328,15 @@
           <!-- Ray Controls -->
           <div class="section-title">Rays</div>
           <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:internalRayRealColors, change:toggleInternalRayRealColors"
+              />
+              Real Internal Colors</label
+            >
+          </div>
+          <div class="control-group">
             <label>Glow Width: <span data-bind="textContent:rayGlowWidth">3</span>%</label>
             <input
               type="range"

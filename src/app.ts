@@ -33,6 +33,7 @@ interface Wasm {
     ray_glow_width_percent: number,
     ray_glow_intensity: number,
     ray_glow_falloff: number,
+    internal_ray_real_colors: number,
   ): void;
 }
 
@@ -78,6 +79,7 @@ interface AppState {
   rayGlowWidth: number; // 0-10 (% of radius)
   rayGlowIntensity: number; // 0-100 (%)
   rayGlowFalloff: number; // 0=linear, 1=quadratic, 2=cubic, 3=exponential
+  internalRayRealColors: boolean; // true = use wavelength-based colors for internal rays
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -98,6 +100,7 @@ interface PersistedSettings {
   rayGlowWidth: number;
   rayGlowIntensity: number;
   rayGlowFalloff: number;
+  internalRayRealColors: boolean;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -130,6 +133,7 @@ function saveSettings(state: AppState): void {
       rayGlowWidth: state.rayGlowWidth,
       rayGlowIntensity: state.rayGlowIntensity,
       rayGlowFalloff: state.rayGlowFalloff,
+      internalRayRealColors: state.internalRayRealColors,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -164,6 +168,7 @@ const defaultState: AppState = {
   rayGlowWidth: savedSettings.rayGlowWidth ?? 3,
   rayGlowIntensity: savedSettings.rayGlowIntensity ?? 50,
   rayGlowFalloff: savedSettings.rayGlowFalloff ?? 1, // quadratic by default
+  internalRayRealColors: savedSettings.internalRayRealColors ?? false,
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -335,6 +340,7 @@ function render(state: AppState): void {
     state.rayGlowWidth / 100.0, // Convert 0-10 to 0.0-0.10
     state.rayGlowIntensity / 100.0, // Convert 0-100 to 0.0-1.0
     state.rayGlowFalloff,
+    state.internalRayRealColors ? 1 : 0,
   );
 
   // Copy framebuffer to canvas
@@ -533,6 +539,11 @@ const actions = {
   setRayGlowFalloff(e: Event): void {
     const value = parseInt((e.target as HTMLSelectElement).value, 10);
     store.publish((s) => ({ ...s, rayGlowFalloff: value }));
+    render(store.getState());
+  },
+
+  toggleInternalRayRealColors(): void {
+    store.publish((s) => ({ ...s, internalRayRealColors: !s.internalRayRealColors }));
     render(store.getState());
   },
 };
