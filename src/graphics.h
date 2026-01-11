@@ -652,10 +652,11 @@ static void draw_sparkle(
   int cx = (int)(x + 0.5f);
   int cy = (int)(y + 0.5f);
 
-  // Scale sparkle size based on watch radius
-  float base_size = radius / 50.0f;  // Base size from radius
+  // Scale sparkle size using square root for sub-linear scaling
+  // This keeps sparkle proportionally similar across screen sizes
+  // (sqrt grows slower than linear, so large screens don't get huge sparkles)
+  float base_size = sqrtf_impl(radius) / 3.0f;
   if (base_size < 1.0f) base_size = 1.0f;
-  if (base_size > 4.0f) base_size = 4.0f;
 
   // Apply user size multiplier
   base_size *= size_percent;
