@@ -22,9 +22,10 @@
 //   prism_size_percent: 10-90 (% of watch radius)
 //   rainbow_spread: 0.0-1.0 (0 = no spread, 1 = 30 degrees)
 //   minimal_mode: 0 or 1 (hide watch overlay when 1)
+//   gradient_rays: 0 or 1 (1 = gradient+alpha internal rays, 0 = non-gradient+additive)
 WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, float minute,
                                   float prism_size_percent, float rainbow_spread,
-                                  int minimal_mode) {
+                                  int minimal_mode, int gradient_rays) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -47,5 +48,5 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
 
   // Render the watchface scene
   render_watchface_scene(fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle,
-                         rainbow_spread, &prism, minimal_mode);
+                         rainbow_spread, &prism, minimal_mode, gradient_rays);
 }

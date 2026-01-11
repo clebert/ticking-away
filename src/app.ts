@@ -22,6 +22,7 @@ interface Wasm {
     prism_size_percent: number,
     rainbow_spread: number,
     minimal_mode: number,
+    gradient_rays: number,
   ): void;
 }
 
@@ -54,6 +55,7 @@ interface AppState {
   accelerationHidden: boolean; // derived: !acceleratedTime (for hiding dropdown)
   pebbleMode: boolean;
   minimalMode: boolean;
+  gradientRays: boolean; // true = gradient+alpha internal rays, false = non-gradient+additive
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -65,6 +67,7 @@ interface PersistedSettings {
   accelerationFactor: number;
   pebbleMode: boolean;
   minimalMode: boolean;
+  gradientRays: boolean;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -88,6 +91,7 @@ function saveSettings(state: AppState): void {
       accelerationFactor: state.accelerationFactor,
       pebbleMode: state.pebbleMode,
       minimalMode: state.minimalMode,
+      gradientRays: state.gradientRays,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -109,6 +113,7 @@ const defaultState: AppState = {
   accelerationHidden: !(savedSettings.acceleratedTime ?? true),
   pebbleMode: savedSettings.pebbleMode ?? false,
   minimalMode: savedSettings.minimalMode ?? false,
+  gradientRays: savedSettings.gradientRays ?? true,
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -255,6 +260,7 @@ function render(state: AppState): void {
     state.prismSize,
     state.rainbowSpread / 100.0, // Convert 0-100 to 0.0-1.0
     state.minimalMode ? 1 : 0,
+    state.gradientRays ? 1 : 0,
   );
 
   // Copy framebuffer to canvas
@@ -368,6 +374,11 @@ const actions = {
 
   toggleMinimalMode(): void {
     store.publish((s) => ({ ...s, minimalMode: !s.minimalMode }));
+    render(store.getState());
+  },
+
+  toggleGradientRays(): void {
+    store.publish((s) => ({ ...s, gradientRays: !s.gradientRays }));
     render(store.getState());
   },
 };
