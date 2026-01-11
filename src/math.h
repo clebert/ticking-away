@@ -378,26 +378,6 @@ typedef struct {
   float bounce_x, bounce_y; // Bounce point coordinates (valid only if needs_bounce=1)
 } BounceInfo;
 
-// Determine which face the exit ray hits based on hour angle.
-// Returns: 0 = right face (v0-v1), 1 = bottom face (v1-v2), 2 = left face (v2-v0)
-static int determine_exit_face(float hour_angle) {
-  float angle = reduce_angle(hour_angle);
-
-  // Face boundaries based on vertex positions:
-  // v0 at -PI/2 (12 o'clock), v1 at PI/6 (4 o'clock), v2 at 5*PI/6 (8 o'clock)
-  // Right face (0): from v0 to v1, angles -PI/2 to PI/6
-  // Bottom face (1): from v1 to v2, angles PI/6 to 5*PI/6
-  // Left face (2): from v2 to v0, angles 5*PI/6 to -PI/2 (wrapping)
-
-  if (angle >= -PI / 2.0f && angle < PI / 6.0f) {
-    return 0;  // right face
-  } else if (angle >= PI / 6.0f && angle < 5.0f * PI / 6.0f) {
-    return 1;  // bottom face
-  } else {
-    return 2;  // left face
-  }
-}
-
 // Determine which face or vertex the entry point is on using parametric edge info.
 //
 // Parameters:
@@ -440,6 +420,10 @@ static int determine_entry_location(int edge_idx, float u) {
 //   - If entry is at a vertex, bounce unless exit is on the "opposite" face (the one not
 //     touching that vertex)
 //
+// IMPORTANT: We use find_prism_exit_from_center to determine the exit edge instead of
+// angle-based determination. This ensures consistency with the actual rendered geometry,
+// especially at vertex boundaries where angle-based methods can disagree with ray-casting.
+//
 // Special case: At exactly 12:00 (hour_angle ≈ -π/2), entry is at v0 and exit is also near v0.
 // This degenerate case has no meaningful interior path, so we skip the bounce and accept a
 // momentarily dark prism. The 0.1 radian (~5.7°) threshold covers roughly ±17 minutes around
@@ -451,6 +435,15 @@ static BounceInfo compute_bounce_info(
   const Prism* prism
 ) {
   BounceInfo info = {0, -1, 0.0f, 0.0f};
+
+  // Compute prism center from vertices
+  float cx = (prism->vertices[0] + prism->vertices[2] + prism->vertices[4]) / 3.0f;
+  float cy = (prism->vertices[1] + prism->vertices[3] + prism->vertices[5]) / 3.0f;
+
+  // Get actual exit edge from geometry (not angle-based approximation).
+  // This ensures the bounce decision matches the rendered exit point.
+  RayHit exit_hit = find_prism_exit_from_center(cx, cy, hour_angle, prism);
+  int exit_edge = exit_hit.edge_idx;
 
   int entry_location = determine_entry_location(entry_edge, entry_u);
 
@@ -473,22 +466,18 @@ static BounceInfo compute_bounce_info(
       return info;  // No meaningful interior path possible; accept dark prism
     }
 
-    // For vertex entry, use exit FACE (not region) to detect edge-hugging paths.
+    // For vertex entry, bounce unless exit is on the opposite face (V+1)%3.
     // Face V starts at vertex V, face (V+2)%3 ends at vertex V.
-    // Bounce unless exit is on the opposite face (V+1)%3.
-    int exit_face = determine_exit_face(hour_angle);
     int opposite_face = (vertex_idx + 1) % 3;
 
-    if (exit_face != opposite_face) {
+    if (exit_edge != opposite_face) {
       needs_bounce = 1;
-      bounce_idx = (exit_face + 2) % 3;
+      bounce_idx = (exit_edge + 2) % 3;
     }
   } else {
     // Entry on a face (0=right, 1=bottom, 2=left)
     // Bounce when entry face == exit face (path would run along the edge).
-    int exit_face = determine_exit_face(hour_angle);
-
-    if (entry_location == exit_face) {
+    if (entry_location == exit_edge) {
       needs_bounce = 1;
       bounce_idx = (entry_location + 2) % 3;
     }
