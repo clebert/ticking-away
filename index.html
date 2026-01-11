@@ -196,11 +196,12 @@
       .inactive {
         color: #888;
       }
+
     </style>
   </head>
 
   <body>
-    <header>
+    <header data-bind="hidden:fullscreen">
       <h1>Ticking Away</h1>
       <span class="subtitle">the moments that make up a dull day.</span>
     </header>
@@ -209,7 +210,7 @@
       <div id="canvas-container">
         <canvas id="canvas"></canvas>
       </div>
-      <aside id="controls">
+      <aside id="controls" data-bind="hidden:fullscreen">
         <div class="control-panel">
           <!-- Live Mode Toggle -->
           <div class="section-title">Mode</div>
@@ -218,6 +219,12 @@
               ><input type="checkbox" data-bind="checked:liveMode, change:toggleLiveMode" /> Live
               Mode <span data-bind="textContent:wakeLockText, className:wakeLockClass"></span
             ></label>
+          </div>
+          <div class="control-group" data-bind="hidden:fullscreenHidden">
+            <label
+              ><input type="checkbox" data-bind="checked:fullscreen, change:toggleFullscreen" />
+              Fullscreen</label
+            >
           </div>
           <div class="control-group">
             <label

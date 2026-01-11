@@ -54,6 +54,8 @@ interface AppState {
   prismSize: number; // 10-90 (%)
   rainbowSpread: number; // 0-100 (maps to 0.0-1.0)
   liveMode: boolean;
+  fullscreen: boolean; // true = fullscreen mode active
+  fullscreenHidden: boolean; // derived: !liveMode (only show when live)
   acceleratedTime: boolean; // true = use accelerationFactor, false = real time
   accelerationFactor: number; // minutes per second when accelerated
   accelerationHidden: boolean; // derived: !acceleratedTime (for hiding dropdown)
@@ -119,6 +121,8 @@ const defaultState: AppState = {
   prismSize: savedSettings.prismSize ?? 60,
   rainbowSpread: savedSettings.rainbowSpread ?? 30,
   liveMode: false,
+  fullscreen: false,
+  fullscreenHidden: true, // hidden until live mode is active
   acceleratedTime: savedSettings.acceleratedTime ?? true,
   accelerationFactor: savedSettings.accelerationFactor ?? 1,
   accelerationHidden: !(savedSettings.acceleratedTime ?? true),
@@ -230,11 +234,12 @@ function resizeCanvas(pebbleMode: boolean): void {
     const dpr = window.devicePixelRatio || 1;
     width = Math.max(Math.floor(rect.width * dpr), 100);
     height = Math.max(Math.floor(rect.height * dpr), 100);
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    canvas.style.position = "static";
-    canvas.style.top = "";
-    canvas.style.left = "";
+    // Keep canvas position absolute so it doesn't affect flex layout
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
     canvas.style.transform = "";
     container.style.background = "#000";
   }
@@ -340,7 +345,7 @@ const actions = {
 
   async toggleLiveMode(): Promise<void> {
     const newLiveMode = !store.getState().liveMode;
-    store.publish((s) => ({ ...s, liveMode: newLiveMode }));
+    store.publish((s) => ({ ...s, liveMode: newLiveMode, fullscreenHidden: !newLiveMode }));
 
     if (newLiveMode) {
       // Request wake lock to prevent screen dimming
@@ -425,6 +430,14 @@ const actions = {
     render(store.getState());
   },
 
+  async toggleFullscreen(): Promise<void> {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen();
+    }
+  },
+
   setPrismGray(e: Event): void {
     const value = parseInt((e.target as HTMLInputElement).value, 10);
     store.publish((s) => ({ ...s, prismGray: value }));
@@ -460,6 +473,12 @@ async function init(): Promise<void> {
   window.addEventListener("resize", () => {
     resizeCanvas(store.getState().pebbleMode);
     render(store.getState());
+  });
+
+  // Sync fullscreen state when user exits via ESC or other means
+  document.addEventListener("fullscreenchange", () => {
+    const isFullscreen = document.fullscreenElement !== null;
+    store.publish((s) => ({ ...s, fullscreen: isFullscreen }));
   });
 }
 
