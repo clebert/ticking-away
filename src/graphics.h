@@ -311,20 +311,12 @@ static int clip_segment_to_circle(
 
 static void draw_watch_overlay(
   uint8_t* fb, int width, int height,
-  float cx, float cy, float radius,
-  float hour_x, float hour_y
+  float cx, float cy, float radius
 ) {
   draw_circle(fb, width, height, cx, cy, radius, 60, 60, 60, 255);
 
-  float hour_angle_rad = atan2_approx(hour_y - cy, hour_x - cx);
-
   for (int h = 0; h < 12; h++) {
     float angle = ((float)h - 3.0f) * 30.0f * PI / 180.0f;
-
-    float angle_diff = angle - hour_angle_rad;
-    while (angle_diff > PI) angle_diff -= TAU;
-    while (angle_diff < -PI) angle_diff += TAU;
-    if (fabsf_impl(angle_diff) < 0.27f) continue;
 
     float inner_r = radius * 0.92f;
     float outer_r = radius * 0.98f;
@@ -421,50 +413,6 @@ static void draw_sparkle(
   }
 }
 
-static void draw_chevron(
-  uint8_t* fb, int width, int height,
-  float cx, float cy, float radius,
-  float hx, float hy
-) {
-  float scale = radius / 90.0f;
-  if (scale < 0.5f) scale = 0.5f;
-
-  float dx = cx - hx;
-  float dy = cy - hy;
-  float len = sqrtf_impl(dx * dx + dy * dy);
-  if (len < EPS_NORM) {
-    dx = 0.0f;
-    dy = -1.0f;
-  } else {
-    dx /= len;
-    dy /= len;
-  }
-
-  float px = -dy;
-  float py = dx;
-
-  float chev_length = 8.0f * scale;
-  float chev_width = 5.0f * scale;
-  float chev_offset = 2.0f * scale;
-
-  float apex_x = hx + dx * (chev_offset + chev_length);
-  float apex_y = hy + dy * (chev_offset + chev_length);
-  float arm1_x = hx + dx * chev_offset + px * chev_width;
-  float arm1_y = hy + dy * chev_offset + py * chev_width;
-  float arm2_x = hx + dx * chev_offset - px * chev_width;
-  float arm2_y = hy + dy * chev_offset - py * chev_width;
-
-  int iapex_x = (int)(apex_x + 0.5f);
-  int iapex_y = (int)(apex_y + 0.5f);
-  int iarm1_x = (int)(arm1_x + 0.5f);
-  int iarm1_y = (int)(arm1_y + 0.5f);
-  int iarm2_x = (int)(arm2_x + 0.5f);
-  int iarm2_y = (int)(arm2_y + 0.5f);
-
-  draw_line_alpha(fb, width, height, iapex_x, iapex_y, iarm1_x, iarm1_y, 100, 100, 100, 255);
-  draw_line_alpha(fb, width, height, iapex_x, iapex_y, iarm2_x, iarm2_y, 100, 100, 100, 255);
-}
-
 // =================================================================================================
 // Watchface Rendering
 // =================================================================================================
@@ -529,12 +477,9 @@ static void render_watchface_scene(
 
   if (!prism_entry.hit) {
     // Ray doesn't hit prism - just draw overlay and return
-    float hour_x = cx + cosf_approx(hour_angle) * radius;
-    float hour_y = cy + sinf_approx(hour_angle) * radius;
     stroke_prism(fb, width, height, prism, prism_gray, prism_gray, prism_gray, 200);
     if (!minimal_mode) {
-      draw_watch_overlay(fb, width, height, cx, cy, radius, hour_x, hour_y);
-      draw_chevron(fb, width, height, cx, cy, radius, hour_x, hour_y);
+      draw_watch_overlay(fb, width, height, cx, cy, radius);
     }
     return;
   }
@@ -764,11 +709,8 @@ static void render_watchface_scene(
     draw_sparkle(fb, width, height, sparkle_x, sparkle_y, radius);
   }
 
-  // Draw watch overlay (hour markers, chevron) unless minimal mode
+  // Draw watch overlay (hour markers) unless minimal mode
   if (!minimal_mode) {
-    float hour_x = cx + cosf_approx(hour_angle) * radius;
-    float hour_y = cy + sinf_approx(hour_angle) * radius;
-    draw_watch_overlay(fb, width, height, cx, cy, radius, hour_x, hour_y);
-    draw_chevron(fb, width, height, cx, cy, radius, hour_x, hour_y);
+    draw_watch_overlay(fb, width, height, cx, cy, radius);
   }
 }
