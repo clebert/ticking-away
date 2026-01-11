@@ -448,7 +448,6 @@ static float compute_exit_angle(
 // - rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
 // - second: 0.0-59.999 for seconds sparkle position on prism edge
 // - minimal_mode: if true, hide watch overlay (hour markers, chevron)
-// - gradient_rays: if true, use gradient+alpha for internal rays; if false, use non-gradient+additive
 // - prism_gray: gray value (0-255) for prism stroke and internal rays
 // - show_seconds: if true, show seconds sparkle on prism edge
 static void render_watchface_scene(
@@ -460,7 +459,6 @@ static void render_watchface_scene(
   float second,
   const Prism* prism,
   int minimal_mode,
-  int gradient_rays,
   uint8_t prism_gray,
   int show_seconds
 ) {
@@ -529,148 +527,27 @@ static void render_watchface_scene(
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
       // Draw internal ray: either direct (entry->exit) or bounced (entry->bounce->exit)
-      if (gradient_rays) {
-        // Gradient mode: white at entry fading to gray at exit (Dark Side of the Moon style)
-        #define GRADIENT_STEPS 64
-        float white_r = 200.0f, white_g = 200.0f, white_b = 200.0f;
-        float gray_r = (float)prism_gray, gray_g = (float)prism_gray, gray_b = (float)prism_gray;
+      if (bounce.needs_bounce) {
+        // Bounced path: entry -> bounce -> exit
+        // No spread on first segment - all colors converge to same bounce point
 
-        if (bounce.needs_bounce) {
-          // Spread bounce points along edges adjacent to bounce vertex
-          // internal_t: 0=red, 1=violet; offset: +0.5 for red, -0.5 for violet
-          int bv = bounce.bounce_vertex_idx;
-          float spread_offset = (0.5f - internal_t) * rainbow_spread * INTERNAL_FAN_FACTOR;
+        // Draw entry -> bounce
+        draw_line_additive(fb, width, height,
+          (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
+          (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
+          prism_gray, prism_gray, prism_gray, 255);
 
-          // Get the two neighboring vertices
-          int prev_v = (bv + 2) % 3;
-          int next_v = (bv + 1) % 3;
-          float prev_x = prism->vertices[prev_v * 2];
-          float prev_y = prism->vertices[prev_v * 2 + 1];
-          float next_x = prism->vertices[next_v * 2];
-          float next_y = prism->vertices[next_v * 2 + 1];
-
-          // Interpolate: positive offset -> toward next vertex, negative -> toward prev
-          float actual_bounce_x, actual_bounce_y;
-          if (spread_offset >= 0.0f) {
-            // Lerp from bounce vertex toward next vertex
-            float t = clampf(spread_offset * 2.0f, 0.0f, 0.3f);  // Max 30% along edge
-            actual_bounce_x = bounce.bounce_x + t * (next_x - bounce.bounce_x);
-            actual_bounce_y = bounce.bounce_y + t * (next_y - bounce.bounce_y);
-          } else {
-            // Lerp from bounce vertex toward prev vertex
-            float t = clampf(-spread_offset * 2.0f, 0.0f, 0.3f);
-            actual_bounce_x = bounce.bounce_x + t * (prev_x - bounce.bounce_x);
-            actual_bounce_y = bounce.bounce_y + t * (prev_y - bounce.bounce_y);
-          }
-
-          // Two-segment internal path with gradient: entry -> bounce -> exit
-          // First segment: entry to bounce (gradient from white to mid-gray)
-          for (int s = 0; s < GRADIENT_STEPS; s++) {
-            float t0 = (float)s / GRADIENT_STEPS;
-            float t1 = (float)(s + 1) / GRADIENT_STEPS;
-            float seg_t = (t0 + t1) * 0.25f;  // 0 to 0.5 for first segment
-
-            float x0 = prism_entry.px + t0 * (actual_bounce_x - prism_entry.px);
-            float y0 = prism_entry.py + t0 * (actual_bounce_y - prism_entry.py);
-            float x1 = prism_entry.px + t1 * (actual_bounce_x - prism_entry.px);
-            float y1 = prism_entry.py + t1 * (actual_bounce_y - prism_entry.py);
-
-            uint8_t sr = (uint8_t)(white_r + seg_t * (gray_r - white_r));
-            uint8_t sg = (uint8_t)(white_g + seg_t * (gray_g - white_g));
-            uint8_t sb = (uint8_t)(white_b + seg_t * (gray_b - white_b));
-
-            draw_line_alpha(fb, width, height,
-              (int)(x0 + 0.5f), (int)(y0 + 0.5f),
-              (int)(x1 + 0.5f), (int)(y1 + 0.5f),
-              sr, sg, sb, 255);
-          }
-
-          // Second segment: bounce to exit (gradient from mid-gray to gray)
-          for (int s = 0; s < GRADIENT_STEPS; s++) {
-            float t0 = (float)s / GRADIENT_STEPS;
-            float t1 = (float)(s + 1) / GRADIENT_STEPS;
-            float seg_t = 0.5f + (t0 + t1) * 0.25f;  // 0.5 to 1.0 for second segment
-
-            float x0 = actual_bounce_x + t0 * (internal_exit_x - actual_bounce_x);
-            float y0 = actual_bounce_y + t0 * (internal_exit_y - actual_bounce_y);
-            float x1 = actual_bounce_x + t1 * (internal_exit_x - actual_bounce_x);
-            float y1 = actual_bounce_y + t1 * (internal_exit_y - actual_bounce_y);
-
-            uint8_t sr = (uint8_t)(white_r + seg_t * (gray_r - white_r));
-            uint8_t sg = (uint8_t)(white_g + seg_t * (gray_g - white_g));
-            uint8_t sb = (uint8_t)(white_b + seg_t * (gray_b - white_b));
-
-            draw_line_alpha(fb, width, height,
-              (int)(x0 + 0.5f), (int)(y0 + 0.5f),
-              (int)(x1 + 0.5f), (int)(y1 + 0.5f),
-              sr, sg, sb, 255);
-          }
-        } else {
-          // Direct path with gradient: entry -> exit
-          for (int s = 0; s < GRADIENT_STEPS; s++) {
-            float t0 = (float)s / GRADIENT_STEPS;
-            float t1 = (float)(s + 1) / GRADIENT_STEPS;
-            float seg_t = (t0 + t1) * 0.5f;  // Average t for segment color
-
-            float x0 = prism_entry.px + t0 * (internal_exit_x - prism_entry.px);
-            float y0 = prism_entry.py + t0 * (internal_exit_y - prism_entry.py);
-            float x1 = prism_entry.px + t1 * (internal_exit_x - prism_entry.px);
-            float y1 = prism_entry.py + t1 * (internal_exit_y - prism_entry.py);
-
-            uint8_t sr = (uint8_t)(white_r + seg_t * (gray_r - white_r));
-            uint8_t sg = (uint8_t)(white_g + seg_t * (gray_g - white_g));
-            uint8_t sb = (uint8_t)(white_b + seg_t * (gray_b - white_b));
-
-            draw_line_alpha(fb, width, height,
-              (int)(x0 + 0.5f), (int)(y0 + 0.5f),
-              (int)(x1 + 0.5f), (int)(y1 + 0.5f),
-              sr, sg, sb, 255);
-          }
-        }
-        #undef GRADIENT_STEPS
+        // Draw bounce -> exit (spread happens here)
+        draw_line_additive(fb, width, height,
+          (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
+          (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
+          prism_gray, prism_gray, prism_gray, 255);
       } else {
-        // Non-gradient mode: solid white lines with additive blending
-        if (bounce.needs_bounce) {
-          // Bounced path: entry -> bounce -> exit
-          int bv = bounce.bounce_vertex_idx;
-          float spread_offset = (0.5f - internal_t) * rainbow_spread * INTERNAL_FAN_FACTOR;
-
-          int prev_v = (bv + 2) % 3;
-          int next_v = (bv + 1) % 3;
-          float prev_x = prism->vertices[prev_v * 2];
-          float prev_y = prism->vertices[prev_v * 2 + 1];
-          float next_x = prism->vertices[next_v * 2];
-          float next_y = prism->vertices[next_v * 2 + 1];
-
-          float actual_bounce_x, actual_bounce_y;
-          if (spread_offset >= 0.0f) {
-            float t = clampf(spread_offset * 2.0f, 0.0f, 0.3f);
-            actual_bounce_x = bounce.bounce_x + t * (next_x - bounce.bounce_x);
-            actual_bounce_y = bounce.bounce_y + t * (next_y - bounce.bounce_y);
-          } else {
-            float t = clampf(-spread_offset * 2.0f, 0.0f, 0.3f);
-            actual_bounce_x = bounce.bounce_x + t * (prev_x - bounce.bounce_x);
-            actual_bounce_y = bounce.bounce_y + t * (prev_y - bounce.bounce_y);
-          }
-
-          // Draw entry -> bounce
-          draw_line_additive(fb, width, height,
-            (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
-            (int)(actual_bounce_x + 0.5f), (int)(actual_bounce_y + 0.5f),
-            prism_gray, prism_gray, prism_gray, 255);
-
-          // Draw bounce -> exit
-          draw_line_additive(fb, width, height,
-            (int)(actual_bounce_x + 0.5f), (int)(actual_bounce_y + 0.5f),
-            (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-            prism_gray, prism_gray, prism_gray, 255);
-        } else {
-          // Direct path: entry -> exit
-          draw_line_additive(fb, width, height,
-            (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
-            (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-            prism_gray, prism_gray, prism_gray, 255);
-        }
+        // Direct path: entry -> exit
+        draw_line_additive(fb, width, height,
+          (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
+          (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
+          prism_gray, prism_gray, prism_gray, 255);
       }
 
       // Draw exit ray (from prism exit to circle edge) with actual rainbow color
