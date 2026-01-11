@@ -11,26 +11,33 @@ The minute hand acts as a **light source** firing a white ray toward the watch c
 enters a prism and disperses into a rainbow that targets the **hour hand position**. This creates a
 clock where time is displayed through the direction of light rays rather than traditional hands.
 
-## Requirements
+## Features
 
-### Core Behavior
+### Time Display
 
-- **Minute = Light Source**: Ray originates from minute position on the watch edge, directed toward
-  center
-- **Hour = Target**: Rainbow converges on the hour position
-- **Dynamic Hour**: Hour position interpolates smoothly based on minute progress (like a real analog
+- **Minute = Light Source**: Ray originates from minute position on the watch edge
+- **Hour = Target**: Rainbow converges on the hour position (interpolates smoothly like an analog
   clock)
+- **Seconds Sparkle**: A sparkle travels around the prism edge to indicate seconds
 
 ### Visual Design
 
-- White entry ray visible from minute position to prism
-- Artistic white-to-gray gradient inside prism (mimics album cover aesthetic)
-- Rainbow colors appear only after exiting the prism
+- White entry ray from minute position to prism
+- Internal rays use additive blending for natural color overlap effects
+- Rainbow colors appear after exiting the prism
 - Correct spectral order: red bends least, violet bends most
+- 12 hour markers always visible around the edge
 
-### Constraints
+### Modes & Settings
+
+- **Live Mode**: Real-time clock display with optional accelerated time
+- **Fullscreen Mode**: Available in live mode for distraction-free viewing
+- **Minimal Mode**: Hides hour markers for a cleaner look
+- **Pebble Mode**: Fixed 260×260 size for smartwatch preview
+- Adjustable prism size, rainbow spread, and prism gray level
+
+### Technical
 
 - **No physics simulation**: Skip Snell's law and real Cauchy dispersion values
-- **Prism**: Apex up, 60-degree apex angle, no rotation control
-- **Fast math**: Target is resource-constrained devices
+- **Prism**: Apex up, 60-degree apex angle
 - **C for rendering**: All math and rendering in C/WASM, TypeScript only for UI
