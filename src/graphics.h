@@ -151,6 +151,87 @@ static void draw_line_alpha(
 }
 
 // =================================================================================================
+// Line Drawing with Glow (Distance Field)
+// =================================================================================================
+
+// Compute distance from point (px, py) to line segment (x0, y0)-(x1, y1)
+// Note: This is a forward declaration - the actual implementation is in the prism glow section
+static float point_to_segment_distance(float px, float py, float x0, float y0, float x1, float y1);
+
+// Draw a line with glow effect using distance field approach
+// glow_width: how far the glow extends perpendicular to the line (in pixels)
+// intensity: 0.0-1.0 multiplier for glow brightness
+// falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+static void draw_line_with_glow(
+  uint8_t* fb, int width, int height,
+  float x0, float y0, float x1, float y1,
+  uint8_t r, uint8_t g, uint8_t b,
+  float glow_width,
+  float intensity,
+  int falloff
+) {
+  // Compute bounding box expanded by glow width
+  float min_x = (x0 < x1 ? x0 : x1) - glow_width;
+  float max_x = (x0 > x1 ? x0 : x1) + glow_width;
+  float min_y = (y0 < y1 ? y0 : y1) - glow_width;
+  float max_y = (y0 > y1 ? y0 : y1) + glow_width;
+
+  // Clamp to screen bounds
+  int x_start = (int)min_x - 1;
+  int x_end = (int)max_x + 2;
+  int y_start = (int)min_y - 1;
+  int y_end = (int)max_y + 2;
+
+  if (x_start < 0) x_start = 0;
+  if (y_start < 0) y_start = 0;
+  if (x_end > width) x_end = width;
+  if (y_end > height) y_end = height;
+
+  // Iterate over bounding box and apply glow
+  for (int y = y_start; y < y_end; y++) {
+    for (int x = x_start; x < x_end; x++) {
+      float px = (float)x + 0.5f;
+      float py = (float)y + 0.5f;
+
+      // Compute distance to line segment
+      float dist = point_to_segment_distance(px, py, x0, y0, x1, y1);
+
+      // Apply glow: intensity falls off with distance from line
+      if (dist < glow_width) {
+        float t = dist / glow_width;
+        float falloff_value;
+
+        switch (falloff) {
+          case 0:  // Linear
+            falloff_value = 1.0f - t;
+            break;
+          case 1:  // Quadratic
+            falloff_value = (1.0f - t) * (1.0f - t);
+            break;
+          case 2:  // Cubic
+            falloff_value = (1.0f - t) * (1.0f - t) * (1.0f - t);
+            break;
+          case 3:  // Exponential
+            falloff_value = fast_powf(2.718281828f, -3.0f * t) * (1.0f - t);
+            break;
+          default:
+            falloff_value = (1.0f - t) * (1.0f - t);
+        }
+
+        uint8_t alpha = (uint8_t)(falloff_value * intensity * 255.0f);
+        set_pixel_additive(fb, width, height, x, y, r, g, b, alpha);
+      }
+    }
+  }
+
+  // Draw crisp line on top for definition
+  draw_line_additive(fb, width, height,
+    (int)(x0 + 0.5f), (int)(y0 + 0.5f),
+    (int)(x1 + 0.5f), (int)(y1 + 0.5f),
+    r, g, b, 255);
+}
+
+// =================================================================================================
 // Circle Drawing (Midpoint Algorithm)
 // =================================================================================================
 
@@ -597,6 +678,9 @@ static float compute_exit_angle(
 // - minimal_mode: if true, hide watch overlay (hour markers, chevron)
 // - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke and internal rays
 // - show_seconds: if true, show seconds sparkle on prism edge
+// - ray_glow_width: glow width for rays in pixels
+// - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
+// - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -612,7 +696,10 @@ static void render_watchface_scene(
   int show_seconds,
   float glow_width_percent,
   float glow_intensity,
-  int glow_falloff
+  int glow_falloff,
+  float ray_glow_width,
+  float ray_glow_intensity,
+  int ray_glow_falloff
 ) {
   // Initialize background
   init_watch_framebuffer(fb, width, height, cx, cy, radius);
@@ -643,10 +730,9 @@ static void render_watchface_scene(
       cx, cy, radius,
       &clip_x0, &clip_y0, &clip_x1, &clip_y1
     )) {
-      draw_line_additive(fb, width, height,
-        (int)(clip_x0 + 0.5f), (int)(clip_y0 + 0.5f),
-        (int)(clip_x1 + 0.5f), (int)(clip_y1 + 0.5f),
-        200, 200, 200, 255);
+      draw_line_with_glow(fb, width, height,
+        clip_x0, clip_y0, clip_x1, clip_y1,
+        200, 200, 200, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
     }
   }
 
@@ -685,22 +771,22 @@ static void render_watchface_scene(
         // No spread on first segment - all colors converge to same bounce point
 
         // Draw entry -> bounce
-        draw_line_additive(fb, width, height,
-          (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
-          (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
-          prism_r, prism_g, prism_b, 255);
+        draw_line_with_glow(fb, width, height,
+          prism_entry.px, prism_entry.py,
+          bounce.bounce_x, bounce.bounce_y,
+          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
 
         // Draw bounce -> exit (spread happens here)
-        draw_line_additive(fb, width, height,
-          (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
-          (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-          prism_r, prism_g, prism_b, 255);
+        draw_line_with_glow(fb, width, height,
+          bounce.bounce_x, bounce.bounce_y,
+          internal_exit_x, internal_exit_y,
+          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
       } else {
         // Direct path: entry -> exit
-        draw_line_additive(fb, width, height,
-          (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
-          (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-          prism_r, prism_g, prism_b, 255);
+        draw_line_with_glow(fb, width, height,
+          prism_entry.px, prism_entry.py,
+          internal_exit_x, internal_exit_y,
+          prism_r, prism_g, prism_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
       }
 
       // Draw exit ray (from prism exit to circle edge) with actual rainbow color
@@ -720,10 +806,9 @@ static void render_watchface_scene(
           cx, cy, radius,
           &clip_x0, &clip_y0, &clip_x1, &clip_y1
         )) {
-          draw_line_additive(fb, width, height,
-            (int)(clip_x0 + 0.5f), (int)(clip_y0 + 0.5f),
-            (int)(clip_x1 + 0.5f), (int)(clip_y1 + 0.5f),
-            color.r, color.g, color.b, 255);
+          draw_line_with_glow(fb, width, height,
+            clip_x0, clip_y0, clip_x1, clip_y1,
+            color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff);
         }
       }
     }

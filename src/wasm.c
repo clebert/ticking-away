@@ -28,11 +28,15 @@
 //   glow_width_percent: 0.05-0.50 (% of radius for glow width)
 //   glow_intensity: 0.1-1.0 (intensity multiplier)
 //   glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+//   ray_glow_width_percent: 0.0-0.10 (% of radius for ray glow width)
+//   ray_glow_intensity: 0.0-1.0 (ray glow intensity multiplier)
+//   ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, float minute,
                                   float second, float prism_size_percent, float rainbow_spread,
                                   int minimal_mode, int prism_r, int prism_g, int prism_b,
                                   int show_seconds, float glow_width_percent, float glow_intensity,
-                                  int glow_falloff) {
+                                  int glow_falloff, float ray_glow_width_percent,
+                                  float ray_glow_intensity, int ray_glow_falloff) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -54,8 +58,10 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
   float hour_angle = ANGLE_0 + (hour12 / 12.0f) * TAU + (minute / 60.0f) * HOUR_ARC;
 
   // Render the watchface scene
+  float ray_glow_width = ray_glow_width_percent * radius;
   render_watchface_scene(fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle,
                          rainbow_spread, second, &prism, minimal_mode, (uint8_t)prism_r,
                          (uint8_t)prism_g, (uint8_t)prism_b, show_seconds, glow_width_percent,
-                         glow_intensity, glow_falloff);
+                         glow_intensity, glow_falloff, ray_glow_width, ray_glow_intensity,
+                         ray_glow_falloff);
 }

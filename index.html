@@ -325,6 +325,36 @@
             </select>
           </div>
 
+          <!-- Ray Controls -->
+          <div class="section-title">Rays</div>
+          <div class="control-group">
+            <label>Glow Width: <span data-bind="textContent:rayGlowWidth">3</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="10"
+              data-bind="value:rayGlowWidth, input:setRayGlowWidth"
+            />
+          </div>
+          <div class="control-group">
+            <label>Glow Intensity: <span data-bind="textContent:rayGlowIntensity">50</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:rayGlowIntensity, input:setRayGlowIntensity"
+            />
+          </div>
+          <div class="control-group">
+            <label>Glow Falloff</label>
+            <select data-bind="value:rayGlowFalloff, change:setRayGlowFalloff">
+              <option value="0">Linear</option>
+              <option value="1">Quadratic</option>
+              <option value="2">Cubic</option>
+              <option value="3">Exponential</option>
+            </select>
+          </div>
+
           <!-- Display Options -->
           <div class="section-title">Display</div>
           <div class="control-group">

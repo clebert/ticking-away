@@ -30,6 +30,9 @@ interface Wasm {
     glow_width_percent: number,
     glow_intensity: number,
     glow_falloff: number,
+    ray_glow_width_percent: number,
+    ray_glow_intensity: number,
+    ray_glow_falloff: number,
   ): void;
 }
 
@@ -72,6 +75,9 @@ interface AppState {
   glowWidth: number; // 5-50 (% of radius)
   glowIntensity: number; // 10-100 (%)
   glowFalloff: number; // 0=linear, 1=quadratic, 2=cubic, 3=exponential
+  rayGlowWidth: number; // 0-10 (% of radius)
+  rayGlowIntensity: number; // 0-100 (%)
+  rayGlowFalloff: number; // 0=linear, 1=quadratic, 2=cubic, 3=exponential
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -89,6 +95,9 @@ interface PersistedSettings {
   glowWidth: number;
   glowIntensity: number;
   glowFalloff: number;
+  rayGlowWidth: number;
+  rayGlowIntensity: number;
+  rayGlowFalloff: number;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -118,6 +127,9 @@ function saveSettings(state: AppState): void {
       glowWidth: state.glowWidth,
       glowIntensity: state.glowIntensity,
       glowFalloff: state.glowFalloff,
+      rayGlowWidth: state.rayGlowWidth,
+      rayGlowIntensity: state.rayGlowIntensity,
+      rayGlowFalloff: state.rayGlowFalloff,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -149,6 +161,9 @@ const defaultState: AppState = {
   glowWidth: savedSettings.glowWidth ?? 15,
   glowIntensity: savedSettings.glowIntensity ?? 100,
   glowFalloff: savedSettings.glowFalloff ?? 1, // quadratic by default
+  rayGlowWidth: savedSettings.rayGlowWidth ?? 3,
+  rayGlowIntensity: savedSettings.rayGlowIntensity ?? 50,
+  rayGlowFalloff: savedSettings.rayGlowFalloff ?? 1, // quadratic by default
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -317,6 +332,9 @@ function render(state: AppState): void {
     state.glowWidth / 100.0, // Convert 5-50 to 0.05-0.50
     state.glowIntensity / 100.0, // Convert 10-100 to 0.1-1.0
     state.glowFalloff,
+    state.rayGlowWidth / 100.0, // Convert 0-10 to 0.0-0.10
+    state.rayGlowIntensity / 100.0, // Convert 0-100 to 0.0-1.0
+    state.rayGlowFalloff,
   );
 
   // Copy framebuffer to canvas
@@ -497,6 +515,24 @@ const actions = {
   setGlowFalloff(e: Event): void {
     const value = parseInt((e.target as HTMLSelectElement).value, 10);
     store.publish((s) => ({ ...s, glowFalloff: value }));
+    render(store.getState());
+  },
+
+  setRayGlowWidth(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, rayGlowWidth: value }));
+    render(store.getState());
+  },
+
+  setRayGlowIntensity(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, rayGlowIntensity: value }));
+    render(store.getState());
+  },
+
+  setRayGlowFalloff(e: Event): void {
+    const value = parseInt((e.target as HTMLSelectElement).value, 10);
+    store.publish((s) => ({ ...s, rayGlowFalloff: value }));
     render(store.getState());
   },
 };
