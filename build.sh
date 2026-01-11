@@ -3,7 +3,7 @@
 set -e
 
 # Common flags
-COMMON_FLAGS="--target=wasm32 -std=c23 -O3 -ffast-math -flto -nostdlib -Wall -Wextra -Werror -Wl,--no-entry -Wl,--export-dynamic -Wl,--import-memory -Wl,--strip-all"
+COMMON_FLAGS="--target=wasm32 -std=c23 -O3 -flto -nostdlib -Wall -Wextra -Werror -Wl,--no-entry -Wl,--export-dynamic -Wl,--import-memory -Wl,--strip-all"
 
 # Build index.wasm
 clang \

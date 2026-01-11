@@ -96,6 +96,9 @@ static inline float atan2_approx(float y, float x) {
 // =================================================================================================
 // Power Approximations (for wavelength_to_rgb)
 // =================================================================================================
+//
+// NOTE: These functions assume IEEE-754 float layout and use union type-punning.
+// Callers should ensure x > 0 for fast_log2f (no denormals/zero/negative).
 
 static inline float fast_log2f(float x) {
   union { float f; uint32_t u; } v = { x };
@@ -164,6 +167,8 @@ static void create_prism(
   float apex_angle_deg,
   Prism* out
 ) {
+  // Clamp to avoid degenerate triangles (tan_half → 0 or cos_half → 0)
+  apex_angle_deg = clampf(apex_angle_deg, 1.0f, 179.0f);
   float half_apex_rad = (apex_angle_deg / 2.0f) * PI / 180.0f;
   float cos_half = cosf_approx(half_apex_rad);
   if (fabsf_impl(cos_half) < EPS_NORM) cos_half = EPS_NORM;
@@ -220,7 +225,9 @@ static RayHit ray_segment_intersect(
   if (t < eps) return result;  // Behind ray origin
 
   float u = (vx * perp_x + vy * perp_y) / denom;
-  if (u < 0.0f || u > 1.0f) return result;  // Outside segment
+  // Use tolerance to avoid missing vertex hits due to floating-point noise
+  if (u < -1e-6f || u > 1.0f + 1e-6f) return result;  // Outside segment
+  u = clampf(u, 0.0f, 1.0f);
 
   result.hit = 1;
   result.t = t;
@@ -265,8 +272,8 @@ static RayHit find_prism_exit_from_center(
   float dx = cosf_approx(angle);
   float dy = sinf_approx(angle);
 
-  // We want the SECOND intersection (exit point), not entry.
-  // Start from center, find all intersections, take the farthest.
+  // From center (inside triangle), there's exactly one forward boundary hit.
+  // Take the farthest t for stability in degenerate cases (vertex ties / tiny noise).
   RayHit best = {0, 0.0f, -1.0f, -1, 0.0f, 0.0f};
   float eps = 1e-6f;
 
@@ -392,6 +399,9 @@ typedef struct {
 // the point is considered to be at the start or end vertex of the edge.
 // This 5% threshold provides stability against floating-point variation at 60fps.
 static int classify_edge_position(int edge_idx, float u) {
+  // Guard against invalid inputs (e.g., from failed ray intersection)
+  if (edge_idx < 0 || edge_idx > 2) return -1;
+
   // Threshold: within 5% of edge length counts as "at vertex"
   // Increased from 2% to provide stability margin for floating-point variation
   // during 60fps animation (fixes glitch at 08:00-08:01)
@@ -440,6 +450,7 @@ static BounceInfo compute_bounce_info(
   // Get actual exit edge from geometry (not angle-based approximation).
   // This ensures the bounce decision matches the rendered exit point.
   RayHit exit_hit = find_prism_exit_from_center(cx, cy, hour_angle, prism);
+  if (!exit_hit.hit) return info;  // No valid exit found, no bounce needed
 
   int entry_location = classify_edge_position(entry_edge, entry_u);
   int exit_location = classify_edge_position(exit_hit.edge_idx, exit_hit.u);
@@ -457,12 +468,11 @@ static BounceInfo compute_bounce_info(
       // the direct path through the interior is valid.
       int exit_touches_v0 = (exit_location == 0 || exit_location == 2 || exit_location == 3);
       if (exit_touches_v0) {
-        // Before 12:00 bounce through v1, after 12:00 bounce through v2.
-        if (reduce_angle(hour_angle - (-PI / 2.0f)) < 0) {
-          bounce_idx = 1;  // v1
-        } else {
-          bounce_idx = 2;  // v2
-        }
+        // Use direction sign for robust tie-break (avoids angle wrap issues).
+        // dx >= 0 means pointing right (face 0 side) → bounce through v2.
+        // dx < 0 means pointing left (face 2 side) → bounce through v1.
+        float dx = cosf_approx(hour_angle);
+        bounce_idx = (dx >= 0.0f) ? 2 : 1;
         needs_bounce = 1;
       }
     } else {
@@ -499,12 +509,11 @@ static BounceInfo compute_bounce_info(
       int entry_touches_v0 = (entry_location == 0 || entry_location == 2);
 
       if (entry_touches_v0) {
-        // Before 12:00: bounce through v1; after 12:00: bounce through v2
-        if (reduce_angle(hour_angle - (-PI / 2.0f)) < 0) {
-          bounce_idx = 1;  // v1
-        } else {
-          bounce_idx = 2;  // v2
-        }
+        // Use direction sign for robust tie-break (avoids angle wrap issues).
+        // dx >= 0 means pointing right (face 0 side) → bounce through v2.
+        // dx < 0 means pointing left (face 2 side) → bounce through v1.
+        float dx = cosf_approx(hour_angle);
+        bounce_idx = (dx >= 0.0f) ? 2 : 1;
         needs_bounce = 1;
       }
     }
