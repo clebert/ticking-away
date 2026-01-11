@@ -461,6 +461,13 @@ static void render_watchface_scene(
     }
   }
 
+  // Compute bounce decision once using guiding ray (before wavelength loop)
+  BounceInfo bounce = compute_bounce_info(
+    prism_entry.edge_idx, prism_entry.u,
+    hour_angle,
+    prism
+  );
+
   // Draw colored rays (internal fan + exit rays)
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
     float wavelength = WAVELENGTHS[i];
@@ -491,11 +498,25 @@ static void render_watchface_scene(
       uint8_t internal_g = (uint8_t)(white_g + internal_t * (gray_g - white_g));
       uint8_t internal_b = (uint8_t)(white_b + internal_t * (gray_b - white_b));
 
-      // Draw internal ray (entry to exit inside prism) with white-to-gray gradient
-      draw_line_additive(fb, width, height,
-        (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
-        (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
-        internal_r, internal_g, internal_b, 255);
+      // Draw internal ray: either direct (entry->exit) or bounced (entry->bounce->exit)
+      if (bounce.needs_bounce) {
+        // Two-segment internal path: entry -> bounce -> exit
+        draw_line_additive(fb, width, height,
+          (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
+          (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
+          internal_r, internal_g, internal_b, 255);
+
+        draw_line_additive(fb, width, height,
+          (int)(bounce.bounce_x + 0.5f), (int)(bounce.bounce_y + 0.5f),
+          (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
+          internal_r, internal_g, internal_b, 255);
+      } else {
+        // Direct path: entry -> exit
+        draw_line_additive(fb, width, height,
+          (int)(prism_entry.px + 0.5f), (int)(prism_entry.py + 0.5f),
+          (int)(internal_exit_x + 0.5f), (int)(internal_exit_y + 0.5f),
+          internal_r, internal_g, internal_b, 255);
+      }
 
       // Draw exit ray (from prism exit to circle edge) with actual rainbow color
       float exit_dir_x = cosf_approx(exit_angle);
