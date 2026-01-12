@@ -34,10 +34,13 @@ clock where time is displayed through the direction of light rays rather than tr
 - **Fullscreen Mode**: Available in live mode for distraction-free viewing
 - **Minimal Mode**: Hides hour markers for a cleaner look
 - **Pebble Mode**: Fixed 260×260 size for smartwatch preview
-- Adjustable prism size, rainbow spread, and prism gray level
+- **1-Bit Dithering**: Applies Atkinson dithering for a retro monochrome look
 
-### Technical
+## Architecture
 
-- **No physics simulation**: Skip Snell's law and real Cauchy dispersion values
-- **Prism**: Apex up, 60-degree apex angle
-- **C for rendering**: All math and rendering in C/WASM, TypeScript only for UI
+The project uses a pure software renderer via WASM:
+
+- C code in [graphics.h](src/graphics.h) writes directly to an RGBA framebuffer
+- TypeScript reads this buffer and uses `putImageData()` to display on an HTML5 Canvas
+- All rendering is per-pixel: additive blending for light rays, alpha blending for overlays
+- Colors come from wavelength-to-RGB conversion (physics-based spectrum)

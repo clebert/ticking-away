@@ -1,3 +1,4 @@
+#include "dithering.h"
 #include "graphics.h"
 
 #define WASM_EXPORT __attribute__((visibility("default")))
@@ -33,7 +34,8 @@
 //   ray_glow_intensity: 0.0-1.0 (ray glow intensity multiplier)
 //   ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 //   internal_ray_real_colors: 0 or 1 (1 = use wavelength-based colors for internal rays)
-//   artistic_dispersion: 0 or 1 (1 = artistic dispersion with red first, 0 = physical where violet bends most)
+//   artistic_dispersion: 0 or 1 (1 = artistic dispersion with red first, 0 = physical where violet
+//   bends most)
 WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, float minute,
                                   float second, float prism_size_percent, float rainbow_spread,
                                   int minimal_mode, int prism_r, int prism_g, int prism_b,
@@ -64,10 +66,14 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
 
   // Render the watchface scene
   float ray_glow_width = ray_glow_width_percent * radius;
-  render_watchface_scene(fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle,
-                         rainbow_spread, second, &prism, minimal_mode, (uint8_t)prism_r,
-                         (uint8_t)prism_g, (uint8_t)prism_b, show_seconds, sparkle_size_percent,
-                         glow_width_percent, glow_intensity, glow_falloff, ray_glow_width,
-                         ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors,
-                         artistic_dispersion);
+  render_watchface_scene(
+      fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, second,
+      &prism, minimal_mode, (uint8_t)prism_r, (uint8_t)prism_g, (uint8_t)prism_b, show_seconds,
+      sparkle_size_percent, glow_width_percent, glow_intensity, glow_falloff, ray_glow_width,
+      ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors, artistic_dispersion);
+}
+
+// Apply Atkinson dithering to the framebuffer as a post-processing step.
+WASM_EXPORT void dither_framebuffer(uint8_t *fb, int width, int height) {
+  apply_dithering(fb, width, height);
 }

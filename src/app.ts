@@ -37,6 +37,7 @@ interface Wasm {
     internal_ray_real_colors: number,
     artistic_dispersion: number,
   ): void;
+  dither_framebuffer(fb: number, width: number, height: number): void;
 }
 
 let wasmModule: Wasm | null = null;
@@ -84,6 +85,7 @@ interface AppState {
   rayGlowFalloff: number; // 0=linear, 1=quadratic, 2=cubic, 3=exponential
   internalRayRealColors: boolean; // true = use wavelength-based colors for internal rays
   artisticDispersion: boolean; // true = artistic (red first at top), false = physical (violet bends most)
+  ditheringEnabled: boolean; // true = apply 1-bit dithering to output
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -107,6 +109,7 @@ interface PersistedSettings {
   rayGlowFalloff: number;
   internalRayRealColors: boolean;
   artisticDispersion: boolean;
+  ditheringEnabled: boolean;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -142,6 +145,7 @@ function saveSettings(state: AppState): void {
       rayGlowFalloff: state.rayGlowFalloff,
       internalRayRealColors: state.internalRayRealColors,
       artisticDispersion: state.artisticDispersion,
+      ditheringEnabled: state.ditheringEnabled,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -179,6 +183,7 @@ const defaultState: AppState = {
   rayGlowFalloff: savedSettings.rayGlowFalloff ?? 1, // quadratic by default
   internalRayRealColors: savedSettings.internalRayRealColors ?? true,
   artisticDispersion: savedSettings.artisticDispersion ?? true,
+  ditheringEnabled: savedSettings.ditheringEnabled ?? false,
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -354,6 +359,11 @@ function render(state: AppState): void {
     state.internalRayRealColors ? 1 : 0,
     state.artisticDispersion ? 1 : 0,
   );
+
+  // Apply dithering if enabled
+  if (state.ditheringEnabled) {
+    wasmModule.dither_framebuffer(fbDataPtr, width, height);
+  }
 
   // Copy framebuffer to canvas
   const fbArray = new Uint8ClampedArray(wasmMemory.buffer, fbDataPtr, width * height * 4);
@@ -567,6 +577,11 @@ const actions = {
 
   toggleArtisticDispersion(): void {
     store.publish((s) => ({ ...s, artisticDispersion: !s.artisticDispersion }));
+    render(store.getState());
+  },
+
+  toggleDithering(): void {
+    store.publish((s) => ({ ...s, ditheringEnabled: !s.ditheringEnabled }));
     render(store.getState());
   },
 };
