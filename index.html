@@ -201,7 +201,7 @@
   </head>
 
   <body>
-    <header data-bind="hidden:fullscreen">
+    <header data-bind="hidden:hideControls">
       <h1>Ticking Away</h1>
       <span class="subtitle">the moments that make up a dull day.</span>
     </header>
@@ -210,7 +210,7 @@
       <div id="canvas-container">
         <canvas id="canvas"></canvas>
       </div>
-      <aside id="controls" data-bind="hidden:fullscreen">
+      <aside id="controls" data-bind="hidden:hideControls">
         <div class="control-panel">
           <!-- Live Mode Toggle -->
           <div class="section-title">Mode</div>

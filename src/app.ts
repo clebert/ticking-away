@@ -67,6 +67,8 @@ interface AppState {
   liveMode: boolean;
   fullscreen: boolean; // true = fullscreen mode active
   fullscreenHidden: boolean; // derived: !liveMode (only show when live)
+  clockOnly: boolean; // true = clock-only mode (from URL param ?clock)
+  hideControls: boolean; // derived: fullscreen || clockOnly
   acceleratedTime: boolean; // true = use accelerationFactor, false = real time
   accelerationFactor: number; // minutes per second when accelerated
   accelerationHidden: boolean; // derived: !acceleratedTime (for hiding dropdown)
@@ -155,6 +157,7 @@ function saveSettings(state: AppState): void {
 
 const now = new Date();
 const savedSettings = loadSettings();
+const clockOnly = new URLSearchParams(window.location.search).has("clock");
 
 const defaultState: AppState = {
   hours: now.getHours() % 12,
@@ -165,6 +168,8 @@ const defaultState: AppState = {
   liveMode: true,
   fullscreen: false,
   fullscreenHidden: false, // derived: !liveMode
+  clockOnly,
+  hideControls: clockOnly,
   acceleratedTime: savedSettings.acceleratedTime ?? false,
   accelerationFactor: savedSettings.accelerationFactor ?? 1,
   accelerationHidden: !(savedSettings.acceleratedTime ?? false),
@@ -622,7 +627,11 @@ async function init(): Promise<void> {
   // Sync fullscreen state when user exits via ESC or other means
   document.addEventListener("fullscreenchange", () => {
     const isFullscreen = document.fullscreenElement !== null;
-    store.publish((s) => ({ ...s, fullscreen: isFullscreen }));
+    store.publish((s) => ({
+      ...s,
+      fullscreen: isFullscreen,
+      hideControls: isFullscreen || s.clockOnly,
+    }));
   });
 }
 
