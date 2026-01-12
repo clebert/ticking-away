@@ -382,6 +382,27 @@
             </select>
           </div>
 
+          <!-- Background -->
+          <div class="section-title">Background</div>
+          <div class="control-group">
+            <label>Grain: <span data-bind="textContent:grainIntensity">50</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:grainIntensity, input:setGrainIntensity"
+            />
+          </div>
+          <div class="control-group">
+            <label>Vignette: <span data-bind="textContent:vignetteIntensity">40</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:vignetteIntensity, input:setVignetteIntensity"
+            />
+          </div>
+
           <!-- Display Options -->
           <div class="section-title">Display</div>
           <div class="control-group">

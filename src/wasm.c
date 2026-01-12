@@ -36,6 +36,8 @@
 //   internal_ray_real_colors: 0 or 1 (1 = use wavelength-based colors for internal rays)
 //   artistic_dispersion: 0 or 1 (1 = artistic dispersion with red first, 0 = physical where violet
 //   bends most)
+//   grain_intensity: 0.0-1.0 (intensity of film grain effect)
+//   vignette_intensity: 0.0-1.0 (intensity of vignette darkening)
 WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, float minute,
                                   float second, float prism_size_percent, float rainbow_spread,
                                   int minimal_mode, int prism_r, int prism_g, int prism_b,
@@ -43,7 +45,8 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
                                   float glow_width_percent, float glow_intensity, int glow_falloff,
                                   float ray_glow_width_percent, float ray_glow_intensity,
                                   int ray_glow_falloff, int internal_ray_real_colors,
-                                  int artistic_dispersion) {
+                                  int artistic_dispersion, float grain_intensity,
+                                  float vignette_intensity) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -66,11 +69,12 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
 
   // Render the watchface scene
   float ray_glow_width = ray_glow_width_percent * radius;
-  render_watchface_scene(
-      fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, second,
-      &prism, minimal_mode, (uint8_t)prism_r, (uint8_t)prism_g, (uint8_t)prism_b, show_seconds,
-      sparkle_size_percent, glow_width_percent, glow_intensity, glow_falloff, ray_glow_width,
-      ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors, artistic_dispersion);
+  render_watchface_scene(fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle,
+                         rainbow_spread, second, &prism, minimal_mode, (uint8_t)prism_r,
+                         (uint8_t)prism_g, (uint8_t)prism_b, show_seconds, sparkle_size_percent,
+                         glow_width_percent, glow_intensity, glow_falloff, ray_glow_width,
+                         ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors,
+                         artistic_dispersion, grain_intensity, vignette_intensity);
 }
 
 // Apply Atkinson dithering to the framebuffer as a post-processing step.

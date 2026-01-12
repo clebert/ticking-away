@@ -354,12 +354,29 @@ static void draw_circle(
 // Watch-Specific Drawing
 // =================================================================================================
 
+// Simple hash function for deterministic noise/stars
+static inline uint32_t hash_pixel(int x, int y) {
+  uint32_t h = (uint32_t)(x * 374761393 + y * 668265263);
+  h = (h ^ (h >> 13)) * 1274126177;
+  return h ^ (h >> 16);
+}
+
 static void init_watch_framebuffer(
   uint8_t* fb, int width, int height,
-  float cx, float cy, float radius
+  float cx, float cy, float radius,
+  float grain_intensity,    // 0.0-1.0
+  float vignette_intensity  // 0.0-1.0
 ) {
-  uint8_t bg_r = 35, bg_g = 35, bg_b = 35;
-  uint8_t watch_r = 10, watch_g = 10, watch_b = 10;
+  // Base colors
+  float watch_base = 10.0f;
+  float bg_base = 35.0f;
+
+  // Vignette parameters (for background)
+  float max_dist = sqrtf_impl((float)(width * width + height * height)) * 0.5f;
+  float vignette_strength = vignette_intensity * 0.4f;  // Max 40% darkening at corners
+
+  // Grain strength: ±6 at full intensity
+  float grain_strength = grain_intensity * 6.0f;
 
   float r2 = radius * radius;
 
@@ -373,15 +390,32 @@ static void init_watch_framebuffer(
       float dist2 = dx * dx + dy2;
       int idx = row_offset + x * 4;
 
+      // Film grain: subtle brightness variation
+      uint32_t hash = hash_pixel(x, y);
+      float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
+
+      float final_val;
       if (dist2 <= r2) {
-        fb[idx] = watch_r;
-        fb[idx + 1] = watch_g;
-        fb[idx + 2] = watch_b;
+        // Inside watchface - dark with grain
+        final_val = watch_base + grain;
       } else {
-        fb[idx] = bg_r;
-        fb[idx + 1] = bg_g;
-        fb[idx + 2] = bg_b;
+        // Outside watchface - vignette + grain
+        float dist_from_center = sqrtf_impl(dist2);
+        float vignette_t = (dist_from_center - radius) / (max_dist - radius);
+        if (vignette_t < 0.0f) vignette_t = 0.0f;
+        if (vignette_t > 1.0f) vignette_t = 1.0f;
+        float vignette = 1.0f - vignette_t * vignette_strength;
+
+        final_val = bg_base * vignette + grain;
       }
+
+      if (final_val < 0.0f) final_val = 0.0f;
+      if (final_val > 255.0f) final_val = 255.0f;
+
+      uint8_t val = (uint8_t)final_val;
+      fb[idx] = val;
+      fb[idx + 1] = val;
+      fb[idx + 2] = val;
       fb[idx + 3] = 255;
     }
   }
@@ -765,6 +799,8 @@ static float compute_exit_angle(
 // - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
 // - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 // - internal_ray_real_colors: if true, use wavelength-based colors for internal rays
+// - grain_intensity: 0.0-1.0 intensity of film grain effect
+// - vignette_intensity: 0.0-1.0 intensity of vignette darkening
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -786,10 +822,12 @@ static void render_watchface_scene(
   float ray_glow_intensity,
   int ray_glow_falloff,
   int internal_ray_real_colors,
-  int artistic_dispersion
+  int artistic_dispersion,
+  float grain_intensity,
+  float vignette_intensity
 ) {
   // Initialize background
-  init_watch_framebuffer(fb, width, height, cx, cy, radius);
+  init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity);
 
   // Entry ray direction: toward center
   float entry_dx = cx - entry_x;

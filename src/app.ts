@@ -36,6 +36,8 @@ interface Wasm {
     ray_glow_falloff: number,
     internal_ray_real_colors: number,
     artistic_dispersion: number,
+    grain_intensity: number,
+    vignette_intensity: number,
   ): void;
   dither_framebuffer(fb: number, width: number, height: number): void;
 }
@@ -88,6 +90,8 @@ interface AppState {
   internalRayRealColors: boolean; // true = use wavelength-based colors for internal rays
   artisticDispersion: boolean; // true = artistic (red first at top), false = physical (violet bends most)
   ditheringEnabled: boolean; // true = apply 1-bit dithering to output
+  grainIntensity: number; // 0-100 (% of max grain)
+  vignetteIntensity: number; // 0-100 (% of max vignette)
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -112,6 +116,8 @@ interface PersistedSettings {
   internalRayRealColors: boolean;
   artisticDispersion: boolean;
   ditheringEnabled: boolean;
+  grainIntensity: number;
+  vignetteIntensity: number;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -148,6 +154,8 @@ function saveSettings(state: AppState): void {
       internalRayRealColors: state.internalRayRealColors,
       artisticDispersion: state.artisticDispersion,
       ditheringEnabled: state.ditheringEnabled,
+      grainIntensity: state.grainIntensity,
+      vignetteIntensity: state.vignetteIntensity,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -189,6 +197,8 @@ const defaultState: AppState = {
   internalRayRealColors: savedSettings.internalRayRealColors ?? true,
   artisticDispersion: savedSettings.artisticDispersion ?? false,
   ditheringEnabled: savedSettings.ditheringEnabled ?? false,
+  grainIntensity: savedSettings.grainIntensity ?? 50,
+  vignetteIntensity: savedSettings.vignetteIntensity ?? 40,
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -363,6 +373,8 @@ function render(state: AppState): void {
     state.rayGlowFalloff,
     state.internalRayRealColors ? 1 : 0,
     state.artisticDispersion ? 1 : 0,
+    state.grainIntensity / 100.0, // Convert 0-100 to 0.0-1.0
+    state.vignetteIntensity / 100.0, // Convert 0-100 to 0.0-1.0
   );
 
   // Apply dithering if enabled
@@ -587,6 +599,18 @@ const actions = {
 
   toggleDithering(): void {
     store.publish((s) => ({ ...s, ditheringEnabled: !s.ditheringEnabled }));
+    render(store.getState());
+  },
+
+  setGrainIntensity(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, grainIntensity: value }));
+    render(store.getState());
+  },
+
+  setVignetteIntensity(e: Event): void {
+    const value = parseInt((e.target as HTMLInputElement).value, 10);
+    store.publish((s) => ({ ...s, vignetteIntensity: value }));
     render(store.getState());
   },
 };
