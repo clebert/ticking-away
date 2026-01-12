@@ -346,6 +346,15 @@
             >
           </div>
           <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:artisticDispersion, change:toggleArtisticDispersion"
+              />
+              Artistic Dispersion</label
+            >
+          </div>
+          <div class="control-group">
             <label>Glow Width: <span data-bind="textContent:rayGlowWidth">3</span>%</label>
             <input
               type="range"

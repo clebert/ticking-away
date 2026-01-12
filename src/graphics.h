@@ -735,16 +735,17 @@ static void draw_sparkle(
 static float compute_exit_angle(
   float hour_angle,
   float rainbow_spread,  // 0.0 to 1.0
-  int wavelength_idx     // 0 = red, NUM_WAVELENGTHS-1 = violet
+  int wavelength_idx,    // 0 = red, NUM_WAVELENGTHS-1 = violet
+  int artistic_dispersion // 1 = artistic (red at negative offset), 0 = physical (violet bends most)
 ) {
   float spread_rad = rainbow_spread * MAX_SPREAD_RAD;
 
   // t: 0 for red (first), 1 for violet (last)
   float t = (float)wavelength_idx / (float)(NUM_WAVELENGTHS - 1);
 
-  // Red bends least (toward positive offset), violet bends most (toward negative)
-  // This mimics real dispersion where short wavelengths bend more
-  float offset = (0.5f - t) * spread_rad;
+  // Artistic: red (t=0) at negative offset, violet (t=1) at positive offset
+  // Physical: violet bends most (negative offset), red bends least (positive offset)
+  float offset = artistic_dispersion ? (t - 0.5f) * spread_rad : (0.5f - t) * spread_rad;
 
   return hour_angle + offset;
 }
@@ -782,7 +783,8 @@ static void render_watchface_scene(
   float ray_glow_width,
   float ray_glow_intensity,
   int ray_glow_falloff,
-  int internal_ray_real_colors
+  int internal_ray_real_colors,
+  int artistic_dispersion
 ) {
   // Initialize background
   init_watch_framebuffer(fb, width, height, cx, cy, radius);
@@ -839,7 +841,7 @@ static void render_watchface_scene(
     }
 
     // Compute exit angle for this wavelength
-    float exit_angle = compute_exit_angle(hour_angle, rainbow_spread, i);
+    float exit_angle = compute_exit_angle(hour_angle, rainbow_spread, i, artistic_dispersion);
 
     // Find where exit ray (from center) exits the prism
     RayHit prism_exit = find_prism_exit_from_center(cx, cy, exit_angle, prism);

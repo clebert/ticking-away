@@ -35,6 +35,7 @@ interface Wasm {
     ray_glow_intensity: number,
     ray_glow_falloff: number,
     internal_ray_real_colors: number,
+    artistic_dispersion: number,
   ): void;
 }
 
@@ -82,6 +83,7 @@ interface AppState {
   rayGlowIntensity: number; // 0-100 (%)
   rayGlowFalloff: number; // 0=linear, 1=quadratic, 2=cubic, 3=exponential
   internalRayRealColors: boolean; // true = use wavelength-based colors for internal rays
+  artisticDispersion: boolean; // true = artistic (red first at top), false = physical (violet bends most)
   wakeLockText: string;
   wakeLockClass: string;
 }
@@ -104,6 +106,7 @@ interface PersistedSettings {
   rayGlowIntensity: number;
   rayGlowFalloff: number;
   internalRayRealColors: boolean;
+  artisticDispersion: boolean;
 }
 
 function loadSettings(): Partial<PersistedSettings> {
@@ -138,6 +141,7 @@ function saveSettings(state: AppState): void {
       rayGlowIntensity: state.rayGlowIntensity,
       rayGlowFalloff: state.rayGlowFalloff,
       internalRayRealColors: state.internalRayRealColors,
+      artisticDispersion: state.artisticDispersion,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -174,6 +178,7 @@ const defaultState: AppState = {
   rayGlowIntensity: savedSettings.rayGlowIntensity ?? 100,
   rayGlowFalloff: savedSettings.rayGlowFalloff ?? 1, // quadratic by default
   internalRayRealColors: savedSettings.internalRayRealColors ?? true,
+  artisticDispersion: savedSettings.artisticDispersion ?? true,
   wakeLockText: "",
   wakeLockClass: "",
 };
@@ -347,6 +352,7 @@ function render(state: AppState): void {
     state.rayGlowIntensity / 100.0, // Convert 0-100 to 0.0-1.0
     state.rayGlowFalloff,
     state.internalRayRealColors ? 1 : 0,
+    state.artisticDispersion ? 1 : 0,
   );
 
   // Copy framebuffer to canvas
@@ -556,6 +562,11 @@ const actions = {
 
   toggleInternalRayRealColors(): void {
     store.publish((s) => ({ ...s, internalRayRealColors: !s.internalRayRealColors }));
+    render(store.getState());
+  },
+
+  toggleArtisticDispersion(): void {
+    store.publish((s) => ({ ...s, artisticDispersion: !s.artisticDispersion }));
     render(store.getState());
   },
 };
