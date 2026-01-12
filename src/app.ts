@@ -152,28 +152,28 @@ const defaultState: AppState = {
   hours: now.getHours() % 12,
   minutes: now.getMinutes(),
   seconds: now.getSeconds(),
-  prismSize: savedSettings.prismSize ?? 60,
+  prismSize: savedSettings.prismSize ?? 90,
   rainbowSpread: savedSettings.rainbowSpread ?? 30,
   liveMode: true,
   fullscreen: false,
   fullscreenHidden: false, // derived: !liveMode
-  acceleratedTime: savedSettings.acceleratedTime ?? true,
+  acceleratedTime: savedSettings.acceleratedTime ?? false,
   accelerationFactor: savedSettings.accelerationFactor ?? 1,
-  accelerationHidden: !(savedSettings.acceleratedTime ?? true),
+  accelerationHidden: !(savedSettings.acceleratedTime ?? false),
   pebbleMode: savedSettings.pebbleMode ?? false,
-  minimalMode: savedSettings.minimalMode ?? false,
-  prismGray: savedSettings.prismGray ?? 80,
-  prismBlueTint: savedSettings.prismBlueTint ?? 0,
+  minimalMode: savedSettings.minimalMode ?? true,
+  prismGray: savedSettings.prismGray ?? 120,
+  prismBlueTint: savedSettings.prismBlueTint ?? 50,
   showSeconds: savedSettings.showSeconds ?? true,
-  sparkleSize: savedSettings.sparkleSize ?? 200,
-  secondsDisabled: savedSettings.acceleratedTime ?? true, // derived: liveMode && acceleratedTime
-  glowWidth: savedSettings.glowWidth ?? 15,
+  sparkleSize: savedSettings.sparkleSize ?? 300,
+  secondsDisabled: savedSettings.acceleratedTime ?? false, // derived: liveMode && acceleratedTime
+  glowWidth: savedSettings.glowWidth ?? 20,
   glowIntensity: savedSettings.glowIntensity ?? 100,
-  glowFalloff: savedSettings.glowFalloff ?? 1, // quadratic by default
-  rayGlowWidth: savedSettings.rayGlowWidth ?? 3,
-  rayGlowIntensity: savedSettings.rayGlowIntensity ?? 50,
+  glowFalloff: savedSettings.glowFalloff ?? 3, // exponential by default
+  rayGlowWidth: savedSettings.rayGlowWidth ?? 2,
+  rayGlowIntensity: savedSettings.rayGlowIntensity ?? 100,
   rayGlowFalloff: savedSettings.rayGlowFalloff ?? 1, // quadratic by default
-  internalRayRealColors: savedSettings.internalRayRealColors ?? false,
+  internalRayRealColors: savedSettings.internalRayRealColors ?? true,
   wakeLockText: "",
   wakeLockClass: "",
 };
