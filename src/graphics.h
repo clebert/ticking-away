@@ -375,8 +375,8 @@ static void init_watch_framebuffer(
   float max_dist = sqrtf_impl((float)(width * width + height * height)) * 0.5f;
   float vignette_strength = vignette_intensity * 0.4f;  // Max 40% darkening at corners
 
-  // Grain strength: ±6 at full intensity
-  float grain_strength = grain_intensity * 6.0f;
+  // Grain strength: ±15 at full intensity
+  float grain_strength = grain_intensity * 15.0f;
 
   float r2 = radius * radius;
 

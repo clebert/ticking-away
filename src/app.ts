@@ -197,8 +197,8 @@ const defaultState: AppState = {
   internalRayRealColors: savedSettings.internalRayRealColors ?? true,
   artisticDispersion: savedSettings.artisticDispersion ?? false,
   ditheringEnabled: savedSettings.ditheringEnabled ?? false,
-  grainIntensity: savedSettings.grainIntensity ?? 50,
-  vignetteIntensity: savedSettings.vignetteIntensity ?? 40,
+  grainIntensity: savedSettings.grainIntensity ?? 80,
+  vignetteIntensity: savedSettings.vignetteIntensity ?? 100,
   wakeLockText: "",
   wakeLockClass: "",
 };
