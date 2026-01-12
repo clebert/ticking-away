@@ -182,7 +182,7 @@ const defaultState: AppState = {
   rayGlowIntensity: savedSettings.rayGlowIntensity ?? 100,
   rayGlowFalloff: savedSettings.rayGlowFalloff ?? 1, // quadratic by default
   internalRayRealColors: savedSettings.internalRayRealColors ?? true,
-  artisticDispersion: savedSettings.artisticDispersion ?? true,
+  artisticDispersion: savedSettings.artisticDispersion ?? false,
   ditheringEnabled: savedSettings.ditheringEnabled ?? false,
   wakeLockText: "",
   wakeLockClass: "",
