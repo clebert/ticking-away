@@ -9,6 +9,7 @@
       "nvmVersion": "latest"
     }
   },
+  "remoteUser": "vscode",
   "mounts": ["source=claude-config,target=/home/vscode/claude-config,type=volume"],
   "containerEnv": { "CLAUDE_CONFIG_DIR": "/home/vscode/claude-config" },
   "postCreateCommand": "npm install && sudo chown -R vscode:vscode /home/vscode/claude-config && curl -fsSL https://claude.ai/install.sh | bash"

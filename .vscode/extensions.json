@@ -1,5 +1,6 @@
 {
   "recommendations": [
+    "anthropic.claude-code",
     "biomejs.biome",
     "esbenp.prettier-vscode",
     "llvm-vs-code-extensions.vscode-clangd"
