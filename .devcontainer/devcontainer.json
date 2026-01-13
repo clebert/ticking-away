@@ -1,0 +1,14 @@
+{
+  "name": "ticking-away",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGypDependencies": true,
+      "version": "24",
+      "pnpmVersion": "latest",
+      "nvmVersion": "latest"
+    }
+  },
+  "postCreateCommand": "npm install && curl -fsSL https://claude.ai/install.sh | bash",
+  "mounts": ["source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind"]
+}
