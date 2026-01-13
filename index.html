@@ -43,15 +43,7 @@
       header h1 {
         font-size: 18px;
         font-weight: 600;
-        background: linear-gradient(
-          90deg,
-          #ff0000,
-          #ff8000,
-          #ffff00,
-          #00ff00,
-          #0080ff,
-          #8000ff
-        );
+        background: linear-gradient(90deg, #ff0000, #ff8000, #ffff00, #00ff00, #0080ff, #8000ff);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -196,12 +188,11 @@
       .inactive {
         color: #888;
       }
-
     </style>
   </head>
 
   <body>
-    <header data-bind="hidden:hideControls">
+    <header data-bind="hidden:mode.hideControls">
       <h1>Ticking Away</h1>
       <span class="subtitle">the moments that make up a dull day.</span>
     </header>
@@ -210,34 +201,31 @@
       <div id="canvas-container">
         <canvas id="canvas"></canvas>
       </div>
-      <aside id="controls" data-bind="hidden:hideControls">
+      <aside id="controls" data-bind="hidden:mode.hideControls">
         <div class="control-panel">
           <!-- Live Mode Toggle -->
           <div class="section-title">Mode</div>
           <div class="control-group">
             <label
-              ><input type="checkbox" data-bind="checked:liveMode, change:toggleLiveMode" /> Live
-              Mode <span data-bind="textContent:wakeLockText, className:wakeLockClass"></span
+              ><input type="checkbox" data-bind="checked:mode.live, change:mode.toggleLive" />
+              Live Mode
             ></label>
           </div>
-          <div class="control-group" data-bind="hidden:fullscreenHidden">
-            <label
-              ><input type="checkbox" data-bind="checked:fullscreen, change:toggleFullscreen" />
-              Fullscreen</label
-            >
+          <div class="button-row" data-bind="hidden:!mode.live">
+            <button class="action-button" data-bind="click:mode.enterFullscreen">Fullscreen</button>
           </div>
           <div class="control-group">
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:acceleratedTime, change:toggleAcceleratedTime"
+                data-bind="checked:mode.accelerated, change:mode.toggleAccelerated"
               />
               Accelerated</label
             >
           </div>
-          <div class="control-group" data-bind="hidden:accelerationHidden">
+          <div class="control-group" data-bind="hidden:!mode.accelerated">
             <label>Speed</label>
-            <select data-bind="value:accelerationFactor, change:setAccelerationFactor">
+            <select data-bind="value:mode.accelerationFactor, change:mode.setAccelerationFactor">
               <option value="1">1 min/sec</option>
               <option value="10">10 min/sec</option>
               <option value="30">30 min/sec</option>
@@ -247,77 +235,101 @@
           </div>
 
           <!-- Time Controls (hidden in live mode) -->
-          <div class="section-title" data-bind="hidden:liveMode">Time</div>
-          <div class="control-group" data-bind="hidden:liveMode">
-            <label>Hour: <span data-bind="textContent:hours">10</span></label>
-            <input type="range" min="0" max="11" data-bind="value:hours, input:setHours" />
+          <div class="section-title" data-bind="hidden:mode.live">Time</div>
+          <div class="control-group" data-bind="hidden:mode.live">
+            <label>Hour: <span data-bind="textContent:time.hours">10</span></label>
+            <input
+              type="range"
+              min="0"
+              max="11"
+              data-bind="value:time.hours, input:time.setHours"
+            />
           </div>
-          <div class="control-group" data-bind="hidden:liveMode">
-            <label>Minute: <span data-bind="textContent:minutes">10</span></label>
-            <input type="range" min="0" max="59" data-bind="value:minutes, input:setMinutes" />
+          <div class="control-group" data-bind="hidden:mode.live">
+            <label>Minute: <span data-bind="textContent:time.minutes">10</span></label>
+            <input
+              type="range"
+              min="0"
+              max="59"
+              data-bind="value:time.minutes, input:time.setMinutes"
+            />
           </div>
-          <div class="control-group" data-bind="hidden:liveMode">
-            <label>Second: <span data-bind="textContent:seconds">0</span></label>
-            <input type="range" min="0" max="59" data-bind="value:seconds, input:setSeconds" />
+          <div class="control-group" data-bind="hidden:mode.live">
+            <label>Second: <span data-bind="textContent:time.seconds">0</span></label>
+            <input
+              type="range"
+              min="0"
+              max="59"
+              data-bind="value:time.seconds, input:time.setSeconds"
+            />
           </div>
-          <div class="button-row" data-bind="hidden:liveMode">
-            <button class="action-button" data-bind="click:setNow">Set to Now</button>
+          <div class="button-row" data-bind="hidden:mode.live">
+            <button class="action-button" data-bind="click:time.setNow">Set to Now</button>
           </div>
 
           <!-- Prism Controls -->
           <div class="section-title">Prism</div>
           <div class="control-group">
-            <label>Size: <span data-bind="textContent:prismSize">60</span>%</label>
-            <input type="range" min="10" max="90" data-bind="value:prismSize, input:setPrismSize" />
+            <label>Size: <span data-bind="textContent:prism.size">60</span>%</label>
+            <input
+              type="range"
+              min="10"
+              max="90"
+              data-bind="value:prism.size, input:prism.setSize"
+            />
           </div>
           <div class="control-group">
-            <label>Rainbow Spread: <span data-bind="textContent:rainbowSpread">50</span>%</label>
+            <label
+              >Rainbow Spread: <span data-bind="textContent:prism.rainbowSpread">50</span>%</label
+            >
             <input
               type="range"
               min="0"
               max="100"
-              data-bind="value:rainbowSpread, input:setRainbowSpread"
+              data-bind="value:prism.rainbowSpread, input:prism.setRainbowSpread"
             />
           </div>
           <div class="control-group">
-            <label>Prism Gray: <span data-bind="textContent:prismGray">80</span></label>
+            <label>Prism Gray: <span data-bind="textContent:prism.gray">80</span></label>
             <input
               type="range"
               min="0"
               max="255"
-              data-bind="value:prismGray, input:setPrismGray"
+              data-bind="value:prism.gray, input:prism.setGray"
             />
           </div>
           <div class="control-group">
-            <label>Blue Tint: <span data-bind="textContent:prismBlueTint">0</span></label>
+            <label>Blue Tint: <span data-bind="textContent:prism.blueTint">0</span></label>
             <input
               type="range"
               min="0"
               max="50"
-              data-bind="value:prismBlueTint, input:setPrismBlueTint"
+              data-bind="value:prism.blueTint, input:prism.setBlueTint"
             />
           </div>
           <div class="control-group">
-            <label>Glow Width: <span data-bind="textContent:glowWidth">15</span>%</label>
+            <label>Glow Width: <span data-bind="textContent:prism.glowWidth">15</span>%</label>
             <input
               type="range"
               min="5"
               max="50"
-              data-bind="value:glowWidth, input:setGlowWidth"
+              data-bind="value:prism.glowWidth, input:prism.setGlowWidth"
             />
           </div>
           <div class="control-group">
-            <label>Glow Intensity: <span data-bind="textContent:glowIntensity">100</span>%</label>
+            <label
+              >Glow Intensity: <span data-bind="textContent:prism.glowIntensity">100</span>%</label
+            >
             <input
               type="range"
               min="10"
               max="100"
-              data-bind="value:glowIntensity, input:setGlowIntensity"
+              data-bind="value:prism.glowIntensity, input:prism.setGlowIntensity"
             />
           </div>
           <div class="control-group">
             <label>Glow Falloff</label>
-            <select data-bind="value:glowFalloff, change:setGlowFalloff">
+            <select data-bind="value:prism.glowFalloff, change:prism.setGlowFalloff">
               <option value="0">Linear</option>
               <option value="1">Quadratic</option>
               <option value="2">Cubic</option>
@@ -325,12 +337,12 @@
             </select>
           </div>
           <div class="control-group">
-            <label>Sparkle Size: <span data-bind="textContent:sparkleSize">200</span>%</label>
+            <label>Sparkle Size: <span data-bind="textContent:prism.sparkleSize">200</span>%</label>
             <input
               type="range"
               min="100"
               max="1000"
-              data-bind="value:sparkleSize, input:setSparkleSize"
+              data-bind="value:prism.sparkleSize, input:prism.setSparkleSize"
             />
           </div>
 
@@ -340,7 +352,7 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:internalRayRealColors, change:toggleInternalRayRealColors"
+                data-bind="checked:rays.innerSpectrum, change:rays.toggleInnerSpectrum"
               />
               Real Internal Colors</label
             >
@@ -349,32 +361,34 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:artisticDispersion, change:toggleArtisticDispersion"
+                data-bind="checked:rays.artisticDispersion, change:rays.toggleArtisticDispersion"
               />
               Artistic Dispersion</label
             >
           </div>
           <div class="control-group">
-            <label>Glow Width: <span data-bind="textContent:rayGlowWidth">3</span>%</label>
+            <label>Glow Width: <span data-bind="textContent:rays.glowWidth">3</span>%</label>
             <input
               type="range"
               min="0"
               max="10"
-              data-bind="value:rayGlowWidth, input:setRayGlowWidth"
+              data-bind="value:rays.glowWidth, input:rays.setGlowWidth"
             />
           </div>
           <div class="control-group">
-            <label>Glow Intensity: <span data-bind="textContent:rayGlowIntensity">50</span>%</label>
+            <label
+              >Glow Intensity: <span data-bind="textContent:rays.glowIntensity">50</span>%</label
+            >
             <input
               type="range"
               min="0"
               max="100"
-              data-bind="value:rayGlowIntensity, input:setRayGlowIntensity"
+              data-bind="value:rays.glowIntensity, input:rays.setGlowIntensity"
             />
           </div>
           <div class="control-group">
             <label>Glow Falloff</label>
-            <select data-bind="value:rayGlowFalloff, change:setRayGlowFalloff">
+            <select data-bind="value:rays.glowFalloff, change:rays.setGlowFalloff">
               <option value="0">Linear</option>
               <option value="1">Quadratic</option>
               <option value="2">Cubic</option>
@@ -385,21 +399,24 @@
           <!-- Background -->
           <div class="section-title">Background</div>
           <div class="control-group">
-            <label>Grain: <span data-bind="textContent:grainIntensity">50</span>%</label>
+            <label>Grain: <span data-bind="textContent:background.grainIntensity">50</span>%</label>
             <input
               type="range"
               min="0"
               max="100"
-              data-bind="value:grainIntensity, input:setGrainIntensity"
+              data-bind="value:background.grainIntensity, input:background.setGrainIntensity"
             />
           </div>
           <div class="control-group">
-            <label>Vignette: <span data-bind="textContent:vignetteIntensity">40</span>%</label>
+            <label
+              >Vignette:
+              <span data-bind="textContent:background.vignetteIntensity">40</span>%</label
+            >
             <input
               type="range"
               min="0"
               max="100"
-              data-bind="value:vignetteIntensity, input:setVignetteIntensity"
+              data-bind="value:background.vignetteIntensity, input:background.setVignetteIntensity"
             />
           </div>
 
@@ -409,26 +426,35 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:showSeconds, change:toggleShowSeconds, disabled:secondsDisabled"
+                data-bind="checked:display.seconds, change:display.toggleSeconds, disabled:display.secondsDisabled"
               />
               Show Seconds</label
             >
           </div>
           <div class="control-group">
             <label
-              ><input type="checkbox" data-bind="checked:minimalMode, change:toggleMinimalMode" />
+              ><input
+                type="checkbox"
+                data-bind="checked:display.minimal, change:display.toggleMinimal"
+              />
               Minimal Mode (hide markers)</label
             >
           </div>
           <div class="control-group">
             <label
-              ><input type="checkbox" data-bind="checked:pebbleMode, change:togglePebbleMode" />
+              ><input
+                type="checkbox"
+                data-bind="checked:display.pebble, change:display.togglePebble"
+              />
               Pebble Mode (260x260)</label
             >
           </div>
           <div class="control-group">
             <label
-              ><input type="checkbox" data-bind="checked:ditheringEnabled, change:toggleDithering" />
+              ><input
+                type="checkbox"
+                data-bind="checked:display.dithering, change:display.toggleDithering"
+              />
               1-Bit Dithering</label
             >
           </div>
