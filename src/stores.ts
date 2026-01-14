@@ -43,6 +43,24 @@ export const mode = {
   setAccelerationFactor(e: Event): void {
     mode.accelerationFactor.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
+
+  toggleClockOnly(): void {
+    if (mode.fullscreen.value) {
+      return;
+    }
+
+    mode.clockOnly.value = !mode.clockOnly.value;
+
+    const url = new URL(window.location.href);
+
+    if (mode.clockOnly.value) {
+      url.searchParams.set("clock", "");
+    } else {
+      url.searchParams.delete("clock");
+    }
+
+    window.history.replaceState(null, "", url);
+  },
 };
 
 export const time = {

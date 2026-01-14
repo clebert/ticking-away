@@ -17,7 +17,13 @@ initWasm().then(() => {
 
   effect(render);
   effect(() => saveSettings(stores));
-  effect(() => resizeCanvas(stores.display.pebble.value, stores.display.dithering.value));
+  effect(() => {
+    // Track clockOnly to resize when sidebar visibility changes (fullscreen uses resize event)
+    stores.mode.clockOnly.value;
+    resizeCanvas(stores.display.pebble.value, stores.display.dithering.value);
+    // Re-render after resize since effect(render) won't trigger from canvas size change
+    render();
+  });
 
   effect(() => {
     stopAnimation();
