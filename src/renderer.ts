@@ -46,8 +46,8 @@ export function render(): void {
     rays.glowFalloff.value,
     rays.innerSpectrum.value ? 1 : 0,
     rays.artisticDispersion.value ? 1 : 0,
-    background.grainIntensity.value / 100.0,
-    background.vignetteIntensity.value / 100.0,
+    background.grainDisabled.value ? 0 : background.grainIntensity.value / 100.0,
+    background.vignetteDisabled.value ? 0 : background.vignetteIntensity.value / 100.0,
   );
 
   if (display.dithering.value) {

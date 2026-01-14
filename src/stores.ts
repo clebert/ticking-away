@@ -162,6 +162,10 @@ export const background = {
   grainIntensity: signal(settings.backgroundGrainIntensity ?? 80),
   vignetteIntensity: signal(settings.backgroundVignetteIntensity ?? 100),
 
+  // Computed
+  grainDisabled: computed((): boolean => display.pebble.value),
+  vignetteDisabled: computed((): boolean => display.pebble.value),
+
   // Actions
   setGrainIntensity(e: Event): void {
     background.grainIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
