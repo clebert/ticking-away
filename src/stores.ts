@@ -23,9 +23,22 @@ export const mode = {
   accelerated: signal(settings.modeAccelerated ?? false),
   accelerationFactor: signal(settings.modeAccelerationFactor ?? 1),
 
+  // Signals: performance
+  frameDuration: signal(0),
+
   // Computed
   hideControls: computed((): boolean => mode.fullscreen.value || mode.clockOnly.value),
   fullscreenDisabled: computed((): boolean => !mode.live.value || mode.accelerated.value),
+
+  fpsText: computed((): string => {
+    if (!mode.live.value || mode.frameDuration.value === 0) {
+      return "";
+    }
+
+    const fps = Math.round(1000 / mode.frameDuration.value);
+
+    return `${fps} fps`;
+  }),
 
   // Actions
   enterFullscreen: async (): Promise<void> => {

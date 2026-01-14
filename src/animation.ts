@@ -1,11 +1,21 @@
 import { batch } from "@preact/signals-core";
-import { time } from "./stores.ts";
+import { mode, time } from "./stores.ts";
 
 let animationFrameId: number | undefined;
 let acceleratedStartTimestamp = 0;
 let acceleratedStartMinutes = 0;
+let lastFrameTime = 0;
 
 export function startAnimation(accelerated: boolean, accelerationFactor: number): void {
+  if (animationFrameId !== undefined) {
+    cancelAnimationFrame(animationFrameId);
+
+    animationFrameId = undefined;
+  }
+
+  mode.frameDuration.value = 0;
+  lastFrameTime = 0;
+
   if (accelerated) {
     startAcceleratedAnimation(accelerationFactor);
   } else {
@@ -19,20 +29,28 @@ export function stopAnimation(): void {
 
     animationFrameId = undefined;
   }
+
+  mode.frameDuration.value = 0;
 }
 
 function startAcceleratedAnimation(accelerationFactor: number): void {
   acceleratedStartTimestamp = performance.now();
   acceleratedStartMinutes = time.hours.peek() * 60 + time.minutes.peek();
 
-  const animate = () => {
-    const elapsedSeconds = (performance.now() - acceleratedStartTimestamp) / 1000;
+  const animate = (now: number) => {
+    if (lastFrameTime > 0) {
+      mode.frameDuration.value = now - lastFrameTime;
+    }
+
+    lastFrameTime = now;
+
+    const elapsedSeconds = (now - acceleratedStartTimestamp) / 1000;
     const totalMinutes = acceleratedStartMinutes + elapsedSeconds * accelerationFactor;
     const wrappedMinutes = totalMinutes % (12 * 60);
 
     const newHours = Math.floor(wrappedMinutes / 60);
     const newMinutes = wrappedMinutes % 60;
-    const newSeconds = (newMinutes * 60) % 60;
+    const newSeconds = (newMinutes % 1) * 60;
 
     batch(() => {
       time.hours.value = newHours;
@@ -47,7 +65,13 @@ function startAcceleratedAnimation(accelerationFactor: number): void {
 }
 
 function startRealtimeAnimation(): void {
-  const animate = () => {
+  const animate = (now: number) => {
+    if (lastFrameTime > 0) {
+      mode.frameDuration.value = now - lastFrameTime;
+    }
+
+    lastFrameTime = now;
+
     const currentTime = new Date();
     const fractionalSeconds = currentTime.getSeconds() + currentTime.getMilliseconds() / 1000;
     const fractionalMinutes = currentTime.getMinutes() + fractionalSeconds / 60;

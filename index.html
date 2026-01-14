@@ -198,6 +198,12 @@
       .inactive {
         color: #888;
       }
+
+      .fps {
+        margin-left: 8px;
+        font-size: 11px;
+        color: #888;
+      }
     </style>
   </head>
 
@@ -219,10 +225,16 @@
             <label
               ><input type="checkbox" data-bind="checked:mode.live, onchange:mode.toggleLive" />
               Live Mode
-            ></label>
+              <span class="fps" data-bind="textContent:mode.fpsText"></span>
+            </label>
           </div>
           <div class="button-row">
-            <button class="action-button" data-bind="onclick:mode.enterFullscreen, disabled:mode.fullscreenDisabled">Fullscreen</button>
+            <button
+              class="action-button"
+              data-bind="onclick:mode.enterFullscreen, disabled:mode.fullscreenDisabled"
+            >
+              Fullscreen
+            </button>
           </div>
           <div class="control-group">
             <label
