@@ -11,13 +11,13 @@ initWasm().then(() => {
   createBinder({ stores })(document.body);
 
   window.addEventListener("resize", () => {
-    resizeCanvas(stores.display.pebble.value);
+    resizeCanvas(stores.display.pebble.value, stores.display.dithering.value);
     render();
   });
 
   effect(render);
   effect(() => saveSettings(stores));
-  effect(() => resizeCanvas(stores.display.pebble.value));
+  effect(() => resizeCanvas(stores.display.pebble.value, stores.display.dithering.value));
 
   effect(() => {
     stopAnimation();

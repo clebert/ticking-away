@@ -24,6 +24,7 @@ export interface WasmModule {
     artistic_dispersion: number,
     grain_intensity: number,
     vignette_intensity: number,
+    white_background: number,
   ): void;
 
   dither_framebuffer(framebuffer: number, width: number, height: number): void;

@@ -48,6 +48,7 @@ export function render(): void {
     rays.artisticDispersion.value ? 1 : 0,
     background.grainDisabled.value ? 0 : background.grainIntensity.value / 100.0,
     background.vignetteDisabled.value ? 0 : background.vignetteIntensity.value / 100.0,
+    display.pebble.value && display.dithering.value ? 1 : 0,
   );
 
   if (display.dithering.value) {

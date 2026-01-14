@@ -329,11 +329,12 @@ static void init_watch_framebuffer(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
   float grain_intensity,    // 0.0-1.0
-  float vignette_intensity  // 0.0-1.0
+  float vignette_intensity, // 0.0-1.0
+  int white_background      // 1 = white background (for pebble mode with dithering)
 ) {
   // Base colors
   float watch_base = 10.0f;
-  float bg_base = 35.0f;
+  float bg_base = white_background ? 255.0f : 35.0f;
 
   // Vignette parameters (for background)
   float max_dist = sqrtf_impl((float)(width * width + height * height)) * 0.5f;
@@ -763,6 +764,7 @@ static float compute_exit_angle(
 // - internal_ray_real_colors: if true, use wavelength-based colors for internal rays
 // - grain_intensity: 0.0-1.0 intensity of film grain effect
 // - vignette_intensity: 0.0-1.0 intensity of vignette darkening
+// - white_background: 1 = white background (for pebble mode with dithering)
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -786,10 +788,11 @@ static void render_watchface_scene(
   int internal_ray_real_colors,
   int artistic_dispersion,
   float grain_intensity,
-  float vignette_intensity
+  float vignette_intensity,
+  int white_background
 ) {
   // Initialize background
-  init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity);
+  init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity, white_background);
 
   // Entry ray direction: toward center
   float entry_dx = cx - entry_x;
