@@ -8,7 +8,7 @@ export interface WasmModule {
     second: number,
     prism_size_percent: number,
     rainbow_spread: number,
-    minimal_mode: number,
+    show_markers: number,
     prism_red: number,
     prism_green: number,
     prism_blue: number,

@@ -174,7 +174,7 @@ export const background = {
 
 export const display = {
   // Signals
-  minimal: signal(settings.displayMinimal ?? true),
+  markers: signal(settings.displayMarkers ?? true),
   seconds: signal(settings.displaySeconds ?? true),
   dithering: signal(settings.displayDithering ?? false),
   pebble: signal(settings.displayPebble ?? false),
@@ -183,8 +183,8 @@ export const display = {
   secondsDisabled: computed((): boolean => mode.live.value && mode.accelerated.value),
 
   // Actions
-  toggleMinimal(): void {
-    display.minimal.value = !display.minimal.value;
+  toggleMarkers(): void {
+    display.markers.value = !display.markers.value;
   },
 
   toggleSeconds(): void {

@@ -32,7 +32,7 @@ clock where time is displayed through the direction of light rays rather than tr
 
 - **Live Mode**: Real-time clock display with optional accelerated time
 - **Fullscreen Mode**: Available in live mode for distraction-free viewing
-- **Minimal Mode**: Hides hour markers for a cleaner look
+- **Show Markers**: Toggle hour markers visibility
 - **Pebble Mode**: Fixed 260×260 size for smartwatch preview
 - **1-Bit Dithering**: Applies Atkinson dithering for a retro monochrome look
 

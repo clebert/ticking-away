@@ -21,7 +21,7 @@ export interface Settings {
   raysInnerSpectrum: boolean;
   raysArtisticDispersion: boolean;
 
-  displayMinimal: boolean;
+  displayMarkers: boolean;
   displaySeconds: boolean;
   displayDithering: boolean;
   displayPebble: boolean;
@@ -68,7 +68,7 @@ export function saveSettings({ mode, prism, rays, display, background }: typeof 
       backgroundGrainIntensity: background.grainIntensity.value,
       backgroundVignetteIntensity: background.vignetteIntensity.value,
 
-      displayMinimal: display.minimal.value,
+      displayMarkers: display.markers.value,
       displaySeconds: display.seconds.value,
       displayDithering: display.dithering.value,
       displayPebble: display.pebble.value,

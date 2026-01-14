@@ -753,7 +753,7 @@ static float compute_exit_angle(
 // - hour_angle: angle to hour position from center
 // - rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
 // - second: 0.0-59.999 for seconds sparkle position on prism edge
-// - minimal_mode: if true, hide watch overlay (hour markers, chevron)
+// - show_markers: if true, show watch overlay (hour markers)
 // - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke and internal rays
 // - show_seconds: if true, show seconds sparkle on prism edge
 // - sparkle_size_percent: 1.0-10.0 scale factor for sparkle size
@@ -771,7 +771,7 @@ static void render_watchface_scene(
   float rainbow_spread,
   float second,
   const Prism* prism,
-  int minimal_mode,
+  int show_markers,
   uint8_t prism_r,
   uint8_t prism_g,
   uint8_t prism_b,
@@ -803,7 +803,7 @@ static void render_watchface_scene(
     // Ray doesn't hit prism - just draw overlay and return
     draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
                     radius * glow_width_percent, glow_intensity, glow_falloff);
-    if (!minimal_mode) {
+    if (show_markers) {
       draw_watch_overlay(fb, width, height, cx, cy, radius);
     }
     return;
@@ -923,8 +923,8 @@ static void render_watchface_scene(
     draw_sparkle(fb, width, height, sparkle_x, sparkle_y, radius, sparkle_size_percent, second);
   }
 
-  // Draw watch overlay (hour markers) unless minimal mode
-  if (!minimal_mode) {
+  // Draw watch overlay (hour markers) if show_markers is set
+  if (show_markers) {
     draw_watch_overlay(fb, width, height, cx, cy, radius);
   }
 }

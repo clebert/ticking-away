@@ -32,7 +32,7 @@ export function render(): void {
     time.seconds.value,
     prism.size.value,
     prism.rainbowSpread.value / 100.0,
-    display.minimal.value ? 1 : 0,
+    display.markers.value ? 1 : 0,
     prismRed,
     prismGreen,
     prismBlue,
