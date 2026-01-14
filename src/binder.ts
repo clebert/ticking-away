@@ -100,21 +100,17 @@ export function createBinder(config: BinderConfig): (root: Element | Document) =
             continue;
           }
 
-          const eventProp = `on${prop}`;
-
-          if (!(eventProp in element)) {
+          // Check for "on" prefix to avoid matching element methods like click()
+          if (!prop.startsWith("on") || !(prop in element)) {
             console.error(`[binder] Unknown event "${prop}" on <${element.tagName.toLowerCase()}>`);
 
             continue;
           }
 
-          const abortController = new AbortController();
+          const eventType = prop.slice(2); // "onclick" => "click"
 
-          element.addEventListener(prop, value as EventListener, {
-            signal: abortController.signal,
-          });
-
-          disposers.push(() => abortController.abort());
+          element.addEventListener(eventType, value);
+          disposers.push(() => element.removeEventListener(eventType, value));
 
           continue;
         }

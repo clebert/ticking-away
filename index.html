@@ -209,7 +209,7 @@
 
     <main>
       <div id="canvas-container">
-        <canvas id="canvas" data-bind="click:mode.toggleClockOnly"></canvas>
+        <canvas id="canvas" data-bind="onclick:mode.toggleClockOnly"></canvas>
       </div>
       <aside id="controls" data-bind="hidden:mode.hideControls">
         <div class="control-panel">
@@ -217,25 +217,25 @@
           <div class="section-title">Mode</div>
           <div class="control-group">
             <label
-              ><input type="checkbox" data-bind="checked:mode.live, change:mode.toggleLive" />
+              ><input type="checkbox" data-bind="checked:mode.live, onchange:mode.toggleLive" />
               Live Mode
             ></label>
           </div>
           <div class="button-row">
-            <button class="action-button" data-bind="click:mode.enterFullscreen, disabled:mode.fullscreenDisabled">Fullscreen</button>
+            <button class="action-button" data-bind="onclick:mode.enterFullscreen, disabled:mode.fullscreenDisabled">Fullscreen</button>
           </div>
           <div class="control-group">
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:mode.accelerated, change:mode.toggleAccelerated"
+                data-bind="checked:mode.accelerated, onchange:mode.toggleAccelerated"
               />
               Accelerated</label
             >
           </div>
           <div class="control-group" data-bind="hidden:!mode.accelerated">
             <label>Speed</label>
-            <select data-bind="value:mode.accelerationFactor, change:mode.setAccelerationFactor">
+            <select data-bind="value:mode.accelerationFactor, onchange:mode.setAccelerationFactor">
               <option value="1">1 min/sec</option>
               <option value="10">10 min/sec</option>
               <option value="30">30 min/sec</option>
@@ -252,7 +252,7 @@
               type="range"
               min="0"
               max="11"
-              data-bind="value:time.hours, input:time.setHours"
+              data-bind="value:time.hours, oninput:time.setHours"
             />
           </div>
           <div class="control-group" data-bind="hidden:mode.live">
@@ -261,7 +261,7 @@
               type="range"
               min="0"
               max="59"
-              data-bind="value:time.minutes, input:time.setMinutes"
+              data-bind="value:time.minutes, oninput:time.setMinutes"
             />
           </div>
           <div class="control-group" data-bind="hidden:mode.live">
@@ -270,11 +270,11 @@
               type="range"
               min="0"
               max="59"
-              data-bind="value:time.seconds, input:time.setSeconds"
+              data-bind="value:time.seconds, oninput:time.setSeconds"
             />
           </div>
           <div class="button-row" data-bind="hidden:mode.live">
-            <button class="action-button" data-bind="click:time.setNow">Set to Now</button>
+            <button class="action-button" data-bind="onclick:time.setNow">Set to Now</button>
           </div>
 
           <!-- Prism Controls -->
@@ -285,7 +285,7 @@
               type="range"
               min="10"
               max="90"
-              data-bind="value:prism.size, input:prism.setSize"
+              data-bind="value:prism.size, oninput:prism.setSize"
             />
           </div>
           <div class="control-group">
@@ -296,7 +296,7 @@
               type="range"
               min="0"
               max="100"
-              data-bind="value:prism.rainbowSpread, input:prism.setRainbowSpread"
+              data-bind="value:prism.rainbowSpread, oninput:prism.setRainbowSpread"
             />
           </div>
           <div class="control-group">
@@ -305,7 +305,7 @@
               type="range"
               min="0"
               max="255"
-              data-bind="value:prism.gray, input:prism.setGray"
+              data-bind="value:prism.gray, oninput:prism.setGray"
             />
           </div>
           <div class="control-group">
@@ -314,7 +314,7 @@
               type="range"
               min="0"
               max="50"
-              data-bind="value:prism.blueTint, input:prism.setBlueTint"
+              data-bind="value:prism.blueTint, oninput:prism.setBlueTint"
             />
           </div>
           <div class="control-group">
@@ -323,7 +323,7 @@
               type="range"
               min="5"
               max="50"
-              data-bind="value:prism.glowWidth, input:prism.setGlowWidth"
+              data-bind="value:prism.glowWidth, oninput:prism.setGlowWidth"
             />
           </div>
           <div class="control-group">
@@ -334,12 +334,12 @@
               type="range"
               min="10"
               max="100"
-              data-bind="value:prism.glowIntensity, input:prism.setGlowIntensity"
+              data-bind="value:prism.glowIntensity, oninput:prism.setGlowIntensity"
             />
           </div>
           <div class="control-group">
             <label>Glow Falloff</label>
-            <select data-bind="value:prism.glowFalloff, change:prism.setGlowFalloff">
+            <select data-bind="value:prism.glowFalloff, onchange:prism.setGlowFalloff">
               <option value="0">Linear</option>
               <option value="1">Quadratic</option>
               <option value="2">Cubic</option>
@@ -352,7 +352,7 @@
               type="range"
               min="100"
               max="1000"
-              data-bind="value:prism.sparkleSize, input:prism.setSparkleSize"
+              data-bind="value:prism.sparkleSize, oninput:prism.setSparkleSize"
             />
           </div>
 
@@ -362,7 +362,7 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:rays.innerSpectrum, change:rays.toggleInnerSpectrum"
+                data-bind="checked:rays.innerSpectrum, onchange:rays.toggleInnerSpectrum"
               />
               Real Internal Colors</label
             >
@@ -371,7 +371,7 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:rays.artisticDispersion, change:rays.toggleArtisticDispersion"
+                data-bind="checked:rays.artisticDispersion, onchange:rays.toggleArtisticDispersion"
               />
               Artistic Dispersion</label
             >
@@ -382,7 +382,7 @@
               type="range"
               min="0"
               max="10"
-              data-bind="value:rays.glowWidth, input:rays.setGlowWidth"
+              data-bind="value:rays.glowWidth, oninput:rays.setGlowWidth"
             />
           </div>
           <div class="control-group">
@@ -393,12 +393,12 @@
               type="range"
               min="0"
               max="100"
-              data-bind="value:rays.glowIntensity, input:rays.setGlowIntensity"
+              data-bind="value:rays.glowIntensity, oninput:rays.setGlowIntensity"
             />
           </div>
           <div class="control-group">
             <label>Glow Falloff</label>
-            <select data-bind="value:rays.glowFalloff, change:rays.setGlowFalloff">
+            <select data-bind="value:rays.glowFalloff, onchange:rays.setGlowFalloff">
               <option value="0">Linear</option>
               <option value="1">Quadratic</option>
               <option value="2">Cubic</option>
@@ -414,7 +414,7 @@
               type="range"
               min="0"
               max="100"
-              data-bind="value:background.grainIntensity, input:background.setGrainIntensity, disabled:background.grainDisabled"
+              data-bind="value:background.grainIntensity, oninput:background.setGrainIntensity, disabled:background.grainDisabled"
             />
           </div>
           <div class="control-group">
@@ -426,7 +426,7 @@
               type="range"
               min="0"
               max="100"
-              data-bind="value:background.vignetteIntensity, input:background.setVignetteIntensity, disabled:background.vignetteDisabled"
+              data-bind="value:background.vignetteIntensity, oninput:background.setVignetteIntensity, disabled:background.vignetteDisabled"
             />
           </div>
 
@@ -436,7 +436,7 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:display.seconds, change:display.toggleSeconds, disabled:display.secondsDisabled"
+                data-bind="checked:display.seconds, onchange:display.toggleSeconds, disabled:display.secondsDisabled"
               />
               Show Seconds</label
             >
@@ -445,7 +445,7 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:display.markers, change:display.toggleMarkers"
+                data-bind="checked:display.markers, onchange:display.toggleMarkers"
               />
               Show Markers</label
             >
@@ -454,7 +454,7 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:display.pebble, change:display.togglePebble"
+                data-bind="checked:display.pebble, onchange:display.togglePebble"
               />
               Pebble Mode (260x260)</label
             >
@@ -463,7 +463,7 @@
             <label
               ><input
                 type="checkbox"
-                data-bind="checked:display.dithering, change:display.toggleDithering"
+                data-bind="checked:display.dithering, onchange:display.toggleDithering"
               />
               1-Bit Dithering</label
             >
