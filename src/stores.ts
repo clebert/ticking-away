@@ -25,6 +25,7 @@ export const mode = {
 
   // Computed
   hideControls: computed((): boolean => mode.fullscreen.value || mode.clockOnly.value),
+  fullscreenDisabled: computed((): boolean => !mode.live.value || mode.accelerated.value),
 
   // Actions
   enterFullscreen: async (): Promise<void> => {

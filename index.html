@@ -158,6 +158,16 @@
         background: #444;
       }
 
+      .action-button:disabled {
+        background: #222;
+        color: #666;
+        cursor: not-allowed;
+      }
+
+      .action-button:disabled:hover {
+        background: #222;
+      }
+
       .button-row {
         display: flex;
         gap: 8px;
@@ -211,8 +221,8 @@
               Live Mode
             ></label>
           </div>
-          <div class="button-row" data-bind="hidden:!mode.live">
-            <button class="action-button" data-bind="click:mode.enterFullscreen">Fullscreen</button>
+          <div class="button-row">
+            <button class="action-button" data-bind="click:mode.enterFullscreen, disabled:mode.fullscreenDisabled">Fullscreen</button>
           </div>
           <div class="control-group">
             <label
