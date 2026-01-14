@@ -1,15 +1,14 @@
 import { batch, effect } from "@preact/signals-core";
 import { startAnimation, stopAnimation } from "./animation.ts";
 import { createBinder } from "./binder.ts";
-import { initCanvas, resizeCanvas } from "./canvas.ts";
+import { resizeCanvas } from "./canvas.ts";
 import { render } from "./renderer.ts";
 import { saveSettings } from "./storage.ts";
 import * as stores from "./stores.ts";
 import { initWasm } from "./wasm.ts";
 
 initWasm().then(() => {
-  initCanvas();
-  resizeCanvas(stores.display.pebble.value);
+  createBinder({ stores })(document.body);
 
   window.addEventListener("resize", () => {
     resizeCanvas(stores.display.pebble.value);
@@ -36,6 +35,4 @@ initWasm().then(() => {
       });
     }
   });
-
-  createBinder({ stores })(document.body);
 });

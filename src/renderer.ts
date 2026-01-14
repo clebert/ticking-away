@@ -1,4 +1,4 @@
-import { getCanvas, getCanvasContext, getFramebufferPointer } from "./canvas.ts";
+import { getCanvas, getFramebufferPointer } from "./canvas.ts";
 import { background, display, prism, rays, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
@@ -11,11 +11,13 @@ export function render(): void {
   }
 
   const canvas = getCanvas();
-  const canvasContext = getCanvasContext();
-  const framebufferPointer = getFramebufferPointer();
-
   const width = canvas.width;
   const height = canvas.height;
+  const framebufferPointer = getFramebufferPointer(width, height);
+
+  if (framebufferPointer === undefined) {
+    return;
+  }
 
   const prismRed = Math.max(0, prism.gray.value - prism.blueTint.value);
   const prismGreen = Math.max(0, prism.gray.value - Math.floor(prism.blueTint.value / 2));
@@ -60,5 +62,5 @@ export function render(): void {
 
   const imageData = new ImageData(framebufferArray, width, height);
 
-  canvasContext.putImageData(imageData, 0, 0);
+  canvas.getContext("2d")?.putImageData(imageData, 0, 0);
 }
