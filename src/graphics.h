@@ -315,42 +315,6 @@ static void draw_line_with_glow_additive(
 }
 
 // =================================================================================================
-// Circle Drawing (Midpoint Algorithm)
-// =================================================================================================
-
-static void draw_circle(
-  uint8_t* fb, int width, int height,
-  float cx, float cy, float radius,
-  uint8_t r, uint8_t g, uint8_t b, uint8_t a
-) {
-  int x = (int)(radius + 0.5f);
-  int y = 0;
-  int err = 0;
-  int icx = (int)(cx + 0.5f);
-  int icy = (int)(cy + 0.5f);
-
-  while (x >= y) {
-    set_pixel_alpha(fb, width, height, icx + x, icy + y, r, g, b, a);
-    set_pixel_alpha(fb, width, height, icx + y, icy + x, r, g, b, a);
-    set_pixel_alpha(fb, width, height, icx - y, icy + x, r, g, b, a);
-    set_pixel_alpha(fb, width, height, icx - x, icy + y, r, g, b, a);
-    set_pixel_alpha(fb, width, height, icx - x, icy - y, r, g, b, a);
-    set_pixel_alpha(fb, width, height, icx - y, icy - x, r, g, b, a);
-    set_pixel_alpha(fb, width, height, icx + y, icy - x, r, g, b, a);
-    set_pixel_alpha(fb, width, height, icx + x, icy - y, r, g, b, a);
-
-    if (err <= 0) {
-      y++;
-      err += 2 * y + 1;
-    }
-    if (err > 0) {
-      x--;
-      err -= 2 * x + 1;
-    }
-  }
-}
-
-// =================================================================================================
 // Watch-Specific Drawing
 // =================================================================================================
 
@@ -613,8 +577,6 @@ static void draw_watch_overlay(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius
 ) {
-  draw_circle(fb, width, height, cx, cy, radius, 60, 60, 60, 255);
-
   for (int h = 0; h < 12; h++) {
     float angle = ((float)h - 3.0f) * 30.0f * PI / 180.0f;
 
