@@ -214,6 +214,7 @@ export const display = {
   seconds: signal(settings.displaySeconds ?? true),
   dithering: signal(settings.displayDithering ?? false),
   pebble: signal(settings.displayPebble ?? false),
+  highDpi: signal(settings.displayHighDpi ?? true),
 
   // Computed
   secondsDisabled: computed((): boolean => mode.live.value && mode.accelerated.value),
@@ -233,5 +234,9 @@ export const display = {
 
   togglePebble(): void {
     display.pebble.value = !display.pebble.value;
+  },
+
+  toggleHighDpi(): void {
+    display.highDpi.value = !display.highDpi.value;
   },
 };

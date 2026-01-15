@@ -4,7 +4,7 @@ export function getCanvas(): HTMLCanvasElement {
   return document.getElementById("canvas") as HTMLCanvasElement;
 }
 
-export function resizeCanvas(pebbleMode: boolean, dithering: boolean): void {
+export function resizeCanvas(pebbleMode: boolean, dithering: boolean, highDpi: boolean): void {
   const canvas = getCanvas();
   const container = canvas.parentElement as HTMLElement;
   const containerRect = container.getBoundingClientRect();
@@ -19,7 +19,7 @@ export function resizeCanvas(pebbleMode: boolean, dithering: boolean): void {
     canvas.style.left = "50%";
     canvas.style.transform = "translate(-50%, -50%)";
   } else {
-    const devicePixelRatio = window.devicePixelRatio || 1;
+    const devicePixelRatio = highDpi ? window.devicePixelRatio || 1 : 1;
 
     canvas.width = Math.max(Math.floor(containerRect.width * devicePixelRatio), 100);
     canvas.height = Math.max(Math.floor(containerRect.height * devicePixelRatio), 100);

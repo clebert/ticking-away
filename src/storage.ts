@@ -25,6 +25,7 @@ export interface Settings {
   displaySeconds: boolean;
   displayDithering: boolean;
   displayPebble: boolean;
+  displayHighDpi: boolean;
 
   backgroundGrainIntensity: number;
   backgroundVignetteIntensity: number;
@@ -72,6 +73,7 @@ export function saveSettings({ mode, prism, rays, display, background }: typeof 
       displaySeconds: display.seconds.value,
       displayDithering: display.dithering.value,
       displayPebble: display.pebble.value,
+      displayHighDpi: display.highDpi.value,
     };
 
     localStorage.setItem(storageKey, JSON.stringify(settings));

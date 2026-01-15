@@ -11,7 +11,12 @@ initWasm().then(() => {
   createBinder({ stores })(document.body);
 
   window.addEventListener("resize", () => {
-    resizeCanvas(stores.display.pebble.value, stores.display.dithering.value);
+    resizeCanvas(
+      stores.display.pebble.value,
+      stores.display.dithering.value,
+      stores.display.highDpi.value,
+    );
+
     render();
   });
 
@@ -20,7 +25,13 @@ initWasm().then(() => {
   effect(() => {
     // Track clockOnly to resize when sidebar visibility changes (fullscreen uses resize event)
     stores.mode.clockOnly.value;
-    resizeCanvas(stores.display.pebble.value, stores.display.dithering.value);
+
+    resizeCanvas(
+      stores.display.pebble.value,
+      stores.display.dithering.value,
+      stores.display.highDpi.value,
+    );
+
     // Re-render after resize since effect(render) won't trigger from canvas size change
     render();
   });
