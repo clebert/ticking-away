@@ -8,19 +8,18 @@ export function resizeCanvas(pebbleMode: boolean, dithering: number, highDpi: bo
   const canvas = getCanvas();
   const container = canvas.parentElement as HTMLElement;
   const containerRect = container.getBoundingClientRect();
+  const devicePixelRatio = highDpi ? window.devicePixelRatio || 1 : 1;
 
   if (pebbleMode) {
     canvas.width = 260;
     canvas.height = 260;
-    canvas.style.width = `${canvas.width}px`;
-    canvas.style.height = `${canvas.height}px`;
+    canvas.style.width = `${Math.floor(canvas.width / devicePixelRatio)}px`;
+    canvas.style.height = `${Math.floor(canvas.height / devicePixelRatio)}px`;
     canvas.style.position = "absolute";
     canvas.style.top = "50%";
     canvas.style.left = "50%";
     canvas.style.transform = "translate(-50%, -50%)";
   } else {
-    const devicePixelRatio = highDpi ? window.devicePixelRatio || 1 : 1;
-
     canvas.width = Math.max(Math.floor(containerRect.width * devicePixelRatio), 100);
     canvas.height = Math.max(Math.floor(containerRect.height * devicePixelRatio), 100);
     canvas.style.width = "100%";
