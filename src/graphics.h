@@ -81,6 +81,18 @@ static RGB wavelength_to_rgb(float wavelength_nm) {
   return result;
 }
 
+// Precomputed RGB colors for each wavelength (avoids recomputing each frame)
+static RGB WAVELENGTH_COLORS[NUM_WAVELENGTHS];
+static int wavelength_colors_initialized = 0;
+
+static void init_wavelength_colors(void) {
+  if (wavelength_colors_initialized) return;
+  for (int i = 0; i < NUM_WAVELENGTHS; i++) {
+    WAVELENGTH_COLORS[i] = wavelength_to_rgb(WAVELENGTHS[i]);
+  }
+  wavelength_colors_initialized = 1;
+}
+
 // =================================================================================================
 // Pixel Operations
 // =================================================================================================
@@ -959,6 +971,9 @@ static void render_watchface_scene(
   uint32_t frame,
   int grain_animated
 ) {
+  // Initialize precomputed data (no-op after first call)
+  init_wavelength_colors();
+
   // Initialize background
   init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity, white_background, frame, grain_animated);
 
@@ -1002,8 +1017,7 @@ static void render_watchface_scene(
   // Outside ray: always white (all wavelengths add to white)
   // Internal rays: use wavelength colors if toggle on, otherwise prism color
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
-    float wavelength = WAVELENGTHS[i];
-    RGB color = wavelength_to_rgb(wavelength);
+    RGB color = WAVELENGTH_COLORS[i];
 
     // Draw incoming ray (outside prism) - white for all wavelengths, adds up via blending
     if (has_clipped_entry) {
