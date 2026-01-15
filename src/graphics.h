@@ -14,6 +14,27 @@ static const float WAVELENGTHS[NUM_WAVELENGTHS] = {
 };
 
 // =================================================================================================
+// Falloff Computation
+// =================================================================================================
+
+// Exponential falloff constant: -3 / ln(2) for exp(-3*t) = exp2(EXP_NEG3_FACTOR * t)
+#define EXP_NEG3_FACTOR -4.328085f
+
+// Compute falloff value for glow effects
+// falloff_type: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+// t: normalized distance (0 at center, 1 at edge)
+static inline float compute_falloff(int falloff_type, float t) {
+  float one_minus_t = 1.0f - t;
+  switch (falloff_type) {
+    case 0: return one_minus_t;
+    case 1: return one_minus_t * one_minus_t;
+    case 2: return one_minus_t * one_minus_t * one_minus_t;
+    case 3: return fast_exp2f(EXP_NEG3_FACTOR * t) * one_minus_t;
+    default: return one_minus_t * one_minus_t;
+  }
+}
+
+// =================================================================================================
 // Wavelength to RGB
 // =================================================================================================
 
@@ -205,6 +226,165 @@ static void draw_line_additive(
 }
 
 // =================================================================================================
+// Capsule Scanline Intersection (for optimized glow rendering)
+// =================================================================================================
+
+// Precomputed segment data (compute once per line, outside pixel loop)
+typedef struct {
+  float x0, y0;
+  float x1, y1;
+  float dx, dy;
+  float len_sq;
+  float inv_len_sq;
+  float len;      // sqrt(len_sq), precomputed for capsule intersection
+  float inv_len;  // 1/len, precomputed for capsule intersection
+} SegmentParams;
+
+static inline void init_segment_params(SegmentParams* s, float x0, float y0, float x1, float y1) {
+  s->x0 = x0;
+  s->y0 = y0;
+  s->x1 = x1;
+  s->y1 = y1;
+  s->dx = x1 - x0;
+  s->dy = y1 - y0;
+  s->len_sq = s->dx * s->dx + s->dy * s->dy;
+  s->inv_len_sq = (s->len_sq > EPS_NORM) ? 1.0f / s->len_sq : 0.0f;
+  s->len = (s->len_sq > EPS_NORM) ? sqrtf_impl(s->len_sq) : 0.0f;
+  s->inv_len = (s->len > EPS_NORM) ? 1.0f / s->len : 0.0f;
+}
+
+// Returns squared distance from point to segment (no sqrt)
+static inline float point_to_segment_distance_sq(const SegmentParams* s, float px, float py) {
+  if (s->len_sq < EPS_NORM) {
+    float fx = px - s->x0;
+    float fy = py - s->y0;
+    return fx * fx + fy * fy;
+  }
+
+  float fx = px - s->x0;
+  float fy = py - s->y0;
+  float t = (fx * s->dx + fy * s->dy) * s->inv_len_sq;
+
+  if (t < 0.0f) t = 0.0f;
+  else if (t > 1.0f) t = 1.0f;
+
+  float proj_x = s->x0 + t * s->dx;
+  float proj_y = s->y0 + t * s->dy;
+  float dist_x = px - proj_x;
+  float dist_y = py - proj_y;
+
+  return dist_x * dist_x + dist_y * dist_y;
+}
+
+// Compute x-interval where capsule intersects a horizontal scanline.
+// Returns 0 if no intersection, 1 if intersection found.
+// The capsule is defined by precomputed segment params with radius r (glow width).
+// Uses precomputed len/inv_len to avoid sqrt per scanline.
+//
+// Algorithm: A capsule is the Minkowski sum of a line segment and a disk.
+// We decompose it into three regions and compute their intersection with y:
+//   1. Start cap: circle at segment start (x0, y0)
+//   2. End cap: circle at segment end (x1, y1)
+//   3. Rectangle body: slab of width 2r around the segment
+// The final x-interval is the union of all intersecting regions.
+static int capsule_scanline_intersect(
+  float y, const SegmentParams* seg, float r,
+  int* out_x_lo, int* out_x_hi
+) {
+  float x_min = 1e9f, x_max = -1e9f;
+  int has_intersection = 0;
+  float r_sq = r * r;
+
+  // 1. Start cap: circle at (x0, y0)
+  float dy0 = y - seg->y0;
+  if (dy0 * dy0 < r_sq) {
+    float dx = sqrtf_impl(r_sq - dy0 * dy0);
+    float lo = seg->x0 - dx, hi = seg->x0 + dx;
+    if (lo < x_min) x_min = lo;
+    if (hi > x_max) x_max = hi;
+    has_intersection = 1;
+  }
+
+  // 2. End cap: circle at (x1, y1)
+  float dy1 = y - seg->y1;
+  if (dy1 * dy1 < r_sq) {
+    float dx = sqrtf_impl(r_sq - dy1 * dy1);
+    float lo = seg->x1 - dx, hi = seg->x1 + dx;
+    if (lo < x_min) x_min = lo;
+    if (hi > x_max) x_max = hi;
+    has_intersection = 1;
+  }
+
+  // 3. Rectangle body: slab around line segment (uses precomputed len/inv_len)
+  if (seg->len_sq > EPS_NORM) {
+    // Unit perpendicular (normal to segment) using precomputed inv_len
+    float nx = -seg->dy * seg->inv_len;
+    float ny = seg->dx * seg->inv_len;
+
+    // Check if this y is within the slab's perpendicular extent
+    // Perpendicular distance from point (x, y) to infinite line through (x0,y0) with direction (dx, dy)
+    // For a horizontal slice at y, we need to find where |perp_dist| <= r
+
+    // The perpendicular distance at any point (x, y) is: nx*(x - x0) + ny*(y - y0)
+    // We want |nx*(x - x0) + ny*(y - y0)| <= r
+    // Solving for x: x = x0 + (±r - ny*(y - y0)) / nx  (when nx != 0)
+
+    if (nx * nx > EPS_NORM) {  // nx != 0, line is not horizontal
+      float base = ny * (y - seg->y0);
+
+      // Two x values where perpendicular distance = ±r
+      float x_at_plus_r = seg->x0 + (r - base) / nx;
+      float x_at_minus_r = seg->x0 + (-r - base) / nx;
+
+      float slab_lo = x_at_plus_r < x_at_minus_r ? x_at_plus_r : x_at_minus_r;
+      float slab_hi = x_at_plus_r > x_at_minus_r ? x_at_plus_r : x_at_minus_r;
+
+      // Clamp to segment extent by projecting onto segment direction
+      // We need the portion where t = projection onto segment is in [0, 1]
+      // t = ((x - x0) * dx + (y - y0) * dy) / len_sq
+
+      // For x = slab_lo: compute t
+      float t_lo = ((slab_lo - seg->x0) * seg->dx + (y - seg->y0) * seg->dy) * seg->inv_len_sq;
+      float t_hi = ((slab_hi - seg->x0) * seg->dx + (y - seg->y0) * seg->dy) * seg->inv_len_sq;
+
+      // Ensure t_lo <= t_hi for overlap check (don't swap slab bounds - they're already sorted)
+      if (t_lo > t_hi) {
+        float tmp = t_lo; t_lo = t_hi; t_hi = tmp;
+      }
+
+      // Only include if segment overlaps [0, 1]
+      if (t_hi >= 0.0f && t_lo <= 1.0f) {
+        // Use the computed slab bounds (the endpoint caps will handle edge cases)
+        if (slab_lo < x_min) x_min = slab_lo;
+        if (slab_hi > x_max) x_max = slab_hi;
+        has_intersection = 1;
+      }
+    } else {
+      // nx ≈ 0, line is nearly horizontal
+      // Check if y is within r of the line's y-range
+      float y_lo = seg->y0 < seg->y1 ? seg->y0 : seg->y1;
+      float y_hi = seg->y0 > seg->y1 ? seg->y0 : seg->y1;
+
+      if (y >= y_lo - r && y <= y_hi + r) {
+        // Perpendicular distance is just |y - line_y|, which varies along segment
+        // For horizontal segments, the slab spans x0 to x1 with width r on each side
+        float slab_lo = (seg->x0 < seg->x1 ? seg->x0 : seg->x1) - r;
+        float slab_hi = (seg->x0 > seg->x1 ? seg->x0 : seg->x1) + r;
+        if (slab_lo < x_min) x_min = slab_lo;
+        if (slab_hi > x_max) x_max = slab_hi;
+        has_intersection = 1;
+      }
+    }
+  }
+
+  if (!has_intersection) return 0;
+
+  *out_x_lo = (int)x_min;  // floor
+  *out_x_hi = (int)x_max + 1;  // ceil
+  return 1;
+}
+
+// =================================================================================================
 // Line Drawing with Glow (Distance Field, Additive Blending)
 // =================================================================================================
 
@@ -228,28 +408,37 @@ static void draw_line_with_glow_additive(
   const float* clip_circle,
   const float* exclude_triangle
 ) {
-  // Compute bounding box expanded by glow width
-  float min_x = (x0 < x1 ? x0 : x1) - glow_width;
-  float max_x = (x0 > x1 ? x0 : x1) + glow_width;
+  // Precompute segment parameters (avoids redundant computation per pixel)
+  SegmentParams seg;
+  init_segment_params(&seg, x0, y0, x1, y1);
+  float glow_width_sq = glow_width * glow_width;
+
+  // Compute y-bounds from bounding box
   float min_y = (y0 < y1 ? y0 : y1) - glow_width;
   float max_y = (y0 > y1 ? y0 : y1) + glow_width;
 
-  // Clamp to screen bounds
-  int x_start = (int)min_x - 1;
-  int x_end = (int)max_x + 2;
   int y_start = (int)min_y - 1;
   int y_end = (int)max_y + 2;
 
-  if (x_start < 0) x_start = 0;
   if (y_start < 0) y_start = 0;
-  if (x_end > width) x_end = width;
   if (y_end > height) y_end = height;
 
-  // Iterate over bounding box and apply glow
+  // Iterate scanlines with per-scanline x bounds (capsule optimization)
   for (int y = y_start; y < y_end; y++) {
-    for (int x = x_start; x < x_end; x++) {
+    float py = (float)y + 0.5f;
+
+    // Compute x-interval where capsule intersects this scanline
+    int x_lo, x_hi;
+    if (!capsule_scanline_intersect(py, &seg, glow_width, &x_lo, &x_hi)) {
+      continue;  // Scanline doesn't intersect capsule
+    }
+
+    // Clamp to screen bounds
+    if (x_lo < 0) x_lo = 0;
+    if (x_hi > width) x_hi = width;
+
+    for (int x = x_lo; x < x_hi; x++) {
       float px = (float)x + 0.5f;
-      float py = (float)y + 0.5f;
 
       // Skip pixels outside the clipping triangle (if provided)
       if (clip_triangle && !point_in_triangle(px, py,
@@ -276,34 +465,17 @@ static void draw_line_with_glow_additive(
         continue;
       }
 
-      // Compute distance to line segment
-      float dist = point_to_segment_distance(px, py, x0, y0, x1, y1);
+      // Early-out using squared distance (avoid sqrt for rejected pixels)
+      float dist_sq = point_to_segment_distance_sq(&seg, px, py);
+      if (dist_sq >= glow_width_sq) continue;
 
-      // Apply glow: intensity falls off with distance from line
-      if (dist < glow_width) {
-        float t = dist / glow_width;
-        float falloff_value;
+      // Only compute sqrt for pixels inside glow
+      float dist = sqrtf_impl(dist_sq);
+      float t = dist / glow_width;
+      float falloff_value = compute_falloff(falloff, t);
 
-        switch (falloff) {
-          case 0:  // Linear
-            falloff_value = 1.0f - t;
-            break;
-          case 1:  // Quadratic
-            falloff_value = (1.0f - t) * (1.0f - t);
-            break;
-          case 2:  // Cubic
-            falloff_value = (1.0f - t) * (1.0f - t) * (1.0f - t);
-            break;
-          case 3:  // Exponential
-            falloff_value = fast_powf(2.718281828f, -3.0f * t) * (1.0f - t);
-            break;
-          default:
-            falloff_value = (1.0f - t) * (1.0f - t);
-        }
-
-        uint8_t alpha = (uint8_t)(falloff_value * intensity * 255.0f);
-        set_pixel_additive(fb, width, height, x, y, r, g, b, alpha);
-      }
+      uint8_t alpha = (uint8_t)(falloff_value * intensity * 255.0f);
+      set_pixel_additive(fb, width, height, x, y, r, g, b, alpha);
     }
   }
 
@@ -474,24 +646,7 @@ static void draw_prism_glow(
       // Apply glow: intensity falls off with distance from edge
       if (dist < glow_width) {
         float t = dist / glow_width;
-        float falloff_value;
-
-        switch (falloff) {
-          case 0:  // Linear
-            falloff_value = 1.0f - t;
-            break;
-          case 1:  // Quadratic
-            falloff_value = (1.0f - t) * (1.0f - t);
-            break;
-          case 2:  // Cubic
-            falloff_value = (1.0f - t) * (1.0f - t) * (1.0f - t);
-            break;
-          case 3:  // Exponential
-            falloff_value = fast_powf(2.718281828f, -3.0f * t) * (1.0f - t);
-            break;
-          default:
-            falloff_value = (1.0f - t) * (1.0f - t);
-        }
+        float falloff_value = compute_falloff(falloff, t);
 
         uint8_t alpha = (uint8_t)(falloff_value * intensity * 255.0f);
         set_pixel_additive(fb, width, height, x, y, r, g, b, alpha);
