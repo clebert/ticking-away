@@ -134,6 +134,11 @@
         border-color: #6699ff;
       }
 
+      .control-group select:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
       .action-button {
         background: #3366cc;
         color: white;
@@ -245,9 +250,9 @@
               Accelerated</label
             >
           </div>
-          <div class="control-group" data-bind="hidden:!mode.accelerated">
+          <div class="control-group">
             <label>Speed</label>
-            <select data-bind="value:mode.accelerationFactor, onchange:mode.setAccelerationFactor">
+            <select data-bind="value:mode.accelerationFactor, onchange:mode.setAccelerationFactor, disabled:!mode.accelerated">
               <option value="1">1 min/sec</option>
               <option value="10">10 min/sec</option>
               <option value="30">30 min/sec</option>
@@ -428,6 +433,15 @@
               max="100"
               data-bind="value:background.grainIntensity, oninput:background.setGrainIntensity, disabled:background.grainDisabled"
             />
+          </div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:background.grainAnimated, onchange:background.toggleGrainAnimated, disabled:background.grainDisabled"
+              />
+              Animated Grain</label
+            >
           </div>
           <div class="control-group">
             <label

@@ -2,6 +2,8 @@ import { getCanvas, getFramebufferPointer } from "./canvas.ts";
 import { background, display, prism, rays, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
+let frameCounter = 0;
+
 export function render(): void {
   const wasmModule = getWasmModule();
   const wasmMemory = getWasmMemory();
@@ -49,6 +51,8 @@ export function render(): void {
     background.grainDisabled.value ? 0 : background.grainIntensity.value / 100.0,
     background.vignetteDisabled.value ? 0 : background.vignetteIntensity.value / 100.0,
     display.pebble.value && display.dithering.value ? 1 : 0,
+    frameCounter++,
+    background.grainAnimated.value ? 1 : 0,
   );
 
   if (display.dithering.value) {

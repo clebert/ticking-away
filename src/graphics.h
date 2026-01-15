@@ -497,12 +497,21 @@ static inline uint32_t hash_pixel(int x, int y) {
   return h ^ (h >> 16);
 }
 
+// Temporal hash function for animated grain
+static inline uint32_t hash_pixel_temporal(int x, int y, uint32_t frame) {
+  uint32_t h = (uint32_t)(x * 374761393 + y * 668265263 + frame * 1013904223);
+  h = (h ^ (h >> 13)) * 1274126177;
+  return h ^ (h >> 16);
+}
+
 static void init_watch_framebuffer(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
   float grain_intensity,    // 0.0-1.0
   float vignette_intensity, // 0.0-1.0
-  int white_background      // 1 = white background (for pebble mode with dithering)
+  int white_background,     // 1 = white background (for pebble mode with dithering)
+  uint32_t frame,           // Frame counter for temporal grain animation
+  int grain_animated        // 1 = animate grain each frame
 ) {
   // Base colors
   float watch_base = 10.0f;
@@ -528,7 +537,7 @@ static void init_watch_framebuffer(
       int idx = row_offset + x * 4;
 
       // Film grain: subtle brightness variation
-      uint32_t hash = hash_pixel(x, y);
+      uint32_t hash = grain_animated ? hash_pixel_temporal(x, y, frame) : hash_pixel(x, y);
       float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
 
       float final_val;
@@ -920,6 +929,8 @@ static float compute_exit_angle(
 // - grain_intensity: 0.0-1.0 intensity of film grain effect
 // - vignette_intensity: 0.0-1.0 intensity of vignette darkening
 // - white_background: 1 = white background (for pebble mode with dithering)
+// - frame: frame counter for temporal grain animation
+// - grain_animated: 1 = animate grain each frame
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -944,10 +955,12 @@ static void render_watchface_scene(
   int artistic_dispersion,
   float grain_intensity,
   float vignette_intensity,
-  int white_background
+  int white_background,
+  uint32_t frame,
+  int grain_animated
 ) {
   // Initialize background
-  init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity, white_background);
+  init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity, white_background, frame, grain_animated);
 
   // Entry ray direction: toward center
   float entry_dx = cx - entry_x;
