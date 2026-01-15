@@ -752,22 +752,45 @@ static int clip_segment_to_circle(
 
 static void draw_watch_overlay(
   uint8_t* fb, int width, int height,
-  float cx, float cy, float radius
+  float cx, float cy, float radius,
+  uint8_t marker_r, uint8_t marker_g, uint8_t marker_b,
+  float marker_length_percent,
+  int marker_cardinal_only,
+  float marker_glow_width,
+  float marker_glow_intensity,
+  int marker_glow_falloff
 ) {
+  // Scale glow width relative to radius
+  float glow_width = radius * marker_glow_width;
+
+  // Clipping circle for marker glow (same as watchface)
+  float circle_clip[3] = { cx, cy, radius };
+
   for (int h = 0; h < 12; h++) {
+    // Skip non-cardinal markers if cardinal_only is enabled
+    if (marker_cardinal_only && (h % 3 != 0)) {
+      continue;
+    }
+
     float angle = ((float)h - 3.0f) * 30.0f * PI / 180.0f;
 
-    float inner_r = radius * 0.92f;
+    // Inner radius based on length percent (length extends inward from edge)
+    float inner_r = radius * (1.0f - marker_length_percent);
     float outer_r = radius * 0.98f;
 
     float cos_a = cosf_approx(angle);
     float sin_a = sinf_approx(angle);
-    int x0 = (int)(cx + cos_a * inner_r + 0.5f);
-    int y0 = (int)(cy + sin_a * inner_r + 0.5f);
-    int x1 = (int)(cx + cos_a * outer_r + 0.5f);
-    int y1 = (int)(cy + sin_a * outer_r + 0.5f);
+    float x0 = cx + cos_a * inner_r;
+    float y0 = cy + sin_a * inner_r;
+    float x1 = cx + cos_a * outer_r;
+    float y1 = cy + sin_a * outer_r;
 
-    draw_line_alpha(fb, width, height, x0, y0, x1, y1, 100, 100, 100, 255);
+    // Draw glowing marker with prism color, clipped to watchface
+    draw_line_with_glow_additive(fb, width, height,
+      x0, y0, x1, y1,
+      marker_r, marker_g, marker_b,
+      glow_width, marker_glow_intensity, marker_glow_falloff,
+      0, circle_clip, 0);
   }
 }
 
@@ -938,6 +961,11 @@ static float compute_exit_angle(
 // - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
 // - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 // - internal_ray_real_colors: if true, use wavelength-based colors for internal rays
+// - marker_length_percent: how far markers extend towards center (0.0-1.0)
+// - marker_cardinal_only: if true, only show 12, 3, 6, 9 markers
+// - marker_glow_width: glow width for markers as fraction of radius
+// - marker_glow_intensity: 0.0-1.0 multiplier for marker glow brightness
+// - marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 // - grain_intensity: 0.0-1.0 intensity of film grain effect
 // - vignette_intensity: 0.0-1.0 intensity of vignette darkening
 // - white_background: 1 = white background (for pebble mode with dithering)
@@ -965,6 +993,11 @@ static void render_watchface_scene(
   int ray_glow_falloff,
   int internal_ray_real_colors,
   int artistic_dispersion,
+  float marker_length_percent,
+  int marker_cardinal_only,
+  float marker_glow_width,
+  float marker_glow_intensity,
+  int marker_glow_falloff,
   float grain_intensity,
   float vignette_intensity,
   int white_background,
@@ -990,7 +1023,10 @@ static void render_watchface_scene(
     draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
                     radius * glow_width_percent, glow_intensity, glow_falloff);
     if (show_markers) {
-      draw_watch_overlay(fb, width, height, cx, cy, radius);
+      draw_watch_overlay(fb, width, height, cx, cy, radius,
+                         prism_r, prism_g, prism_b,
+                         marker_length_percent, marker_cardinal_only,
+                         marker_glow_width, marker_glow_intensity, marker_glow_falloff);
     }
     return;
   }
@@ -1110,6 +1146,9 @@ static void render_watchface_scene(
 
   // Draw watch overlay (hour markers) if show_markers is set
   if (show_markers) {
-    draw_watch_overlay(fb, width, height, cx, cy, radius);
+    draw_watch_overlay(fb, width, height, cx, cy, radius,
+                       prism_r, prism_g, prism_b,
+                       marker_length_percent, marker_cardinal_only,
+                       marker_glow_width, marker_glow_intensity, marker_glow_falloff);
   }
 }

@@ -36,6 +36,11 @@
 //   internal_ray_real_colors: 0 or 1 (1 = use wavelength-based colors for internal rays)
 //   artistic_dispersion: 0 or 1 (1 = artistic dispersion with red first, 0 = physical where violet
 //   bends most)
+//   marker_length_percent: 0.0-0.20 (how far markers extend towards center)
+//   marker_cardinal_only: 0 or 1 (1 = only show 12, 3, 6, 9 markers)
+//   marker_glow_width_percent: 0.0-0.05 (% of radius for marker glow width)
+//   marker_glow_intensity: 0.0-1.0 (marker glow intensity multiplier)
+//   marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 //   grain_intensity: 0.0-1.0 (intensity of film grain effect)
 //   vignette_intensity: 0.0-1.0 (intensity of vignette darkening)
 //   white_background: 0 or 1 (1 = white background for pebble mode with dithering)
@@ -48,9 +53,11 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
                                   float glow_width_percent, float glow_intensity, int glow_falloff,
                                   float ray_glow_width_percent, float ray_glow_intensity,
                                   int ray_glow_falloff, int internal_ray_real_colors,
-                                  int artistic_dispersion, float grain_intensity,
-                                  float vignette_intensity, int white_background, int frame,
-                                  int grain_animated) {
+                                  int artistic_dispersion, float marker_length_percent,
+                                  int marker_cardinal_only, float marker_glow_width_percent,
+                                  float marker_glow_intensity, int marker_glow_falloff,
+                                  float grain_intensity, float vignette_intensity,
+                                  int white_background, int frame, int grain_animated) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -78,7 +85,9 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
       &prism, show_markers, (uint8_t)prism_r, (uint8_t)prism_g, (uint8_t)prism_b, show_seconds,
       sparkle_size_percent, glow_width_percent, glow_intensity, glow_falloff, ray_glow_width,
       ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors, artistic_dispersion,
-      grain_intensity, vignette_intensity, white_background, (uint32_t)frame, grain_animated);
+      marker_length_percent, marker_cardinal_only, marker_glow_width_percent,
+      marker_glow_intensity, marker_glow_falloff, grain_intensity, vignette_intensity,
+      white_background, (uint32_t)frame, grain_animated);
 }
 
 // Apply Atkinson dithering to the framebuffer as a post-processing step.

@@ -1,5 +1,5 @@
 import { getCanvas, getFramebufferPointer } from "./canvas.ts";
-import { background, display, prism, rays, time } from "./stores.ts";
+import { background, display, markers, prism, rays, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
 let frameCounter = 0;
@@ -48,6 +48,11 @@ export function render(): void {
     rays.glowFalloff.value,
     rays.innerSpectrum.value ? 1 : 0,
     rays.artisticDispersion.value ? 1 : 0,
+    markers.length.value / 100.0,
+    markers.cardinalOnly.value ? 1 : 0,
+    markers.glowWidth.value / 100.0,
+    markers.glowIntensity.value / 100.0,
+    markers.glowFalloff.value,
     background.grainDisabled.value ? 0 : background.grainIntensity.value / 100.0,
     background.vignetteDisabled.value ? 0 : background.vignetteIntensity.value / 100.0,
     display.dithering.value !== 0 ? 1 : 0,

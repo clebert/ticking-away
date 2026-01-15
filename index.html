@@ -423,6 +423,56 @@
             </select>
           </div>
 
+          <!-- Marker Controls -->
+          <div class="section-title">Markers</div>
+          <div class="control-group">
+            <label>Length: <span data-bind="textContent:markers.length">6</span>%</label>
+            <input
+              type="range"
+              min="2"
+              max="20"
+              data-bind="value:markers.length, oninput:markers.setLength"
+            />
+          </div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:markers.cardinalOnly, onchange:markers.toggleCardinalOnly"
+              />
+              Cardinal Only (12, 3, 6, 9)</label
+            >
+          </div>
+          <div class="control-group">
+            <label>Glow Width: <span data-bind="textContent:markers.glowWidth">2</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="5"
+              data-bind="value:markers.glowWidth, oninput:markers.setGlowWidth"
+            />
+          </div>
+          <div class="control-group">
+            <label
+              >Glow Intensity: <span data-bind="textContent:markers.glowIntensity">60</span>%</label
+            >
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:markers.glowIntensity, oninput:markers.setGlowIntensity"
+            />
+          </div>
+          <div class="control-group">
+            <label>Glow Falloff</label>
+            <select data-bind="value:markers.glowFalloff, onchange:markers.setGlowFalloff">
+              <option value="0">Linear</option>
+              <option value="1">Quadratic</option>
+              <option value="2">Cubic</option>
+              <option value="3">Exponential</option>
+            </select>
+          </div>
+
           <!-- Background -->
           <div class="section-title">Background</div>
           <div class="control-group">

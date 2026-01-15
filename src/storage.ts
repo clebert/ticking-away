@@ -21,6 +21,12 @@ export interface Settings {
   raysInnerSpectrum: boolean;
   raysArtisticDispersion: boolean;
 
+  markersLength: number;
+  markersCardinalOnly: boolean;
+  markersGlowWidth: number;
+  markersGlowIntensity: number;
+  markersGlowFalloff: number;
+
   displayMarkers: boolean;
   displaySeconds: boolean;
   displayDithering: number;
@@ -46,7 +52,14 @@ export function loadSettings(): Partial<Settings> {
   return {};
 }
 
-export function saveSettings({ mode, prism, rays, display, background }: typeof stores): void {
+export function saveSettings({
+  mode,
+  prism,
+  rays,
+  markers,
+  display,
+  background,
+}: typeof stores): void {
   try {
     const settings: Settings = {
       modeAccelerated: mode.accelerated.value,
@@ -66,6 +79,12 @@ export function saveSettings({ mode, prism, rays, display, background }: typeof 
       raysGlowFalloff: rays.glowFalloff.value,
       raysInnerSpectrum: rays.innerSpectrum.value,
       raysArtisticDispersion: rays.artisticDispersion.value,
+
+      markersLength: markers.length.value,
+      markersCardinalOnly: markers.cardinalOnly.value,
+      markersGlowWidth: markers.glowWidth.value,
+      markersGlowIntensity: markers.glowIntensity.value,
+      markersGlowFalloff: markers.glowFalloff.value,
 
       backgroundGrainIntensity: background.grainIntensity.value,
       backgroundVignetteIntensity: background.vignetteIntensity.value,

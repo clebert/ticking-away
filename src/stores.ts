@@ -189,6 +189,38 @@ export const rays = {
   },
 };
 
+export const markers = {
+  // Signals: geometry
+  length: signal(settings.markersLength ?? 6),
+  cardinalOnly: signal(settings.markersCardinalOnly ?? false),
+
+  // Signals: glow
+  glowWidth: signal(settings.markersGlowWidth ?? 2),
+  glowIntensity: signal(settings.markersGlowIntensity ?? 60),
+  glowFalloff: signal(settings.markersGlowFalloff ?? 1),
+
+  // Actions
+  setLength(e: Event): void {
+    markers.length.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  toggleCardinalOnly(): void {
+    markers.cardinalOnly.value = !markers.cardinalOnly.value;
+  },
+
+  setGlowWidth(e: Event): void {
+    markers.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  setGlowIntensity(e: Event): void {
+    markers.glowIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  setGlowFalloff(e: Event): void {
+    markers.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  },
+};
+
 export const background = {
   // Signals: effect intensities
   grainIntensity: signal(settings.backgroundGrainIntensity ?? 80),
