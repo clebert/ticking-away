@@ -4,7 +4,7 @@ export function getCanvas(): HTMLCanvasElement {
   return document.getElementById("canvas") as HTMLCanvasElement;
 }
 
-export function resizeCanvas(pebbleMode: boolean, dithering: boolean, highDpi: boolean): void {
+export function resizeCanvas(pebbleMode: boolean, dithering: number, highDpi: boolean): void {
   const canvas = getCanvas();
   const container = canvas.parentElement as HTMLElement;
   const containerRect = container.getBoundingClientRect();
@@ -31,7 +31,7 @@ export function resizeCanvas(pebbleMode: boolean, dithering: boolean, highDpi: b
     canvas.style.transform = "";
   }
 
-  container.style.background = pebbleMode && dithering ? "#ffffff" : "#232323";
+  container.style.background = dithering !== 0 ? "#ffffff" : "#232323";
 }
 
 export function getFramebufferPointer(width: number, height: number): number | undefined {

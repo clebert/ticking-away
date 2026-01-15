@@ -82,6 +82,7 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
 }
 
 // Apply Atkinson dithering to the framebuffer as a post-processing step.
-WASM_EXPORT void dither_framebuffer(uint8_t *fb, int width, int height) {
-  apply_dithering(fb, width, height);
+// mode: 0 = none, 1 = 1-bit (black/white), 2 = 2-bit (4 levels)
+WASM_EXPORT void dither_framebuffer(uint8_t *fb, int width, int height, int mode) {
+  apply_dithering(fb, width, height, mode);
 }

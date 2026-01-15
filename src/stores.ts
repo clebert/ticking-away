@@ -198,8 +198,8 @@ export const background = {
   grainAnimated: signal(settings.backgroundGrainAnimated ?? true),
 
   // Computed
-  grainDisabled: computed((): boolean => display.pebble.value),
-  vignetteDisabled: computed((): boolean => display.pebble.value),
+  grainDisabled: computed((): boolean => display.pebble.value || display.dithering.value !== 0),
+  vignetteDisabled: computed((): boolean => display.pebble.value || display.dithering.value !== 0),
 
   // Actions
   setGrainIntensity(e: Event): void {
@@ -219,7 +219,7 @@ export const display = {
   // Signals
   markers: signal(settings.displayMarkers ?? true),
   seconds: signal(settings.displaySeconds ?? true),
-  dithering: signal(settings.displayDithering ?? false),
+  dithering: signal(settings.displayDithering ?? 0),
   pebble: signal(settings.displayPebble ?? false),
   highDpi: signal(settings.displayHighDpi ?? true),
 
@@ -235,8 +235,8 @@ export const display = {
     display.seconds.value = !display.seconds.value;
   },
 
-  toggleDithering(): void {
-    display.dithering.value = !display.dithering.value;
+  setDithering(e: Event): void {
+    display.dithering.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   togglePebble(): void {

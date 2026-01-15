@@ -29,7 +29,7 @@ export interface WasmModule {
     grain_animated: number,
   ): void;
 
-  dither_framebuffer(framebuffer: number, width: number, height: number): void;
+  dither_framebuffer(framebuffer: number, width: number, height: number, mode: number): void;
 }
 
 const initialMemoryPages = 32;

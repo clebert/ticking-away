@@ -50,13 +50,13 @@ export function render(): void {
     rays.artisticDispersion.value ? 1 : 0,
     background.grainDisabled.value ? 0 : background.grainIntensity.value / 100.0,
     background.vignetteDisabled.value ? 0 : background.vignetteIntensity.value / 100.0,
-    display.pebble.value && display.dithering.value ? 1 : 0,
+    display.dithering.value !== 0 ? 1 : 0,
     frameCounter++,
     background.grainAnimated.value ? 1 : 0,
   );
 
-  if (display.dithering.value) {
-    wasmModule.dither_framebuffer(framebufferPointer, width, height);
+  if (display.dithering.value !== 0) {
+    wasmModule.dither_framebuffer(framebufferPointer, width, height, display.dithering.value);
   }
 
   const framebufferArray = new Uint8ClampedArray(

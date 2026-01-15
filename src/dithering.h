@@ -4,14 +4,38 @@
 
 #define DITHER_MAX_WIDTH 5120
 
+// Dithering modes
+#define DITHER_MODE_NONE 0
+#define DITHER_MODE_1BIT 1
+#define DITHER_MODE_2BIT 2
+
 // Convert RGB to luminance using standard weights
 static inline int luminance(int r, int g, int b) {
   return (r * 299 + g * 587 + b * 114) / 1000;
 }
 
+// Quantize luminance based on dithering mode
+// 1-bit: 2 levels (black, white)
+// 2-bit: 4 levels (black #000000, dark gray #555555, light gray #aaaaaa, white #ffffff)
+//        https://docs.usetrmnl.com/go/diy/imagemagick-guide#h_6b95d41fbd-1
+static inline int quantize_luminance(int lum, int mode) {
+  if (mode == DITHER_MODE_1BIT) {
+    // 1-bit: threshold at 128
+    return (lum < 128) ? 0 : 255;
+  } else {
+    // 2-bit: 4 evenly-spaced levels (0, 85, 170, 255)
+    // Thresholds at midpoints: 43, 128, 213
+    if (lum < 43)       return 0;    // #000000
+    else if (lum < 128) return 85;   // #555555
+    else if (lum < 213) return 170;  // #aaaaaa
+    else                return 255;  // #ffffff
+  }
+}
+
 // Atkinson dithering - distributes only 75% of error for higher contrast
-static inline void apply_dithering(uint8_t* fb, int width, int height) {
-  if (width > DITHER_MAX_WIDTH) return;
+// mode: 1 = 1-bit (black/white), 2 = 2-bit (4 levels)
+static inline void apply_dithering(uint8_t* fb, int width, int height, int mode) {
+  if (width > DITHER_MAX_WIDTH || mode == DITHER_MODE_NONE) return;
 
   // Three row buffers for error diffusion (Atkinson spreads error 2 rows down)
   static int err_curr[DITHER_MAX_WIDTH];
@@ -32,8 +56,8 @@ static inline void apply_dithering(uint8_t* fb, int width, int height) {
       // Get original luminance and add accumulated error
       int old_lum = luminance(fb[idx], fb[idx + 1], fb[idx + 2]) + err_curr[x];
 
-      // Quantize to black or white
-      int new_lum = old_lum > 127 ? 255 : 0;
+      // Quantize based on mode
+      int new_lum = quantize_luminance(old_lum, mode);
       int error = old_lum - new_lum;
       int error_eighth = error / 8;
 
@@ -63,4 +87,3 @@ static inline void apply_dithering(uint8_t* fb, int width, int height) {
     }
   }
 }
-

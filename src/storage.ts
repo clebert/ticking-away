@@ -23,7 +23,7 @@ export interface Settings {
 
   displayMarkers: boolean;
   displaySeconds: boolean;
-  displayDithering: boolean;
+  displayDithering: number;
   displayPebble: boolean;
   displayHighDpi: boolean;
 
