@@ -552,15 +552,21 @@ static void init_watch_framebuffer(
         float vignette_t = (dist_from_center - radius) / (max_dist - radius);
         if (vignette_t < 0.0f) vignette_t = 0.0f;
         if (vignette_t > 1.0f) vignette_t = 1.0f;
-        float vignette = 1.0f - vignette_t * vignette_strength;
+        // Smoothstep for perceptually smoother gradient (eliminates banding)
+        float smooth_t = vignette_t * vignette_t * (3.0f - 2.0f * vignette_t);
+        float vignette = 1.0f - smooth_t * vignette_strength;
 
         final_val = bg_base * vignette;
+
+        // Dither to eliminate banding: add ±0.5 noise before quantization
+        uint32_t dither = hash_pixel(x, y);
+        final_val += ((float)(dither & 0xFF) / 255.0f) - 0.5f;
       }
 
       if (final_val < 0.0f) final_val = 0.0f;
       if (final_val > 255.0f) final_val = 255.0f;
 
-      uint8_t val = (uint8_t)final_val;
+      uint8_t val = (uint8_t)(final_val + 0.5f);
       fb[idx] = val;
       fb[idx + 1] = val;
       fb[idx + 2] = val;
