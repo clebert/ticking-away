@@ -192,7 +192,7 @@ export const rays = {
 export const markers = {
   // Signals: geometry
   length: signal(settings.markersLength ?? 6),
-  cardinalOnly: signal(settings.markersCardinalOnly ?? false),
+  style: signal(settings.markersStyle ?? 0), // 0=all, 1=cardinal, 2=prism
 
   // Signals: glow
   glowWidth: signal(settings.markersGlowWidth ?? 2),
@@ -204,8 +204,8 @@ export const markers = {
     markers.length.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  toggleCardinalOnly(): void {
-    markers.cardinalOnly.value = !markers.cardinalOnly.value;
+  setStyle(e: Event): void {
+    markers.style.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   setGlowWidth(e: Event): void {

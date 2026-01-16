@@ -22,7 +22,7 @@ export interface Settings {
   raysArtisticDispersion: boolean;
 
   markersLength: number;
-  markersCardinalOnly: boolean;
+  markersStyle: number;
   markersGlowWidth: number;
   markersGlowIntensity: number;
   markersGlowFalloff: number;
@@ -81,7 +81,7 @@ export function saveSettings({
       raysArtisticDispersion: rays.artisticDispersion.value,
 
       markersLength: markers.length.value,
-      markersCardinalOnly: markers.cardinalOnly.value,
+      markersStyle: markers.style.value,
       markersGlowWidth: markers.glowWidth.value,
       markersGlowIntensity: markers.glowIntensity.value,
       markersGlowFalloff: markers.glowFalloff.value,

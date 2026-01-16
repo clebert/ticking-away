@@ -435,13 +435,12 @@
             />
           </div>
           <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:markers.cardinalOnly, onchange:markers.toggleCardinalOnly"
-              />
-              Cardinal Only (12, 3, 6, 9)</label
-            >
+            <label>Style</label>
+            <select data-bind="value:markers.style, onchange:markers.setStyle">
+              <option value="0">All (12 markers)</option>
+              <option value="1">Cardinal (12, 3, 6, 9)</option>
+              <option value="2">Prism (12, 4, 8)</option>
+            </select>
           </div>
           <div class="control-group">
             <label>Glow Width: <span data-bind="textContent:markers.glowWidth">2</span>%</label>

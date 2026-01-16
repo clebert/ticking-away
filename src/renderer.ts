@@ -49,7 +49,7 @@ export function render(): void {
     rays.innerSpectrum.value ? 1 : 0,
     rays.artisticDispersion.value ? 1 : 0,
     markers.length.value / 100.0,
-    markers.cardinalOnly.value ? 1 : 0,
+    markers.style.value,
     markers.glowWidth.value / 100.0,
     markers.glowIntensity.value / 100.0,
     markers.glowFalloff.value,

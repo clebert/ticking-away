@@ -755,7 +755,7 @@ static void draw_watch_overlay(
   float cx, float cy, float radius,
   uint8_t marker_r, uint8_t marker_g, uint8_t marker_b,
   float marker_length_percent,
-  int marker_cardinal_only,
+  int marker_style,
   float marker_glow_width,
   float marker_glow_intensity,
   int marker_glow_falloff
@@ -767,8 +767,11 @@ static void draw_watch_overlay(
   float circle_clip[3] = { cx, cy, radius };
 
   for (int h = 0; h < 12; h++) {
-    // Skip non-cardinal markers if cardinal_only is enabled
-    if (marker_cardinal_only && (h % 3 != 0)) {
+    // marker_style: 0 = all, 1 = cardinal (12,3,6,9), 2 = prism (12,4,8)
+    if (marker_style == 1 && (h % 3 != 0)) {
+      continue;
+    }
+    if (marker_style == 2 && (h != 0 && h != 4 && h != 8)) {
       continue;
     }
 
@@ -962,7 +965,7 @@ static float compute_exit_angle(
 // - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 // - internal_ray_real_colors: if true, use wavelength-based colors for internal rays
 // - marker_length_percent: how far markers extend towards center (0.0-1.0)
-// - marker_cardinal_only: if true, only show 12, 3, 6, 9 markers
+// - marker_style: 0=all, 1=cardinal (12,3,6,9), 2=prism (12,4,8)
 // - marker_glow_width: glow width for markers as fraction of radius
 // - marker_glow_intensity: 0.0-1.0 multiplier for marker glow brightness
 // - marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
@@ -994,7 +997,7 @@ static void render_watchface_scene(
   int internal_ray_real_colors,
   int artistic_dispersion,
   float marker_length_percent,
-  int marker_cardinal_only,
+  int marker_style,
   float marker_glow_width,
   float marker_glow_intensity,
   int marker_glow_falloff,
@@ -1025,7 +1028,7 @@ static void render_watchface_scene(
     if (show_markers) {
       draw_watch_overlay(fb, width, height, cx, cy, radius,
                          prism_r, prism_g, prism_b,
-                         marker_length_percent, marker_cardinal_only,
+                         marker_length_percent, marker_style,
                          marker_glow_width, marker_glow_intensity, marker_glow_falloff);
     }
     return;
@@ -1148,7 +1151,7 @@ static void render_watchface_scene(
   if (show_markers) {
     draw_watch_overlay(fb, width, height, cx, cy, radius,
                        prism_r, prism_g, prism_b,
-                       marker_length_percent, marker_cardinal_only,
+                       marker_length_percent, marker_style,
                        marker_glow_width, marker_glow_intensity, marker_glow_falloff);
   }
 }
