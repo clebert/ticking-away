@@ -47,6 +47,18 @@ const defaults = {
 const initialTime = new Date();
 const settings = loadSettings();
 
+let wakeLock: WakeLockSentinel | undefined;
+
+const requestWakeLock = async (): Promise<void> => {
+  if ("wakeLock" in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+    } catch {
+      // Wake lock request failed (e.g., low battery, tab hidden)
+    }
+  }
+};
+
 export const mode = {
   // Signals: display mode
   fullscreen: ((): ReadonlySignal<boolean> => {
@@ -54,6 +66,20 @@ export const mode = {
 
     document.addEventListener("fullscreenchange", () => {
       fullscreen.value = document.fullscreenElement !== null;
+
+      if (fullscreen.value) {
+        requestWakeLock();
+      } else if (wakeLock) {
+        wakeLock.release();
+
+        wakeLock = undefined;
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && fullscreen.value) {
+        requestWakeLock();
+      }
     });
 
     return fullscreen;
