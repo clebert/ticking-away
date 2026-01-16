@@ -601,22 +601,31 @@ static void stroke_prism(
 // Prism Inner Glow (Distance Field)
 // =================================================================================================
 
-// Compute minimum distance from point to any prism edge
-static float min_distance_to_prism_edge(float px, float py, const Prism* prism) {
-  float min_dist = 1e9f;
+// Polynomial smooth minimum for blending distances near corners.
+// Creates continuous gradients by smoothly interpolating between two values
+// when they are within 'k' of each other. This eliminates the gradient
+// discontinuity (visible crease) that occurs with hard min at corners.
+static inline float smooth_min(float a, float b, float k) {
+  float h = maxf_impl(k - fabsf_impl(a - b), 0.0f) / k;
+  return minf_impl(a, b) - h * h * k * 0.25f;
+}
 
-  for (int i = 0; i < 3; i++) {
-    int j = (i + 1) % 3;
-    float x0 = prism->vertices[i * 2];
-    float y0 = prism->vertices[i * 2 + 1];
-    float x1 = prism->vertices[j * 2];
-    float y1 = prism->vertices[j * 2 + 1];
+// Compute smooth minimum distance from point to any prism edge.
+// Uses smooth_min to blend distances near corners, avoiding the gradient
+// discontinuity that causes visible dark creases at vertices.
+static float min_distance_to_prism_edge(float px, float py, const Prism* prism, float smooth_k) {
+  float d0 = point_to_segment_distance(px, py,
+    prism->vertices[0], prism->vertices[1],
+    prism->vertices[2], prism->vertices[3]);
+  float d1 = point_to_segment_distance(px, py,
+    prism->vertices[2], prism->vertices[3],
+    prism->vertices[4], prism->vertices[5]);
+  float d2 = point_to_segment_distance(px, py,
+    prism->vertices[4], prism->vertices[5],
+    prism->vertices[0], prism->vertices[1]);
 
-    float dist = point_to_segment_distance(px, py, x0, y0, x1, y1);
-    if (dist < min_dist) min_dist = dist;
-  }
-
-  return min_dist;
+  // Chain smooth_min for all three edges
+  return smooth_min(smooth_min(d0, d1, smooth_k), d2, smooth_k);
 }
 
 // Draw prism with inner glow effect
@@ -664,8 +673,10 @@ static void draw_prism_glow(
         continue;
       }
 
-      // Compute distance to nearest edge
-      float dist = min_distance_to_prism_edge(px, py, prism);
+      // Compute distance to nearest edge using smooth minimum to avoid
+      // gradient discontinuities (visible dark creases) at corners.
+      // smooth_k scales with glow_width for consistent corner blending.
+      float dist = min_distance_to_prism_edge(px, py, prism, glow_width * 0.5f);
 
       // Apply glow: intensity falls off with distance from edge
       if (dist < glow_width) {
