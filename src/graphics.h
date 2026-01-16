@@ -1027,7 +1027,7 @@ static void render_watchface_scene(
                     radius * glow_width_percent, glow_intensity, glow_falloff);
     if (show_markers) {
       draw_watch_overlay(fb, width, height, cx, cy, radius,
-                         prism_r, prism_g, prism_b,
+                         255, 255, 255,
                          marker_length_percent, marker_style,
                          marker_glow_width, marker_glow_intensity, marker_glow_falloff);
     }
@@ -1150,7 +1150,7 @@ static void render_watchface_scene(
   // Draw watch overlay (hour markers) if show_markers is set
   if (show_markers) {
     draw_watch_overlay(fb, width, height, cx, cy, radius,
-                       prism_r, prism_g, prism_b,
+                       255, 255, 255,
                        marker_length_percent, marker_style,
                        marker_glow_width, marker_glow_intensity, marker_glow_falloff);
   }
