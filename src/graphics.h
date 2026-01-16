@@ -523,7 +523,8 @@ static void init_watch_framebuffer(
   float vignette_intensity, // 0.0-1.0
   int white_background,     // 1 = white background (for pebble mode with dithering)
   uint32_t frame,           // Frame counter for temporal grain animation
-  int grain_animated        // 1 = animate grain each frame
+  int grain_animated,       // 1 = animate grain each frame
+  float grain_scale         // DPR to scale grain (1.0 = no scaling)
 ) {
   // Base colors
   float watch_base = 10.0f;
@@ -548,8 +549,10 @@ static void init_watch_framebuffer(
       float dist2 = dx * dx + dy2;
       int idx = row_offset + x * 4;
 
-      // Film grain: subtle brightness variation
-      uint32_t hash = grain_animated ? hash_pixel_temporal(x, y, frame) : hash_pixel(x, y);
+      // Film grain: subtle brightness variation (scale coords by DPR for consistent grain size)
+      int gx = (int)((float)x / grain_scale);
+      int gy = (int)((float)y / grain_scale);
+      uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
       float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
 
       float final_val;
@@ -974,6 +977,7 @@ static float compute_exit_angle(
 // - white_background: 1 = white background (for pebble mode with dithering)
 // - frame: frame counter for temporal grain animation
 // - grain_animated: 1 = animate grain each frame
+// - grain_scale: DPR to scale grain size (1.0 = no scaling)
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -1005,13 +1009,14 @@ static void render_watchface_scene(
   float vignette_intensity,
   int white_background,
   uint32_t frame,
-  int grain_animated
+  int grain_animated,
+  float grain_scale
 ) {
   // Initialize precomputed data (no-op after first call)
   init_wavelength_colors();
 
   // Initialize background
-  init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity, white_background, frame, grain_animated);
+  init_watch_framebuffer(fb, width, height, cx, cy, radius, grain_intensity, vignette_intensity, white_background, frame, grain_animated, grain_scale);
 
   // Entry ray direction: toward center
   float entry_dx = cx - entry_x;
