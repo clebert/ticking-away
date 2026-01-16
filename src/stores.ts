@@ -1,6 +1,49 @@
 import { batch, computed, type ReadonlySignal, signal } from "@preact/signals-core";
 import { loadSettings } from "./storage.js";
 
+const defaults = {
+  mode: {
+    accelerated: false,
+    accelerationFactor: 1,
+  },
+  prism: {
+    size: 90,
+    rainbowSpread: 30,
+    gray: 255,
+    blueTint: 70,
+    glowWidth: 12,
+    glowIntensity: 100,
+    glowFalloff: 3,
+    sparkleSize: 300,
+  },
+  rays: {
+    glowWidth: 2,
+    glowIntensity: 100,
+    glowFalloff: 1,
+    innerSpectrum: true,
+    artisticDispersion: false,
+  },
+  markers: {
+    length: 15,
+    style: 0,
+    glowWidth: 1,
+    glowIntensity: 100,
+    glowFalloff: 3,
+  },
+  background: {
+    grainIntensity: 50,
+    vignetteIntensity: 100,
+    grainAnimated: false,
+  },
+  display: {
+    markers: true,
+    seconds: false,
+    dithering: 0,
+    pebble: false,
+    highDpi: true,
+  },
+};
+
 const initialTime = new Date();
 const settings = loadSettings();
 
@@ -20,8 +63,8 @@ export const mode = {
 
   // Signals: time behavior
   live: signal(true),
-  accelerated: signal(settings.modeAccelerated ?? false),
-  accelerationFactor: signal(settings.modeAccelerationFactor ?? 1),
+  accelerated: signal(settings.modeAccelerated ?? defaults.mode.accelerated),
+  accelerationFactor: signal(settings.modeAccelerationFactor ?? defaults.mode.accelerationFactor),
 
   // Signals: performance
   frameDuration: signal(0),
@@ -108,20 +151,20 @@ export const time = {
 
 export const prism = {
   // Signals: geometry
-  size: signal(settings.prismSize ?? 90),
-  rainbowSpread: signal(settings.prismRainbowSpread ?? 30),
+  size: signal(settings.prismSize ?? defaults.prism.size),
+  rainbowSpread: signal(settings.prismRainbowSpread ?? defaults.prism.rainbowSpread),
 
   // Signals: color
-  gray: signal(settings.prismGray ?? 120),
-  blueTint: signal(settings.prismBlueTint ?? 50),
+  gray: signal(settings.prismGray ?? defaults.prism.gray),
+  blueTint: signal(settings.prismBlueTint ?? defaults.prism.blueTint),
 
   // Signals: glow
-  glowWidth: signal(settings.prismGlowWidth ?? 20),
-  glowIntensity: signal(settings.prismGlowIntensity ?? 100),
-  glowFalloff: signal(settings.prismGlowFalloff ?? 3),
+  glowWidth: signal(settings.prismGlowWidth ?? defaults.prism.glowWidth),
+  glowIntensity: signal(settings.prismGlowIntensity ?? defaults.prism.glowIntensity),
+  glowFalloff: signal(settings.prismGlowFalloff ?? defaults.prism.glowFalloff),
 
   // Signals: sparkle
-  sparkleSize: signal(settings.prismSparkleSize ?? 300),
+  sparkleSize: signal(settings.prismSparkleSize ?? defaults.prism.sparkleSize),
 
   // Actions
   setSize(e: Event): void {
@@ -159,13 +202,13 @@ export const prism = {
 
 export const rays = {
   // Signals: glow
-  glowWidth: signal(settings.raysGlowWidth ?? 2),
-  glowIntensity: signal(settings.raysGlowIntensity ?? 100),
-  glowFalloff: signal(settings.raysGlowFalloff ?? 1),
+  glowWidth: signal(settings.raysGlowWidth ?? defaults.rays.glowWidth),
+  glowIntensity: signal(settings.raysGlowIntensity ?? defaults.rays.glowIntensity),
+  glowFalloff: signal(settings.raysGlowFalloff ?? defaults.rays.glowFalloff),
 
   // Signals: color
-  innerSpectrum: signal(settings.raysInnerSpectrum ?? true),
-  artisticDispersion: signal(settings.raysArtisticDispersion ?? false),
+  innerSpectrum: signal(settings.raysInnerSpectrum ?? defaults.rays.innerSpectrum),
+  artisticDispersion: signal(settings.raysArtisticDispersion ?? defaults.rays.artisticDispersion),
 
   // Actions
   setGlowWidth(e: Event): void {
@@ -191,13 +234,13 @@ export const rays = {
 
 export const markers = {
   // Signals: geometry
-  length: signal(settings.markersLength ?? 6),
-  style: signal(settings.markersStyle ?? 0), // 0=all, 1=cardinal, 2=prism
+  length: signal(settings.markersLength ?? defaults.markers.length),
+  style: signal(settings.markersStyle ?? defaults.markers.style), // 0=all, 1=cardinal, 2=prism
 
   // Signals: glow
-  glowWidth: signal(settings.markersGlowWidth ?? 2),
-  glowIntensity: signal(settings.markersGlowIntensity ?? 60),
-  glowFalloff: signal(settings.markersGlowFalloff ?? 1),
+  glowWidth: signal(settings.markersGlowWidth ?? defaults.markers.glowWidth),
+  glowIntensity: signal(settings.markersGlowIntensity ?? defaults.markers.glowIntensity),
+  glowFalloff: signal(settings.markersGlowFalloff ?? defaults.markers.glowFalloff),
 
   // Actions
   setLength(e: Event): void {
@@ -223,11 +266,13 @@ export const markers = {
 
 export const background = {
   // Signals: effect intensities
-  grainIntensity: signal(settings.backgroundGrainIntensity ?? 80),
-  vignetteIntensity: signal(settings.backgroundVignetteIntensity ?? 100),
+  grainIntensity: signal(settings.backgroundGrainIntensity ?? defaults.background.grainIntensity),
+  vignetteIntensity: signal(
+    settings.backgroundVignetteIntensity ?? defaults.background.vignetteIntensity,
+  ),
 
   // Signals: grain options
-  grainAnimated: signal(settings.backgroundGrainAnimated ?? true),
+  grainAnimated: signal(settings.backgroundGrainAnimated ?? defaults.background.grainAnimated),
 
   // Computed
   grainDisabled: computed((): boolean => display.pebble.value || display.dithering.value !== 0),
@@ -249,11 +294,11 @@ export const background = {
 
 export const display = {
   // Signals
-  markers: signal(settings.displayMarkers ?? true),
-  seconds: signal(settings.displaySeconds ?? true),
-  dithering: signal(settings.displayDithering ?? 0),
-  pebble: signal(settings.displayPebble ?? false),
-  highDpi: signal(settings.displayHighDpi ?? true),
+  markers: signal(settings.displayMarkers ?? defaults.display.markers),
+  seconds: signal(settings.displaySeconds ?? defaults.display.seconds),
+  dithering: signal(settings.displayDithering ?? defaults.display.dithering),
+  pebble: signal(settings.displayPebble ?? defaults.display.pebble),
+  highDpi: signal(settings.displayHighDpi ?? defaults.display.highDpi),
 
   // Computed
   secondsDisabled: computed((): boolean => mode.live.value && mode.accelerated.value),
@@ -277,5 +322,51 @@ export const display = {
 
   toggleHighDpi(): void {
     display.highDpi.value = !display.highDpi.value;
+  },
+};
+
+export const resetAll = {
+  reset(): void {
+    batch(() => {
+      // Mode
+      mode.accelerated.value = defaults.mode.accelerated;
+      mode.accelerationFactor.value = defaults.mode.accelerationFactor;
+
+      // Prism
+      prism.size.value = defaults.prism.size;
+      prism.rainbowSpread.value = defaults.prism.rainbowSpread;
+      prism.gray.value = defaults.prism.gray;
+      prism.blueTint.value = defaults.prism.blueTint;
+      prism.glowWidth.value = defaults.prism.glowWidth;
+      prism.glowIntensity.value = defaults.prism.glowIntensity;
+      prism.glowFalloff.value = defaults.prism.glowFalloff;
+      prism.sparkleSize.value = defaults.prism.sparkleSize;
+
+      // Rays
+      rays.glowWidth.value = defaults.rays.glowWidth;
+      rays.glowIntensity.value = defaults.rays.glowIntensity;
+      rays.glowFalloff.value = defaults.rays.glowFalloff;
+      rays.innerSpectrum.value = defaults.rays.innerSpectrum;
+      rays.artisticDispersion.value = defaults.rays.artisticDispersion;
+
+      // Markers
+      markers.length.value = defaults.markers.length;
+      markers.style.value = defaults.markers.style;
+      markers.glowWidth.value = defaults.markers.glowWidth;
+      markers.glowIntensity.value = defaults.markers.glowIntensity;
+      markers.glowFalloff.value = defaults.markers.glowFalloff;
+
+      // Background
+      background.grainIntensity.value = defaults.background.grainIntensity;
+      background.vignetteIntensity.value = defaults.background.vignetteIntensity;
+      background.grainAnimated.value = defaults.background.grainAnimated;
+
+      // Display
+      display.markers.value = defaults.display.markers;
+      display.seconds.value = defaults.display.seconds;
+      display.dithering.value = defaults.display.dithering;
+      display.pebble.value = defaults.display.pebble;
+      display.highDpi.value = defaults.display.highDpi;
+    });
   },
 };

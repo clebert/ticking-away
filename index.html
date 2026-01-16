@@ -381,7 +381,7 @@
                 type="checkbox"
                 data-bind="checked:rays.innerSpectrum, onchange:rays.toggleInnerSpectrum"
               />
-              Real Internal Colors</label
+              Inner Spectrum</label
             >
           </div>
           <div class="control-group">
@@ -552,6 +552,14 @@
               />
               High DPI</label
             >
+          </div>
+
+          <!-- Reset -->
+          <div class="section-title">Reset</div>
+          <div class="button-row">
+            <button class="action-button secondary" data-bind="onclick:resetAll.reset">
+              Reset All to Defaults
+            </button>
           </div>
         </div>
       </aside>
