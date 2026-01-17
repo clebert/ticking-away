@@ -494,6 +494,15 @@
           </div>
           <div class="control-group">
             <label
+              ><input
+                type="checkbox"
+                data-bind="checked:background.grainFullImage, onchange:background.toggleGrainFullImage, disabled:background.grainDisabled"
+              />
+              Full Image Grain</label
+            >
+          </div>
+          <div class="control-group">
+            <label
               >Vignette:
               <span data-bind="textContent:background.vignetteIntensity">40</span>%</label
             >

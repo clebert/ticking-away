@@ -640,6 +640,66 @@ static void apply_prism_grain(
   }
 }
 
+// Apply film grain to all pixels inside the watchface circle
+static void apply_watchface_grain(
+  uint8_t* fb, int width, int height,
+  float cx, float cy, float radius,
+  float grain_intensity,    // 0.0-1.0
+  uint32_t frame,           // Frame counter for temporal grain animation
+  int grain_animated,       // 1 = animate grain each frame
+  float grain_scale         // DPR to scale grain (1.0 = no scaling)
+) {
+  if (grain_intensity <= 0.0f) return;
+
+  float r2 = radius * radius;
+
+  // Compute bounding box
+  int x_start = (int)(cx - radius);
+  int x_end = (int)(cx + radius) + 1;
+  int y_start = (int)(cy - radius);
+  int y_end = (int)(cy + radius) + 1;
+
+  // Clamp to screen bounds
+  if (x_start < 0) x_start = 0;
+  if (y_start < 0) y_start = 0;
+  if (x_end > width) x_end = width;
+  if (y_end > height) y_end = height;
+
+  // Grain strength: ±15 at full intensity
+  float grain_strength = grain_intensity * 15.0f;
+
+  for (int y = y_start; y < y_end; y++) {
+    float dy = (float)y - cy;
+    float dy2 = dy * dy;
+
+    for (int x = x_start; x < x_end; x++) {
+      float dx = (float)x - cx;
+      float dist2 = dx * dx + dy2;
+
+      // Check if inside watchface circle
+      if (dist2 > r2) {
+        continue;
+      }
+
+      int idx = (y * width + x) * 4;
+
+      // Film grain: subtle brightness variation (scale coords by DPR for consistent grain size)
+      int gx = (int)((float)x / grain_scale);
+      int gy = (int)((float)y / grain_scale);
+      uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
+      float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
+
+      // Apply grain to each color channel
+      for (int c = 0; c < 3; c++) {
+        float val = (float)fb[idx + c] + grain;
+        if (val < 0.0f) val = 0.0f;
+        if (val > 255.0f) val = 255.0f;
+        fb[idx + c] = (uint8_t)val;
+      }
+    }
+  }
+}
+
 static void stroke_prism(
   uint8_t* fb, int width, int height,
   const Prism* prism,
@@ -1047,6 +1107,7 @@ static float compute_exit_angle(
 // - frame: frame counter for temporal grain animation
 // - grain_animated: 1 = animate grain each frame
 // - grain_scale: DPR to scale grain size (1.0 = no scaling)
+// - grain_full_image: 1 = apply grain to whole watchface, 0 = prism only
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -1079,7 +1140,8 @@ static void render_watchface_scene(
   int white_background,
   uint32_t frame,
   int grain_animated,
-  float grain_scale
+  float grain_scale,
+  int grain_full_image
 ) {
   // Initialize precomputed data (no-op after first call)
   init_wavelength_colors();
@@ -1099,7 +1161,11 @@ static void render_watchface_scene(
     // Ray doesn't hit prism - just draw overlay and return
     draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
                     radius * glow_width_percent, glow_intensity, glow_falloff);
-    apply_prism_grain(fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
+    if (grain_full_image) {
+      apply_watchface_grain(fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
+    } else {
+      apply_prism_grain(fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
+    }
     if (show_markers) {
       draw_watch_overlay(fb, width, height, cx, cy, radius,
                          255, 255, 255,
@@ -1215,8 +1281,12 @@ static void render_watchface_scene(
   draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
                   radius * glow_width_percent, glow_intensity, glow_falloff);
 
-  // Apply film grain only to the prism
-  apply_prism_grain(fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
+  // Apply film grain (either to prism only or whole watchface)
+  if (grain_full_image) {
+    apply_watchface_grain(fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
+  } else {
+    apply_prism_grain(fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
+  }
 
   // Draw seconds sparkle on prism edge (if enabled)
   if (show_seconds) {

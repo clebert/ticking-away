@@ -34,6 +34,7 @@ const defaults = {
     grainIntensity: 50,
     vignetteIntensity: 100,
     grainAnimated: false,
+    grainFullImage: false,
   },
   display: {
     markers: true,
@@ -299,6 +300,7 @@ export const background = {
 
   // Signals: grain options
   grainAnimated: signal(settings.backgroundGrainAnimated ?? defaults.background.grainAnimated),
+  grainFullImage: signal(settings.backgroundGrainFullImage ?? defaults.background.grainFullImage),
 
   // Computed
   grainDisabled: computed((): boolean => display.pebble.value || display.dithering.value !== 0),
@@ -315,6 +317,10 @@ export const background = {
 
   toggleGrainAnimated(): void {
     background.grainAnimated.value = !background.grainAnimated.value;
+  },
+
+  toggleGrainFullImage(): void {
+    background.grainFullImage.value = !background.grainFullImage.value;
   },
 };
 
@@ -386,6 +392,7 @@ export const resetAll = {
       background.grainIntensity.value = defaults.background.grainIntensity;
       background.vignetteIntensity.value = defaults.background.vignetteIntensity;
       background.grainAnimated.value = defaults.background.grainAnimated;
+      background.grainFullImage.value = defaults.background.grainFullImage;
 
       // Display
       display.markers.value = defaults.display.markers;

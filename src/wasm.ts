@@ -33,6 +33,7 @@ export interface WasmModule {
     frame: number,
     grain_animated: number,
     grain_scale: number,
+    grain_full_image: number,
   ): void;
 
   dither_framebuffer(framebuffer: number, width: number, height: number, mode: number): void;

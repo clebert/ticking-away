@@ -59,6 +59,7 @@ export function render(): void {
     frameCounter++,
     background.grainAnimated.value ? 1 : 0,
     display.highDpi.value ? window.devicePixelRatio || 1 : 1,
+    background.grainFullImage.value ? 1 : 0,
   );
 
   if (display.dithering.value !== 0) {

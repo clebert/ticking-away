@@ -36,6 +36,7 @@ export interface Settings {
   backgroundGrainIntensity: number;
   backgroundVignetteIntensity: number;
   backgroundGrainAnimated: boolean;
+  backgroundGrainFullImage: boolean;
 }
 
 export function loadSettings(): Partial<Settings> {
@@ -89,6 +90,7 @@ export function saveSettings({
       backgroundGrainIntensity: background.grainIntensity.value,
       backgroundVignetteIntensity: background.vignetteIntensity.value,
       backgroundGrainAnimated: background.grainAnimated.value,
+      backgroundGrainFullImage: background.grainFullImage.value,
 
       displayMarkers: display.markers.value,
       displaySeconds: display.seconds.value,

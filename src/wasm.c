@@ -47,6 +47,7 @@
 //   frame: frame counter for temporal grain animation
 //   grain_animated: 0 or 1 (1 = animate grain each frame)
 //   grain_scale: device pixel ratio to scale grain size (1.0 = no scaling)
+//   grain_full_image: 0 or 1 (1 = apply grain to whole watchface, 0 = prism only)
 WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, float minute,
                                   float second, float prism_size_percent, float rainbow_spread,
                                   int show_markers, int prism_r, int prism_g, int prism_b,
@@ -59,7 +60,7 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
                                   float marker_glow_intensity, int marker_glow_falloff,
                                   float grain_intensity, float vignette_intensity,
                                   int white_background, int frame, int grain_animated,
-                                  float grain_scale) {
+                                  float grain_scale, int grain_full_image) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -89,7 +90,7 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
       ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors, artistic_dispersion,
       marker_length_percent, marker_style, marker_glow_width_percent,
       marker_glow_intensity, marker_glow_falloff, grain_intensity, vignette_intensity,
-      white_background, (uint32_t)frame, grain_animated, grain_scale);
+      white_background, (uint32_t)frame, grain_animated, grain_scale, grain_full_image);
 }
 
 // Apply Atkinson dithering to the framebuffer as a post-processing step.
