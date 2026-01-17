@@ -3,15 +3,11 @@
 #include "math.h"
 
 // =================================================================================================
-// Wavelength Constants
+// Pink Floyd Rainbow Colors (6 discrete bands)
 // =================================================================================================
 
-// Visible spectrum wavelengths in nanometers: red (650nm) through violet (420nm)
-#define NUM_WAVELENGTHS 8
-static const float WAVELENGTHS[NUM_WAVELENGTHS] = {
-  650.0f, 600.0f, 570.0f, 540.0f,
-  510.0f, 480.0f, 450.0f, 420.0f
-};
+// 6 iconic colors from Dark Side of the Moon album cover
+#define NUM_WAVELENGTHS 6
 
 // =================================================================================================
 // Falloff Computation
@@ -64,55 +60,30 @@ static inline float linear_to_srgb(float linear) {
   return 1.055f * accurate_pow_5_12(linear) - 0.055f;
 }
 
-// Convert wavelength (nm) to linear RGB in 0.0-1.0 range (no gamma correction).
-// Used for linear color pipeline where gamma is applied at final conversion.
-static RGB_Linear wavelength_to_rgb_linear(float wavelength_nm) {
-  float r = 0.0f, g = 0.0f, b = 0.0f;
-
-  if (wavelength_nm >= 380.0f && wavelength_nm < 440.0f) {
-    r = -(wavelength_nm - 440.0f) / 60.0f;
-    b = 1.0f;
-  } else if (wavelength_nm >= 440.0f && wavelength_nm < 490.0f) {
-    g = (wavelength_nm - 440.0f) / 50.0f;
-    b = 1.0f;
-  } else if (wavelength_nm >= 490.0f && wavelength_nm < 510.0f) {
-    g = 1.0f;
-    b = -(wavelength_nm - 510.0f) / 20.0f;
-  } else if (wavelength_nm >= 510.0f && wavelength_nm < 580.0f) {
-    r = (wavelength_nm - 510.0f) / 70.0f;
-    g = 1.0f;
-  } else if (wavelength_nm >= 580.0f && wavelength_nm < 645.0f) {
-    r = 1.0f;
-    g = -(wavelength_nm - 645.0f) / 65.0f;
-  } else if (wavelength_nm >= 645.0f && wavelength_nm <= 780.0f) {
-    r = 1.0f;
-  }
-
-  float factor = 0.0f;
-  if (wavelength_nm >= 380.0f && wavelength_nm < 420.0f) {
-    factor = 0.3f + 0.7f * (wavelength_nm - 380.0f) / 40.0f;
-  } else if (wavelength_nm >= 420.0f && wavelength_nm < 700.0f) {
-    factor = 1.0f;
-  } else if (wavelength_nm >= 700.0f && wavelength_nm <= 780.0f) {
-    factor = 0.3f + 0.7f * (780.0f - wavelength_nm) / 80.0f;
-  }
-
-  // Return linear RGB (no gamma correction - applied at final conversion)
-  RGB_Linear result;
-  result.r = r * factor;
-  result.g = g * factor;
-  result.b = b * factor;
-  return result;
-}
-
-// Precomputed linear RGB colors for each wavelength (avoids recomputing each frame)
+// Precomputed linear RGB colors for each band (Pink Floyd style)
 static RGB_Linear WAVELENGTH_COLORS_LINEAR[NUM_WAVELENGTHS];
 static int wavelength_colors_initialized = 0;
 
+// Initialize Pink Floyd rainbow colors (6 discrete bands)
+// Colors chosen to match the iconic Dark Side of the Moon album cover
 static void init_wavelength_colors(void) {
   if (wavelength_colors_initialized) return;
+
+  // Define colors in sRGB, then convert to linear for correct blending
+  // Red, Orange, Yellow, Green, Blue, Violet
+  const uint8_t srgb_colors[6][3] = {
+    {255,   0,   0},  // Red
+    {255, 127,   0},  // Orange
+    {255, 255,   0},  // Yellow
+    {  0, 255,   0},  // Green
+    {  0,   0, 255},  // Blue
+    {148,   0, 211}   // Violet (spectral)
+  };
+
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
-    WAVELENGTH_COLORS_LINEAR[i] = wavelength_to_rgb_linear(WAVELENGTHS[i]);
+    WAVELENGTH_COLORS_LINEAR[i].r = srgb_to_linear(srgb_colors[i][0]);
+    WAVELENGTH_COLORS_LINEAR[i].g = srgb_to_linear(srgb_colors[i][1]);
+    WAVELENGTH_COLORS_LINEAR[i].b = srgb_to_linear(srgb_colors[i][2]);
   }
   wavelength_colors_initialized = 1;
 }
@@ -933,14 +904,47 @@ typedef enum {
   GRADIENT_INTERNAL   // Inside prism only
 } GradientMode;
 
-// Draw continuous gradient fill with wavelength-based color interpolation (linear color space)
+// Interpolate between Pink Floyd rainbow bands based on t (0-1)
+// Returns smoothly interpolated color between the 6 discrete bands
+static RGB_Linear interpolate_rainbow_color(float t) {
+  // Clamp t to [0, 1]
+  if (t < 0.0f) t = 0.0f;
+  if (t > 1.0f) t = 1.0f;
+
+  // Map t to band index: t=0 -> band 0 (red), t=1 -> band 5 (violet)
+  float scaled = t * (float)(NUM_WAVELENGTHS - 1);
+  int band_lo = (int)scaled;
+  int band_hi = band_lo + 1;
+
+  // Clamp to valid range
+  if (band_lo < 0) band_lo = 0;
+  if (band_hi >= NUM_WAVELENGTHS) band_hi = NUM_WAVELENGTHS - 1;
+  if (band_lo >= NUM_WAVELENGTHS - 1) {
+    band_lo = NUM_WAVELENGTHS - 1;
+    band_hi = NUM_WAVELENGTHS - 1;
+  }
+
+  // Interpolation factor within the band
+  float frac = scaled - (float)band_lo;
+
+  // Linearly interpolate between adjacent band colors
+  RGB_Linear c_lo = WAVELENGTH_COLORS_LINEAR[band_lo];
+  RGB_Linear c_hi = WAVELENGTH_COLORS_LINEAR[band_hi];
+
+  RGB_Linear result;
+  result.r = c_lo.r + frac * (c_hi.r - c_lo.r);
+  result.g = c_lo.g + frac * (c_hi.g - c_lo.g);
+  result.b = c_lo.b + frac * (c_hi.b - c_lo.b);
+  return result;
+}
+
+// Draw continuous gradient fill with band-based color interpolation (linear color space)
 static void draw_gradient_continuous_f(
   float* fb, int width, int height,
   GradientMode mode,
   float origin_x, float origin_y,
   float cx, float cy, float radius,
   float angle_start, float angle_end,
-  float wavelength_start, float wavelength_end,
   const Prism* prism,
   float intensity
 ) {
@@ -959,11 +963,9 @@ static void draw_gradient_continuous_f(
 
   if (angle_span < 0.001f || angle_span > PI) return;
 
-  float wl_start = wavelength_start;
-  float wl_end = wavelength_end;
-  if (angle_diff < 0) {
+  int reverse = (angle_diff < 0);
+  if (reverse) {
     float tmp = a1; a1 = a2; a2 = tmp;
-    float tmpw = wl_start; wl_start = wl_end; wl_end = tmpw;
   }
 
   // Save original boundary angles for interpolation (before epsilon expansion)
@@ -1048,9 +1050,11 @@ static void draw_gradient_continuous_f(
       if (t < 0.0f) t = 0.0f;
       if (t > 1.0f) t = 1.0f;
 
-      // Interpolate wavelength and convert to linear RGB
-      float wavelength = wl_start + t * (wl_end - wl_start);
-      RGB_Linear color = wavelength_to_rgb_linear(wavelength);
+      // Reverse t if angles were swapped
+      if (reverse) t = 1.0f - t;
+
+      // Interpolate between Pink Floyd rainbow bands
+      RGB_Linear color = interpolate_rainbow_color(t);
 
       // Additive blend to float framebuffer
       int idx = (y * width + x) * 4;
@@ -1291,10 +1295,6 @@ static void render_watchface_scene(
     if (exit_first.hit && exit_last.hit) {
       float gradient_intensity = 1.0f;
 
-      // Wavelength range: red (650nm) to violet (420nm)
-      float wl_first = WAVELENGTHS[0];  // Red
-      float wl_last = WAVELENGTHS[NUM_WAVELENGTHS - 1];  // Violet
-
       // For external gradient, compute angles from CENTER to where boundary rays hit CIRCLE
       // (not the ray direction angles, which causes parallax mismatch since rays don't start at center)
       float ext_dir_first_x = cosf_approx(angle_first);
@@ -1317,7 +1317,6 @@ static void render_watchface_scene(
         cx, cy,  // origin = center
         cx, cy, radius,
         ext_angle_first, ext_angle_last,
-        wl_first, wl_last,
         prism, gradient_intensity
       );
 
@@ -1346,7 +1345,6 @@ static void render_watchface_scene(
         grad_origin_x, grad_origin_y,
         0, 0, 0,  // cx, cy, radius unused for internal mode
         internal_angle_first, internal_angle_last,
-        wl_first, wl_last,
         prism, gradient_intensity
       );
     }
