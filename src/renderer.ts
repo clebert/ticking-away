@@ -1,4 +1,4 @@
-import { getCanvas, getFramebufferPointer } from "./canvas.ts";
+import { getCanvas, getFramebufferPointers } from "./canvas.ts";
 import { background, display, markers, prism, rays, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
@@ -15,9 +15,9 @@ export function render(): void {
   const canvas = getCanvas();
   const width = canvas.width;
   const height = canvas.height;
-  const framebufferPointer = getFramebufferPointer(width, height);
+  const pointers = getFramebufferPointers(width, height);
 
-  if (framebufferPointer === undefined) {
+  if (pointers === undefined) {
     return;
   }
 
@@ -26,7 +26,8 @@ export function render(): void {
   const prismBlue = prism.gray.value;
 
   wasmModule.render_watchface(
-    framebufferPointer,
+    pointers.floatPtr,
+    pointers.uint8Ptr,
     width,
     height,
     time.hours.value,
@@ -64,12 +65,12 @@ export function render(): void {
   );
 
   if (display.dithering.value !== 0) {
-    wasmModule.dither_framebuffer(framebufferPointer, width, height, display.dithering.value);
+    wasmModule.dither_framebuffer(pointers.uint8Ptr, width, height, display.dithering.value);
   }
 
   const framebufferArray = new Uint8ClampedArray(
     wasmMemory.buffer,
-    framebufferPointer,
+    pointers.uint8Ptr,
     width * height * 4,
   );
 

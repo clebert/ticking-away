@@ -130,6 +130,36 @@ static inline float fast_powf(float x, float y) {
   return fast_exp2f(y * fast_log2f(x));
 }
 
+// Attempt #1: Use cbrt-based calculation for x^(5/12)
+// x^(5/12) = x^(1/3) * x^(1/12) = cbrt(x) * (cbrt(x))^(1/4)
+//          = cbrt(x) * sqrt(sqrt(cbrt(x)))
+// This uses only sqrt and cbrt, avoiding log/exp approximation errors.
+static inline float cbrt_approx(float x) {
+  // Fast cube root using Newton-Raphson with bit manipulation initial guess
+  if (x == 0.0f) return 0.0f;
+  union { float f; uint32_t u; } v = { x };
+  v.u = (v.u / 3) + 709921077;  // Initial guess via bit hack
+  float y = v.f;
+  // Three Newton iterations for high accuracy
+  y = (2.0f * y + x / (y * y)) / 3.0f;
+  y = (2.0f * y + x / (y * y)) / 3.0f;
+  y = (2.0f * y + x / (y * y)) / 3.0f;
+  return y;
+}
+
+// Accurate x^(5/12) for sRGB gamma conversion (linear -> sRGB).
+// Uses cbrt and sqrt operations which are more accurate than log/exp approximations.
+// x^(5/12) = cbrt(x)^(5/4) = cbrt(x) * fourth_root(cbrt(x))
+//          = cbrt(x) * sqrt(sqrt(cbrt(x)))
+static inline float accurate_pow_5_12(float x) {
+  if (x <= 0.0f) return 0.0f;
+  if (x >= 1.0f) return 1.0f;
+
+  float cbrt_x = cbrt_approx(x);
+  float fourth_root_cbrt = sqrtf_impl(sqrtf_impl(cbrt_x));
+  return cbrt_x * fourth_root_cbrt;
+}
+
 // =================================================================================================
 // Vector Operations
 // =================================================================================================

@@ -1,6 +1,7 @@
 export interface WasmModule {
   render_watchface(
-    framebuffer: number,
+    floatFramebuffer: number, // Float buffer for linear rendering (width*height*16 bytes)
+    framebuffer: number, // Output buffer (width*height*4 bytes)
     width: number,
     height: number,
     hour: number,
@@ -41,7 +42,7 @@ export interface WasmModule {
 }
 
 const initialMemoryPages = 32;
-const maximumMemoryPages = 1024;
+const maximumMemoryPages = 4096; // 256MB max (float buffer is 4× larger than uint8)
 
 let wasmModule: WasmModule | undefined;
 let wasmMemory: WebAssembly.Memory | undefined;

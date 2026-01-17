@@ -33,7 +33,15 @@ export function resizeCanvas(pebbleMode: boolean, dithering: number, highDpi: bo
   container.style.background = dithering !== 0 ? "#ffffff" : "#232323";
 }
 
-export function getFramebufferPointer(width: number, height: number): number | undefined {
+export interface FramebufferPointers {
+  floatPtr: number; // Float buffer for linear rendering (width*height*16 bytes)
+  uint8Ptr: number; // Output buffer (width*height*4 bytes)
+}
+
+export function getFramebufferPointers(
+  width: number,
+  height: number,
+): FramebufferPointers | undefined {
   const wasmMemory = getWasmMemory();
 
   if (!wasmMemory) {
@@ -41,7 +49,9 @@ export function getFramebufferPointer(width: number, height: number): number | u
   }
 
   const framebufferMemoryOffset = 1048576; // 1 MiB offset (safely above WASM stack)
-  const requiredBytes = framebufferMemoryOffset + width * height * 4;
+  const floatBufferSize = width * height * 16; // 4 floats per pixel
+  const uint8BufferSize = width * height * 4; // 4 bytes per pixel
+  const requiredBytes = framebufferMemoryOffset + floatBufferSize + uint8BufferSize;
   const currentBytes = wasmMemory.buffer.byteLength;
 
   if (currentBytes < requiredBytes) {
@@ -50,5 +60,8 @@ export function getFramebufferPointer(width: number, height: number): number | u
     wasmMemory.grow(pagesToGrow);
   }
 
-  return framebufferMemoryOffset;
+  return {
+    floatPtr: framebufferMemoryOffset,
+    uint8Ptr: framebufferMemoryOffset + floatBufferSize,
+  };
 }

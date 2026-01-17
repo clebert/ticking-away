@@ -38,9 +38,35 @@ static inline float compute_falloff(int falloff_type, float t) {
 // Wavelength to RGB
 // =================================================================================================
 
-typedef struct { uint8_t r, g, b; } RGB;
+typedef struct { float r, g, b; } RGB_Linear;
 
-static RGB wavelength_to_rgb(float wavelength_nm) {
+// =================================================================================================
+// sRGB <-> Linear Conversion (Proper IEC 61966-2-1 standard)
+// =================================================================================================
+
+// Convert sRGB (0-255) to linear (0.0-1.0) using proper sRGB transfer function.
+// Uses piecewise function: linear region below 0.04045, power curve above.
+static inline float srgb_to_linear(uint8_t srgb) {
+  float s = (float)srgb / 255.0f;
+  if (s <= 0.04045f) {
+    return s / 12.92f;
+  }
+  return fast_powf((s + 0.055f) / 1.055f, 2.4f);
+}
+
+// Convert linear (0.0-1.0) to sRGB (0.0-1.0) using proper sRGB transfer function.
+// Uses piecewise function: linear region below 0.0031308, power curve above.
+// Uses accurate_pow_5_12 instead of fast_powf to eliminate banding in dark regions.
+static inline float linear_to_srgb(float linear) {
+  if (linear <= 0.0031308f) {
+    return linear * 12.92f;
+  }
+  return 1.055f * accurate_pow_5_12(linear) - 0.055f;
+}
+
+// Convert wavelength (nm) to linear RGB in 0.0-1.0 range (no gamma correction).
+// Used for linear color pipeline where gamma is applied at final conversion.
+static RGB_Linear wavelength_to_rgb_linear(float wavelength_nm) {
   float r = 0.0f, g = 0.0f, b = 0.0f;
 
   if (wavelength_nm >= 380.0f && wavelength_nm < 440.0f) {
@@ -71,77 +97,59 @@ static RGB wavelength_to_rgb(float wavelength_nm) {
     factor = 0.3f + 0.7f * (780.0f - wavelength_nm) / 80.0f;
   }
 
-  RGB result;
-  float out_r = fast_powf(r * factor, 0.8f) * 255.0f;
-  float out_g = fast_powf(g * factor, 0.8f) * 255.0f;
-  float out_b = fast_powf(b * factor, 0.8f) * 255.0f;
-  result.r = out_r > 255.0f ? 255 : (uint8_t)out_r;
-  result.g = out_g > 255.0f ? 255 : (uint8_t)out_g;
-  result.b = out_b > 255.0f ? 255 : (uint8_t)out_b;
+  // Return linear RGB (no gamma correction - applied at final conversion)
+  RGB_Linear result;
+  result.r = r * factor;
+  result.g = g * factor;
+  result.b = b * factor;
   return result;
 }
 
-// Precomputed RGB colors for each wavelength (avoids recomputing each frame)
-static RGB WAVELENGTH_COLORS[NUM_WAVELENGTHS];
+// Precomputed linear RGB colors for each wavelength (avoids recomputing each frame)
+static RGB_Linear WAVELENGTH_COLORS_LINEAR[NUM_WAVELENGTHS];
 static int wavelength_colors_initialized = 0;
 
 static void init_wavelength_colors(void) {
   if (wavelength_colors_initialized) return;
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
-    WAVELENGTH_COLORS[i] = wavelength_to_rgb(WAVELENGTHS[i]);
+    WAVELENGTH_COLORS_LINEAR[i] = wavelength_to_rgb_linear(WAVELENGTHS[i]);
   }
   wavelength_colors_initialized = 1;
 }
 
 // =================================================================================================
-// Pixel Operations
+// Pixel Operations (Linear Color Space)
 // =================================================================================================
 
-// Additive blending: adds color to existing pixels, creating glow effects.
-// Use for single continuous lines (light beams) where pixels aren't drawn twice.
-static inline void set_pixel_additive(
-  uint8_t* fb, int width, int height,
-  int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a
+// Additive blending for float framebuffer (linear space).
+// r, g, b are in 0.0-1.0 range, a is alpha multiplier (0.0-1.0).
+static inline void set_pixel_additive_f(
+  float* fb, int width, int height,
+  int x, int y, float r, float g, float b, float a
 ) {
   if (x < 0 || x >= width || y < 0 || y >= height) return;
 
   int idx = (y * width + x) * 4;
-  uint32_t ar = (uint32_t)r * a / 255;
-  uint32_t ag = (uint32_t)g * a / 255;
-  uint32_t ab = (uint32_t)b * a / 255;
-
-  uint32_t nr = (uint32_t)fb[idx] + ar;
-  uint32_t ng = (uint32_t)fb[idx + 1] + ag;
-  uint32_t nb = (uint32_t)fb[idx + 2] + ab;
-
-  fb[idx] = nr > 255 ? 255 : (uint8_t)nr;
-  fb[idx + 1] = ng > 255 ? 255 : (uint8_t)ng;
-  fb[idx + 2] = nb > 255 ? 255 : (uint8_t)nb;
+  fb[idx] += r * a;
+  fb[idx + 1] += g * a;
+  fb[idx + 2] += b * a;
+  // Alpha channel stays at 1.0 (fully opaque)
 }
 
-// Alpha blending: standard "over" compositing for solid elements.
-// Use for multi-segment lines (gradients) to avoid bright dots at segment overlaps.
-static inline void set_pixel_alpha(
-  uint8_t* fb, int width, int height,
-  int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a
+// Alpha blending for float framebuffer (linear space).
+// r, g, b are in 0.0-1.0 range, a is alpha (0.0-1.0).
+static inline void set_pixel_alpha_f(
+  float* fb, int width, int height,
+  int x, int y, float r, float g, float b, float a
 ) {
   if (x < 0 || x >= width || y < 0 || y >= height) return;
 
   int idx = (y * width + x) * 4;
-
-  if (a == 255) {
-    fb[idx] = r;
-    fb[idx + 1] = g;
-    fb[idx + 2] = b;
-    fb[idx + 3] = 255;
-  } else {
-    uint32_t alpha = a;
-    uint32_t inv_alpha = 255 - a;
-    fb[idx] = (uint8_t)((r * alpha + fb[idx] * inv_alpha) / 255);
-    fb[idx + 1] = (uint8_t)((g * alpha + fb[idx + 1] * inv_alpha) / 255);
-    fb[idx + 2] = (uint8_t)((b * alpha + fb[idx + 2] * inv_alpha) / 255);
-    fb[idx + 3] = 255;
-  }
+  float inv_a = 1.0f - a;
+  fb[idx] = r * a + fb[idx] * inv_a;
+  fb[idx + 1] = g * a + fb[idx + 1] * inv_a;
+  fb[idx + 2] = b * a + fb[idx + 2] * inv_a;
+  fb[idx + 3] = 1.0f;
 }
 
 // =================================================================================================
@@ -194,13 +202,13 @@ static int point_in_triangle(
 }
 
 // =================================================================================================
-// Line Drawing (Bresenham)
+// Line Drawing (Bresenham, Linear Space)
 // =================================================================================================
 
-static void draw_line_alpha(
-  uint8_t* fb, int width, int height,
+static void draw_line_alpha_f(
+  float* fb, int width, int height,
   int x0, int y0, int x1, int y1,
-  uint8_t r, uint8_t g, uint8_t b, uint8_t a
+  float r, float g, float b, float a
 ) {
   int dx = x1 > x0 ? x1 - x0 : x0 - x1;
   int dy = y1 > y0 ? y1 - y0 : y0 - y1;
@@ -209,7 +217,7 @@ static void draw_line_alpha(
   int err = dx - dy;
 
   while (1) {
-    set_pixel_alpha(fb, width, height, x0, y0, r, g, b, a);
+    set_pixel_alpha_f(fb, width, height, x0, y0, r, g, b, a);
     if (x0 == x1 && y0 == y1) break;
     int e2 = 2 * err;
     if (e2 > -dy) { err -= dy; x0 += sx; }
@@ -217,10 +225,10 @@ static void draw_line_alpha(
   }
 }
 
-static void draw_line_additive(
-  uint8_t* fb, int width, int height,
+static void draw_line_additive_f(
+  float* fb, int width, int height,
   int x0, int y0, int x1, int y1,
-  uint8_t r, uint8_t g, uint8_t b, uint8_t a
+  float r, float g, float b, float a
 ) {
   int dx = x1 > x0 ? x1 - x0 : x0 - x1;
   int dy = y1 > y0 ? y1 - y0 : y0 - y1;
@@ -229,7 +237,7 @@ static void draw_line_additive(
   int err = dx - dy;
 
   while (1) {
-    set_pixel_additive(fb, width, height, x0, y0, r, g, b, a);
+    set_pixel_additive_f(fb, width, height, x0, y0, r, g, b, a);
     if (x0 == x1 && y0 == y1) break;
     int e2 = 2 * err;
     if (e2 > -dy) { err -= dy; x0 += sx; }
@@ -397,22 +405,17 @@ static int capsule_scanline_intersect(
 }
 
 // =================================================================================================
-// Line Drawing with Glow (Distance Field, Additive Blending)
+// Line Drawing with Glow (Distance Field, Additive Blending, Linear Color Space)
 // =================================================================================================
 
 // Draw a line with glow effect using distance field approach and additive blending.
 // Uses additive blending for both glow and crisp line - designed for light rays where
 // drawing multiple overlapping rays (e.g., per-wavelength) accumulates to correct brightness.
-// clip_triangle: if non-NULL, points to 6 floats (v0x,v0y,v1x,v1y,v2x,v2y) to clip glow inside
-// clip_circle: if non-NULL, points to 3 floats (cx,cy,radius) to clip glow inside circle
-// exclude_triangle: if non-NULL, points to 6 floats to exclude glow from inside this triangle
-// glow_width: how far the glow extends perpendicular to the line (in pixels)
-// intensity: 0.0-1.0 multiplier for glow brightness
-// falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
-static void draw_line_with_glow_additive(
-  uint8_t* fb, int width, int height,
+// r, g, b are in 0.0-1.0 range (linear color space)
+static void draw_line_with_glow_additive_f(
+  float* fb, int width, int height,
   float x0, float y0, float x1, float y1,
-  uint8_t r, uint8_t g, uint8_t b,
+  float r, float g, float b,
   float glow_width,
   float intensity,
   int falloff,
@@ -420,12 +423,10 @@ static void draw_line_with_glow_additive(
   const float* clip_circle,
   const float* exclude_triangle
 ) {
-  // Precompute segment parameters (avoids redundant computation per pixel)
   SegmentParams seg;
   init_segment_params(&seg, x0, y0, x1, y1);
   float glow_width_sq = glow_width * glow_width;
 
-  // Compute y-bounds from bounding box
   float min_y = (y0 < y1 ? y0 : y1) - glow_width;
   float max_y = (y0 > y1 ? y0 : y1) + glow_width;
 
@@ -435,24 +436,20 @@ static void draw_line_with_glow_additive(
   if (y_start < 0) y_start = 0;
   if (y_end > height) y_end = height;
 
-  // Iterate scanlines with per-scanline x bounds (capsule optimization)
   for (int y = y_start; y < y_end; y++) {
     float py = (float)y + 0.5f;
 
-    // Compute x-interval where capsule intersects this scanline
     int x_lo, x_hi;
     if (!capsule_scanline_intersect(py, &seg, glow_width, &x_lo, &x_hi)) {
-      continue;  // Scanline doesn't intersect capsule
+      continue;
     }
 
-    // Clamp to screen bounds
     if (x_lo < 0) x_lo = 0;
     if (x_hi > width) x_hi = width;
 
     for (int x = x_lo; x < x_hi; x++) {
       float px = (float)x + 0.5f;
 
-      // Skip pixels outside the clipping triangle (if provided)
       if (clip_triangle && !point_in_triangle(px, py,
           clip_triangle[0], clip_triangle[1],
           clip_triangle[2], clip_triangle[3],
@@ -460,7 +457,6 @@ static void draw_line_with_glow_additive(
         continue;
       }
 
-      // Skip pixels outside the clipping circle (if provided)
       if (clip_circle) {
         float dx = px - clip_circle[0];
         float dy = py - clip_circle[1];
@@ -469,7 +465,6 @@ static void draw_line_with_glow_additive(
         }
       }
 
-      // Skip pixels inside the exclusion triangle (if provided)
       if (exclude_triangle && point_in_triangle(px, py,
           exclude_triangle[0], exclude_triangle[1],
           exclude_triangle[2], exclude_triangle[3],
@@ -477,25 +472,23 @@ static void draw_line_with_glow_additive(
         continue;
       }
 
-      // Early-out using squared distance (avoid sqrt for rejected pixels)
       float dist_sq = point_to_segment_distance_sq(&seg, px, py);
       if (dist_sq >= glow_width_sq) continue;
 
-      // Only compute sqrt for pixels inside glow
       float dist = sqrtf_impl(dist_sq);
       float t = dist / glow_width;
       float falloff_value = compute_falloff(falloff, t);
 
-      uint8_t alpha = (uint8_t)(falloff_value * intensity * 255.0f);
-      set_pixel_additive(fb, width, height, x, y, r, g, b, alpha);
+      float alpha = falloff_value * intensity;
+      set_pixel_additive_f(fb, width, height, x, y, r, g, b, alpha);
     }
   }
 
   // Draw crisp line on top for definition (additive for wavelength mixing)
-  draw_line_additive(fb, width, height,
+  draw_line_additive_f(fb, width, height,
     (int)(x0 + 0.5f), (int)(y0 + 0.5f),
     (int)(x1 + 0.5f), (int)(y1 + 0.5f),
-    r, g, b, 255);
+    r, g, b, 1.0f);
 }
 
 // =================================================================================================
@@ -516,15 +509,17 @@ static inline uint32_t hash_pixel_temporal(int x, int y, uint32_t frame) {
   return h ^ (h >> 16);
 }
 
-static void init_watch_framebuffer(
-  uint8_t* fb, int width, int height,
+// Initialize watch framebuffer with background (linear color space, 0.0-1.0 range)
+static void init_watch_framebuffer_f(
+  float* fb, int width, int height,
   float cx, float cy, float radius,
   float vignette_intensity, // 0.0-1.0
   int white_background      // 1 = white background (for pebble mode with dithering)
 ) {
-  // Base colors
-  float watch_base = 10.0f;
-  float bg_base = white_background ? 255.0f : 35.0f;
+  // Base colors converted from sRGB to linear space
+  // Original sRGB values: watch = 10, bg = 35 (or 255 for white)
+  float watch_base = srgb_to_linear(10);
+  float bg_base = white_background ? 1.0f : srgb_to_linear(35);
 
   // Vignette parameters (for background)
   float max_dist = sqrtf_impl((float)(width * width + height * height)) * 0.5f;
@@ -552,32 +547,33 @@ static void init_watch_framebuffer(
         float vignette_t = (dist_from_center - radius) / (max_dist - radius);
         if (vignette_t < 0.0f) vignette_t = 0.0f;
         if (vignette_t > 1.0f) vignette_t = 1.0f;
-        // Smoothstep for perceptually smoother gradient (eliminates banding)
+        // Smoothstep for perceptually smoother gradient
         float smooth_t = vignette_t * vignette_t * (3.0f - 2.0f * vignette_t);
         float vignette = 1.0f - smooth_t * vignette_strength;
 
         final_val = bg_base * vignette;
 
-        // Dither to eliminate banding: add ±0.5 noise before quantization
-        uint32_t dither = hash_pixel(x, y);
-        final_val += ((float)(dither & 0xFF) / 255.0f) - 0.5f;
+        // Add spatial dithering to eliminate banding in the dark vignette gradient.
+        // Dither amplitude ~0.004 in linear space ≈ ±0.5 levels in sRGB at this brightness.
+        uint32_t hash = hash_pixel(x, y);
+        float dither = ((float)(hash & 0xFFFF) / 65535.0f - 0.5f) * 0.008f;
+        final_val += dither;
+        if (final_val < 0.0f) final_val = 0.0f;
       }
 
-      if (final_val < 0.0f) final_val = 0.0f;
-      if (final_val > 255.0f) final_val = 255.0f;
-
-      uint8_t val = (uint8_t)(final_val + 0.5f);
-      fb[idx] = val;
-      fb[idx + 1] = val;
-      fb[idx + 2] = val;
-      fb[idx + 3] = 255;
+      fb[idx] = final_val;
+      fb[idx + 1] = final_val;
+      fb[idx + 2] = final_val;
+      fb[idx + 3] = 1.0f;
     }
   }
 }
 
-// Apply film grain only to pixels inside the prism triangle
-static void apply_prism_grain(
-  uint8_t* fb, int width, int height,
+// Grain and prism functions (linear color space)
+
+// Float version of apply_prism_grain (linear color space)
+static void apply_prism_grain_f(
+  float* fb, int width, int height,
   const Prism* prism,
   float grain_intensity,    // 0.0-1.0
   uint32_t frame,           // Frame counter for temporal grain animation
@@ -586,18 +582,15 @@ static void apply_prism_grain(
 ) {
   if (grain_intensity <= 0.0f) return;
 
-  // Get prism vertices
   float v0x = prism->vertices[0], v0y = prism->vertices[1];
   float v1x = prism->vertices[2], v1y = prism->vertices[3];
   float v2x = prism->vertices[4], v2y = prism->vertices[5];
 
-  // Compute bounding box
   float min_x = v0x < v1x ? (v0x < v2x ? v0x : v2x) : (v1x < v2x ? v1x : v2x);
   float max_x = v0x > v1x ? (v0x > v2x ? v0x : v2x) : (v1x > v2x ? v1x : v2x);
   float min_y = v0y < v1y ? (v0y < v2y ? v0y : v2y) : (v1y < v2y ? v1y : v2y);
   float max_y = v0y > v1y ? (v0y > v2y ? v0y : v2y) : (v1y > v2y ? v1y : v2y);
 
-  // Clamp to screen bounds
   int x_start = (int)min_x;
   int x_end = (int)max_x + 1;
   int y_start = (int)min_y;
@@ -608,41 +601,37 @@ static void apply_prism_grain(
   if (x_end > width) x_end = width;
   if (y_end > height) y_end = height;
 
-  // Grain strength: ±15 at full intensity
-  float grain_strength = grain_intensity * 15.0f;
+  // Grain strength in linear space: ~0.025 at full intensity.
+  // This produces subtle film grain comparable to the original ±15/255 in sRGB.
+  // Linear space requires smaller values since gamma expansion amplifies noise.
+  float grain_strength = grain_intensity * 0.025f;
 
   for (int y = y_start; y < y_end; y++) {
     for (int x = x_start; x < x_end; x++) {
       float px = (float)x + 0.5f;
       float py = (float)y + 0.5f;
 
-      // Check if inside prism triangle
       if (!point_in_triangle(px, py, v0x, v0y, v1x, v1y, v2x, v2y)) {
         continue;
       }
 
       int idx = (y * width + x) * 4;
 
-      // Film grain: subtle brightness variation (scale coords by DPR for consistent grain size)
       int gx = (int)((float)x / grain_scale);
       int gy = (int)((float)y / grain_scale);
       uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
       float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
 
-      // Apply grain to each color channel
       for (int c = 0; c < 3; c++) {
-        float val = (float)fb[idx + c] + grain;
-        if (val < 0.0f) val = 0.0f;
-        if (val > 255.0f) val = 255.0f;
-        fb[idx + c] = (uint8_t)val;
+        fb[idx + c] += grain;
       }
     }
   }
 }
 
-// Apply film grain to all pixels inside the watchface circle
-static void apply_watchface_grain(
-  uint8_t* fb, int width, int height,
+// Float version of apply_watchface_grain (linear color space)
+static void apply_watchface_grain_f(
+  float* fb, int width, int height,
   float cx, float cy, float radius,
   float grain_intensity,    // 0.0-1.0
   uint32_t frame,           // Frame counter for temporal grain animation
@@ -653,20 +642,20 @@ static void apply_watchface_grain(
 
   float r2 = radius * radius;
 
-  // Compute bounding box
   int x_start = (int)(cx - radius);
   int x_end = (int)(cx + radius) + 1;
   int y_start = (int)(cy - radius);
   int y_end = (int)(cy + radius) + 1;
 
-  // Clamp to screen bounds
   if (x_start < 0) x_start = 0;
   if (y_start < 0) y_start = 0;
   if (x_end > width) x_end = width;
   if (y_end > height) y_end = height;
 
-  // Grain strength: ±15 at full intensity
-  float grain_strength = grain_intensity * 15.0f;
+  // Grain strength in linear space: ~0.025 at full intensity.
+  // This produces subtle film grain comparable to the original ±15/255 in sRGB.
+  // Linear space requires smaller values since gamma expansion amplifies noise.
+  float grain_strength = grain_intensity * 0.025f;
 
   for (int y = y_start; y < y_end; y++) {
     float dy = (float)y - cy;
@@ -676,34 +665,29 @@ static void apply_watchface_grain(
       float dx = (float)x - cx;
       float dist2 = dx * dx + dy2;
 
-      // Check if inside watchface circle
       if (dist2 > r2) {
         continue;
       }
 
       int idx = (y * width + x) * 4;
 
-      // Film grain: subtle brightness variation (scale coords by DPR for consistent grain size)
       int gx = (int)((float)x / grain_scale);
       int gy = (int)((float)y / grain_scale);
       uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
       float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
 
-      // Apply grain to each color channel
       for (int c = 0; c < 3; c++) {
-        float val = (float)fb[idx + c] + grain;
-        if (val < 0.0f) val = 0.0f;
-        if (val > 255.0f) val = 255.0f;
-        fb[idx + c] = (uint8_t)val;
+        fb[idx + c] += grain;
       }
     }
   }
 }
 
-static void stroke_prism(
-  uint8_t* fb, int width, int height,
+// Float version of stroke_prism (linear color space)
+static void stroke_prism_f(
+  float* fb, int width, int height,
   const Prism* prism,
-  uint8_t r, uint8_t g, uint8_t b, uint8_t a
+  float r, float g, float b, float a
 ) {
   for (int i = 0; i < 3; i++) {
     int j = (i + 1) % 3;
@@ -711,7 +695,7 @@ static void stroke_prism(
     int y0 = (int)(prism->vertices[i * 2 + 1] + 0.5f);
     int x1 = (int)(prism->vertices[j * 2] + 0.5f);
     int y1 = (int)(prism->vertices[j * 2 + 1] + 0.5f);
-    draw_line_alpha(fb, width, height, x0, y0, x1, y1, r, g, b, a);
+    draw_line_alpha_f(fb, width, height, x0, y0, x1, y1, r, g, b, a);
   }
 }
 
@@ -746,30 +730,27 @@ static float min_distance_to_prism_edge(float px, float py, const Prism* prism, 
   return smooth_min(smooth_min(d0, d1, smooth_k), d2, smooth_k);
 }
 
-// Draw prism with inner glow effect
+// Draw prism with inner glow effect (linear color space)
 // glow_width: how far the glow extends inward (in pixels)
 // intensity: 0.0-1.0 multiplier for glow brightness
 // falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
-static void draw_prism_glow(
-  uint8_t* fb, int width, int height,
+static void draw_prism_glow_f(
+  float* fb, int width, int height,
   const Prism* prism,
-  uint8_t r, uint8_t g, uint8_t b,
+  float r, float g, float b,
   float glow_width,
   float intensity,
   int falloff
 ) {
-  // Get prism vertices
   float v0x = prism->vertices[0], v0y = prism->vertices[1];
   float v1x = prism->vertices[2], v1y = prism->vertices[3];
   float v2x = prism->vertices[4], v2y = prism->vertices[5];
 
-  // Compute bounding box
   float min_x = v0x < v1x ? (v0x < v2x ? v0x : v2x) : (v1x < v2x ? v1x : v2x);
   float max_x = v0x > v1x ? (v0x > v2x ? v0x : v2x) : (v1x > v2x ? v1x : v2x);
   float min_y = v0y < v1y ? (v0y < v2y ? v0y : v2y) : (v1y < v2y ? v1y : v2y);
   float max_y = v0y > v1y ? (v0y > v2y ? v0y : v2y) : (v1y > v2y ? v1y : v2y);
 
-  // Clamp to screen bounds
   int x_start = (int)min_x - 1;
   int x_end = (int)max_x + 2;
   int y_start = (int)min_y - 1;
@@ -780,35 +761,29 @@ static void draw_prism_glow(
   if (x_end > width) x_end = width;
   if (y_end > height) y_end = height;
 
-  // Iterate over bounding box
   for (int y = y_start; y < y_end; y++) {
     for (int x = x_start; x < x_end; x++) {
       float px = (float)x + 0.5f;
       float py = (float)y + 0.5f;
 
-      // Check if inside triangle
       if (!point_in_triangle(px, py, v0x, v0y, v1x, v1y, v2x, v2y)) {
         continue;
       }
 
-      // Compute distance to nearest edge using smooth minimum to avoid
-      // gradient discontinuities (visible dark creases) at corners.
-      // smooth_k scales with glow_width for consistent corner blending.
       float dist = min_distance_to_prism_edge(px, py, prism, glow_width * 0.5f);
 
-      // Apply glow: intensity falls off with distance from edge
       if (dist < glow_width) {
         float t = dist / glow_width;
         float falloff_value = compute_falloff(falloff, t);
 
-        uint8_t alpha = (uint8_t)(falloff_value * intensity * 255.0f);
-        set_pixel_additive(fb, width, height, x, y, r, g, b, alpha);
+        float alpha = falloff_value * intensity;
+        set_pixel_additive_f(fb, width, height, x, y, r, g, b, alpha);
       }
     }
   }
 
   // Draw the edge line on top for crisp boundary
-  stroke_prism(fb, width, height, prism, r, g, b, 255);
+  stroke_prism_f(fb, width, height, prism, r, g, b, 1.0f);
 }
 
 static int clip_segment_to_circle(
@@ -882,24 +857,22 @@ static int clip_segment_to_circle(
   return 1;
 }
 
-static void draw_watch_overlay(
-  uint8_t* fb, int width, int height,
+// Draw watch overlay (hour markers) - linear color space
+// marker_r, marker_g, marker_b are in 0.0-1.0 range
+static void draw_watch_overlay_f(
+  float* fb, int width, int height,
   float cx, float cy, float radius,
-  uint8_t marker_r, uint8_t marker_g, uint8_t marker_b,
+  float marker_r, float marker_g, float marker_b,
   float marker_length_percent,
   int marker_style,
   float marker_glow_width,
   float marker_glow_intensity,
   int marker_glow_falloff
 ) {
-  // Scale glow width relative to radius
   float glow_width = radius * marker_glow_width;
-
-  // Clipping circle for marker glow (same as watchface)
   float circle_clip[3] = { cx, cy, radius };
 
   for (int h = 0; h < 12; h++) {
-    // marker_style: 0 = all, 1 = cardinal (12,3,6,9), 2 = prism (12,4,8)
     if (marker_style == 1 && (h % 3 != 0)) {
       continue;
     }
@@ -908,8 +881,6 @@ static void draw_watch_overlay(
     }
 
     float angle = ((float)h - 3.0f) * 30.0f * PI / 180.0f;
-
-    // Inner radius based on length percent (length extends inward from edge)
     float inner_r = radius * (1.0f - marker_length_percent);
     float outer_r = radius * 0.98f;
 
@@ -920,8 +891,7 @@ static void draw_watch_overlay(
     float x1 = cx + cos_a * outer_r;
     float y1 = cy + sin_a * outer_r;
 
-    // Draw glowing marker with prism color, clipped to watchface
-    draw_line_with_glow_additive(fb, width, height,
+    draw_line_with_glow_additive_f(fb, width, height,
       x0, y0, x1, y1,
       marker_r, marker_g, marker_b,
       glow_width, marker_glow_intensity, marker_glow_falloff,
@@ -973,10 +943,9 @@ static void compute_sparkle_position(
   *out_y = y0 + t * (y1 - y0);
 }
 
-// Draw a diamond-like sparkle with 4-pointed star rays and twinkling animation.
-// Creates a gem-like highlight that pops above other glow effects.
-static void draw_sparkle(
-  uint8_t* fb, int width, int height,
+// Draw a diamond-like sparkle with 4-pointed star rays and twinkling animation (linear color space)
+static void draw_sparkle_f(
+  float* fb, int width, int height,
   float x, float y,
   float radius,        // Watch radius for base scaling
   float size_percent,  // 1.0-10.0 size multiplier
@@ -985,72 +954,58 @@ static void draw_sparkle(
   int cx = (int)(x + 0.5f);
   int cy = (int)(y + 0.5f);
 
-  // Scale sparkle size using square root for sub-linear scaling
-  // This keeps sparkle proportionally similar across screen sizes
-  // (sqrt grows slower than linear, so large screens don't get huge sparkles)
   float base_size = sqrtf_impl(radius) / 3.0f;
   if (base_size < 1.0f) base_size = 1.0f;
 
-  // Apply user size multiplier
   base_size *= size_percent;
 
-  // Twinkle animation: pulsing intensity based on fractional seconds
-  // Use a fast sine wave for sparkle effect (cycles ~4 times per second)
-  float frac = second - (float)(int)second;  // 0.0 to 1.0
+  float frac = second - (float)(int)second;
   float twinkle = 0.7f + 0.3f * sinf_approx(frac * TAU * 4.0f);
 
-  // Star ray lengths (4-pointed star)
   int ray_length = (int)(base_size * 2.0f);
-  int short_ray = (int)(base_size * 1.2f);  // Diagonal rays slightly shorter
+  int short_ray = (int)(base_size * 1.2f);
   int core_radius = (int)(base_size * 0.6f);
   if (core_radius < 1) core_radius = 1;
 
-  // Draw the 4 main star rays (vertical and horizontal)
-  // These are the signature diamond sparkle lines
+  // White color in linear space (1.0, 1.0, 1.0)
   for (int i = 1; i <= ray_length; i++) {
     float falloff = 1.0f - ((float)i / (float)(ray_length + 1));
-    falloff = falloff * falloff;  // Quadratic falloff for sharper rays
-    uint8_t alpha = (uint8_t)(falloff * twinkle * 255.0f);
+    falloff = falloff * falloff;
+    float alpha = falloff * twinkle;
 
-    // Vertical rays
-    set_pixel_additive(fb, width, height, cx, cy - i, 255, 255, 255, alpha);
-    set_pixel_additive(fb, width, height, cx, cy + i, 255, 255, 255, alpha);
-    // Horizontal rays
-    set_pixel_additive(fb, width, height, cx - i, cy, 255, 255, 255, alpha);
-    set_pixel_additive(fb, width, height, cx + i, cy, 255, 255, 255, alpha);
+    set_pixel_additive_f(fb, width, height, cx, cy - i, 1.0f, 1.0f, 1.0f, alpha);
+    set_pixel_additive_f(fb, width, height, cx, cy + i, 1.0f, 1.0f, 1.0f, alpha);
+    set_pixel_additive_f(fb, width, height, cx - i, cy, 1.0f, 1.0f, 1.0f, alpha);
+    set_pixel_additive_f(fb, width, height, cx + i, cy, 1.0f, 1.0f, 1.0f, alpha);
   }
 
-  // Draw 4 diagonal rays (45 degree angles) - slightly shorter
   for (int i = 1; i <= short_ray; i++) {
     float falloff = 1.0f - ((float)i / (float)(short_ray + 1));
-    falloff = falloff * falloff * falloff;  // Cubic falloff for even sharper diagonals
-    uint8_t alpha = (uint8_t)(falloff * twinkle * 200.0f);
+    falloff = falloff * falloff * falloff;
+    float alpha = falloff * twinkle * (200.0f / 255.0f);
 
-    set_pixel_additive(fb, width, height, cx - i, cy - i, 255, 255, 255, alpha);
-    set_pixel_additive(fb, width, height, cx + i, cy - i, 255, 255, 255, alpha);
-    set_pixel_additive(fb, width, height, cx - i, cy + i, 255, 255, 255, alpha);
-    set_pixel_additive(fb, width, height, cx + i, cy + i, 255, 255, 255, alpha);
+    set_pixel_additive_f(fb, width, height, cx - i, cy - i, 1.0f, 1.0f, 1.0f, alpha);
+    set_pixel_additive_f(fb, width, height, cx + i, cy - i, 1.0f, 1.0f, 1.0f, alpha);
+    set_pixel_additive_f(fb, width, height, cx - i, cy + i, 1.0f, 1.0f, 1.0f, alpha);
+    set_pixel_additive_f(fb, width, height, cx + i, cy + i, 1.0f, 1.0f, 1.0f, alpha);
   }
 
-  // Draw bright glowing core
   for (int dy = -core_radius; dy <= core_radius; dy++) {
     for (int dx = -core_radius; dx <= core_radius; dx++) {
       float dist = sqrtf_impl((float)(dx * dx + dy * dy));
       if (dist > (float)core_radius) continue;
 
-      // Intense core with soft edge
       float intensity = 1.0f - (dist / ((float)core_radius + 0.5f));
-      intensity = intensity * intensity;  // Concentrate brightness at center
-      uint8_t alpha = (uint8_t)(intensity * twinkle * 255.0f);
+      intensity = intensity * intensity;
+      float alpha = intensity * twinkle;
 
-      set_pixel_additive(fb, width, height, cx + dx, cy + dy, 255, 255, 255, alpha);
+      set_pixel_additive_f(fb, width, height, cx + dx, cy + dy, 1.0f, 1.0f, 1.0f, alpha);
     }
   }
 
-  // Draw super-bright center pixels (the diamond's "fire")
-  uint8_t center_alpha = (uint8_t)(twinkle * 255.0f);
-  set_pixel_additive(fb, width, height, cx, cy, 255, 255, 255, center_alpha);
-  set_pixel_additive(fb, width, height, cx, cy, 255, 255, 255, center_alpha);  // Double-add for extra brightness
+  float center_alpha = twinkle;
+  set_pixel_additive_f(fb, width, height, cx, cy, 1.0f, 1.0f, 1.0f, center_alpha);
+  set_pixel_additive_f(fb, width, height, cx, cy, 1.0f, 1.0f, 1.0f, center_alpha);
 }
 
 // =================================================================================================
@@ -1089,22 +1044,17 @@ typedef enum {
   GRADIENT_INTERNAL   // Inside prism only
 } GradientMode;
 
-// Draw continuous gradient fill with wavelength-based color interpolation.
-// Unified function for both external (rainbow) and internal (prism) gradients.
-// - mode: GRADIENT_EXTERNAL for outside prism, GRADIENT_INTERNAL for inside prism
-// - origin_x/y: point from which angles are measured
-// - For external mode: also needs cx, cy, radius for circle bounds
-static void draw_gradient_continuous(
-  uint8_t* fb, int width, int height,
+// Draw continuous gradient fill with wavelength-based color interpolation (linear color space)
+static void draw_gradient_continuous_f(
+  float* fb, int width, int height,
   GradientMode mode,
   float origin_x, float origin_y,
-  float cx, float cy, float radius,  // Used only for GRADIENT_EXTERNAL
+  float cx, float cy, float radius,
   float angle_start, float angle_end,
   float wavelength_start, float wavelength_end,
   const Prism* prism,
   float intensity
 ) {
-  // Normalize angles to [0, 2*PI] range
   float a1 = angle_start;
   float a2 = angle_end;
   while (a1 < 0) a1 += 2.0f * PI;
@@ -1112,17 +1062,14 @@ static void draw_gradient_continuous(
   while (a2 < 0) a2 += 2.0f * PI;
   while (a2 >= 2.0f * PI) a2 -= 2.0f * PI;
 
-  // Compute signed angular difference (shortest path between angles)
   float angle_diff = a2 - a1;
   if (angle_diff > PI) angle_diff -= 2.0f * PI;
   if (angle_diff < -PI) angle_diff += 2.0f * PI;
 
   float angle_span = angle_diff > 0 ? angle_diff : -angle_diff;
 
-  // Skip if span is too small or unreasonably large
   if (angle_span < 0.001f || angle_span > PI) return;
 
-  // Determine direction and swap if needed for consistent interpolation
   float wl_start = wavelength_start;
   float wl_end = wavelength_end;
   if (angle_diff < 0) {
@@ -1130,22 +1077,18 @@ static void draw_gradient_continuous(
     float tmpw = wl_start; wl_start = wl_end; wl_end = tmpw;
   }
 
-  // Add small padding to avoid gaps at boundaries due to floating-point precision
-  float eps = 0.002f;  // ~0.1 degree padding
+  float eps = 0.002f;
   a1 -= eps;
   a2 += eps;
-  // Re-normalize after padding
   if (a1 < 0) a1 += 2.0f * PI;
   if (a2 >= 2.0f * PI) a2 -= 2.0f * PI;
 
   int wrap_around = (a1 > a2);
 
-  // Compute iteration bounds based on mode
   int x_start = 0, x_end = width, y_start = 0, y_end = height;
   float radius_sq = radius * radius;
 
   if (mode == GRADIENT_INTERNAL) {
-    // Use prism bounding box for internal mode
     float v0x = prism->vertices[0], v0y = prism->vertices[1];
     float v1x = prism->vertices[2], v1y = prism->vertices[3];
     float v2x = prism->vertices[4], v2y = prism->vertices[5];
@@ -1171,32 +1114,26 @@ static void draw_gradient_continuous(
     for (int x = x_start; x < x_end; x++) {
       float px = (float)x + 0.5f;
 
-      // Pixel inclusion test based on mode
       if (mode == GRADIENT_EXTERNAL) {
-        // Must be inside watchface circle
         float dx_circle = px - cx;
         float dy_circle = py - cy;
         if (dx_circle * dx_circle + dy_circle * dy_circle > radius_sq) continue;
-        // Must be outside prism
         if (point_in_triangle(px, py,
             prism->vertices[0], prism->vertices[1],
             prism->vertices[2], prism->vertices[3],
             prism->vertices[4], prism->vertices[5])) continue;
       } else {
-        // Must be inside prism
         if (!point_in_triangle(px, py,
             prism->vertices[0], prism->vertices[1],
             prism->vertices[2], prism->vertices[3],
             prism->vertices[4], prism->vertices[5])) continue;
       }
 
-      // Compute angle from origin and normalize to [0, 2*PI]
       float dx = px - origin_x;
       float dy = py - origin_y;
       float pixel_angle = atan2_approx(dy, dx);
       if (pixel_angle < 0) pixel_angle += 2.0f * PI;
 
-      // Check if pixel angle is within the gradient region
       float t;
       if (wrap_around) {
         if (pixel_angle < a1 && pixel_angle > a2) continue;
@@ -1210,26 +1147,61 @@ static void draw_gradient_continuous(
         t = (pixel_angle - a1) / angle_span;
       }
 
-      // Interpolate wavelength and convert to RGB
+      // Interpolate wavelength and convert to linear RGB
       float wavelength = wl_start + t * (wl_end - wl_start);
-      RGB color = wavelength_to_rgb(wavelength);
+      RGB_Linear color = wavelength_to_rgb_linear(wavelength);
 
-      // Apply intensity
-      float r = color.r * intensity;
-      float g = color.g * intensity;
-      float b = color.b * intensity;
-
-      // Additive blend to framebuffer
+      // Additive blend to float framebuffer
       int idx = (y * width + x) * 4;
-      int nr = fb[idx] + (int)r;
-      int ng = fb[idx + 1] + (int)g;
-      int nb = fb[idx + 2] + (int)b;
-      fb[idx] = nr > 255 ? 255 : (uint8_t)nr;
-      fb[idx + 1] = ng > 255 ? 255 : (uint8_t)ng;
-      fb[idx + 2] = nb > 255 ? 255 : (uint8_t)nb;
+      fb[idx] += color.r * intensity;
+      fb[idx + 1] += color.g * intensity;
+      fb[idx + 2] += color.b * intensity;
     }
   }
 }
+
+// =================================================================================================
+// Framebuffer Conversion (Linear → Gamma)
+// =================================================================================================
+
+// Convert float framebuffer (linear space) to uint8_t framebuffer (gamma-corrected sRGB).
+// Applies proper sRGB transfer function with spatial dithering to eliminate banding.
+static void finalize_framebuffer(
+  const float* float_fb, uint8_t* out_fb,
+  int width, int height
+) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int i = (y * width + x) * 4;
+
+      float r = float_fb[i];
+      float g = float_fb[i + 1];
+      float b = float_fb[i + 2];
+
+      // Clamp values (additive blending can exceed 1.0)
+      if (r < 0.0f) r = 0.0f;
+      if (g < 0.0f) g = 0.0f;
+      if (b < 0.0f) b = 0.0f;
+      if (r > 1.0f) r = 1.0f;
+      if (g > 1.0f) g = 1.0f;
+      if (b > 1.0f) b = 1.0f;
+
+      // Apply proper sRGB gamma correction (linear -> sRGB) and quantize to 8-bit
+      float out_r = linear_to_srgb(r) * 255.0f + 0.5f;
+      float out_g = linear_to_srgb(g) * 255.0f + 0.5f;
+      float out_b = linear_to_srgb(b) * 255.0f + 0.5f;
+
+      out_fb[i] = out_r > 255.0f ? 255 : (uint8_t)out_r;
+      out_fb[i + 1] = out_g > 255.0f ? 255 : (uint8_t)out_g;
+      out_fb[i + 2] = out_b > 255.0f ? 255 : (uint8_t)out_b;
+      out_fb[i + 3] = 255;  // Fully opaque
+    }
+  }
+}
+
+// =================================================================================================
+// Watchface Rendering
+// =================================================================================================
 
 // Render the watchface scene.
 // - entry_x, entry_y: minute hand position (light source)
@@ -1258,7 +1230,9 @@ static void draw_gradient_continuous(
 // - grain_full_image: 1 = apply grain to whole watchface, 0 = prism only
 // - gradient_fill: 1 = fill gradient between rainbow rays
 static void render_watchface_scene(
-  uint8_t* fb, int width, int height,
+  float* float_fb,  // Float buffer for linear rendering
+  uint8_t* fb,      // Output buffer (gamma-corrected)
+  int width, int height,
   float cx, float cy, float radius,
   float entry_x, float entry_y,
   float hour_angle,
@@ -1296,8 +1270,13 @@ static void render_watchface_scene(
   // Initialize precomputed data (no-op after first call)
   init_wavelength_colors();
 
-  // Initialize background
-  init_watch_framebuffer(fb, width, height, cx, cy, radius, vignette_intensity, white_background);
+  // Convert prism color from sRGB to linear
+  float prism_r_f = srgb_to_linear(prism_r);
+  float prism_g_f = srgb_to_linear(prism_g);
+  float prism_b_f = srgb_to_linear(prism_b);
+
+  // Initialize background (to float buffer)
+  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius, vignette_intensity, white_background);
 
   // Entry ray direction: toward center
   float entry_dx = cx - entry_x;
@@ -1309,19 +1288,21 @@ static void render_watchface_scene(
 
   if (!prism_entry.hit) {
     // Ray doesn't hit prism - just draw overlay and return
-    draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
-                    radius * glow_width_percent, glow_intensity, glow_falloff);
+    draw_prism_glow_f(float_fb, width, height, prism, prism_r_f, prism_g_f, prism_b_f,
+                      radius * glow_width_percent, glow_intensity, glow_falloff);
     if (grain_full_image) {
-      apply_watchface_grain(fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
+      apply_watchface_grain_f(float_fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
     } else {
-      apply_prism_grain(fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
+      apply_prism_grain_f(float_fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
     }
     if (show_markers) {
-      draw_watch_overlay(fb, width, height, cx, cy, radius,
-                         255, 255, 255,
-                         marker_length_percent, marker_style,
-                         marker_glow_width, marker_glow_intensity, marker_glow_falloff);
+      draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
+                           1.0f, 1.0f, 1.0f,
+                           marker_length_percent, marker_style,
+                           marker_glow_width, marker_glow_intensity, marker_glow_falloff);
     }
+    // Convert float buffer to output buffer with sRGB gamma correction
+    finalize_framebuffer(float_fb, fb, width, height);
     return;
   }
 
@@ -1361,8 +1342,8 @@ static void render_watchface_scene(
       float wl_last = WAVELENGTHS[NUM_WAVELENGTHS - 1];  // Violet
 
       // Draw continuous gradient outside prism (uses center as origin)
-      draw_gradient_continuous(
-        fb, width, height, GRADIENT_EXTERNAL,
+      draw_gradient_continuous_f(
+        float_fb, width, height, GRADIENT_EXTERNAL,
         cx, cy,  // origin = center
         cx, cy, radius,
         angle_first, angle_last,
@@ -1379,8 +1360,8 @@ static void render_watchface_scene(
       float internal_angle_first = atan2_approx(exit_first.py - grad_origin_y, exit_first.px - grad_origin_x);
       float internal_angle_last = atan2_approx(exit_last.py - grad_origin_y, exit_last.px - grad_origin_x);
 
-      draw_gradient_continuous(
-        fb, width, height, GRADIENT_INTERNAL,
+      draw_gradient_continuous_f(
+        float_fb, width, height, GRADIENT_INTERNAL,
         grad_origin_x, grad_origin_y,
         0, 0, 0,  // cx, cy, radius unused for internal mode
         internal_angle_first, internal_angle_last,
@@ -1394,11 +1375,11 @@ static void render_watchface_scene(
   // Outside ray: always white (all wavelengths add to white)
   // Internal rays: use wavelength colors if toggle on, otherwise prism color
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
-    RGB color = WAVELENGTH_COLORS[i];
+    RGB_Linear color = WAVELENGTH_COLORS_LINEAR[i];
 
     // Draw incoming ray (outside prism) - per-wavelength colors, adds up via blending
     if (has_clipped_entry) {
-      draw_line_with_glow_additive(fb, width, height,
+      draw_line_with_glow_additive_f(float_fb, width, height,
         clip_x0, clip_y0, clip_x1, clip_y1,
         color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
         0, circle_clip, prism->vertices);
@@ -1422,27 +1403,27 @@ static void render_watchface_scene(
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
       // Internal ray colors (for non-dispersion segments or when gradient is off)
-      uint8_t internal_r = internal_ray_real_colors ? color.r : prism_r;
-      uint8_t internal_g = internal_ray_real_colors ? color.g : prism_g;
-      uint8_t internal_b = internal_ray_real_colors ? color.b : prism_b;
+      float internal_r = internal_ray_real_colors ? color.r : prism_r_f;
+      float internal_g = internal_ray_real_colors ? color.g : prism_g_f;
+      float internal_b = internal_ray_real_colors ? color.b : prism_b_f;
 
       if (bounce.needs_bounce) {
         // Entry→bounce segment: always drawn (input ray continuation, not dispersion)
-        draw_line_with_glow_additive(fb, width, height,
+        draw_line_with_glow_additive_f(float_fb, width, height,
           prism_entry.px, prism_entry.py,
           bounce.bounce_x, bounce.bounce_y,
           internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
 
         // Bounced path: bounce → exit
-        draw_line_with_glow_additive(fb, width, height,
+        draw_line_with_glow_additive_f(float_fb, width, height,
           bounce.bounce_x, bounce.bounce_y,
           internal_exit_x, internal_exit_y,
           internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
       } else {
         // Direct path: entry → exit
-        draw_line_with_glow_additive(fb, width, height,
+        draw_line_with_glow_additive_f(float_fb, width, height,
           prism_entry.px, prism_entry.py,
           internal_exit_x, internal_exit_y,
           internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
@@ -1460,14 +1441,14 @@ static void render_watchface_scene(
         cx, cy, radius,
         &border_x, &border_y
       )) {
-        float clip_x0, clip_y0, clip_x1, clip_y1;
+        float exit_clip_x0, exit_clip_y0, exit_clip_x1, exit_clip_y1;
         if (clip_segment_to_circle(
           prism_exit.px, prism_exit.py, border_x, border_y,
           cx, cy, radius,
-          &clip_x0, &clip_y0, &clip_x1, &clip_y1
+          &exit_clip_x0, &exit_clip_y0, &exit_clip_x1, &exit_clip_y1
         )) {
-          draw_line_with_glow_additive(fb, width, height,
-            clip_x0, clip_y0, clip_x1, clip_y1,
+          draw_line_with_glow_additive_f(float_fb, width, height,
+            exit_clip_x0, exit_clip_y0, exit_clip_x1, exit_clip_y1,
             color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
             0, circle_clip, prism->vertices);
         }
@@ -1476,28 +1457,31 @@ static void render_watchface_scene(
   }
 
   // Draw prism with inner glow
-  draw_prism_glow(fb, width, height, prism, prism_r, prism_g, prism_b,
-                  radius * glow_width_percent, glow_intensity, glow_falloff);
+  draw_prism_glow_f(float_fb, width, height, prism, prism_r_f, prism_g_f, prism_b_f,
+                    radius * glow_width_percent, glow_intensity, glow_falloff);
 
   // Apply film grain (either to prism only or whole watchface)
   if (grain_full_image) {
-    apply_watchface_grain(fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
+    apply_watchface_grain_f(float_fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
   } else {
-    apply_prism_grain(fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
+    apply_prism_grain_f(float_fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
   }
 
   // Draw seconds sparkle on prism edge (if enabled)
   if (show_seconds) {
     float sparkle_x, sparkle_y;
     compute_sparkle_position(second, prism, &sparkle_x, &sparkle_y);
-    draw_sparkle(fb, width, height, sparkle_x, sparkle_y, radius, sparkle_size_percent, second);
+    draw_sparkle_f(float_fb, width, height, sparkle_x, sparkle_y, radius, sparkle_size_percent, second);
   }
 
   // Draw watch overlay (hour markers) if show_markers is set
   if (show_markers) {
-    draw_watch_overlay(fb, width, height, cx, cy, radius,
-                       255, 255, 255,
-                       marker_length_percent, marker_style,
-                       marker_glow_width, marker_glow_intensity, marker_glow_falloff);
+    draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
+                         1.0f, 1.0f, 1.0f,
+                         marker_length_percent, marker_style,
+                         marker_glow_width, marker_glow_intensity, marker_glow_falloff);
   }
+
+  // Convert float buffer to output buffer with sRGB gamma correction
+  finalize_framebuffer(float_fb, fb, width, height);
 }
