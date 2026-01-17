@@ -196,26 +196,6 @@ static void draw_line_alpha_f(
   }
 }
 
-static void draw_line_additive_f(
-  float* fb, int width, int height,
-  int x0, int y0, int x1, int y1,
-  float r, float g, float b, float a
-) {
-  int dx = x1 > x0 ? x1 - x0 : x0 - x1;
-  int dy = y1 > y0 ? y1 - y0 : y0 - y1;
-  int sx = x0 < x1 ? 1 : -1;
-  int sy = y0 < y1 ? 1 : -1;
-  int err = dx - dy;
-
-  while (1) {
-    set_pixel_additive_f(fb, width, height, x0, y0, r, g, b, a);
-    if (x0 == x1 && y0 == y1) break;
-    int e2 = 2 * err;
-    if (e2 > -dy) { err -= dy; x0 += sx; }
-    if (e2 < dx) { err += dx; y0 += sy; }
-  }
-}
-
 // =================================================================================================
 // Capsule Scanline Intersection (for optimized glow rendering)
 // =================================================================================================
@@ -454,12 +434,6 @@ static void draw_line_with_glow_additive_f(
       set_pixel_additive_f(fb, width, height, x, y, r, g, b, alpha);
     }
   }
-
-  // Draw crisp line on top for definition (additive for wavelength mixing)
-  draw_line_additive_f(fb, width, height,
-    (int)(x0 + 0.5f), (int)(y0 + 0.5f),
-    (int)(x1 + 0.5f), (int)(y1 + 0.5f),
-    r, g, b, 1.0f);
 }
 
 // =================================================================================================
