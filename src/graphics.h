@@ -1077,6 +1077,10 @@ static void draw_gradient_continuous_f(
     float tmpw = wl_start; wl_start = wl_end; wl_end = tmpw;
   }
 
+  // Save original boundary angles for interpolation (before epsilon expansion)
+  float a1_orig = a1;
+
+  // Expand acceptance range by epsilon to ensure boundary pixels are included
   float eps = 0.002f;
   a1 -= eps;
   a2 += eps;
@@ -1136,16 +1140,24 @@ static void draw_gradient_continuous_f(
 
       float t;
       if (wrap_around) {
+        // Acceptance check uses epsilon-expanded range (a1, a2)
         if (pixel_angle < a1 && pixel_angle > a2) continue;
-        if (pixel_angle >= a1) {
-          t = (pixel_angle - a1) / angle_span;
+        // Interpolation uses original boundary (a1_orig) so t=0 at actual first ray
+        if (pixel_angle >= a1_orig) {
+          t = (pixel_angle - a1_orig) / angle_span;
         } else {
-          t = (2.0f * PI - a1 + pixel_angle) / angle_span;
+          t = (2.0f * PI - a1_orig + pixel_angle) / angle_span;
         }
       } else {
+        // Acceptance check uses epsilon-expanded range (a1, a2)
         if (pixel_angle < a1 || pixel_angle > a2) continue;
-        t = (pixel_angle - a1) / angle_span;
+        // Interpolation uses original boundary (a1_orig) so t=0 at actual first ray
+        t = (pixel_angle - a1_orig) / angle_span;
       }
+
+      // Clamp t to [0, 1] - pixels in epsilon-expanded zone get boundary colors
+      if (t < 0.0f) t = 0.0f;
+      if (t > 1.0f) t = 1.0f;
 
       // Interpolate wavelength and convert to linear RGB
       float wavelength = wl_start + t * (wl_end - wl_start);
@@ -1341,12 +1353,28 @@ static void render_watchface_scene(
       float wl_first = WAVELENGTHS[0];  // Red
       float wl_last = WAVELENGTHS[NUM_WAVELENGTHS - 1];  // Violet
 
+      // For external gradient, compute angles from CENTER to where boundary rays hit CIRCLE
+      // (not the ray direction angles, which causes parallax mismatch since rays don't start at center)
+      float ext_dir_first_x = cosf_approx(angle_first);
+      float ext_dir_first_y = sinf_approx(angle_first);
+      float border_first_x, border_first_y;
+      ray_circle_intersection(exit_first.px, exit_first.py, ext_dir_first_x, ext_dir_first_y,
+                              cx, cy, radius, &border_first_x, &border_first_y);
+      float ext_angle_first = atan2_approx(border_first_y - cy, border_first_x - cx);
+
+      float ext_dir_last_x = cosf_approx(angle_last);
+      float ext_dir_last_y = sinf_approx(angle_last);
+      float border_last_x, border_last_y;
+      ray_circle_intersection(exit_last.px, exit_last.py, ext_dir_last_x, ext_dir_last_y,
+                              cx, cy, radius, &border_last_x, &border_last_y);
+      float ext_angle_last = atan2_approx(border_last_y - cy, border_last_x - cx);
+
       // Draw continuous gradient outside prism (uses center as origin)
       draw_gradient_continuous_f(
         float_fb, width, height, GRADIENT_EXTERNAL,
         cx, cy,  // origin = center
         cx, cy, radius,
-        angle_first, angle_last,
+        ext_angle_first, ext_angle_last,
         wl_first, wl_last,
         prism, gradient_intensity
       );
@@ -1356,9 +1384,20 @@ static void render_watchface_scene(
       float grad_origin_x = bounce.needs_bounce ? bounce.bounce_x : prism_entry.px;
       float grad_origin_y = bounce.needs_bounce ? bounce.bounce_y : prism_entry.py;
 
-      // Compute angles from origin to exit points for internal gradient
-      float internal_angle_first = atan2_approx(exit_first.py - grad_origin_y, exit_first.px - grad_origin_x);
-      float internal_angle_last = atan2_approx(exit_last.py - grad_origin_y, exit_last.px - grad_origin_x);
+      // Compute internal exit points WITH the same perpendicular offsets used by the rays
+      // This ensures the gradient boundaries align exactly with the ray boundaries
+      float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
+      float offset_first = 0.5f * internal_spread;   // First wavelength (t=0): offset = 0.5 * spread
+      float offset_last = -0.5f * internal_spread;   // Last wavelength (t=1): offset = -0.5 * spread
+
+      float internal_exit_first_x = exit_first.px + cosf_approx(angle_first + PI/2) * offset_first * 2.0f;
+      float internal_exit_first_y = exit_first.py + sinf_approx(angle_first + PI/2) * offset_first * 2.0f;
+      float internal_exit_last_x = exit_last.px + cosf_approx(angle_last + PI/2) * offset_last * 2.0f;
+      float internal_exit_last_y = exit_last.py + sinf_approx(angle_last + PI/2) * offset_last * 2.0f;
+
+      // Compute angles from origin to ACTUAL internal exit points (with offsets)
+      float internal_angle_first = atan2_approx(internal_exit_first_y - grad_origin_y, internal_exit_first_x - grad_origin_x);
+      float internal_angle_last = atan2_approx(internal_exit_last_y - grad_origin_y, internal_exit_last_x - grad_origin_x);
 
       draw_gradient_continuous_f(
         float_fb, width, height, GRADIENT_INTERNAL,
