@@ -22,6 +22,7 @@ const defaults = {
     glowFalloff: 1,
     innerSpectrum: true,
     artisticDispersion: false,
+    gradientFill: false,
   },
   markers: {
     length: 15,
@@ -237,6 +238,9 @@ export const rays = {
   innerSpectrum: signal(settings.raysInnerSpectrum ?? defaults.rays.innerSpectrum),
   artisticDispersion: signal(settings.raysArtisticDispersion ?? defaults.rays.artisticDispersion),
 
+  // Signals: rendering mode
+  gradientFill: signal(settings.raysGradientFill ?? defaults.rays.gradientFill),
+
   // Actions
   setGlowWidth(e: Event): void {
     rays.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
@@ -256,6 +260,10 @@ export const rays = {
 
   toggleArtisticDispersion(): void {
     rays.artisticDispersion.value = !rays.artisticDispersion.value;
+  },
+
+  toggleGradientFill(): void {
+    rays.gradientFill.value = !rays.gradientFill.value;
   },
 };
 
@@ -380,6 +388,7 @@ export const resetAll = {
       rays.glowFalloff.value = defaults.rays.glowFalloff;
       rays.innerSpectrum.value = defaults.rays.innerSpectrum;
       rays.artisticDispersion.value = defaults.rays.artisticDispersion;
+      rays.gradientFill.value = defaults.rays.gradientFill;
 
       // Markers
       markers.length.value = defaults.markers.length;

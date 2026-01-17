@@ -20,6 +20,7 @@ export interface Settings {
   raysGlowFalloff: number;
   raysInnerSpectrum: boolean;
   raysArtisticDispersion: boolean;
+  raysGradientFill: boolean;
 
   markersLength: number;
   markersStyle: number;
@@ -80,6 +81,7 @@ export function saveSettings({
       raysGlowFalloff: rays.glowFalloff.value,
       raysInnerSpectrum: rays.innerSpectrum.value,
       raysArtisticDispersion: rays.artisticDispersion.value,
+      raysGradientFill: rays.gradientFill.value,
 
       markersLength: markers.length.value,
       markersStyle: markers.style.value,

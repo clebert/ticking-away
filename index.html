@@ -379,6 +379,15 @@
             <label
               ><input
                 type="checkbox"
+                data-bind="checked:rays.gradientFill, onchange:rays.toggleGradientFill"
+              />
+              Gradient Fill</label
+            >
+          </div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
                 data-bind="checked:rays.innerSpectrum, onchange:rays.toggleInnerSpectrum"
               />
               Inner Spectrum</label

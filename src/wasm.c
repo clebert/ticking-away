@@ -48,19 +48,18 @@
 //   grain_animated: 0 or 1 (1 = animate grain each frame)
 //   grain_scale: device pixel ratio to scale grain size (1.0 = no scaling)
 //   grain_full_image: 0 or 1 (1 = apply grain to whole watchface, 0 = prism only)
-WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, float minute,
-                                  float second, float prism_size_percent, float rainbow_spread,
-                                  int show_markers, int prism_r, int prism_g, int prism_b,
-                                  int show_seconds, float sparkle_size_percent,
-                                  float glow_width_percent, float glow_intensity, int glow_falloff,
-                                  float ray_glow_width_percent, float ray_glow_intensity,
-                                  int ray_glow_falloff, int internal_ray_real_colors,
-                                  int artistic_dispersion, float marker_length_percent,
-                                  int marker_style, float marker_glow_width_percent,
-                                  float marker_glow_intensity, int marker_glow_falloff,
-                                  float grain_intensity, float vignette_intensity,
-                                  int white_background, int frame, int grain_animated,
-                                  float grain_scale, int grain_full_image) {
+//   gradient_fill: 0 or 1 (1 = fill gradient between rainbow rays)
+WASM_EXPORT void
+render_watchface(uint8_t *fb, int width, int height, int hour, float minute, float second,
+                 float prism_size_percent, float rainbow_spread, int show_markers, int prism_r,
+                 int prism_g, int prism_b, int show_seconds, float sparkle_size_percent,
+                 float glow_width_percent, float glow_intensity, int glow_falloff,
+                 float ray_glow_width_percent, float ray_glow_intensity, int ray_glow_falloff,
+                 int internal_ray_real_colors, int artistic_dispersion, float marker_length_percent,
+                 int marker_style, float marker_glow_width_percent, float marker_glow_intensity,
+                 int marker_glow_falloff, float grain_intensity, float vignette_intensity,
+                 int white_background, int frame, int grain_animated, float grain_scale,
+                 int grain_full_image, int gradient_fill) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -88,9 +87,9 @@ WASM_EXPORT void render_watchface(uint8_t *fb, int width, int height, int hour, 
       &prism, show_markers, (uint8_t)prism_r, (uint8_t)prism_g, (uint8_t)prism_b, show_seconds,
       sparkle_size_percent, glow_width_percent, glow_intensity, glow_falloff, ray_glow_width,
       ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors, artistic_dispersion,
-      marker_length_percent, marker_style, marker_glow_width_percent,
-      marker_glow_intensity, marker_glow_falloff, grain_intensity, vignette_intensity,
-      white_background, (uint32_t)frame, grain_animated, grain_scale, grain_full_image);
+      marker_length_percent, marker_style, marker_glow_width_percent, marker_glow_intensity,
+      marker_glow_falloff, grain_intensity, vignette_intensity, white_background, (uint32_t)frame,
+      grain_animated, grain_scale, grain_full_image, gradient_fill);
 }
 
 // Apply Atkinson dithering to the framebuffer as a post-processing step.

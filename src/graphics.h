@@ -1083,6 +1083,154 @@ static float compute_exit_angle(
   return hour_angle + offset;
 }
 
+// Gradient mode: determines pixel inclusion and iteration bounds
+typedef enum {
+  GRADIENT_EXTERNAL,  // Inside circle, outside prism (rainbow fan)
+  GRADIENT_INTERNAL   // Inside prism only
+} GradientMode;
+
+// Draw continuous gradient fill with wavelength-based color interpolation.
+// Unified function for both external (rainbow) and internal (prism) gradients.
+// - mode: GRADIENT_EXTERNAL for outside prism, GRADIENT_INTERNAL for inside prism
+// - origin_x/y: point from which angles are measured
+// - For external mode: also needs cx, cy, radius for circle bounds
+static void draw_gradient_continuous(
+  uint8_t* fb, int width, int height,
+  GradientMode mode,
+  float origin_x, float origin_y,
+  float cx, float cy, float radius,  // Used only for GRADIENT_EXTERNAL
+  float angle_start, float angle_end,
+  float wavelength_start, float wavelength_end,
+  const Prism* prism,
+  float intensity
+) {
+  // Normalize angles to [0, 2*PI] range
+  float a1 = angle_start;
+  float a2 = angle_end;
+  while (a1 < 0) a1 += 2.0f * PI;
+  while (a1 >= 2.0f * PI) a1 -= 2.0f * PI;
+  while (a2 < 0) a2 += 2.0f * PI;
+  while (a2 >= 2.0f * PI) a2 -= 2.0f * PI;
+
+  // Compute signed angular difference (shortest path between angles)
+  float angle_diff = a2 - a1;
+  if (angle_diff > PI) angle_diff -= 2.0f * PI;
+  if (angle_diff < -PI) angle_diff += 2.0f * PI;
+
+  float angle_span = angle_diff > 0 ? angle_diff : -angle_diff;
+
+  // Skip if span is too small or unreasonably large
+  if (angle_span < 0.001f || angle_span > PI) return;
+
+  // Determine direction and swap if needed for consistent interpolation
+  float wl_start = wavelength_start;
+  float wl_end = wavelength_end;
+  if (angle_diff < 0) {
+    float tmp = a1; a1 = a2; a2 = tmp;
+    float tmpw = wl_start; wl_start = wl_end; wl_end = tmpw;
+  }
+
+  // Add small padding to avoid gaps at boundaries due to floating-point precision
+  float eps = 0.002f;  // ~0.1 degree padding
+  a1 -= eps;
+  a2 += eps;
+  // Re-normalize after padding
+  if (a1 < 0) a1 += 2.0f * PI;
+  if (a2 >= 2.0f * PI) a2 -= 2.0f * PI;
+
+  int wrap_around = (a1 > a2);
+
+  // Compute iteration bounds based on mode
+  int x_start = 0, x_end = width, y_start = 0, y_end = height;
+  float radius_sq = radius * radius;
+
+  if (mode == GRADIENT_INTERNAL) {
+    // Use prism bounding box for internal mode
+    float v0x = prism->vertices[0], v0y = prism->vertices[1];
+    float v1x = prism->vertices[2], v1y = prism->vertices[3];
+    float v2x = prism->vertices[4], v2y = prism->vertices[5];
+
+    float min_x = v0x < v1x ? (v0x < v2x ? v0x : v2x) : (v1x < v2x ? v1x : v2x);
+    float max_x = v0x > v1x ? (v0x > v2x ? v0x : v2x) : (v1x > v2x ? v1x : v2x);
+    float min_y = v0y < v1y ? (v0y < v2y ? v0y : v2y) : (v1y < v2y ? v1y : v2y);
+    float max_y = v0y > v1y ? (v0y > v2y ? v0y : v2y) : (v1y > v2y ? v1y : v2y);
+
+    x_start = (int)min_x;
+    x_end = (int)max_x + 1;
+    y_start = (int)min_y;
+    y_end = (int)max_y + 1;
+
+    if (x_start < 0) x_start = 0;
+    if (y_start < 0) y_start = 0;
+    if (x_end > width) x_end = width;
+    if (y_end > height) y_end = height;
+  }
+
+  for (int y = y_start; y < y_end; y++) {
+    float py = (float)y + 0.5f;
+    for (int x = x_start; x < x_end; x++) {
+      float px = (float)x + 0.5f;
+
+      // Pixel inclusion test based on mode
+      if (mode == GRADIENT_EXTERNAL) {
+        // Must be inside watchface circle
+        float dx_circle = px - cx;
+        float dy_circle = py - cy;
+        if (dx_circle * dx_circle + dy_circle * dy_circle > radius_sq) continue;
+        // Must be outside prism
+        if (point_in_triangle(px, py,
+            prism->vertices[0], prism->vertices[1],
+            prism->vertices[2], prism->vertices[3],
+            prism->vertices[4], prism->vertices[5])) continue;
+      } else {
+        // Must be inside prism
+        if (!point_in_triangle(px, py,
+            prism->vertices[0], prism->vertices[1],
+            prism->vertices[2], prism->vertices[3],
+            prism->vertices[4], prism->vertices[5])) continue;
+      }
+
+      // Compute angle from origin and normalize to [0, 2*PI]
+      float dx = px - origin_x;
+      float dy = py - origin_y;
+      float pixel_angle = atan2_approx(dy, dx);
+      if (pixel_angle < 0) pixel_angle += 2.0f * PI;
+
+      // Check if pixel angle is within the gradient region
+      float t;
+      if (wrap_around) {
+        if (pixel_angle < a1 && pixel_angle > a2) continue;
+        if (pixel_angle >= a1) {
+          t = (pixel_angle - a1) / angle_span;
+        } else {
+          t = (2.0f * PI - a1 + pixel_angle) / angle_span;
+        }
+      } else {
+        if (pixel_angle < a1 || pixel_angle > a2) continue;
+        t = (pixel_angle - a1) / angle_span;
+      }
+
+      // Interpolate wavelength and convert to RGB
+      float wavelength = wl_start + t * (wl_end - wl_start);
+      RGB color = wavelength_to_rgb(wavelength);
+
+      // Apply intensity
+      float r = color.r * intensity;
+      float g = color.g * intensity;
+      float b = color.b * intensity;
+
+      // Additive blend to framebuffer
+      int idx = (y * width + x) * 4;
+      int nr = fb[idx] + (int)r;
+      int ng = fb[idx + 1] + (int)g;
+      int nb = fb[idx + 2] + (int)b;
+      fb[idx] = nr > 255 ? 255 : (uint8_t)nr;
+      fb[idx + 1] = ng > 255 ? 255 : (uint8_t)ng;
+      fb[idx + 2] = nb > 255 ? 255 : (uint8_t)nb;
+    }
+  }
+}
+
 // Render the watchface scene.
 // - entry_x, entry_y: minute hand position (light source)
 // - hour_angle: angle to hour position from center
@@ -1108,6 +1256,7 @@ static float compute_exit_angle(
 // - grain_animated: 1 = animate grain each frame
 // - grain_scale: DPR to scale grain size (1.0 = no scaling)
 // - grain_full_image: 1 = apply grain to whole watchface, 0 = prism only
+// - gradient_fill: 1 = fill gradient between rainbow rays
 static void render_watchface_scene(
   uint8_t* fb, int width, int height,
   float cx, float cy, float radius,
@@ -1141,7 +1290,8 @@ static void render_watchface_scene(
   uint32_t frame,
   int grain_animated,
   float grain_scale,
-  int grain_full_image
+  int grain_full_image,
+  int gradient_fill
 ) {
   // Initialize precomputed data (no-op after first call)
   init_wavelength_colors();
@@ -1193,17 +1343,64 @@ static void render_watchface_scene(
     prism
   );
 
+  // Draw gradient fill between rainbow rays (when enabled and spread > 0)
+  if (gradient_fill && rainbow_spread > 0.001f) {
+    // Compute boundary angles for the full rainbow (first and last wavelengths)
+    float angle_first = compute_exit_angle(hour_angle, rainbow_spread, 0, artistic_dispersion);
+    float angle_last = compute_exit_angle(hour_angle, rainbow_spread, NUM_WAVELENGTHS - 1, artistic_dispersion);
+
+    // Find exit points for boundary rays
+    RayHit exit_first = find_prism_exit_from_center(cx, cy, angle_first, prism);
+    RayHit exit_last = find_prism_exit_from_center(cx, cy, angle_last, prism);
+
+    if (exit_first.hit && exit_last.hit) {
+      float gradient_intensity = 1.0f;
+
+      // Wavelength range: red (650nm) to violet (420nm)
+      float wl_first = WAVELENGTHS[0];  // Red
+      float wl_last = WAVELENGTHS[NUM_WAVELENGTHS - 1];  // Violet
+
+      // Draw continuous gradient outside prism (uses center as origin)
+      draw_gradient_continuous(
+        fb, width, height, GRADIENT_EXTERNAL,
+        cx, cy,  // origin = center
+        cx, cy, radius,
+        angle_first, angle_last,
+        wl_first, wl_last,
+        prism, gradient_intensity
+      );
+
+      // Draw continuous gradient inside prism
+      // Origin point: when bouncing, light spreads from bounce point; otherwise from entry point
+      float grad_origin_x = bounce.needs_bounce ? bounce.bounce_x : prism_entry.px;
+      float grad_origin_y = bounce.needs_bounce ? bounce.bounce_y : prism_entry.py;
+
+      // Compute angles from origin to exit points for internal gradient
+      float internal_angle_first = atan2_approx(exit_first.py - grad_origin_y, exit_first.px - grad_origin_x);
+      float internal_angle_last = atan2_approx(exit_last.py - grad_origin_y, exit_last.px - grad_origin_x);
+
+      draw_gradient_continuous(
+        fb, width, height, GRADIENT_INTERNAL,
+        grad_origin_x, grad_origin_y,
+        0, 0, 0,  // cx, cy, radius unused for internal mode
+        internal_angle_first, internal_angle_last,
+        wl_first, wl_last,
+        prism, gradient_intensity
+      );
+    }
+  }
+
   // Draw all rays per-wavelength for consistent brightness (additive blending)
   // Outside ray: always white (all wavelengths add to white)
   // Internal rays: use wavelength colors if toggle on, otherwise prism color
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
     RGB color = WAVELENGTH_COLORS[i];
 
-    // Draw incoming ray (outside prism) - white for all wavelengths, adds up via blending
+    // Draw incoming ray (outside prism) - per-wavelength colors, adds up via blending
     if (has_clipped_entry) {
       draw_line_with_glow_additive(fb, width, height,
         clip_x0, clip_y0, clip_x1, clip_y1,
-        200, 200, 200, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+        color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
         0, circle_clip, prism->vertices);
     }
 
@@ -1224,26 +1421,27 @@ static void render_watchface_scene(
       float internal_exit_x = prism_exit.px + cosf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
-      // Use wavelength colors if internal_ray_real_colors is set, otherwise use prism colors
+      // Internal ray colors (for non-dispersion segments or when gradient is off)
       uint8_t internal_r = internal_ray_real_colors ? color.r : prism_r;
       uint8_t internal_g = internal_ray_real_colors ? color.g : prism_g;
       uint8_t internal_b = internal_ray_real_colors ? color.b : prism_b;
 
       if (bounce.needs_bounce) {
-        // Draw entry→bounce segment per-wavelength for consistent brightness
+        // Entry→bounce segment: always drawn (input ray continuation, not dispersion)
         draw_line_with_glow_additive(fb, width, height,
           prism_entry.px, prism_entry.py,
           bounce.bounce_x, bounce.bounce_y,
           internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
-        // Bounced path: bounce -> exit (spread happens here)
+
+        // Bounced path: bounce → exit
         draw_line_with_glow_additive(fb, width, height,
           bounce.bounce_x, bounce.bounce_y,
           internal_exit_x, internal_exit_y,
           internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
       } else {
-        // Direct path: entry -> exit
+        // Direct path: entry → exit
         draw_line_with_glow_additive(fb, width, height,
           prism_entry.px, prism_entry.py,
           internal_exit_x, internal_exit_y,
@@ -1251,7 +1449,7 @@ static void render_watchface_scene(
           prism->vertices, 0, 0);
       }
 
-      // Draw exit ray (from prism exit to circle edge) with actual rainbow color
+      // Draw exit ray (from prism exit to circle edge)
       float exit_dir_x = cosf_approx(exit_angle);
       float exit_dir_y = sinf_approx(exit_angle);
 
