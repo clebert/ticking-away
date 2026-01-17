@@ -569,120 +569,6 @@ static void init_watch_framebuffer_f(
   }
 }
 
-// Grain and prism functions (linear color space)
-
-// Float version of apply_prism_grain (linear color space)
-static void apply_prism_grain_f(
-  float* fb, int width, int height,
-  const Prism* prism,
-  float grain_intensity,    // 0.0-1.0
-  uint32_t frame,           // Frame counter for temporal grain animation
-  int grain_animated,       // 1 = animate grain each frame
-  float grain_scale         // DPR to scale grain (1.0 = no scaling)
-) {
-  if (grain_intensity <= 0.0f) return;
-
-  float v0x = prism->vertices[0], v0y = prism->vertices[1];
-  float v1x = prism->vertices[2], v1y = prism->vertices[3];
-  float v2x = prism->vertices[4], v2y = prism->vertices[5];
-
-  float min_x = v0x < v1x ? (v0x < v2x ? v0x : v2x) : (v1x < v2x ? v1x : v2x);
-  float max_x = v0x > v1x ? (v0x > v2x ? v0x : v2x) : (v1x > v2x ? v1x : v2x);
-  float min_y = v0y < v1y ? (v0y < v2y ? v0y : v2y) : (v1y < v2y ? v1y : v2y);
-  float max_y = v0y > v1y ? (v0y > v2y ? v0y : v2y) : (v1y > v2y ? v1y : v2y);
-
-  int x_start = (int)min_x;
-  int x_end = (int)max_x + 1;
-  int y_start = (int)min_y;
-  int y_end = (int)max_y + 1;
-
-  if (x_start < 0) x_start = 0;
-  if (y_start < 0) y_start = 0;
-  if (x_end > width) x_end = width;
-  if (y_end > height) y_end = height;
-
-  // Grain strength in linear space: ~0.025 at full intensity.
-  // This produces subtle film grain comparable to the original ±15/255 in sRGB.
-  // Linear space requires smaller values since gamma expansion amplifies noise.
-  float grain_strength = grain_intensity * 0.025f;
-
-  for (int y = y_start; y < y_end; y++) {
-    for (int x = x_start; x < x_end; x++) {
-      float px = (float)x + 0.5f;
-      float py = (float)y + 0.5f;
-
-      if (!point_in_triangle(px, py, v0x, v0y, v1x, v1y, v2x, v2y)) {
-        continue;
-      }
-
-      int idx = (y * width + x) * 4;
-
-      int gx = (int)((float)x / grain_scale);
-      int gy = (int)((float)y / grain_scale);
-      uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
-      float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
-
-      for (int c = 0; c < 3; c++) {
-        fb[idx + c] += grain;
-      }
-    }
-  }
-}
-
-// Float version of apply_watchface_grain (linear color space)
-static void apply_watchface_grain_f(
-  float* fb, int width, int height,
-  float cx, float cy, float radius,
-  float grain_intensity,    // 0.0-1.0
-  uint32_t frame,           // Frame counter for temporal grain animation
-  int grain_animated,       // 1 = animate grain each frame
-  float grain_scale         // DPR to scale grain (1.0 = no scaling)
-) {
-  if (grain_intensity <= 0.0f) return;
-
-  float r2 = radius * radius;
-
-  int x_start = (int)(cx - radius);
-  int x_end = (int)(cx + radius) + 1;
-  int y_start = (int)(cy - radius);
-  int y_end = (int)(cy + radius) + 1;
-
-  if (x_start < 0) x_start = 0;
-  if (y_start < 0) y_start = 0;
-  if (x_end > width) x_end = width;
-  if (y_end > height) y_end = height;
-
-  // Grain strength in linear space: ~0.025 at full intensity.
-  // This produces subtle film grain comparable to the original ±15/255 in sRGB.
-  // Linear space requires smaller values since gamma expansion amplifies noise.
-  float grain_strength = grain_intensity * 0.025f;
-
-  for (int y = y_start; y < y_end; y++) {
-    float dy = (float)y - cy;
-    float dy2 = dy * dy;
-
-    for (int x = x_start; x < x_end; x++) {
-      float dx = (float)x - cx;
-      float dist2 = dx * dx + dy2;
-
-      if (dist2 > r2) {
-        continue;
-      }
-
-      int idx = (y * width + x) * 4;
-
-      int gx = (int)((float)x / grain_scale);
-      int gy = (int)((float)y / grain_scale);
-      uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
-      float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
-
-      for (int c = 0; c < 3; c++) {
-        fb[idx + c] += grain;
-      }
-    }
-  }
-}
-
 // Float version of stroke_prism (linear color space)
 static void stroke_prism_f(
   float* fb, int width, int height,
@@ -1177,11 +1063,34 @@ static void draw_gradient_continuous_f(
 // =================================================================================================
 
 // Convert float framebuffer (linear space) to uint8_t framebuffer (gamma-corrected sRGB).
-// Applies proper sRGB transfer function with spatial dithering to eliminate banding.
+// Applies proper sRGB transfer function with optional film grain in perceptual (sRGB) space.
+// Grain is applied AFTER gamma correction for authentic film grain look (perceptually uniform).
 static void finalize_framebuffer(
   const float* float_fb, uint8_t* out_fb,
-  int width, int height
+  int width, int height,
+  float grain_intensity,    // 0.0-1.0
+  uint32_t frame,           // Frame counter for temporal grain animation
+  int grain_animated,       // 1 = animate grain each frame
+  float grain_scale,        // DPR to scale grain (1.0 = no scaling)
+  int grain_full_image,     // 1 = whole watchface, 0 = prism only
+  float cx, float cy, float radius,  // Watch circle (for full image mode)
+  const Prism* prism        // Prism geometry (for prism-only mode)
 ) {
+  // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
+  // Applied in perceptual space for uniform noise across all brightness levels.
+  float grain_strength = grain_intensity * 0.06f;
+  int apply_grain = grain_intensity > 0.0f;
+
+  float r2 = radius * radius;
+
+  // Prism bounds (for prism-only mode)
+  float v0x = 0, v0y = 0, v1x = 0, v1y = 0, v2x = 0, v2y = 0;
+  if (prism && !grain_full_image) {
+    v0x = prism->vertices[0]; v0y = prism->vertices[1];
+    v1x = prism->vertices[2]; v1y = prism->vertices[3];
+    v2x = prism->vertices[4]; v2y = prism->vertices[5];
+  }
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       int i = (y * width + x) * 4;
@@ -1198,14 +1107,48 @@ static void finalize_framebuffer(
       if (g > 1.0f) g = 1.0f;
       if (b > 1.0f) b = 1.0f;
 
-      // Apply proper sRGB gamma correction (linear -> sRGB) and quantize to 8-bit
-      float out_r = linear_to_srgb(r) * 255.0f + 0.5f;
-      float out_g = linear_to_srgb(g) * 255.0f + 0.5f;
-      float out_b = linear_to_srgb(b) * 255.0f + 0.5f;
+      // Apply proper sRGB gamma correction (linear -> sRGB)
+      float out_r = linear_to_srgb(r);
+      float out_g = linear_to_srgb(g);
+      float out_b = linear_to_srgb(b);
 
-      out_fb[i] = out_r > 255.0f ? 255 : (uint8_t)out_r;
-      out_fb[i + 1] = out_g > 255.0f ? 255 : (uint8_t)out_g;
-      out_fb[i + 2] = out_b > 255.0f ? 255 : (uint8_t)out_b;
+      // Apply film grain in sRGB space (perceptually uniform)
+      if (apply_grain) {
+        float px = (float)x + 0.5f;
+        float py = (float)y + 0.5f;
+
+        int in_grain_region = 0;
+        if (grain_full_image) {
+          // Check if inside watch circle
+          float dx = px - cx;
+          float dy = py - cy;
+          in_grain_region = (dx * dx + dy * dy <= r2);
+        } else if (prism) {
+          // Check if inside prism triangle
+          in_grain_region = point_in_triangle(px, py, v0x, v0y, v1x, v1y, v2x, v2y);
+        }
+
+        if (in_grain_region) {
+          int gx = (int)((float)x / grain_scale);
+          int gy = (int)((float)y / grain_scale);
+          uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
+          float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
+
+          out_r += grain;
+          out_g += grain;
+          out_b += grain;
+        }
+      }
+
+      // Quantize to 8-bit
+      float final_r = out_r * 255.0f + 0.5f;
+      float final_g = out_g * 255.0f + 0.5f;
+      float final_b = out_b * 255.0f + 0.5f;
+
+      // Clamp and store
+      out_fb[i] = final_r < 0.0f ? 0 : (final_r > 255.0f ? 255 : (uint8_t)final_r);
+      out_fb[i + 1] = final_g < 0.0f ? 0 : (final_g > 255.0f ? 255 : (uint8_t)final_g);
+      out_fb[i + 2] = final_b < 0.0f ? 0 : (final_b > 255.0f ? 255 : (uint8_t)final_b);
       out_fb[i + 3] = 255;  // Fully opaque
     }
   }
@@ -1302,19 +1245,16 @@ static void render_watchface_scene(
     // Ray doesn't hit prism - just draw overlay and return
     draw_prism_glow_f(float_fb, width, height, prism, prism_r_f, prism_g_f, prism_b_f,
                       radius * glow_width_percent, glow_intensity, glow_falloff);
-    if (grain_full_image) {
-      apply_watchface_grain_f(float_fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
-    } else {
-      apply_prism_grain_f(float_fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
-    }
     if (show_markers) {
       draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
                            1.0f, 1.0f, 1.0f,
                            marker_length_percent, marker_style,
                            marker_glow_width, marker_glow_intensity, marker_glow_falloff);
     }
-    // Convert float buffer to output buffer with sRGB gamma correction
-    finalize_framebuffer(float_fb, fb, width, height);
+    // Convert float buffer to output buffer with sRGB gamma correction and film grain
+    finalize_framebuffer(float_fb, fb, width, height,
+                         grain_intensity, frame, grain_animated, grain_scale,
+                         grain_full_image, cx, cy, radius, prism);
     return;
   }
 
@@ -1499,13 +1439,6 @@ static void render_watchface_scene(
   draw_prism_glow_f(float_fb, width, height, prism, prism_r_f, prism_g_f, prism_b_f,
                     radius * glow_width_percent, glow_intensity, glow_falloff);
 
-  // Apply film grain (either to prism only or whole watchface)
-  if (grain_full_image) {
-    apply_watchface_grain_f(float_fb, width, height, cx, cy, radius, grain_intensity, frame, grain_animated, grain_scale);
-  } else {
-    apply_prism_grain_f(float_fb, width, height, prism, grain_intensity, frame, grain_animated, grain_scale);
-  }
-
   // Draw seconds sparkle on prism edge (if enabled)
   if (show_seconds) {
     float sparkle_x, sparkle_y;
@@ -1521,6 +1454,8 @@ static void render_watchface_scene(
                          marker_glow_width, marker_glow_intensity, marker_glow_falloff);
   }
 
-  // Convert float buffer to output buffer with sRGB gamma correction
-  finalize_framebuffer(float_fb, fb, width, height);
+  // Convert float buffer to output buffer with sRGB gamma correction and film grain
+  finalize_framebuffer(float_fb, fb, width, height,
+                       grain_intensity, frame, grain_animated, grain_scale,
+                       grain_full_image, cx, cy, radius, prism);
 }
