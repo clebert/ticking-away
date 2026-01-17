@@ -33,6 +33,21 @@ static inline float sqrtf_impl(float x) {
   return __builtin_sqrtf(x);
 }
 
+static inline float cbrtf_impl(float x) {
+  // Fast cube root using Newton-Raphson with bit manipulation initial guess
+  if (x == 0.0f) return 0.0f;
+  int neg = x < 0.0f;
+  if (neg) x = -x;
+  union { float f; uint32_t u; } v = { x };
+  v.u = (v.u / 3) + 709921077;  // Initial guess via bit hack
+  float y = v.f;
+  // Three Newton iterations for high accuracy
+  y = (2.0f * y + x / (y * y)) / 3.0f;
+  y = (2.0f * y + x / (y * y)) / 3.0f;
+  y = (2.0f * y + x / (y * y)) / 3.0f;
+  return neg ? -y : y;
+}
+
 static inline float clampf(float x, float lo, float hi) {
   if (x < lo) return lo;
   if (x > hi) return hi;

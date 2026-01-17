@@ -37,6 +37,58 @@ static inline float compute_falloff(int falloff_type, float t) {
 typedef struct { float r, g, b; } RGB_Linear;
 
 // =================================================================================================
+// OkLab Color Space (Perceptually Uniform)
+// =================================================================================================
+
+typedef struct { float L, a, b; } OkLab;
+
+// Convert linear RGB to OkLab
+static inline OkLab linear_to_oklab(float r, float g, float b) {
+  // Linear RGB to LMS (cone responses)
+  float l = 0.4122214708f * r + 0.5363325363f * g + 0.0514459929f * b;
+  float m = 0.2119034982f * r + 0.6806995451f * g + 0.1073969566f * b;
+  float s = 0.0883024619f * r + 0.2817188376f * g + 0.6299787005f * b;
+
+  // Cube root (perceptual nonlinearity)
+  float l_ = cbrtf_impl(l);
+  float m_ = cbrtf_impl(m);
+  float s_ = cbrtf_impl(s);
+
+  // LMS' to OkLab
+  OkLab lab;
+  lab.L = 0.2104542553f * l_ + 0.7936177850f * m_ - 0.0040720468f * s_;
+  lab.a = 1.9779984951f * l_ - 2.4285922050f * m_ + 0.4505937099f * s_;
+  lab.b = 0.0259040371f * l_ + 0.7827717662f * m_ - 0.8086757660f * s_;
+  return lab;
+}
+
+// Convert OkLab to linear RGB
+static inline RGB_Linear oklab_to_linear(OkLab lab) {
+  // OkLab to LMS'
+  float l_ = lab.L + 0.3963377774f * lab.a + 0.2158037573f * lab.b;
+  float m_ = lab.L - 0.1055613458f * lab.a - 0.0638541728f * lab.b;
+  float s_ = lab.L - 0.0894841775f * lab.a - 1.2914855480f * lab.b;
+
+  // Cube (inverse of cube root)
+  float l = l_ * l_ * l_;
+  float m = m_ * m_ * m_;
+  float s = s_ * s_ * s_;
+
+  // LMS to linear RGB
+  RGB_Linear rgb;
+  rgb.r =  4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s;
+  rgb.g = -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s;
+  rgb.b = -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s;
+
+  // Clamp to valid range (OkLab can produce out-of-gamut values)
+  if (rgb.r < 0.0f) rgb.r = 0.0f;
+  if (rgb.g < 0.0f) rgb.g = 0.0f;
+  if (rgb.b < 0.0f) rgb.b = 0.0f;
+
+  return rgb;
+}
+
+// =================================================================================================
 // sRGB <-> Linear Conversion (Proper IEC 61966-2-1 standard)
 // =================================================================================================
 
@@ -62,10 +114,13 @@ static inline float linear_to_srgb(float linear) {
 
 // Precomputed linear RGB colors for each band (Pink Floyd style)
 static RGB_Linear WAVELENGTH_COLORS_LINEAR[NUM_WAVELENGTHS];
+// Precomputed OkLab colors for perceptually uniform gradient interpolation
+static OkLab WAVELENGTH_COLORS_OKLAB[NUM_WAVELENGTHS];
 static int wavelength_colors_initialized = 0;
 
 // Initialize Pink Floyd rainbow colors (6 discrete bands)
 // Colors chosen to match the iconic Dark Side of the Moon album cover
+// Precomputes both linear RGB and OkLab representations for efficient blending.
 static void init_wavelength_colors(void) {
   if (wavelength_colors_initialized) return;
 
@@ -84,6 +139,13 @@ static void init_wavelength_colors(void) {
     WAVELENGTH_COLORS_LINEAR[i].r = srgb_to_linear(srgb_colors[i][0]);
     WAVELENGTH_COLORS_LINEAR[i].g = srgb_to_linear(srgb_colors[i][1]);
     WAVELENGTH_COLORS_LINEAR[i].b = srgb_to_linear(srgb_colors[i][2]);
+
+    // Precompute OkLab for gradient interpolation
+    WAVELENGTH_COLORS_OKLAB[i] = linear_to_oklab(
+      WAVELENGTH_COLORS_LINEAR[i].r,
+      WAVELENGTH_COLORS_LINEAR[i].g,
+      WAVELENGTH_COLORS_LINEAR[i].b
+    );
   }
   wavelength_colors_initialized = 1;
 }
@@ -879,7 +941,8 @@ typedef enum {
 } GradientMode;
 
 // Interpolate between Pink Floyd rainbow bands based on t (0-1)
-// Returns smoothly interpolated color between the 6 discrete bands
+// Uses OkLab color space for perceptually uniform gradients.
+// Returns smoothly interpolated color between the 6 discrete bands.
 static RGB_Linear interpolate_rainbow_color(float t) {
   // Clamp t to [0, 1]
   if (t < 0.0f) t = 0.0f;
@@ -901,15 +964,17 @@ static RGB_Linear interpolate_rainbow_color(float t) {
   // Interpolation factor within the band
   float frac = scaled - (float)band_lo;
 
-  // Linearly interpolate between adjacent band colors
-  RGB_Linear c_lo = WAVELENGTH_COLORS_LINEAR[band_lo];
-  RGB_Linear c_hi = WAVELENGTH_COLORS_LINEAR[band_hi];
+  // Interpolate in OkLab space for perceptually uniform gradients
+  OkLab lab_lo = WAVELENGTH_COLORS_OKLAB[band_lo];
+  OkLab lab_hi = WAVELENGTH_COLORS_OKLAB[band_hi];
 
-  RGB_Linear result;
-  result.r = c_lo.r + frac * (c_hi.r - c_lo.r);
-  result.g = c_lo.g + frac * (c_hi.g - c_lo.g);
-  result.b = c_lo.b + frac * (c_hi.b - c_lo.b);
-  return result;
+  OkLab lab_interp;
+  lab_interp.L = lab_lo.L + frac * (lab_hi.L - lab_lo.L);
+  lab_interp.a = lab_lo.a + frac * (lab_hi.a - lab_lo.a);
+  lab_interp.b = lab_lo.b + frac * (lab_hi.b - lab_lo.b);
+
+  // Convert back to linear RGB
+  return oklab_to_linear(lab_interp);
 }
 
 // Draw continuous gradient fill with band-based color interpolation (linear color space)
