@@ -18,8 +18,8 @@ const defaults = {
   },
   rays: {
     glowWidth: 1,
-    glowIntensity: 50,
-    glowFalloff: 1,
+    glowIntensity: 100,
+    glowFalloff: 3,
     innerSpectrum: true,
     artisticDispersion: false,
     gradientFill: true,
@@ -28,7 +28,7 @@ const defaults = {
     length: 15,
     style: 0,
     glowWidth: 1,
-    glowIntensity: 100,
+    glowIntensity: 25,
     glowFalloff: 3,
   },
   background: {
@@ -38,7 +38,7 @@ const defaults = {
     grainFullImage: true,
   },
   display: {
-    markers: false,
+    markers: true,
     seconds: false,
     dithering: 0,
     pebble: false,

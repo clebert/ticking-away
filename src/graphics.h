@@ -744,11 +744,10 @@ static int clip_segment_to_circle(
 }
 
 // Draw watch overlay (hour markers) - linear color space
-// marker_r, marker_g, marker_b are in 0.0-1.0 range
+// Uses multi-wavelength rendering (same as input ray) for consistent color through additive blending
 static void draw_watch_overlay_f(
   float* fb, int width, int height,
   float cx, float cy, float radius,
-  float marker_r, float marker_g, float marker_b,
   float marker_length_percent,
   int marker_style,
   float marker_glow_width,
@@ -777,11 +776,15 @@ static void draw_watch_overlay_f(
     float x1 = cx + cos_a * outer_r;
     float y1 = cy + sin_a * outer_r;
 
-    draw_line_with_glow_additive_f(fb, width, height,
-      x0, y0, x1, y1,
-      marker_r, marker_g, marker_b,
-      glow_width, marker_glow_intensity, marker_glow_falloff,
-      0, circle_clip, 0);
+    // Draw with multiple wavelengths (same as input ray) - additive blending produces white
+    for (int i = 0; i < NUM_WAVELENGTHS; i++) {
+      RGB_Linear color = WAVELENGTH_COLORS_LINEAR[i];
+      draw_line_with_glow_additive_f(fb, width, height,
+        x0, y0, x1, y1,
+        color.r, color.g, color.b,
+        glow_width, marker_glow_intensity, marker_glow_falloff,
+        0, circle_clip, 0);
+    }
   }
 }
 
@@ -1247,7 +1250,6 @@ static void render_watchface_scene(
                       radius * glow_width_percent, glow_intensity, glow_falloff);
     if (show_markers) {
       draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
-                           1.0f, 1.0f, 1.0f,
                            marker_length_percent, marker_style,
                            marker_glow_width, marker_glow_intensity, marker_glow_falloff);
     }
@@ -1449,7 +1451,6 @@ static void render_watchface_scene(
   // Draw watch overlay (hour markers) if show_markers is set
   if (show_markers) {
     draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
-                         1.0f, 1.0f, 1.0f,
                          marker_length_percent, marker_style,
                          marker_glow_width, marker_glow_intensity, marker_glow_falloff);
   }
