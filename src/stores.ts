@@ -21,6 +21,7 @@ const defaults = {
     glowFalloff: 3,
     gradientFill: true,
     palette: 2, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
+    reverseSpectrum: true, // Album art style: red on top, violet on bottom
   },
   markers: {
     length: 15,
@@ -219,6 +220,7 @@ export const rays = {
   // Signals: rendering mode
   gradientFill: signal(settings.raysGradientFill ?? defaults.rays.gradientFill),
   palette: signal(settings.raysPalette ?? defaults.rays.palette),
+  reverseSpectrum: signal(settings.raysReverseSpectrum ?? defaults.rays.reverseSpectrum),
 
   // Actions
   setGlowWidth(e: Event): void {
@@ -239,6 +241,10 @@ export const rays = {
 
   setPalette(e: Event): void {
     rays.palette.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  },
+
+  toggleReverseSpectrum(): void {
+    rays.reverseSpectrum.value = !rays.reverseSpectrum.value;
   },
 };
 
@@ -329,6 +335,7 @@ export const resetAll = {
       rays.glowFalloff.value = defaults.rays.glowFalloff;
       rays.gradientFill.value = defaults.rays.gradientFill;
       rays.palette.value = defaults.rays.palette;
+      rays.reverseSpectrum.value = defaults.rays.reverseSpectrum;
 
       // Markers
       markers.length.value = defaults.markers.length;

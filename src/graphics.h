@@ -952,7 +952,8 @@ static void draw_gradient_continuous_f(
   float cx, float cy, float radius,
   float angle_start, float angle_end,
   const Prism* prism,
-  float intensity
+  float intensity,
+  int reverse_spectrum
 ) {
   float a1 = angle_start;
   float a2 = angle_end;
@@ -1065,6 +1066,9 @@ static void draw_gradient_continuous_f(
       // Formula: t_color = (t * N - 0.5) / (N - 1)
       // This gives t_color < 0 for infrared zone, t_color > 1 for ultraviolet zone
       float t_color = (t * (float)NUM_BANDS - 0.5f) / (float)(NUM_BANDS - 1);
+
+      // When reverse_spectrum is true, reverse the color lookup (album art style)
+      if (reverse_spectrum) t_color = 1.0f - t_color;
 
       // Interpolate between rainbow bands (handles extrapolation for t outside [0,1])
       RGB_Linear color = interpolate_rainbow_color(t_color);
@@ -1193,6 +1197,7 @@ static void finalize_framebuffer(
 // - gradient_fill: 1 = fill gradient between rainbow rays
 // - vignette: 1 = apply vignette effect to background
 // - palette: ColorPalette enum value (0-4) for rainbow color scheme
+// - reverse_spectrum: 1 = reverse spectral order (album art style: red on top)
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
   uint8_t* fb,      // Output buffer (gamma-corrected)
@@ -1221,7 +1226,8 @@ static void render_watchface_scene(
   int grain_prism_only,
   int gradient_fill,
   int vignette,
-  int palette
+  int palette,
+  int reverse_spectrum
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -1322,7 +1328,7 @@ static void render_watchface_scene(
         cx, cy,  // origin = center
         cx, cy, radius,
         ext_angle_infrared, ext_angle_ultraviolet,
-        prism, gradient_intensity
+        prism, gradient_intensity, reverse_spectrum
       );
 
       // Draw continuous gradient inside prism
@@ -1358,7 +1364,7 @@ static void render_watchface_scene(
         grad_origin_x, grad_origin_y,
         0, 0, 0,  // cx, cy, radius unused for internal mode
         internal_angle_infrared, internal_angle_ultraviolet,
-        prism, gradient_intensity
+        prism, gradient_intensity, reverse_spectrum
       );
     }
   }
@@ -1367,7 +1373,9 @@ static void render_watchface_scene(
   // Outside ray: always white (all bands add to white)
   // Internal rays: always use band colors (inner spectrum always on)
   for (int i = 0; i < NUM_BANDS; i++) {
-    RGB_Linear color = BAND_COLORS_LINEAR[i];
+    // When reverse_spectrum is true, reverse the color lookup (album art style)
+    int color_idx = reverse_spectrum ? (NUM_BANDS - 1 - i) : i;
+    RGB_Linear color = BAND_COLORS_LINEAR[color_idx];
 
     // Draw incoming ray (outside prism) - pure white
     if (has_clipped_entry) {

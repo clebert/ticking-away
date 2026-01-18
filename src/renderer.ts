@@ -52,6 +52,7 @@ export function render(): void {
     rays.gradientFill.value ? 1 : 0,
     display.pebble.value ? 0 : 1,
     rays.palette.value,
+    rays.reverseSpectrum.value ? 1 : 0,
   );
 
   const framebufferArray = new Uint8ClampedArray(
