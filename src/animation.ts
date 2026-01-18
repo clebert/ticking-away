@@ -2,6 +2,7 @@ import { batch } from "@preact/signals-core";
 import { mode, time } from "./stores.ts";
 
 let animationFrameId: number | undefined;
+let realtimeIntervalId: number | undefined;
 let acceleratedStartTimestamp = 0;
 let acceleratedStartMinutes = 0;
 let lastFrameTime = 0;
@@ -11,6 +12,12 @@ export function startAnimation(accelerated: boolean, accelerationFactor: number)
     cancelAnimationFrame(animationFrameId);
 
     animationFrameId = undefined;
+  }
+
+  if (realtimeIntervalId !== undefined) {
+    clearInterval(realtimeIntervalId);
+
+    realtimeIntervalId = undefined;
   }
 
   mode.frameDuration.value = 0;
@@ -28,6 +35,12 @@ export function stopAnimation(): void {
     cancelAnimationFrame(animationFrameId);
 
     animationFrameId = undefined;
+  }
+
+  if (realtimeIntervalId !== undefined) {
+    clearInterval(realtimeIntervalId);
+
+    realtimeIntervalId = undefined;
   }
 
   mode.frameDuration.value = 0;
@@ -65,7 +78,9 @@ function startAcceleratedAnimation(accelerationFactor: number): void {
 }
 
 function startRealtimeAnimation(): void {
-  const animate = (now: number) => {
+  const updateTime = () => {
+    const now = performance.now();
+
     if (lastFrameTime > 0) {
       mode.frameDuration.value = now - lastFrameTime;
     }
@@ -73,7 +88,7 @@ function startRealtimeAnimation(): void {
     lastFrameTime = now;
 
     const currentTime = new Date();
-    const fractionalSeconds = currentTime.getSeconds() + currentTime.getMilliseconds() / 1000;
+    const fractionalSeconds = currentTime.getSeconds();
     const fractionalMinutes = currentTime.getMinutes() + fractionalSeconds / 60;
 
     batch(() => {
@@ -81,9 +96,9 @@ function startRealtimeAnimation(): void {
       time.minutes.value = fractionalMinutes;
       time.seconds.value = fractionalSeconds;
     });
-
-    animationFrameId = requestAnimationFrame(animate);
   };
 
-  animationFrameId = requestAnimationFrame(animate);
+  // Run immediately, then every second (1 fps to limit CPU usage)
+  updateTime();
+  realtimeIntervalId = window.setInterval(updateTime, 1000);
 }

@@ -32,7 +32,7 @@ const defaults = {
     grainIntensity: 80,
   },
   display: {
-    markers: false,
+    markers: true,
     pebble: false,
     highDpi: true,
   },

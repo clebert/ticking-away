@@ -1357,11 +1357,11 @@ static void render_watchface_scene(
   for (int i = 0; i < NUM_BANDS; i++) {
     RGB_Linear color = BAND_COLORS_LINEAR[i];
 
-    // Draw incoming ray (outside prism) - per-band colors, adds up via blending
+    // Draw incoming ray (outside prism) - pure white
     if (has_clipped_entry) {
       draw_line_with_glow_additive_f(float_fb, width, height,
         clip_x0, clip_y0, clip_x1, clip_y1,
-        color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+        1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
         0, circle_clip, prism->vertices);
     }
 
@@ -1383,11 +1383,11 @@ static void render_watchface_scene(
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
       if (bounce.needs_bounce) {
-        // Entry→bounce segment: always drawn (input ray continuation, not dispersion)
+        // Entry→bounce segment: pure white (input ray continuation, not dispersion)
         draw_line_with_glow_additive_f(float_fb, width, height,
           prism_entry.px, prism_entry.py,
           bounce.bounce_x, bounce.bounce_y,
-          color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
 
         // Bounced path: bounce → exit
