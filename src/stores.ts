@@ -14,33 +14,24 @@ const defaults = {
     glowWidth: 6,
     glowIntensity: 100,
     glowFalloff: 3,
-    sparkleSize: 300,
   },
   rays: {
     glowWidth: 1,
     glowIntensity: 100,
     glowFalloff: 3,
-    innerSpectrum: true,
-    artisticDispersion: false,
     gradientFill: true,
   },
   markers: {
     length: 15,
-    style: 0,
     glowWidth: 1,
     glowIntensity: 25,
     glowFalloff: 3,
   },
   background: {
     grainIntensity: 80,
-    vignetteIntensity: 100,
-    grainAnimated: false,
-    grainFullImage: true,
   },
   display: {
     markers: true,
-    seconds: false,
-    dithering: 0,
     pebble: false,
     highDpi: true,
   },
@@ -151,7 +142,7 @@ export const time = {
   // Signals
   hours: signal(initialTime.getHours() % 12),
   minutes: signal(initialTime.getMinutes()),
-  seconds: signal(initialTime.getSeconds()),
+  seconds: signal(initialTime.getSeconds()), // Used internally for animation
 
   // Actions
   setHours(e: Event): void {
@@ -160,10 +151,6 @@ export const time = {
 
   setMinutes(e: Event): void {
     time.minutes.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setSeconds(e: Event): void {
-    time.seconds.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setNow(): void {
@@ -190,9 +177,6 @@ export const prism = {
   glowWidth: signal(settings.prismGlowWidth ?? defaults.prism.glowWidth),
   glowIntensity: signal(settings.prismGlowIntensity ?? defaults.prism.glowIntensity),
   glowFalloff: signal(settings.prismGlowFalloff ?? defaults.prism.glowFalloff),
-
-  // Signals: sparkle
-  sparkleSize: signal(settings.prismSparkleSize ?? defaults.prism.sparkleSize),
 
   // Actions
   setSize(e: Event): void {
@@ -222,10 +206,6 @@ export const prism = {
   setGlowFalloff(e: Event): void {
     prism.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
-
-  setSparkleSize(e: Event): void {
-    prism.sparkleSize.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
 };
 
 export const rays = {
@@ -233,10 +213,6 @@ export const rays = {
   glowWidth: signal(settings.raysGlowWidth ?? defaults.rays.glowWidth),
   glowIntensity: signal(settings.raysGlowIntensity ?? defaults.rays.glowIntensity),
   glowFalloff: signal(settings.raysGlowFalloff ?? defaults.rays.glowFalloff),
-
-  // Signals: color
-  innerSpectrum: signal(settings.raysInnerSpectrum ?? defaults.rays.innerSpectrum),
-  artisticDispersion: signal(settings.raysArtisticDispersion ?? defaults.rays.artisticDispersion),
 
   // Signals: rendering mode
   gradientFill: signal(settings.raysGradientFill ?? defaults.rays.gradientFill),
@@ -254,14 +230,6 @@ export const rays = {
     rays.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
-  toggleInnerSpectrum(): void {
-    rays.innerSpectrum.value = !rays.innerSpectrum.value;
-  },
-
-  toggleArtisticDispersion(): void {
-    rays.artisticDispersion.value = !rays.artisticDispersion.value;
-  },
-
   toggleGradientFill(): void {
     rays.gradientFill.value = !rays.gradientFill.value;
   },
@@ -270,7 +238,6 @@ export const rays = {
 export const markers = {
   // Signals: geometry
   length: signal(settings.markersLength ?? defaults.markers.length),
-  style: signal(settings.markersStyle ?? defaults.markers.style), // 0=all, 1=cardinal, 2=prism
 
   // Signals: glow
   glowWidth: signal(settings.markersGlowWidth ?? defaults.markers.glowWidth),
@@ -280,10 +247,6 @@ export const markers = {
   // Actions
   setLength(e: Event): void {
     markers.length.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setStyle(e: Event): void {
-    markers.style.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   setGlowWidth(e: Event): void {
@@ -302,58 +265,25 @@ export const markers = {
 export const background = {
   // Signals: effect intensities
   grainIntensity: signal(settings.backgroundGrainIntensity ?? defaults.background.grainIntensity),
-  vignetteIntensity: signal(
-    settings.backgroundVignetteIntensity ?? defaults.background.vignetteIntensity,
-  ),
-
-  // Signals: grain options
-  grainAnimated: signal(settings.backgroundGrainAnimated ?? defaults.background.grainAnimated),
-  grainFullImage: signal(settings.backgroundGrainFullImage ?? defaults.background.grainFullImage),
 
   // Computed
-  grainDisabled: computed((): boolean => display.pebble.value || display.dithering.value !== 0),
-  vignetteDisabled: computed((): boolean => display.pebble.value || display.dithering.value !== 0),
+  grainDisabled: computed((): boolean => display.pebble.value),
 
   // Actions
   setGrainIntensity(e: Event): void {
     background.grainIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setVignetteIntensity(e: Event): void {
-    background.vignetteIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  toggleGrainAnimated(): void {
-    background.grainAnimated.value = !background.grainAnimated.value;
-  },
-
-  toggleGrainFullImage(): void {
-    background.grainFullImage.value = !background.grainFullImage.value;
   },
 };
 
 export const display = {
   // Signals
   markers: signal(settings.displayMarkers ?? defaults.display.markers),
-  seconds: signal(settings.displaySeconds ?? defaults.display.seconds),
-  dithering: signal(settings.displayDithering ?? defaults.display.dithering),
   pebble: signal(settings.displayPebble ?? defaults.display.pebble),
   highDpi: signal(settings.displayHighDpi ?? defaults.display.highDpi),
-
-  // Computed
-  secondsDisabled: computed((): boolean => mode.live.value && mode.accelerated.value),
 
   // Actions
   toggleMarkers(): void {
     display.markers.value = !display.markers.value;
-  },
-
-  toggleSeconds(): void {
-    display.seconds.value = !display.seconds.value;
-  },
-
-  setDithering(e: Event): void {
-    display.dithering.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   togglePebble(): void {
@@ -380,33 +310,24 @@ export const resetAll = {
       prism.glowWidth.value = defaults.prism.glowWidth;
       prism.glowIntensity.value = defaults.prism.glowIntensity;
       prism.glowFalloff.value = defaults.prism.glowFalloff;
-      prism.sparkleSize.value = defaults.prism.sparkleSize;
 
       // Rays
       rays.glowWidth.value = defaults.rays.glowWidth;
       rays.glowIntensity.value = defaults.rays.glowIntensity;
       rays.glowFalloff.value = defaults.rays.glowFalloff;
-      rays.innerSpectrum.value = defaults.rays.innerSpectrum;
-      rays.artisticDispersion.value = defaults.rays.artisticDispersion;
       rays.gradientFill.value = defaults.rays.gradientFill;
 
       // Markers
       markers.length.value = defaults.markers.length;
-      markers.style.value = defaults.markers.style;
       markers.glowWidth.value = defaults.markers.glowWidth;
       markers.glowIntensity.value = defaults.markers.glowIntensity;
       markers.glowFalloff.value = defaults.markers.glowFalloff;
 
       // Background
       background.grainIntensity.value = defaults.background.grainIntensity;
-      background.vignetteIntensity.value = defaults.background.vignetteIntensity;
-      background.grainAnimated.value = defaults.background.grainAnimated;
-      background.grainFullImage.value = defaults.background.grainFullImage;
 
       // Display
       display.markers.value = defaults.display.markers;
-      display.seconds.value = defaults.display.seconds;
-      display.dithering.value = defaults.display.dithering;
       display.pebble.value = defaults.display.pebble;
       display.highDpi.value = defaults.display.highDpi;
     });

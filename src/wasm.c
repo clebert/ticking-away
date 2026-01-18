@@ -1,4 +1,3 @@
-#include "dithering.h"
 #include "graphics.h"
 
 #define WASM_EXPORT __attribute__((visibility("default")))
@@ -21,46 +20,34 @@
 //   width, height: canvas dimensions
 //   hour: 0-11
 //   minute: 0-59.999... (fractional for smooth animation)
-//   second: 0-59.999... (fractional for smooth sparkle animation on prism edge)
 //   prism_size_percent: 10-90 (% of watch radius)
 //   rainbow_spread: 0.0-1.0 (0 = no spread, 1 = 30 degrees)
 //   show_markers: 0 or 1 (show watch overlay when 1)
-//   prism_r, prism_g, prism_b: 0-255 RGB values for prism stroke and internal rays
-//   show_seconds: 0 or 1 (1 = show seconds sparkle on prism edge)
-//   sparkle_size_percent: 1.0-10.0 (scale factor for sparkle size)
+//   prism_r, prism_g, prism_b: 0-255 RGB values for prism stroke
 //   glow_width_percent: 0.05-0.50 (% of radius for glow width)
 //   glow_intensity: 0.1-1.0 (intensity multiplier)
 //   glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 //   ray_glow_width_percent: 0.0-0.10 (% of radius for ray glow width)
 //   ray_glow_intensity: 0.0-1.0 (ray glow intensity multiplier)
 //   ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
-//   internal_ray_real_colors: 0 or 1 (1 = use wavelength-based colors for internal rays)
-//   artistic_dispersion: 0 or 1 (1 = artistic dispersion with red first, 0 = physical where violet
-//   bends most)
 //   marker_length_percent: 0.0-0.20 (how far markers extend towards center)
-//   marker_style: 0=all, 1=cardinal (12,3,6,9), 2=prism (12,4,8)
 //   marker_glow_width_percent: 0.0-0.05 (% of radius for marker glow width)
 //   marker_glow_intensity: 0.0-1.0 (marker glow intensity multiplier)
 //   marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 //   grain_intensity: 0.0-1.0 (intensity of film grain effect)
-//   vignette_intensity: 0.0-1.0 (intensity of vignette darkening)
-//   white_background: 0 or 1 (1 = white background for pebble mode with dithering)
-//   frame: frame counter for temporal grain animation
-//   grain_animated: 0 or 1 (1 = animate grain each frame)
 //   grain_scale: device pixel ratio to scale grain size (1.0 = no scaling)
-//   grain_full_image: 0 or 1 (1 = apply grain to whole watchface, 0 = prism only)
 //   gradient_fill: 0 or 1 (1 = fill gradient between rainbow rays)
+//   vignette: 0 or 1 (1 = apply vignette to background)
 WASM_EXPORT void
 render_watchface(float *float_fb, uint8_t *fb, int width, int height, int hour, float minute,
-                 float second, float prism_size_percent, float rainbow_spread, int show_markers,
-                 int prism_r, int prism_g, int prism_b, int show_seconds, float sparkle_size_percent,
+                 float prism_size_percent, float rainbow_spread, int show_markers,
+                 int prism_r, int prism_g, int prism_b,
                  float glow_width_percent, float glow_intensity, int glow_falloff,
                  float ray_glow_width_percent, float ray_glow_intensity, int ray_glow_falloff,
-                 int internal_ray_real_colors, int artistic_dispersion, float marker_length_percent,
-                 int marker_style, float marker_glow_width_percent, float marker_glow_intensity,
-                 int marker_glow_falloff, float grain_intensity, float vignette_intensity,
-                 int white_background, int frame, int grain_animated, float grain_scale,
-                 int grain_full_image, int gradient_fill) {
+                 float marker_length_percent,
+                 float marker_glow_width_percent, float marker_glow_intensity,
+                 int marker_glow_falloff, float grain_intensity, float grain_scale,
+                 int gradient_fill, int vignette) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -85,17 +72,10 @@ render_watchface(float *float_fb, uint8_t *fb, int width, int height, int hour, 
   float ray_glow_width = ray_glow_width_percent * radius;
   render_watchface_scene(
       float_fb, fb, width, height, cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread,
-      second, &prism, show_markers, (uint8_t)prism_r, (uint8_t)prism_g, (uint8_t)prism_b,
-      show_seconds, sparkle_size_percent, glow_width_percent, glow_intensity, glow_falloff,
-      ray_glow_width, ray_glow_intensity, ray_glow_falloff, internal_ray_real_colors,
-      artistic_dispersion, marker_length_percent, marker_style, marker_glow_width_percent,
-      marker_glow_intensity, marker_glow_falloff, grain_intensity, vignette_intensity,
-      white_background, (uint32_t)frame, grain_animated, grain_scale, grain_full_image,
-      gradient_fill);
-}
-
-// Apply Atkinson dithering to the framebuffer as a post-processing step.
-// mode: 0 = none, 1 = 1-bit (black/white), 2 = 2-bit (4 levels)
-WASM_EXPORT void dither_framebuffer(uint8_t *fb, int width, int height, int mode) {
-  apply_dithering(fb, width, height, mode);
+      &prism, show_markers, (uint8_t)prism_r, (uint8_t)prism_g, (uint8_t)prism_b,
+      glow_width_percent, glow_intensity, glow_falloff,
+      ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+      marker_length_percent, marker_glow_width_percent,
+      marker_glow_intensity, marker_glow_falloff, grain_intensity, grain_scale,
+      gradient_fill, vignette);
 }

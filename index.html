@@ -281,15 +281,6 @@
               data-bind="value:time.minutes, oninput:time.setMinutes"
             />
           </div>
-          <div class="control-group" data-bind="hidden:mode.live">
-            <label>Second: <span data-bind="textContent:time.seconds">0</span></label>
-            <input
-              type="range"
-              min="0"
-              max="59"
-              data-bind="value:time.seconds, oninput:time.setSeconds"
-            />
-          </div>
           <div class="button-row" data-bind="hidden:mode.live">
             <button class="action-button" data-bind="onclick:time.setNow">Set to Now</button>
           </div>
@@ -363,15 +354,6 @@
               <option value="3">Exponential</option>
             </select>
           </div>
-          <div class="control-group">
-            <label>Sparkle Size: <span data-bind="textContent:prism.sparkleSize">200</span>%</label>
-            <input
-              type="range"
-              min="100"
-              max="1000"
-              data-bind="value:prism.sparkleSize, oninput:prism.setSparkleSize"
-            />
-          </div>
 
           <!-- Ray Controls -->
           <div class="section-title">Rays</div>
@@ -382,24 +364,6 @@
                 data-bind="checked:rays.gradientFill, onchange:rays.toggleGradientFill"
               />
               Gradient Fill</label
-            >
-          </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:rays.innerSpectrum, onchange:rays.toggleInnerSpectrum"
-              />
-              Inner Spectrum</label
-            >
-          </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:rays.artisticDispersion, onchange:rays.toggleArtisticDispersion"
-              />
-              Artistic Dispersion</label
             >
           </div>
           <div class="control-group">
@@ -444,14 +408,6 @@
             />
           </div>
           <div class="control-group">
-            <label>Style</label>
-            <select data-bind="value:markers.style, onchange:markers.setStyle">
-              <option value="0">All (12 markers)</option>
-              <option value="1">Cardinal (12, 3, 6, 9)</option>
-              <option value="2">Prism (12, 4, 8)</option>
-            </select>
-          </div>
-          <div class="control-group">
             <label>Glow Width: <span data-bind="textContent:markers.glowWidth">2</span>%</label>
             <input
               type="range"
@@ -492,48 +448,9 @@
               data-bind="value:background.grainIntensity, oninput:background.setGrainIntensity, disabled:background.grainDisabled"
             />
           </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:background.grainAnimated, onchange:background.toggleGrainAnimated, disabled:background.grainDisabled"
-              />
-              Animated Grain</label
-            >
-          </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:background.grainFullImage, onchange:background.toggleGrainFullImage, disabled:background.grainDisabled"
-              />
-              Full Image Grain</label
-            >
-          </div>
-          <div class="control-group">
-            <label
-              >Vignette:
-              <span data-bind="textContent:background.vignetteIntensity">40</span>%</label
-            >
-            <input
-              type="range"
-              min="0"
-              max="100"
-              data-bind="value:background.vignetteIntensity, oninput:background.setVignetteIntensity, disabled:background.vignetteDisabled"
-            />
-          </div>
 
           <!-- Display Options -->
           <div class="section-title">Display</div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:display.seconds, onchange:display.toggleSeconds, disabled:display.secondsDisabled"
-              />
-              Show Seconds</label
-            >
-          </div>
           <div class="control-group">
             <label
               ><input
@@ -551,18 +468,6 @@
               />
               Pebble Mode (260x260)</label
             >
-          </div>
-          <div class="control-group">
-            <label>Dithering</label>
-            <select data-bind="value:display.dithering, onchange:display.setDithering">
-              <option value="0">None</option>
-              <option value="1">1-Bit (Atkinson)</option>
-              <option value="2">2-Bit (Atkinson)</option>
-              <option value="3">2-Bit (Bayer)</option>
-              <option value="4">2-Bit (Floyd-Steinberg)</option>
-              <option value="5">4-Bit (Bayer)</option>
-              <option value="6">4-Bit (Floyd-Steinberg)</option>
-            </select>
           </div>
           <div class="control-group">
             <label

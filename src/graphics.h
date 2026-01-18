@@ -509,13 +509,6 @@ static inline uint32_t hash_pixel(int x, int y) {
   return h ^ (h >> 16);
 }
 
-// Temporal hash function for animated grain
-static inline uint32_t hash_pixel_temporal(int x, int y, uint32_t frame) {
-  uint32_t h = (uint32_t)(x * 374761393 + y * 668265263 + frame * 1013904223);
-  h = (h ^ (h >> 13)) * 1274126177;
-  return h ^ (h >> 16);
-}
-
 // Initialize watch framebuffer with background (linear color space, 0.0-1.0 range)
 static void init_watch_framebuffer_f(
   float* fb, int width, int height,
@@ -562,10 +555,13 @@ static void init_watch_framebuffer_f(
 
         // Add spatial dithering to eliminate banding in the dark vignette gradient.
         // Dither amplitude ~0.004 in linear space ≈ ±0.5 levels in sRGB at this brightness.
-        uint32_t hash = hash_pixel(x, y);
-        float dither = ((float)(hash & 0xFFFF) / 65535.0f - 0.5f) * 0.008f;
-        final_val += dither;
-        if (final_val < 0.0f) final_val = 0.0f;
+        // Skip when vignette is disabled (no gradient to smooth).
+        if (vignette_intensity > 0.0f) {
+          uint32_t hash = hash_pixel(x, y);
+          float dither = ((float)(hash & 0xFFFF) / 65535.0f - 0.5f) * 0.008f;
+          final_val += dither;
+          if (final_val < 0.0f) final_val = 0.0f;
+        }
       }
 
       fb[idx] = final_val;
@@ -752,11 +748,11 @@ static int clip_segment_to_circle(
 
 // Draw watch overlay (hour markers) - linear color space
 // Uses multi-wavelength rendering (same as input ray) for consistent color through additive blending
+// Always draws all 12 hour markers.
 static void draw_watch_overlay_f(
   float* fb, int width, int height,
   float cx, float cy, float radius,
   float marker_length_percent,
-  int marker_style,
   float marker_glow_width,
   float marker_glow_intensity,
   int marker_glow_falloff
@@ -765,13 +761,6 @@ static void draw_watch_overlay_f(
   float circle_clip[3] = { cx, cy, radius };
 
   for (int h = 0; h < 12; h++) {
-    if (marker_style == 1 && (h % 3 != 0)) {
-      continue;
-    }
-    if (marker_style == 2 && (h != 0 && h != 4 && h != 8)) {
-      continue;
-    }
-
     float angle = ((float)h - 3.0f) * 30.0f * PI / 180.0f;
     float inner_r = radius * (1.0f - marker_length_percent);
     float outer_r = radius * 0.98f;
@@ -796,115 +785,6 @@ static void draw_watch_overlay_f(
 }
 
 // =================================================================================================
-// Seconds Sparkle on Prism Edge
-// =================================================================================================
-
-// Compute position on prism edge for a given second (0-60).
-// The sparkle travels clockwise from the apex:
-//   0-20s: Edge 0 (v0→v1, apex to bottom-right)
-//   20-40s: Edge 1 (v1→v2, bottom-right to bottom-left)
-//   40-60s: Edge 2 (v2→v0, bottom-left back to apex)
-static void compute_sparkle_position(
-  float second,
-  const Prism* prism,
-  float* out_x, float* out_y
-) {
-  // Wrap seconds to [0, 60)
-  while (second >= 60.0f) second -= 60.0f;
-  while (second < 0.0f) second += 60.0f;
-
-  int edge;
-  float t;
-
-  if (second < 20.0f) {
-    edge = 0;  // v0 → v1
-    t = second / 20.0f;
-  } else if (second < 40.0f) {
-    edge = 1;  // v1 → v2
-    t = (second - 20.0f) / 20.0f;
-  } else {
-    edge = 2;  // v2 → v0
-    t = (second - 40.0f) / 20.0f;
-  }
-
-  int v_start = edge;
-  int v_end = (edge + 1) % 3;
-
-  float x0 = prism->vertices[v_start * 2];
-  float y0 = prism->vertices[v_start * 2 + 1];
-  float x1 = prism->vertices[v_end * 2];
-  float y1 = prism->vertices[v_end * 2 + 1];
-
-  *out_x = x0 + t * (x1 - x0);
-  *out_y = y0 + t * (y1 - y0);
-}
-
-// Draw a diamond-like sparkle with 4-pointed star rays and twinkling animation (linear color space)
-static void draw_sparkle_f(
-  float* fb, int width, int height,
-  float x, float y,
-  float radius,        // Watch radius for base scaling
-  float size_percent,  // 1.0-10.0 size multiplier
-  float second         // Fractional second for twinkle animation
-) {
-  int cx = (int)(x + 0.5f);
-  int cy = (int)(y + 0.5f);
-
-  float base_size = sqrtf_impl(radius) / 3.0f;
-  if (base_size < 1.0f) base_size = 1.0f;
-
-  base_size *= size_percent;
-
-  float frac = second - (float)(int)second;
-  float twinkle = 0.7f + 0.3f * sinf_approx(frac * TAU * 4.0f);
-
-  int ray_length = (int)(base_size * 2.0f);
-  int short_ray = (int)(base_size * 1.2f);
-  int core_radius = (int)(base_size * 0.6f);
-  if (core_radius < 1) core_radius = 1;
-
-  // White color in linear space (1.0, 1.0, 1.0)
-  for (int i = 1; i <= ray_length; i++) {
-    float falloff = 1.0f - ((float)i / (float)(ray_length + 1));
-    falloff = falloff * falloff;
-    float alpha = falloff * twinkle;
-
-    set_pixel_additive_f(fb, width, height, cx, cy - i, 1.0f, 1.0f, 1.0f, alpha);
-    set_pixel_additive_f(fb, width, height, cx, cy + i, 1.0f, 1.0f, 1.0f, alpha);
-    set_pixel_additive_f(fb, width, height, cx - i, cy, 1.0f, 1.0f, 1.0f, alpha);
-    set_pixel_additive_f(fb, width, height, cx + i, cy, 1.0f, 1.0f, 1.0f, alpha);
-  }
-
-  for (int i = 1; i <= short_ray; i++) {
-    float falloff = 1.0f - ((float)i / (float)(short_ray + 1));
-    falloff = falloff * falloff * falloff;
-    float alpha = falloff * twinkle * (200.0f / 255.0f);
-
-    set_pixel_additive_f(fb, width, height, cx - i, cy - i, 1.0f, 1.0f, 1.0f, alpha);
-    set_pixel_additive_f(fb, width, height, cx + i, cy - i, 1.0f, 1.0f, 1.0f, alpha);
-    set_pixel_additive_f(fb, width, height, cx - i, cy + i, 1.0f, 1.0f, 1.0f, alpha);
-    set_pixel_additive_f(fb, width, height, cx + i, cy + i, 1.0f, 1.0f, 1.0f, alpha);
-  }
-
-  for (int dy = -core_radius; dy <= core_radius; dy++) {
-    for (int dx = -core_radius; dx <= core_radius; dx++) {
-      float dist = sqrtf_impl((float)(dx * dx + dy * dy));
-      if (dist > (float)core_radius) continue;
-
-      float intensity = 1.0f - (dist / ((float)core_radius + 0.5f));
-      intensity = intensity * intensity;
-      float alpha = intensity * twinkle;
-
-      set_pixel_additive_f(fb, width, height, cx + dx, cy + dy, 1.0f, 1.0f, 1.0f, alpha);
-    }
-  }
-
-  float center_alpha = twinkle;
-  set_pixel_additive_f(fb, width, height, cx, cy, 1.0f, 1.0f, 1.0f, center_alpha);
-  set_pixel_additive_f(fb, width, height, cx, cy, 1.0f, 1.0f, 1.0f, center_alpha);
-}
-
-// =================================================================================================
 // Watchface Rendering
 // =================================================================================================
 
@@ -916,20 +796,19 @@ static void draw_sparkle_f(
 
 // Compute the exit angle for a given wavelength index.
 // Returns angle that fans around the hour_angle based on spread.
+// Uses physical dispersion: violet bends most (negative offset), red bends least (positive offset).
 static float compute_exit_angle(
   float hour_angle,
   float rainbow_spread,  // 0.0 to 1.0
-  int wavelength_idx,    // 0 = red, NUM_WAVELENGTHS-1 = violet
-  int artistic_dispersion // 1 = artistic (red at negative offset), 0 = physical (violet bends most)
+  int wavelength_idx     // 0 = red, NUM_WAVELENGTHS-1 = violet
 ) {
   float spread_rad = rainbow_spread * MAX_SPREAD_RAD;
 
   // t: 0 for red (first), 1 for violet (last)
   float t = (float)wavelength_idx / (float)(NUM_WAVELENGTHS - 1);
 
-  // Artistic: red (t=0) at negative offset, violet (t=1) at positive offset
   // Physical: violet bends most (negative offset), red bends least (positive offset)
-  float offset = artistic_dispersion ? (t - 0.5f) * spread_rad : (0.5f - t) * spread_rad;
+  float offset = (0.5f - t) * spread_rad;
 
   return hour_angle + offset;
 }
@@ -1115,12 +994,8 @@ static void finalize_framebuffer(
   const float* float_fb, uint8_t* out_fb,
   int width, int height,
   float grain_intensity,    // 0.0-1.0
-  uint32_t frame,           // Frame counter for temporal grain animation
-  int grain_animated,       // 1 = animate grain each frame
   float grain_scale,        // DPR to scale grain (1.0 = no scaling)
-  int grain_full_image,     // 1 = whole watchface, 0 = prism only
-  float cx, float cy, float radius,  // Watch circle (for full image mode)
-  const Prism* prism        // Prism geometry (for prism-only mode)
+  float cx, float cy, float radius  // Watch circle for grain region
 ) {
   // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
   // Applied in perceptual space for uniform noise across all brightness levels.
@@ -1128,14 +1003,6 @@ static void finalize_framebuffer(
   int apply_grain = grain_intensity > 0.0f;
 
   float r2 = radius * radius;
-
-  // Prism bounds (for prism-only mode)
-  float v0x = 0, v0y = 0, v1x = 0, v1y = 0, v2x = 0, v2y = 0;
-  if (prism && !grain_full_image) {
-    v0x = prism->vertices[0]; v0y = prism->vertices[1];
-    v1x = prism->vertices[2]; v1y = prism->vertices[3];
-    v2x = prism->vertices[4]; v2y = prism->vertices[5];
-  }
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -1159,25 +1026,18 @@ static void finalize_framebuffer(
       float out_b = linear_to_srgb(b);
 
       // Apply film grain in sRGB space (perceptually uniform)
+      // Always applies to full watchface with static (non-animated) grain
       if (apply_grain) {
         float px = (float)x + 0.5f;
         float py = (float)y + 0.5f;
 
-        int in_grain_region = 0;
-        if (grain_full_image) {
-          // Check if inside watch circle
-          float dx = px - cx;
-          float dy = py - cy;
-          in_grain_region = (dx * dx + dy * dy <= r2);
-        } else if (prism) {
-          // Check if inside prism triangle
-          in_grain_region = point_in_triangle(px, py, v0x, v0y, v1x, v1y, v2x, v2y);
-        }
-
-        if (in_grain_region) {
+        // Check if inside watch circle
+        float dx = px - cx;
+        float dy = py - cy;
+        if (dx * dx + dy * dy <= r2) {
           int gx = (int)((float)x / grain_scale);
           int gy = (int)((float)y / grain_scale);
-          uint32_t hash = grain_animated ? hash_pixel_temporal(gx, gy, frame) : hash_pixel(gx, gy);
+          uint32_t hash = hash_pixel(gx, gy);
           float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
 
           out_r += grain;
@@ -1208,27 +1068,17 @@ static void finalize_framebuffer(
 // - entry_x, entry_y: minute hand position (light source)
 // - hour_angle: angle to hour position from center
 // - rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
-// - second: 0.0-59.999 for seconds sparkle position on prism edge
 // - show_markers: if true, show watch overlay (hour markers)
-// - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke and internal rays
-// - show_seconds: if true, show seconds sparkle on prism edge
-// - sparkle_size_percent: 1.0-10.0 scale factor for sparkle size
+// - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke
 // - ray_glow_width: glow width for rays in pixels
 // - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
 // - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
-// - internal_ray_real_colors: if true, use wavelength-based colors for internal rays
 // - marker_length_percent: how far markers extend towards center (0.0-1.0)
-// - marker_style: 0=all, 1=cardinal (12,3,6,9), 2=prism (12,4,8)
 // - marker_glow_width: glow width for markers as fraction of radius
 // - marker_glow_intensity: 0.0-1.0 multiplier for marker glow brightness
 // - marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 // - grain_intensity: 0.0-1.0 intensity of film grain effect
-// - vignette_intensity: 0.0-1.0 intensity of vignette darkening
-// - white_background: 1 = white background (for pebble mode with dithering)
-// - frame: frame counter for temporal grain animation
-// - grain_animated: 1 = animate grain each frame
 // - grain_scale: DPR to scale grain size (1.0 = no scaling)
-// - grain_full_image: 1 = apply grain to whole watchface, 0 = prism only
 // - gradient_fill: 1 = fill gradient between rainbow rays
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
@@ -1238,35 +1088,25 @@ static void render_watchface_scene(
   float entry_x, float entry_y,
   float hour_angle,
   float rainbow_spread,
-  float second,
   const Prism* prism,
   int show_markers,
   uint8_t prism_r,
   uint8_t prism_g,
   uint8_t prism_b,
-  int show_seconds,
-  float sparkle_size_percent,
   float glow_width_percent,
   float glow_intensity,
   int glow_falloff,
   float ray_glow_width,
   float ray_glow_intensity,
   int ray_glow_falloff,
-  int internal_ray_real_colors,
-  int artistic_dispersion,
   float marker_length_percent,
-  int marker_style,
   float marker_glow_width,
   float marker_glow_intensity,
   int marker_glow_falloff,
   float grain_intensity,
-  float vignette_intensity,
-  int white_background,
-  uint32_t frame,
-  int grain_animated,
   float grain_scale,
-  int grain_full_image,
-  int gradient_fill
+  int gradient_fill,
+  int vignette
 ) {
   // Initialize precomputed data (no-op after first call)
   init_wavelength_colors();
@@ -1277,7 +1117,7 @@ static void render_watchface_scene(
   float prism_b_f = srgb_to_linear(prism_b);
 
   // Initialize background (to float buffer)
-  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius, vignette_intensity, white_background);
+  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius, vignette ? 1.0f : 0.0f, 0);
 
   // Entry ray direction: toward center
   float entry_dx = cx - entry_x;
@@ -1293,13 +1133,12 @@ static void render_watchface_scene(
                       radius * glow_width_percent, glow_intensity, glow_falloff);
     if (show_markers) {
       draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
-                           marker_length_percent, marker_style,
+                           marker_length_percent,
                            marker_glow_width, marker_glow_intensity, marker_glow_falloff);
     }
     // Convert float buffer to output buffer with sRGB gamma correction and film grain
     finalize_framebuffer(float_fb, fb, width, height,
-                         grain_intensity, frame, grain_animated, grain_scale,
-                         grain_full_image, cx, cy, radius, prism);
+                         grain_intensity, grain_scale, cx, cy, radius);
     return;
   }
 
@@ -1324,8 +1163,8 @@ static void render_watchface_scene(
   // Draw gradient fill between rainbow rays (when enabled and spread > 0)
   if (gradient_fill && rainbow_spread > 0.001f) {
     // Compute boundary angles for the full rainbow (first and last wavelengths)
-    float angle_first = compute_exit_angle(hour_angle, rainbow_spread, 0, artistic_dispersion);
-    float angle_last = compute_exit_angle(hour_angle, rainbow_spread, NUM_WAVELENGTHS - 1, artistic_dispersion);
+    float angle_first = compute_exit_angle(hour_angle, rainbow_spread, 0);
+    float angle_last = compute_exit_angle(hour_angle, rainbow_spread, NUM_WAVELENGTHS - 1);
 
     // Find exit points for boundary rays
     RayHit exit_first = find_prism_exit_from_center(cx, cy, angle_first, prism);
@@ -1391,7 +1230,7 @@ static void render_watchface_scene(
 
   // Draw all rays per-wavelength for consistent brightness (additive blending)
   // Outside ray: always white (all wavelengths add to white)
-  // Internal rays: use wavelength colors if toggle on, otherwise prism color
+  // Internal rays: always use wavelength colors (inner spectrum always on)
   for (int i = 0; i < NUM_WAVELENGTHS; i++) {
     RGB_Linear color = WAVELENGTH_COLORS_LINEAR[i];
 
@@ -1404,7 +1243,7 @@ static void render_watchface_scene(
     }
 
     // Compute exit angle for this wavelength
-    float exit_angle = compute_exit_angle(hour_angle, rainbow_spread, i, artistic_dispersion);
+    float exit_angle = compute_exit_angle(hour_angle, rainbow_spread, i);
 
     // Find where exit ray (from center) exits the prism
     RayHit prism_exit = find_prism_exit_from_center(cx, cy, exit_angle, prism);
@@ -1420,31 +1259,26 @@ static void render_watchface_scene(
       float internal_exit_x = prism_exit.px + cosf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
-      // Internal ray colors (for non-dispersion segments or when gradient is off)
-      float internal_r = internal_ray_real_colors ? color.r : prism_r_f;
-      float internal_g = internal_ray_real_colors ? color.g : prism_g_f;
-      float internal_b = internal_ray_real_colors ? color.b : prism_b_f;
-
       if (bounce.needs_bounce) {
         // Entry→bounce segment: always drawn (input ray continuation, not dispersion)
         draw_line_with_glow_additive_f(float_fb, width, height,
           prism_entry.px, prism_entry.py,
           bounce.bounce_x, bounce.bounce_y,
-          internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
 
         // Bounced path: bounce → exit
         draw_line_with_glow_additive_f(float_fb, width, height,
           bounce.bounce_x, bounce.bounce_y,
           internal_exit_x, internal_exit_y,
-          internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
       } else {
         // Direct path: entry → exit
         draw_line_with_glow_additive_f(float_fb, width, height,
           prism_entry.px, prism_entry.py,
           internal_exit_x, internal_exit_y,
-          internal_r, internal_g, internal_b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
       }
 
@@ -1478,22 +1312,14 @@ static void render_watchface_scene(
   draw_prism_glow_f(float_fb, width, height, prism, prism_r_f, prism_g_f, prism_b_f,
                     radius * glow_width_percent, glow_intensity, glow_falloff);
 
-  // Draw seconds sparkle on prism edge (if enabled)
-  if (show_seconds) {
-    float sparkle_x, sparkle_y;
-    compute_sparkle_position(second, prism, &sparkle_x, &sparkle_y);
-    draw_sparkle_f(float_fb, width, height, sparkle_x, sparkle_y, radius, sparkle_size_percent, second);
-  }
-
   // Draw watch overlay (hour markers) if show_markers is set
   if (show_markers) {
     draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
-                         marker_length_percent, marker_style,
+                         marker_length_percent,
                          marker_glow_width, marker_glow_intensity, marker_glow_falloff);
   }
 
   // Convert float buffer to output buffer with sRGB gamma correction and film grain
   finalize_framebuffer(float_fb, fb, width, height,
-                       grain_intensity, frame, grain_animated, grain_scale,
-                       grain_full_image, cx, cy, radius, prism);
+                       grain_intensity, grain_scale, cx, cy, radius);
 }

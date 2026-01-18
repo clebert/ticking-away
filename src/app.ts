@@ -1,4 +1,4 @@
-import { batch, effect } from "@preact/signals-core";
+import { effect } from "@preact/signals-core";
 import { startAnimation, stopAnimation } from "./animation.ts";
 import { createBinder } from "./binder.ts";
 import { resizeCanvas } from "./canvas.ts";
@@ -11,11 +11,7 @@ initWasm().then(() => {
   createBinder({ stores })(document.body);
 
   window.addEventListener("resize", () => {
-    resizeCanvas(
-      stores.display.pebble.value,
-      stores.display.dithering.value,
-      stores.display.highDpi.value,
-    );
+    resizeCanvas(stores.display.pebble.value, stores.display.highDpi.value);
 
     render();
   });
@@ -26,11 +22,7 @@ initWasm().then(() => {
     // Track clockOnly to resize when sidebar visibility changes (fullscreen uses resize event)
     stores.mode.clockOnly.value;
 
-    resizeCanvas(
-      stores.display.pebble.value,
-      stores.display.dithering.value,
-      stores.display.highDpi.value,
-    );
+    resizeCanvas(stores.display.pebble.value, stores.display.highDpi.value);
 
     // Re-render after resize since effect(render) won't trigger from canvas size change
     render();
@@ -46,10 +38,7 @@ initWasm().then(() => {
 
   effect(() => {
     if (!stores.mode.live.value) {
-      batch(() => {
-        stores.time.minutes.value = Math.round(stores.time.minutes.value) % 60;
-        stores.time.seconds.value = Math.round(stores.time.seconds.value) % 60;
-      });
+      stores.time.minutes.value = Math.round(stores.time.minutes.value) % 60;
     }
   });
 });

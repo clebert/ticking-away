@@ -43,4 +43,3 @@ The project uses a pure software renderer via WASM:
 - C code in [graphics.h](src/graphics.h) writes directly to an RGBA framebuffer
 - TypeScript reads this buffer and uses `putImageData()` to display on an HTML5 Canvas
 - All rendering is per-pixel: additive blending for light rays, alpha blending for overlays
-- Colors come from wavelength-to-RGB conversion (physics-based spectrum)
