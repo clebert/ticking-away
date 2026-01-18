@@ -32,6 +32,7 @@ export interface Settings {
 
   backgroundGrainIntensity: number;
   backgroundGrainPrismOnly: boolean;
+  backgroundGrainBrightnessThreshold: number;
 }
 
 export function loadSettings(): Partial<Settings> {
@@ -83,6 +84,7 @@ export function saveSettings({
 
       backgroundGrainIntensity: background.grainIntensity.value,
       backgroundGrainPrismOnly: background.grainPrismOnly.value,
+      backgroundGrainBrightnessThreshold: background.grainBrightnessThreshold.value,
 
       displayMarkers: display.markers.value,
       displayPebble: display.pebble.value,

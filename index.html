@@ -476,6 +476,18 @@
               Prism Only</label
             >
           </div>
+          <div class="control-group">
+            <label
+              >Grain Threshold:
+              <span data-bind="textContent:background.grainBrightnessThreshold">25</span>%</label
+            >
+            <input
+              type="range"
+              min="1"
+              max="100"
+              data-bind="value:background.grainBrightnessThreshold, oninput:background.setGrainBrightnessThreshold, disabled:background.grainDisabled"
+            />
+          </div>
 
           <!-- Display Options -->
           <div class="section-title">Display</div>

@@ -49,6 +49,7 @@ export function render(): void {
     background.grainDisabled.value ? 0 : background.grainIntensity.value / 100.0,
     display.highDpi.value ? window.devicePixelRatio || 1 : 1,
     background.grainPrismOnly.value ? 1 : 0,
+    background.grainBrightnessThreshold.value / 100.0,
     rays.gradientFill.value ? 1 : 0,
     display.pebble.value ? 0 : 1,
     rays.palette.value,

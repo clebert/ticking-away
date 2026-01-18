@@ -1098,7 +1098,8 @@ static void finalize_framebuffer(
   float cx, float cy, float radius,  // Watch circle for grain region
   int apply_vignette_dither,  // 1 = dither vignette region (outside circle)
   const Prism* prism,       // Prism for grain_prism_only mode (can be NULL)
-  int grain_prism_only      // 1 = only apply grain inside prism
+  int grain_prism_only,     // 1 = only apply grain inside prism
+  float grain_brightness_threshold  // 0.01-1.0: brightness at which grain reaches full intensity
 ) {
   // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
   // Applied in perceptual space for uniform noise across all brightness levels.
@@ -1107,7 +1108,6 @@ static void finalize_framebuffer(
   // Brightness threshold (0-1) at which grain reaches full intensity.
   // Below this, grain fades linearly to zero (avoids noise on black areas).
   // Lower = more grain on dark pixels, higher = grain only on bright pixels.
-  float grain_brightness_threshold = 0.25f;
   float grain_brightness_scale = 1.0f / grain_brightness_threshold;
   int apply_grain = grain_intensity > 0.0f;
 
@@ -1236,7 +1236,8 @@ static void render_watchface_scene(
   int gradient_fill,
   int vignette,
   int palette,
-  int reverse_spectrum
+  int reverse_spectrum,
+  float grain_brightness_threshold
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -1269,7 +1270,7 @@ static void render_watchface_scene(
     // Convert float buffer to output buffer with sRGB gamma correction and film grain
     finalize_framebuffer(float_fb, fb, width, height,
                          grain_intensity, grain_scale, cx, cy, radius, vignette,
-                         prism, grain_prism_only);
+                         prism, grain_prism_only, grain_brightness_threshold);
     return;
   }
 
@@ -1474,5 +1475,5 @@ static void render_watchface_scene(
   // Convert float buffer to output buffer with sRGB gamma correction and film grain
   finalize_framebuffer(float_fb, fb, width, height,
                        grain_intensity, grain_scale, cx, cy, radius, vignette,
-                       prism, grain_prism_only);
+                       prism, grain_prism_only, grain_brightness_threshold);
 }
