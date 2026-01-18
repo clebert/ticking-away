@@ -547,16 +547,6 @@ static void init_watch_framebuffer_f(
         float vignette = 1.0f - smooth_t * vignette_strength;
 
         final_val = bg_base * vignette;
-
-        // Add spatial dithering to eliminate banding in the dark vignette gradient.
-        // Dither amplitude ~0.004 in linear space ≈ ±0.5 levels in sRGB at this brightness.
-        // Skip when vignette is disabled (no gradient to smooth).
-        if (vignette_intensity > 0.0f) {
-          uint32_t hash = hash_pixel(x, y);
-          float dither = ((float)(hash & 0xFFFF) / 65535.0f - 0.5f) * 0.008f;
-          final_val += dither;
-          if (final_val < 0.0f) final_val = 0.0f;
-        }
       }
 
       fb[idx] = final_val;
@@ -980,12 +970,14 @@ static void draw_gradient_continuous_f(
 // Convert float framebuffer (linear space) to uint8_t framebuffer (gamma-corrected sRGB).
 // Applies proper sRGB transfer function with optional film grain in perceptual (sRGB) space.
 // Grain is applied AFTER gamma correction for authentic film grain look (perceptually uniform).
+// Vignette dithering is also applied in sRGB space to eliminate banding in dark gradients.
 static void finalize_framebuffer(
   const float* float_fb, uint8_t* out_fb,
   int width, int height,
   float grain_intensity,    // 0.0-1.0
   float grain_scale,        // DPR to scale grain (1.0 = no scaling)
-  float cx, float cy, float radius  // Watch circle for grain region
+  float cx, float cy, float radius,  // Watch circle for grain region
+  int apply_vignette_dither  // 1 = dither vignette region (outside circle)
 ) {
   // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
   // Applied in perceptual space for uniform noise across all brightness levels.
@@ -1008,25 +1000,33 @@ static void finalize_framebuffer(
       float out_g = linear_to_srgb(g);
       float out_b = linear_to_srgb(b);
 
+      float px = (float)x + 0.5f;
+      float py = (float)y + 0.5f;
+      float dx = px - cx;
+      float dy = py - cy;
+      float dist_sq = dx * dx + dy * dy;
+
       // Apply film grain in sRGB space (perceptually uniform)
       // Always applies to full watchface with static (non-animated) grain
-      if (apply_grain) {
-        float px = (float)x + 0.5f;
-        float py = (float)y + 0.5f;
+      if (apply_grain && dist_sq <= r2) {
+        int gx = (int)((float)x / grain_scale);
+        int gy = (int)((float)y / grain_scale);
+        uint32_t hash = hash_pixel(gx, gy);
+        float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
 
-        // Check if inside watch circle
-        float dx = px - cx;
-        float dy = py - cy;
-        if (dx * dx + dy * dy <= r2) {
-          int gx = (int)((float)x / grain_scale);
-          int gy = (int)((float)y / grain_scale);
-          uint32_t hash = hash_pixel(gx, gy);
-          float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
+        out_r += grain;
+        out_g += grain;
+        out_b += grain;
+      }
 
-          out_r += grain;
-          out_g += grain;
-          out_b += grain;
-        }
+      // Apply vignette dithering in sRGB space (outside watch circle)
+      // Dither amplitude ±0.5/255 to break up quantization banding
+      if (apply_vignette_dither && dist_sq > r2) {
+        uint32_t hash = hash_pixel(x, y);
+        float dither = ((float)(hash & 0xFF) / 255.0f - 0.5f) * (2.0f / 255.0f);
+        out_r += dither;
+        out_g += dither;
+        out_b += dither;
       }
 
       // Quantize to 8-bit
@@ -1125,7 +1125,7 @@ static void render_watchface_scene(
     }
     // Convert float buffer to output buffer with sRGB gamma correction and film grain
     finalize_framebuffer(float_fb, fb, width, height,
-                         grain_intensity, grain_scale, cx, cy, radius);
+                         grain_intensity, grain_scale, cx, cy, radius, vignette);
     return;
   }
 
@@ -1308,5 +1308,5 @@ static void render_watchface_scene(
 
   // Convert float buffer to output buffer with sRGB gamma correction and film grain
   finalize_framebuffer(float_fb, fb, width, height,
-                       grain_intensity, grain_scale, cx, cy, radius);
+                       grain_intensity, grain_scale, cx, cy, radius, vignette);
 }
