@@ -1,4 +1,5 @@
 export interface WasmModule {
+  get_heap_base(): number;
   render_watchface(
     floatFramebuffer: number, // Float buffer for linear rendering (width*height*16 bytes)
     framebuffer: number, // Output buffer (width*height*4 bytes)
@@ -61,4 +62,8 @@ export function getWasmModule(): WasmModule | undefined {
 
 export function getWasmMemory(): WebAssembly.Memory | undefined {
   return wasmMemory;
+}
+
+export function getHeapBase(): number | undefined {
+  return wasmModule?.get_heap_base();
 }

@@ -13,6 +13,11 @@
 // WASM Exports
 // =================================================================================================
 
+extern unsigned char __heap_base; // First byte after static data (provided by the linker)
+
+// Get the address where it's safe to allocate
+WASM_EXPORT void *get_heap_base(void) { return &__heap_base; }
+
 // Render the watchface.
 // Parameters:
 //   float_fb: float framebuffer for linear rendering (RGBA, width*height*16 bytes)

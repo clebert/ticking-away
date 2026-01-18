@@ -1,4 +1,4 @@
-import { getWasmMemory } from "./wasm.ts";
+import { getHeapBase, getWasmMemory } from "./wasm.ts";
 
 export function getCanvas(): HTMLCanvasElement {
   return document.getElementById("canvas") as HTMLCanvasElement;
@@ -43,15 +43,15 @@ export function getFramebufferPointers(
   height: number,
 ): FramebufferPointers | undefined {
   const wasmMemory = getWasmMemory();
+  const heapBase = getHeapBase();
 
-  if (!wasmMemory) {
+  if (!wasmMemory || heapBase === undefined) {
     return;
   }
 
-  const framebufferMemoryOffset = 1048576; // 1 MiB offset (safely above WASM stack)
   const floatBufferSize = width * height * 16; // 4 floats per pixel
   const uint8BufferSize = width * height * 4; // 4 bytes per pixel
-  const requiredBytes = framebufferMemoryOffset + floatBufferSize + uint8BufferSize;
+  const requiredBytes = heapBase + floatBufferSize + uint8BufferSize;
   const currentBytes = wasmMemory.buffer.byteLength;
 
   if (currentBytes < requiredBytes) {
@@ -61,7 +61,7 @@ export function getFramebufferPointers(
   }
 
   return {
-    floatPtr: framebufferMemoryOffset,
-    uint8Ptr: framebufferMemoryOffset + floatBufferSize,
+    floatPtr: heapBase,
+    uint8Ptr: heapBase + floatBufferSize,
   };
 }
