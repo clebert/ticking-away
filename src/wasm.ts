@@ -1,36 +1,11 @@
 export interface WasmModule {
   get_heap_base(): number;
+  get_config(): number;
   render_watchface(
-    floatFramebuffer: number, // Float buffer for linear rendering (width*height*16 bytes)
-    framebuffer: number, // Output buffer (width*height*4 bytes)
+    floatFramebuffer: number,
+    framebuffer: number,
     width: number,
     height: number,
-    hour: number,
-    minute: number,
-    prism_size_percent: number,
-    rainbow_spread: number,
-    show_markers: number,
-    prism_red: number,
-    prism_green: number,
-    prism_blue: number,
-    glow_width_percent: number,
-    glow_intensity: number,
-    glow_falloff: number,
-    ray_glow_width_percent: number,
-    ray_glow_intensity: number,
-    ray_glow_falloff: number,
-    marker_length_percent: number,
-    marker_glow_width_percent: number,
-    marker_glow_intensity: number,
-    marker_glow_falloff: number,
-    grain_intensity: number,
-    grain_scale: number,
-    grain_prism_only: number,
-    grain_brightness_threshold: number, // 0.01-1.0: brightness at which grain reaches full intensity
-    gradient_fill: number,
-    vignette: number,
-    palette: number, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
-    reverse_spectrum: number, // 1 = reverse spectral order (album art style)
   ): void;
 }
 
