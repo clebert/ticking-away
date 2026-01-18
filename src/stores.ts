@@ -20,7 +20,7 @@ const defaults = {
     glowIntensity: 100,
     glowFalloff: 3,
     gradientFill: true,
-    palette: 0, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
+    palette: 2, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
   },
   markers: {
     length: 15,
