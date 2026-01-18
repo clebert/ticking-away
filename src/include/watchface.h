@@ -1,0 +1,502 @@
+#pragma once
+
+#include "bounce.h"
+#include "color.h"
+#include "drawing.h"
+#include "framebuffer.h"
+#include "geometry.h"
+#include "math.h"
+#include "palette.h"
+#include "prism.h"
+#include "rainbow.h"
+
+// =================================================================================================
+// Watch-Specific Drawing
+// =================================================================================================
+
+// Initialize watch framebuffer with background (linear color space, 0.0-1.0 range)
+static void init_watch_framebuffer_f(
+  float* fb, int width, int height,
+  float cx, float cy, float radius,
+  float vignette_intensity, // 0.0-1.0
+  int white_background      // 1 = white background instead of dark
+) {
+  // Base colors converted from sRGB to linear space
+  // Original sRGB values: watch = 10, bg = 35 (or 255 for white)
+  float watch_base = srgb_to_linear(10);
+  float bg_base = white_background ? 1.0f : srgb_to_linear(35);
+
+  // Vignette parameters (for background)
+  float max_dist = sqrtf_impl((float)(width * width + height * height)) * 0.5f;
+  float vignette_strength = vignette_intensity * 0.4f;  // Max 40% darkening at corners
+
+  float r2 = radius * radius;
+
+  for (int y = 0; y < height; y++) {
+    float dy = (float)y - cy;
+    float dy2 = dy * dy;
+    int row_offset = y * width * 4;
+
+    for (int x = 0; x < width; x++) {
+      float dx = (float)x - cx;
+      float dist2 = dx * dx + dy2;
+      int idx = row_offset + x * 4;
+
+      float final_val;
+      if (dist2 <= r2) {
+        // Inside watchface - dark
+        final_val = watch_base;
+      } else {
+        // Outside watchface - vignette
+        float dist_from_center = sqrtf_impl(dist2);
+        float vignette_t = clampf((dist_from_center - radius) / (max_dist - radius), 0.0f, 1.0f);
+        // Smoothstep for perceptually smoother gradient
+        float smooth_t = vignette_t * vignette_t * (3.0f - 2.0f * vignette_t);
+        float vignette = 1.0f - smooth_t * vignette_strength;
+
+        final_val = bg_base * vignette;
+      }
+
+      fb[idx] = final_val;
+      fb[idx + 1] = final_val;
+      fb[idx + 2] = final_val;
+      fb[idx + 3] = 1.0f;
+    }
+  }
+}
+
+// Draw prism outline (linear color space)
+static void stroke_prism_f(
+  float* fb, int width, int height,
+  const Prism* prism,
+  float r, float g, float b, float a
+) {
+  for (int i = 0; i < 3; i++) {
+    int j = (i + 1) % 3;
+    int x0 = (int)(prism->vertices[i * 2] + 0.5f);
+    int y0 = (int)(prism->vertices[i * 2 + 1] + 0.5f);
+    int x1 = (int)(prism->vertices[j * 2] + 0.5f);
+    int y1 = (int)(prism->vertices[j * 2 + 1] + 0.5f);
+    draw_line_alpha_f(fb, width, height, x0, y0, x1, y1, r, g, b, a);
+  }
+}
+
+// =================================================================================================
+// Prism Inner Glow (Distance Field)
+// =================================================================================================
+
+// Polynomial smooth minimum for blending distances near corners.
+// Creates continuous gradients by smoothly interpolating between two values
+// when they are within 'k' of each other. This eliminates the gradient
+// discontinuity (visible crease) that occurs with hard min at corners.
+static inline float smooth_min(float a, float b, float k) {
+  float h = maxf_impl(k - fabsf_impl(a - b), 0.0f) / k;
+  return minf_impl(a, b) - h * h * k * 0.25f;
+}
+
+// Compute smooth minimum distance from point to any prism edge.
+// Uses smooth_min to blend distances near corners, avoiding the gradient
+// discontinuity that causes visible dark creases at vertices.
+static float min_distance_to_prism_edge(float px, float py, const Prism* prism, float smooth_k) {
+  float d0 = point_to_segment_distance(px, py,
+    prism->vertices[0], prism->vertices[1],
+    prism->vertices[2], prism->vertices[3]);
+  float d1 = point_to_segment_distance(px, py,
+    prism->vertices[2], prism->vertices[3],
+    prism->vertices[4], prism->vertices[5]);
+  float d2 = point_to_segment_distance(px, py,
+    prism->vertices[4], prism->vertices[5],
+    prism->vertices[0], prism->vertices[1]);
+
+  // Chain smooth_min for all three edges
+  return smooth_min(smooth_min(d0, d1, smooth_k), d2, smooth_k);
+}
+
+// Draw prism with inner glow effect (linear color space)
+// glow_width: how far the glow extends inward (in pixels)
+// intensity: 0.0-1.0 multiplier for glow brightness
+// falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+static void draw_prism_glow_f(
+  float* fb, int width, int height,
+  const Prism* prism,
+  float r, float g, float b,
+  float glow_width,
+  float intensity,
+  int falloff
+) {
+  float v0x = prism->vertices[0], v0y = prism->vertices[1];
+  float v1x = prism->vertices[2], v1y = prism->vertices[3];
+  float v2x = prism->vertices[4], v2y = prism->vertices[5];
+
+  float min_x = v0x < v1x ? (v0x < v2x ? v0x : v2x) : (v1x < v2x ? v1x : v2x);
+  float max_x = v0x > v1x ? (v0x > v2x ? v0x : v2x) : (v1x > v2x ? v1x : v2x);
+  float min_y = v0y < v1y ? (v0y < v2y ? v0y : v2y) : (v1y < v2y ? v1y : v2y);
+  float max_y = v0y > v1y ? (v0y > v2y ? v0y : v2y) : (v1y > v2y ? v1y : v2y);
+
+  int x_start = (int)min_x - 1;
+  int x_end = (int)max_x + 2;
+  int y_start = (int)min_y - 1;
+  int y_end = (int)max_y + 2;
+
+  if (x_start < 0) x_start = 0;
+  if (y_start < 0) y_start = 0;
+  if (x_end > width) x_end = width;
+  if (y_end > height) y_end = height;
+
+  for (int y = y_start; y < y_end; y++) {
+    for (int x = x_start; x < x_end; x++) {
+      float px = (float)x + 0.5f;
+      float py = (float)y + 0.5f;
+
+      if (!point_in_triangle(px, py, v0x, v0y, v1x, v1y, v2x, v2y)) {
+        continue;
+      }
+
+      float dist = min_distance_to_prism_edge(px, py, prism, glow_width * 0.5f);
+
+      if (dist < glow_width) {
+        float t = dist / glow_width;
+        float falloff_value = compute_falloff(falloff, t);
+
+        float alpha = falloff_value * intensity;
+        set_pixel_additive_f(fb, width, height, x, y, r, g, b, alpha);
+      }
+    }
+  }
+
+  // Draw the edge line on top for crisp boundary
+  stroke_prism_f(fb, width, height, prism, r, g, b, 1.0f);
+}
+
+// Draw watch overlay (hour markers) - linear color space
+// Uses pure white for clean, simple rendering.
+// Always draws all 12 hour markers.
+static void draw_watch_overlay_f(
+  float* fb, int width, int height,
+  float cx, float cy, float radius,
+  float marker_length_percent,
+  float marker_glow_width,
+  float marker_glow_intensity,
+  int marker_glow_falloff
+) {
+  float glow_width = radius * marker_glow_width;
+  float circle_clip[3] = { cx, cy, radius };
+
+  for (int h = 0; h < 12; h++) {
+    float angle = ((float)h - 3.0f) * 30.0f * PI / 180.0f;
+    float inner_r = radius * (1.0f - marker_length_percent);
+    float outer_r = radius * 0.98f;
+
+    float cos_a = cosf_approx(angle);
+    float sin_a = sinf_approx(angle);
+    float x0 = cx + cos_a * inner_r;
+    float y0 = cy + sin_a * inner_r;
+    float x1 = cx + cos_a * outer_r;
+    float y1 = cy + sin_a * outer_r;
+
+    // Draw with pure white
+    draw_line_with_glow_additive_f(fb, width, height,
+      x0, y0, x1, y1,
+      1.0f, 1.0f, 1.0f,
+      glow_width, marker_glow_intensity, marker_glow_falloff,
+      0, circle_clip, 0);
+  }
+}
+
+// =================================================================================================
+// Watchface Rendering
+// =================================================================================================
+
+// Render the watchface scene.
+// - entry_x, entry_y: minute hand position (light source)
+// - hour_angle: angle to hour position from center
+// - rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
+// - show_markers: if true, show watch overlay (hour markers)
+// - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke
+// - glow_width_percent: prism glow width as fraction of radius
+// - glow_intensity: 0.0-1.0 multiplier for prism glow brightness
+// - glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+// - ray_glow_width: glow width for rays in pixels
+// - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
+// - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+// - marker_length_percent: how far markers extend towards center (0.0-1.0)
+// - marker_glow_width: glow width for markers as fraction of radius
+// - marker_glow_intensity: 0.0-1.0 multiplier for marker glow brightness
+// - marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
+// - grain_intensity: 0.0-1.0 intensity of film grain effect
+// - grain_scale: DPR to scale grain size (1.0 = no scaling)
+// - grain_prism_only: 1 = only apply grain inside prism
+// - gradient_fill: 1 = fill gradient between rainbow rays
+// - vignette: 1 = apply vignette effect to background
+// - palette: ColorPalette enum value (0-4) for rainbow color scheme
+// - reverse_spectrum: 1 = reverse spectral order (album art style: red on top)
+static void render_watchface_scene(
+  float* float_fb,  // Float buffer for linear rendering
+  uint8_t* fb,      // Output buffer (gamma-corrected)
+  int width, int height,
+  float cx, float cy, float radius,
+  float entry_x, float entry_y,
+  float hour_angle,
+  float rainbow_spread,
+  const Prism* prism,
+  int show_markers,
+  uint8_t prism_r,
+  uint8_t prism_g,
+  uint8_t prism_b,
+  float glow_width_percent,
+  float glow_intensity,
+  int glow_falloff,
+  float ray_glow_width,
+  float ray_glow_intensity,
+  int ray_glow_falloff,
+  float marker_length_percent,
+  float marker_glow_width,
+  float marker_glow_intensity,
+  int marker_glow_falloff,
+  float grain_intensity,
+  float grain_scale,
+  int grain_prism_only,
+  int gradient_fill,
+  int vignette,
+  int palette,
+  int reverse_spectrum,
+  float grain_brightness_threshold
+) {
+  // Initialize precomputed data (reinitializes if palette changed)
+  init_band_colors((ColorPalette)palette);
+
+  // Convert prism color from sRGB to linear
+  float prism_r_f = srgb_to_linear(prism_r);
+  float prism_g_f = srgb_to_linear(prism_g);
+  float prism_b_f = srgb_to_linear(prism_b);
+
+  // Initialize background (to float buffer)
+  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius, vignette ? 1.0f : 0.0f, 0);
+
+  // Entry ray direction: toward center
+  float entry_dx = cx - entry_x;
+  float entry_dy = cy - entry_y;
+  vec2_normalize(&entry_dx, &entry_dy);
+
+  // Find where entry ray hits prism
+  RayHit prism_entry = find_prism_entry(entry_x, entry_y, entry_dx, entry_dy, prism);
+
+  if (!prism_entry.hit) {
+    // Ray doesn't hit prism - just draw overlay and return
+    draw_prism_glow_f(float_fb, width, height, prism, prism_r_f, prism_g_f, prism_b_f,
+                      radius * glow_width_percent, glow_intensity, glow_falloff);
+    if (show_markers) {
+      draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
+                           marker_length_percent,
+                           marker_glow_width, marker_glow_intensity, marker_glow_falloff);
+    }
+    // Convert float buffer to output buffer with sRGB gamma correction and film grain
+    finalize_framebuffer(float_fb, fb, width, height,
+                         grain_intensity, grain_scale, cx, cy, radius, vignette,
+                         prism, grain_prism_only, grain_brightness_threshold);
+    return;
+  }
+
+  // Clipping data for external rays (entry ray and rainbow rays)
+  float circle_clip[3] = { cx, cy, radius };
+
+  // Clip incoming ray once (shared by all bands)
+  float clip_x0, clip_y0, clip_x1, clip_y1;
+  int has_clipped_entry = clip_segment_to_circle(
+    entry_x, entry_y, prism_entry.px, prism_entry.py,
+    cx, cy, radius,
+    &clip_x0, &clip_y0, &clip_x1, &clip_y1
+  );
+
+  // Compute bounce decision once using guiding ray (before band loop)
+  BounceInfo bounce = compute_bounce_info(
+    prism_entry.edge_idx, prism_entry.u,
+    hour_angle,
+    prism
+  );
+
+  // Draw gradient fill between rainbow rays (when enabled and spread > 0)
+  if (gradient_fill && rainbow_spread > 0.001f) {
+    // Compute boundary angles for the full rainbow (first and last bands)
+    float angle_first = compute_exit_angle(hour_angle, rainbow_spread, 0);
+    float angle_last = compute_exit_angle(hour_angle, rainbow_spread, NUM_BANDS - 1);
+
+    // Find exit points for boundary rays
+    RayHit exit_first = find_prism_exit_from_center(cx, cy, angle_first, prism);
+    RayHit exit_last = find_prism_exit_from_center(cx, cy, angle_last, prism);
+
+    if (exit_first.hit && exit_last.hit) {
+      float gradient_intensity = 1.0f;
+
+      // For external gradient, compute angles from CENTER to where boundary rays hit CIRCLE
+      // (not the ray direction angles, which causes parallax mismatch since rays don't start at center)
+      float ext_dir_first_x = cosf_approx(angle_first);
+      float ext_dir_first_y = sinf_approx(angle_first);
+      float border_first_x, border_first_y;
+      ray_circle_intersection(exit_first.px, exit_first.py, ext_dir_first_x, ext_dir_first_y,
+                              cx, cy, radius, &border_first_x, &border_first_y);
+      float ext_angle_first = atan2_approx(border_first_y - cy, border_first_x - cx);
+
+      float ext_dir_last_x = cosf_approx(angle_last);
+      float ext_dir_last_y = sinf_approx(angle_last);
+      float border_last_x, border_last_y;
+      ray_circle_intersection(exit_last.px, exit_last.py, ext_dir_last_x, ext_dir_last_y,
+                              cx, cy, radius, &border_last_x, &border_last_y);
+      float ext_angle_last = atan2_approx(border_last_y - cy, border_last_x - cx);
+
+      // Extend gradient angles to include infrared/ultraviolet zones
+      // Ray-to-ray spans (N-1)/N of full spread, so extend by 0.5/N on each side
+      // This makes full spread = N/(N-1) * ray-to-ray spread
+      float ray_span = ext_angle_last - ext_angle_first;
+      // Handle angle wrapping
+      if (ray_span > PI) ray_span -= 2.0f * PI;
+      if (ray_span < -PI) ray_span += 2.0f * PI;
+      float edge_margin = ray_span * EDGE_MARGIN_FACTOR;
+      float ext_angle_infrared = ext_angle_first - edge_margin;
+      float ext_angle_ultraviolet = ext_angle_last + edge_margin;
+
+      // Draw continuous gradient outside prism (uses center as origin)
+      draw_gradient_continuous_f(
+        float_fb, width, height, GRADIENT_EXTERNAL,
+        cx, cy,  // origin = center
+        cx, cy, radius,
+        ext_angle_infrared, ext_angle_ultraviolet,
+        prism, gradient_intensity, reverse_spectrum
+      );
+
+      // Draw continuous gradient inside prism
+      // Origin point: when bouncing, light spreads from bounce point; otherwise from entry point
+      float grad_origin_x = bounce.needs_bounce ? bounce.bounce_x : prism_entry.px;
+      float grad_origin_y = bounce.needs_bounce ? bounce.bounce_y : prism_entry.py;
+
+      // Compute internal exit points with perpendicular offsets for gradient boundaries
+      float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
+      float offset_first = 0.5f * internal_spread;   // Red ray side: positive offset
+      float offset_last = -0.5f * internal_spread;   // Violet ray side: negative offset
+
+      float internal_exit_first_x = exit_first.px + cosf_approx(angle_first + PI/2) * offset_first * 2.0f;
+      float internal_exit_first_y = exit_first.py + sinf_approx(angle_first + PI/2) * offset_first * 2.0f;
+      float internal_exit_last_x = exit_last.px + cosf_approx(angle_last + PI/2) * offset_last * 2.0f;
+      float internal_exit_last_y = exit_last.py + sinf_approx(angle_last + PI/2) * offset_last * 2.0f;
+
+      // Compute angles from origin to internal exit points (ray positions)
+      float internal_angle_first = atan2_approx(internal_exit_first_y - grad_origin_y, internal_exit_first_x - grad_origin_x);
+      float internal_angle_last = atan2_approx(internal_exit_last_y - grad_origin_y, internal_exit_last_x - grad_origin_x);
+
+      // Extend internal gradient angles to include infrared/ultraviolet zones
+      // Same proportional extension as external gradient
+      float internal_ray_span = internal_angle_last - internal_angle_first;
+      if (internal_ray_span > PI) internal_ray_span -= 2.0f * PI;
+      if (internal_ray_span < -PI) internal_ray_span += 2.0f * PI;
+      float internal_edge_margin = internal_ray_span * EDGE_MARGIN_FACTOR;
+      float internal_angle_infrared = internal_angle_first - internal_edge_margin;
+      float internal_angle_ultraviolet = internal_angle_last + internal_edge_margin;
+
+      draw_gradient_continuous_f(
+        float_fb, width, height, GRADIENT_INTERNAL,
+        grad_origin_x, grad_origin_y,
+        0, 0, 0,  // cx, cy, radius unused for internal mode
+        internal_angle_infrared, internal_angle_ultraviolet,
+        prism, gradient_intensity, reverse_spectrum
+      );
+    }
+  }
+
+  // Draw all rays per-band for consistent brightness (additive blending)
+  // Outside ray: always white (all bands add to white)
+  // Internal rays: always use band colors (inner spectrum always on)
+  for (int i = 0; i < NUM_BANDS; i++) {
+    // When reverse_spectrum is true, reverse the color lookup (album art style)
+    int color_idx = reverse_spectrum ? (NUM_BANDS - 1 - i) : i;
+    RGB_Linear color = BAND_COLORS_LINEAR[color_idx];
+
+    // Draw incoming ray (outside prism) - pure white
+    if (has_clipped_entry) {
+      draw_line_with_glow_additive_f(float_fb, width, height,
+        clip_x0, clip_y0, clip_x1, clip_y1,
+        1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+        0, circle_clip, prism->vertices);
+    }
+
+    // Compute exit angle for this band
+    float exit_angle = compute_exit_angle(hour_angle, rainbow_spread, i);
+
+    // Find where exit ray (from center) exits the prism
+    RayHit prism_exit = find_prism_exit_from_center(cx, cy, exit_angle, prism);
+
+    if (prism_exit.hit) {
+      // Internal path: from entry point to exit point (inside prism)
+      // Apply slight internal fan for visual effect
+      float internal_t = (float)i / (float)(NUM_BANDS - 1);
+      float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
+      float internal_offset = (0.5f - internal_t) * internal_spread;
+
+      // Adjust internal endpoint slightly based on band
+      float internal_exit_x = prism_exit.px + cosf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
+      float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
+
+      if (bounce.needs_bounce) {
+        // Entry→bounce segment: pure white (input ray continuation, not dispersion)
+        draw_line_with_glow_additive_f(float_fb, width, height,
+          prism_entry.px, prism_entry.py,
+          bounce.bounce_x, bounce.bounce_y,
+          1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          prism->vertices, 0, 0);
+
+        // Bounced path: bounce → exit
+        draw_line_with_glow_additive_f(float_fb, width, height,
+          bounce.bounce_x, bounce.bounce_y,
+          internal_exit_x, internal_exit_y,
+          color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          prism->vertices, 0, 0);
+      } else {
+        // Direct path: entry → exit
+        draw_line_with_glow_additive_f(float_fb, width, height,
+          prism_entry.px, prism_entry.py,
+          internal_exit_x, internal_exit_y,
+          color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          prism->vertices, 0, 0);
+      }
+
+      // Draw exit ray (from prism exit to circle edge)
+      float exit_dir_x = cosf_approx(exit_angle);
+      float exit_dir_y = sinf_approx(exit_angle);
+
+      float border_x, border_y;
+      if (ray_circle_intersection(
+        prism_exit.px, prism_exit.py,
+        exit_dir_x, exit_dir_y,
+        cx, cy, radius,
+        &border_x, &border_y
+      )) {
+        float exit_clip_x0, exit_clip_y0, exit_clip_x1, exit_clip_y1;
+        if (clip_segment_to_circle(
+          prism_exit.px, prism_exit.py, border_x, border_y,
+          cx, cy, radius,
+          &exit_clip_x0, &exit_clip_y0, &exit_clip_x1, &exit_clip_y1
+        )) {
+          draw_line_with_glow_additive_f(float_fb, width, height,
+            exit_clip_x0, exit_clip_y0, exit_clip_x1, exit_clip_y1,
+            color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+            0, circle_clip, prism->vertices);
+        }
+      }
+    }
+  }
+
+  // Draw prism with inner glow
+  draw_prism_glow_f(float_fb, width, height, prism, prism_r_f, prism_g_f, prism_b_f,
+                    radius * glow_width_percent, glow_intensity, glow_falloff);
+
+  // Draw watch overlay (hour markers) if show_markers is set
+  if (show_markers) {
+    draw_watch_overlay_f(float_fb, width, height, cx, cy, radius,
+                         marker_length_percent,
+                         marker_glow_width, marker_glow_intensity, marker_glow_falloff);
+  }
+
+  // Convert float buffer to output buffer with sRGB gamma correction and film grain
+  finalize_framebuffer(float_fb, fb, width, height,
+                       grain_intensity, grain_scale, cx, cy, radius, vignette,
+                       prism, grain_prism_only, grain_brightness_threshold);
+}
