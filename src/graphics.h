@@ -7,7 +7,7 @@
 // =================================================================================================
 
 // 6 iconic colors from Dark Side of the Moon album cover
-#define NUM_WAVELENGTHS 6
+#define NUM_BANDS 6
 
 // =================================================================================================
 // Falloff Computation
@@ -31,7 +31,7 @@ static inline float compute_falloff(int falloff_type, float t) {
 }
 
 // =================================================================================================
-// Wavelength to RGB
+// Color Types
 // =================================================================================================
 
 typedef struct { float r, g, b; } RGB_Linear;
@@ -113,16 +113,16 @@ static inline float linear_to_srgb(float linear) {
 }
 
 // Precomputed linear RGB colors for each band (Pink Floyd style)
-static RGB_Linear WAVELENGTH_COLORS_LINEAR[NUM_WAVELENGTHS];
+static RGB_Linear BAND_COLORS_LINEAR[NUM_BANDS];
 // Precomputed OkLab colors for perceptually uniform gradient interpolation
-static OkLab WAVELENGTH_COLORS_OKLAB[NUM_WAVELENGTHS];
-static int wavelength_colors_initialized = 0;
+static OkLab BAND_COLORS_OKLAB[NUM_BANDS];
+static int band_colors_initialized = 0;
 
 // Initialize Pink Floyd rainbow colors (6 discrete bands)
 // Colors chosen to match the iconic Dark Side of the Moon album cover
 // Precomputes both linear RGB and OkLab representations for efficient blending.
-static void init_wavelength_colors(void) {
-  if (wavelength_colors_initialized) return;
+static void init_band_colors(void) {
+  if (band_colors_initialized) return;
 
   // Define colors in sRGB, then convert to linear for correct blending
   // Red, Orange, Yellow, Green, Blue, Violet
@@ -135,19 +135,19 @@ static void init_wavelength_colors(void) {
     {148,   0, 211}   // Violet (spectral)
   };
 
-  for (int i = 0; i < NUM_WAVELENGTHS; i++) {
-    WAVELENGTH_COLORS_LINEAR[i].r = srgb_to_linear(srgb_colors[i][0]);
-    WAVELENGTH_COLORS_LINEAR[i].g = srgb_to_linear(srgb_colors[i][1]);
-    WAVELENGTH_COLORS_LINEAR[i].b = srgb_to_linear(srgb_colors[i][2]);
+  for (int i = 0; i < NUM_BANDS; i++) {
+    BAND_COLORS_LINEAR[i].r = srgb_to_linear(srgb_colors[i][0]);
+    BAND_COLORS_LINEAR[i].g = srgb_to_linear(srgb_colors[i][1]);
+    BAND_COLORS_LINEAR[i].b = srgb_to_linear(srgb_colors[i][2]);
 
     // Precompute OkLab for gradient interpolation
-    WAVELENGTH_COLORS_OKLAB[i] = linear_to_oklab(
-      WAVELENGTH_COLORS_LINEAR[i].r,
-      WAVELENGTH_COLORS_LINEAR[i].g,
-      WAVELENGTH_COLORS_LINEAR[i].b
+    BAND_COLORS_OKLAB[i] = linear_to_oklab(
+      BAND_COLORS_LINEAR[i].r,
+      BAND_COLORS_LINEAR[i].g,
+      BAND_COLORS_LINEAR[i].b
     );
   }
-  wavelength_colors_initialized = 1;
+  band_colors_initialized = 1;
 }
 
 // =================================================================================================
@@ -166,7 +166,7 @@ static inline void set_pixel_additive_f(
   fb[idx] += r * a;
   fb[idx + 1] += g * a;
   fb[idx + 2] += b * a;
-  // Alpha channel stays at 1.0 (fully opaque)
+  // Alpha channel not modified (assumed pre-initialized to 1.0)
 }
 
 // Alpha blending for float framebuffer (linear space).
@@ -422,8 +422,8 @@ static int capsule_scanline_intersect(
 // =================================================================================================
 
 // Draw a line with glow effect using distance field approach and additive blending.
-// Uses additive blending for both glow and crisp line - designed for light rays where
-// drawing multiple overlapping rays (e.g., per-wavelength) accumulates to correct brightness.
+// Designed for light rays where drawing multiple overlapping rays (e.g., per-band)
+// accumulates to correct brightness.
 // r, g, b are in 0.0-1.0 range (linear color space)
 static void draw_line_with_glow_additive_f(
   float* fb, int width, int height,
@@ -502,7 +502,7 @@ static void draw_line_with_glow_additive_f(
 // Watch-Specific Drawing
 // =================================================================================================
 
-// Simple hash function for deterministic noise/stars
+// Simple hash function for deterministic noise (dithering, film grain)
 static inline uint32_t hash_pixel(int x, int y) {
   uint32_t h = (uint32_t)(x * 374761393 + y * 668265263);
   h = (h ^ (h >> 13)) * 1274126177;
@@ -514,7 +514,7 @@ static void init_watch_framebuffer_f(
   float* fb, int width, int height,
   float cx, float cy, float radius,
   float vignette_intensity, // 0.0-1.0
-  int white_background      // 1 = white background (for pebble mode with dithering)
+  int white_background      // 1 = white background instead of dark
 ) {
   // Base colors converted from sRGB to linear space
   // Original sRGB values: watch = 10, bg = 35 (or 255 for white)
@@ -572,7 +572,7 @@ static void init_watch_framebuffer_f(
   }
 }
 
-// Float version of stroke_prism (linear color space)
+// Draw prism outline (linear color space)
 static void stroke_prism_f(
   float* fb, int width, int height,
   const Prism* prism,
@@ -782,7 +782,7 @@ static void draw_watch_overlay_f(
 }
 
 // =================================================================================================
-// Watchface Rendering
+// Rainbow Ray Geometry
 // =================================================================================================
 
 // Maximum spread in radians (30 degrees)
@@ -791,18 +791,18 @@ static void draw_watch_overlay_f(
 // Internal fan spread factor (how much colors separate inside prism)
 #define INTERNAL_FAN_FACTOR 0.15f
 
-// Compute the exit angle for a given wavelength index.
+// Compute the exit angle for a given band index.
 // Returns angle that fans around the hour_angle based on spread.
 // Uses physical dispersion: violet bends most (negative offset), red bends least (positive offset).
 static float compute_exit_angle(
   float hour_angle,
   float rainbow_spread,  // 0.0 to 1.0
-  int wavelength_idx     // 0 = red, NUM_WAVELENGTHS-1 = violet
+  int band_idx           // 0 = red, NUM_BANDS-1 = violet
 ) {
   float spread_rad = rainbow_spread * MAX_SPREAD_RAD;
 
   // t: 0 for red (first), 1 for violet (last)
-  float t = (float)wavelength_idx / (float)(NUM_WAVELENGTHS - 1);
+  float t = (float)band_idx / (float)(NUM_BANDS - 1);
 
   // Physical: violet bends most (negative offset), red bends least (positive offset)
   float offset = (0.5f - t) * spread_rad;
@@ -825,24 +825,24 @@ static RGB_Linear interpolate_rainbow_color(float t) {
   if (t > 1.0f) t = 1.0f;
 
   // Map t to band index: t=0 -> band 0 (red), t=1 -> band 5 (violet)
-  float scaled = t * (float)(NUM_WAVELENGTHS - 1);
+  float scaled = t * (float)(NUM_BANDS - 1);
   int band_lo = (int)scaled;
   int band_hi = band_lo + 1;
 
   // Clamp to valid range
   if (band_lo < 0) band_lo = 0;
-  if (band_hi >= NUM_WAVELENGTHS) band_hi = NUM_WAVELENGTHS - 1;
-  if (band_lo >= NUM_WAVELENGTHS - 1) {
-    band_lo = NUM_WAVELENGTHS - 1;
-    band_hi = NUM_WAVELENGTHS - 1;
+  if (band_hi >= NUM_BANDS) band_hi = NUM_BANDS - 1;
+  if (band_lo >= NUM_BANDS - 1) {
+    band_lo = NUM_BANDS - 1;
+    band_hi = NUM_BANDS - 1;
   }
 
   // Interpolation factor within the band
   float frac = scaled - (float)band_lo;
 
   // Interpolate in OkLab space for perceptually uniform gradients
-  OkLab lab_lo = WAVELENGTH_COLORS_OKLAB[band_lo];
-  OkLab lab_hi = WAVELENGTH_COLORS_OKLAB[band_hi];
+  OkLab lab_lo = BAND_COLORS_OKLAB[band_lo];
+  OkLab lab_hi = BAND_COLORS_OKLAB[band_hi];
 
   OkLab lab_interp;
   lab_interp.L = lab_lo.L + frac * (lab_hi.L - lab_lo.L);
@@ -1067,6 +1067,9 @@ static void finalize_framebuffer(
 // - rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
 // - show_markers: if true, show watch overlay (hour markers)
 // - prism_r, prism_g, prism_b: RGB values (0-255) for prism stroke
+// - glow_width_percent: prism glow width as fraction of radius
+// - glow_intensity: 0.0-1.0 multiplier for prism glow brightness
+// - glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 // - ray_glow_width: glow width for rays in pixels
 // - ray_glow_intensity: 0.0-1.0 multiplier for ray glow brightness
 // - ray_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
@@ -1077,6 +1080,7 @@ static void finalize_framebuffer(
 // - grain_intensity: 0.0-1.0 intensity of film grain effect
 // - grain_scale: DPR to scale grain size (1.0 = no scaling)
 // - gradient_fill: 1 = fill gradient between rainbow rays
+// - vignette: 1 = apply vignette effect to background
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
   uint8_t* fb,      // Output buffer (gamma-corrected)
@@ -1106,7 +1110,7 @@ static void render_watchface_scene(
   int vignette
 ) {
   // Initialize precomputed data (no-op after first call)
-  init_wavelength_colors();
+  init_band_colors();
 
   // Convert prism color from sRGB to linear
   float prism_r_f = srgb_to_linear(prism_r);
@@ -1142,7 +1146,7 @@ static void render_watchface_scene(
   // Clipping data for external rays (entry ray and rainbow rays)
   float circle_clip[3] = { cx, cy, radius };
 
-  // Clip incoming ray once (shared by all wavelengths)
+  // Clip incoming ray once (shared by all bands)
   float clip_x0, clip_y0, clip_x1, clip_y1;
   int has_clipped_entry = clip_segment_to_circle(
     entry_x, entry_y, prism_entry.px, prism_entry.py,
@@ -1150,7 +1154,7 @@ static void render_watchface_scene(
     &clip_x0, &clip_y0, &clip_x1, &clip_y1
   );
 
-  // Compute bounce decision once using guiding ray (before wavelength loop)
+  // Compute bounce decision once using guiding ray (before band loop)
   BounceInfo bounce = compute_bounce_info(
     prism_entry.edge_idx, prism_entry.u,
     hour_angle,
@@ -1159,9 +1163,9 @@ static void render_watchface_scene(
 
   // Draw gradient fill between rainbow rays (when enabled and spread > 0)
   if (gradient_fill && rainbow_spread > 0.001f) {
-    // Compute boundary angles for the full rainbow (first and last wavelengths)
+    // Compute boundary angles for the full rainbow (first and last bands)
     float angle_first = compute_exit_angle(hour_angle, rainbow_spread, 0);
-    float angle_last = compute_exit_angle(hour_angle, rainbow_spread, NUM_WAVELENGTHS - 1);
+    float angle_last = compute_exit_angle(hour_angle, rainbow_spread, NUM_BANDS - 1);
 
     // Find exit points for boundary rays
     RayHit exit_first = find_prism_exit_from_center(cx, cy, angle_first, prism);
@@ -1203,8 +1207,8 @@ static void render_watchface_scene(
       // Compute internal exit points WITH the same perpendicular offsets used by the rays
       // This ensures the gradient boundaries align exactly with the ray boundaries
       float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
-      float offset_first = 0.5f * internal_spread;   // First wavelength (t=0): offset = 0.5 * spread
-      float offset_last = -0.5f * internal_spread;   // Last wavelength (t=1): offset = -0.5 * spread
+      float offset_first = 0.5f * internal_spread;   // First band (t=0): offset = 0.5 * spread
+      float offset_last = -0.5f * internal_spread;   // Last band (t=1): offset = -0.5 * spread
 
       float internal_exit_first_x = exit_first.px + cosf_approx(angle_first + PI/2) * offset_first * 2.0f;
       float internal_exit_first_y = exit_first.py + sinf_approx(angle_first + PI/2) * offset_first * 2.0f;
@@ -1225,13 +1229,13 @@ static void render_watchface_scene(
     }
   }
 
-  // Draw all rays per-wavelength for consistent brightness (additive blending)
-  // Outside ray: always white (all wavelengths add to white)
-  // Internal rays: always use wavelength colors (inner spectrum always on)
-  for (int i = 0; i < NUM_WAVELENGTHS; i++) {
-    RGB_Linear color = WAVELENGTH_COLORS_LINEAR[i];
+  // Draw all rays per-band for consistent brightness (additive blending)
+  // Outside ray: always white (all bands add to white)
+  // Internal rays: always use band colors (inner spectrum always on)
+  for (int i = 0; i < NUM_BANDS; i++) {
+    RGB_Linear color = BAND_COLORS_LINEAR[i];
 
-    // Draw incoming ray (outside prism) - per-wavelength colors, adds up via blending
+    // Draw incoming ray (outside prism) - per-band colors, adds up via blending
     if (has_clipped_entry) {
       draw_line_with_glow_additive_f(float_fb, width, height,
         clip_x0, clip_y0, clip_x1, clip_y1,
@@ -1239,7 +1243,7 @@ static void render_watchface_scene(
         0, circle_clip, prism->vertices);
     }
 
-    // Compute exit angle for this wavelength
+    // Compute exit angle for this band
     float exit_angle = compute_exit_angle(hour_angle, rainbow_spread, i);
 
     // Find where exit ray (from center) exits the prism
@@ -1248,11 +1252,11 @@ static void render_watchface_scene(
     if (prism_exit.hit) {
       // Internal path: from entry point to exit point (inside prism)
       // Apply slight internal fan for visual effect
-      float internal_t = (float)i / (float)(NUM_WAVELENGTHS - 1);
+      float internal_t = (float)i / (float)(NUM_BANDS - 1);
       float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
       float internal_offset = (0.5f - internal_t) * internal_spread;
 
-      // Adjust internal endpoint slightly based on wavelength
+      // Adjust internal endpoint slightly based on band
       float internal_exit_x = prism_exit.px + cosf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 

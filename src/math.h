@@ -113,7 +113,7 @@ static inline float atan2_approx(float y, float x) {
 }
 
 // =================================================================================================
-// Power Approximations (for wavelength_to_rgb)
+// Power Approximations
 // =================================================================================================
 //
 // NOTE: These functions assume IEEE-754 float layout and use union type-punning.

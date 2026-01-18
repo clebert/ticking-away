@@ -31,7 +31,7 @@ const defaults = {
     grainIntensity: 80,
   },
   display: {
-    markers: true,
+    markers: false,
     pebble: false,
     highDpi: true,
   },
