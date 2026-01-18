@@ -50,6 +50,7 @@ export function render(): void {
     display.highDpi.value ? window.devicePixelRatio || 1 : 1,
     rays.gradientFill.value ? 1 : 0,
     display.pebble.value ? 0 : 1,
+    rays.palette.value,
   );
 
   const framebufferArray = new Uint8ClampedArray(

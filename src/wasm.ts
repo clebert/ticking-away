@@ -26,6 +26,7 @@ export interface WasmModule {
     grain_scale: number,
     gradient_fill: number,
     vignette: number,
+    palette: number, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
   ): void;
 }
 

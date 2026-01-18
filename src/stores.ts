@@ -20,6 +20,7 @@ const defaults = {
     glowIntensity: 100,
     glowFalloff: 3,
     gradientFill: true,
+    palette: 0, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
   },
   markers: {
     length: 15,
@@ -216,6 +217,7 @@ export const rays = {
 
   // Signals: rendering mode
   gradientFill: signal(settings.raysGradientFill ?? defaults.rays.gradientFill),
+  palette: signal(settings.raysPalette ?? defaults.rays.palette),
 
   // Actions
   setGlowWidth(e: Event): void {
@@ -232,6 +234,10 @@ export const rays = {
 
   toggleGradientFill(): void {
     rays.gradientFill.value = !rays.gradientFill.value;
+  },
+
+  setPalette(e: Event): void {
+    rays.palette.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 };
 
@@ -316,6 +322,7 @@ export const resetAll = {
       rays.glowIntensity.value = defaults.rays.glowIntensity;
       rays.glowFalloff.value = defaults.rays.glowFalloff;
       rays.gradientFill.value = defaults.rays.gradientFill;
+      rays.palette.value = defaults.rays.palette;
 
       // Markers
       markers.length.value = defaults.markers.length;
