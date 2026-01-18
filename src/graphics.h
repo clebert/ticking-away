@@ -3,11 +3,15 @@
 #include "math.h"
 
 // =================================================================================================
-// Pink Floyd Rainbow Colors (6 discrete bands)
+// Rainbow Colors (7 perceptually balanced bands)
 // =================================================================================================
 
-// 6 iconic colors from Dark Side of the Moon album cover
-#define NUM_BANDS 6
+// 7 bands derived from OkLCH with equal hue spacing for perceptual uniformity
+#define NUM_BANDS 7
+
+// Edge margin factor for extending gradient beyond visible rays into IR/UV zones
+// With centered band spacing, rays span (N-1)/N of the gradient; this extends each edge by 0.5/N
+#define EDGE_MARGIN_FACTOR (0.5f / (float)(NUM_BANDS - 1))
 
 // =================================================================================================
 // Falloff Computation
@@ -112,27 +116,28 @@ static inline float linear_to_srgb(float linear) {
   return 1.055f * accurate_pow_5_12(linear) - 0.055f;
 }
 
-// Precomputed linear RGB colors for each band (Pink Floyd style)
+// Precomputed linear RGB colors for each band
 static RGB_Linear BAND_COLORS_LINEAR[NUM_BANDS];
 // Precomputed OkLab colors for perceptually uniform gradient interpolation
 static OkLab BAND_COLORS_OKLAB[NUM_BANDS];
 static int band_colors_initialized = 0;
 
-// Initialize Pink Floyd rainbow colors (6 discrete bands)
-// Colors chosen to match the iconic Dark Side of the Moon album cover
+// Initialize rainbow colors (7 perceptually balanced bands)
+// Colors derived from OkLCH with equal hue spacing (~40° intervals from red to violet)
 // Precomputes both linear RGB and OkLab representations for efficient blending.
 static void init_band_colors(void) {
   if (band_colors_initialized) return;
 
   // Define colors in sRGB, then convert to linear for correct blending
-  // Red, Orange, Yellow, Green, Blue, Violet
-  const uint8_t srgb_colors[6][3] = {
-    {255,   0,   0},  // Red
-    {255, 127,   0},  // Orange
-    {255, 255,   0},  // Yellow
-    {  0, 255,   0},  // Green
-    {  0,   0, 255},  // Blue
-    {148,   0, 211}   // Violet (spectral)
+  // OkLCH-derived: equal hue spacing for perceptual uniformity
+  const uint8_t srgb_colors[7][3] = {
+    {255,  64,  64},  // Red      (OkLCH hue ~30°)
+    {255, 160,   0},  // Orange   (OkLCH hue ~70°)
+    {220, 220,   0},  // Yellow   (OkLCH hue ~110°)
+    {  0, 200,  80},  // Green    (OkLCH hue ~150°)
+    {  0, 180, 220},  // Cyan     (OkLCH hue ~195°)
+    { 80, 100, 255},  // Blue     (OkLCH hue ~250°)
+    {180,  80, 255}   // Violet   (OkLCH hue ~300°)
   };
 
   for (int i = 0; i < NUM_BANDS; i++) {
@@ -776,23 +781,33 @@ static void draw_watch_overlay_f(
 // Internal fan spread factor (how much colors separate inside prism)
 #define INTERNAL_FAN_FACTOR 0.15f
 
-// Compute the exit angle for a given band index.
+// Compute the exit angle for a given position t within the spread.
+// t=0 is the infrared edge, t=1 is the ultraviolet edge.
 // Returns angle that fans around the hour_angle based on spread.
 // Uses physical dispersion: violet bends most (negative offset), red bends least (positive offset).
+static float compute_exit_angle_t(
+  float hour_angle,
+  float rainbow_spread,  // 0.0 to 1.0
+  float t                // 0.0 = infrared edge, 1.0 = ultraviolet edge
+) {
+  float spread_rad = rainbow_spread * MAX_SPREAD_RAD;
+  // Physical: t=0 (infrared) gets positive offset, t=1 (ultraviolet) gets negative
+  float offset = (0.5f - t) * spread_rad;
+  return hour_angle + offset;
+}
+
+// Compute the exit angle for a given band index.
+// Uses centered spacing so edge bands (red/violet) aren't clipped at spread boundaries.
+// Band 0 (red) maps to t=0.5/N, Band N-1 (violet) maps to t=(N-0.5)/N.
 static float compute_exit_angle(
   float hour_angle,
   float rainbow_spread,  // 0.0 to 1.0
   int band_idx           // 0 = red, NUM_BANDS-1 = violet
 ) {
-  float spread_rad = rainbow_spread * MAX_SPREAD_RAD;
-
-  // t: 0 for red (first), 1 for violet (last)
-  float t = (float)band_idx / (float)(NUM_BANDS - 1);
-
-  // Physical: violet bends most (negative offset), red bends least (positive offset)
-  float offset = (0.5f - t) * spread_rad;
-
-  return hour_angle + offset;
+  // Centered spacing: t = (i + 0.5) / N instead of i / (N-1)
+  // This keeps edge bands away from the boundaries (e.g., for 7 bands: 0.071 to 0.929)
+  float t = ((float)band_idx + 0.5f) / (float)NUM_BANDS;
+  return compute_exit_angle_t(hour_angle, rainbow_spread, t);
 }
 
 // Gradient mode: determines pixel inclusion and iteration bounds
@@ -801,25 +816,61 @@ typedef enum {
   GRADIENT_INTERNAL   // Inside prism only
 } GradientMode;
 
-// Interpolate between Pink Floyd rainbow bands based on t (0-1)
+// Interpolate between rainbow bands based on t (0-1)
 // Uses OkLab color space for perceptually uniform gradients.
-// Returns smoothly interpolated color between the 6 discrete bands.
+// Returns smoothly interpolated color between the 7 discrete bands.
+// Extrapolates beyond visible spectrum: t<0 toward infrared, t>1 toward ultraviolet.
 static RGB_Linear interpolate_rainbow_color(float t) {
-  // Clamp t to [0, 1]
-  t = clampf(t, 0.0f, 1.0f);
+  // Handle extrapolation beyond visible spectrum
+  if (t < 0.0f) {
+    // Extrapolate toward infrared (darker, deeper red)
+    // Infrared: sRGB(140, 0, 0) -> dark red beyond visible
+    OkLab lab_infrared = linear_to_oklab(
+      srgb_to_linear(140.0f / 255.0f),
+      srgb_to_linear(0.0f),
+      srgb_to_linear(0.0f)
+    );
+    OkLab lab_red = BAND_COLORS_OKLAB[0];
 
-  // Map t to band index: t=0 -> band 0 (red), t=1 -> band 5 (violet)
+    // t=0 is red, t=-1 would be pure infrared
+    float frac = -t;  // 0 at red, 1 at t=-1
+    frac = clampf(frac, 0.0f, 1.0f);
+
+    OkLab lab_interp;
+    lab_interp.L = lab_red.L + frac * (lab_infrared.L - lab_red.L);
+    lab_interp.a = lab_red.a + frac * (lab_infrared.a - lab_red.a);
+    lab_interp.b = lab_red.b + frac * (lab_infrared.b - lab_red.b);
+    return oklab_to_linear(lab_interp);
+  }
+
+  if (t > 1.0f) {
+    // Extrapolate toward ultraviolet (deeper magenta/purple)
+    // Ultraviolet: sRGB(80, 0, 120) -> deep purple beyond visible
+    OkLab lab_ultraviolet = linear_to_oklab(
+      srgb_to_linear(80.0f / 255.0f),
+      srgb_to_linear(0.0f),
+      srgb_to_linear(120.0f / 255.0f)
+    );
+    OkLab lab_violet = BAND_COLORS_OKLAB[NUM_BANDS - 1];
+
+    // t=1 is violet, t=2 would be pure ultraviolet
+    float frac = t - 1.0f;  // 0 at violet, 1 at t=2
+    frac = clampf(frac, 0.0f, 1.0f);
+
+    OkLab lab_interp;
+    lab_interp.L = lab_violet.L + frac * (lab_ultraviolet.L - lab_violet.L);
+    lab_interp.a = lab_violet.a + frac * (lab_ultraviolet.a - lab_violet.a);
+    lab_interp.b = lab_violet.b + frac * (lab_ultraviolet.b - lab_violet.b);
+    return oklab_to_linear(lab_interp);
+  }
+
+  // Map t to band index: t=0 -> band 0 (red), t=1 -> band 6 (violet)
   float scaled = t * (float)(NUM_BANDS - 1);
   int band_lo = (int)scaled;
   int band_hi = band_lo + 1;
 
   // Clamp to valid range
-  if (band_lo < 0) band_lo = 0;
   if (band_hi >= NUM_BANDS) band_hi = NUM_BANDS - 1;
-  if (band_lo >= NUM_BANDS - 1) {
-    band_lo = NUM_BANDS - 1;
-    band_hi = NUM_BANDS - 1;
-  }
 
   // Interpolation factor within the band
   float frac = scaled - (float)band_lo;
@@ -945,16 +996,24 @@ static void draw_gradient_continuous_f(
         t = (pixel_angle - a1_orig) / angle_span;
       }
 
-      // Clamp t to [0, 1] - pixels in epsilon-expanded zone get boundary colors
-      t = clampf(t, 0.0f, 1.0f);
-
       // Reverse t if angles were swapped
       if (reverse) t = 1.0f - t;
 
-      // Interpolate between Pink Floyd rainbow bands
-      RGB_Linear color = interpolate_rainbow_color(t);
+      // Note: t is NOT clamped to [0,1] here - values outside this range
+      // represent the infrared/ultraviolet zones and are handled by extrapolation
+      // in interpolate_rainbow_color()
 
-      // Additive blend to float framebuffer
+      // Remap t for centered band spacing:
+      // Input t ∈ [0,1] spans full spread (infrared edge to ultraviolet edge)
+      // Output t_color maps band positions to [0,1]: red ray at 0, violet ray at 1
+      // Formula: t_color = (t * N - 0.5) / (N - 1)
+      // This gives t_color < 0 for infrared zone, t_color > 1 for ultraviolet zone
+      float t_color = (t * (float)NUM_BANDS - 0.5f) / (float)(NUM_BANDS - 1);
+
+      // Interpolate between rainbow bands (handles extrapolation for t outside [0,1])
+      RGB_Linear color = interpolate_rainbow_color(t_color);
+
+      // Additive blend (merges with ray glows for smooth transitions)
       int idx = (y * width + x) * 4;
       fb[idx] += color.r * intensity;
       fb[idx + 1] += color.g * intensity;
@@ -1176,12 +1235,23 @@ static void render_watchface_scene(
                               cx, cy, radius, &border_last_x, &border_last_y);
       float ext_angle_last = atan2_approx(border_last_y - cy, border_last_x - cx);
 
+      // Extend gradient angles to include infrared/ultraviolet zones
+      // Ray-to-ray spans (N-1)/N of full spread, so extend by 0.5/N on each side
+      // This makes full spread = N/(N-1) * ray-to-ray spread
+      float ray_span = ext_angle_last - ext_angle_first;
+      // Handle angle wrapping
+      if (ray_span > PI) ray_span -= 2.0f * PI;
+      if (ray_span < -PI) ray_span += 2.0f * PI;
+      float edge_margin = ray_span * EDGE_MARGIN_FACTOR;
+      float ext_angle_infrared = ext_angle_first - edge_margin;
+      float ext_angle_ultraviolet = ext_angle_last + edge_margin;
+
       // Draw continuous gradient outside prism (uses center as origin)
       draw_gradient_continuous_f(
         float_fb, width, height, GRADIENT_EXTERNAL,
         cx, cy,  // origin = center
         cx, cy, radius,
-        ext_angle_first, ext_angle_last,
+        ext_angle_infrared, ext_angle_ultraviolet,
         prism, gradient_intensity
       );
 
@@ -1190,26 +1260,34 @@ static void render_watchface_scene(
       float grad_origin_x = bounce.needs_bounce ? bounce.bounce_x : prism_entry.px;
       float grad_origin_y = bounce.needs_bounce ? bounce.bounce_y : prism_entry.py;
 
-      // Compute internal exit points WITH the same perpendicular offsets used by the rays
-      // This ensures the gradient boundaries align exactly with the ray boundaries
+      // Compute internal exit points with perpendicular offsets for gradient boundaries
       float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
-      float offset_first = 0.5f * internal_spread;   // First band (t=0): offset = 0.5 * spread
-      float offset_last = -0.5f * internal_spread;   // Last band (t=1): offset = -0.5 * spread
+      float offset_first = 0.5f * internal_spread;   // Red ray side: positive offset
+      float offset_last = -0.5f * internal_spread;   // Violet ray side: negative offset
 
       float internal_exit_first_x = exit_first.px + cosf_approx(angle_first + PI/2) * offset_first * 2.0f;
       float internal_exit_first_y = exit_first.py + sinf_approx(angle_first + PI/2) * offset_first * 2.0f;
       float internal_exit_last_x = exit_last.px + cosf_approx(angle_last + PI/2) * offset_last * 2.0f;
       float internal_exit_last_y = exit_last.py + sinf_approx(angle_last + PI/2) * offset_last * 2.0f;
 
-      // Compute angles from origin to ACTUAL internal exit points (with offsets)
+      // Compute angles from origin to internal exit points (ray positions)
       float internal_angle_first = atan2_approx(internal_exit_first_y - grad_origin_y, internal_exit_first_x - grad_origin_x);
       float internal_angle_last = atan2_approx(internal_exit_last_y - grad_origin_y, internal_exit_last_x - grad_origin_x);
+
+      // Extend internal gradient angles to include infrared/ultraviolet zones
+      // Same proportional extension as external gradient
+      float internal_ray_span = internal_angle_last - internal_angle_first;
+      if (internal_ray_span > PI) internal_ray_span -= 2.0f * PI;
+      if (internal_ray_span < -PI) internal_ray_span += 2.0f * PI;
+      float internal_edge_margin = internal_ray_span * EDGE_MARGIN_FACTOR;
+      float internal_angle_infrared = internal_angle_first - internal_edge_margin;
+      float internal_angle_ultraviolet = internal_angle_last + internal_edge_margin;
 
       draw_gradient_continuous_f(
         float_fb, width, height, GRADIENT_INTERNAL,
         grad_origin_x, grad_origin_y,
         0, 0, 0,  // cx, cy, radius unused for internal mode
-        internal_angle_first, internal_angle_last,
+        internal_angle_infrared, internal_angle_ultraviolet,
         prism, gradient_intensity
       );
     }
