@@ -24,7 +24,7 @@ const defaults = {
   markers: {
     length: 15,
     glowWidth: 1,
-    glowIntensity: 25,
+    glowIntensity: 100,
     glowFalloff: 3,
   },
   background: {

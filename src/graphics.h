@@ -747,7 +747,7 @@ static int clip_segment_to_circle(
 }
 
 // Draw watch overlay (hour markers) - linear color space
-// Uses multi-wavelength rendering (same as input ray) for consistent color through additive blending
+// Uses pure white for clean, simple rendering.
 // Always draws all 12 hour markers.
 static void draw_watch_overlay_f(
   float* fb, int width, int height,
@@ -772,15 +772,12 @@ static void draw_watch_overlay_f(
     float x1 = cx + cos_a * outer_r;
     float y1 = cy + sin_a * outer_r;
 
-    // Draw with multiple wavelengths (same as input ray) - additive blending produces white
-    for (int i = 0; i < NUM_WAVELENGTHS; i++) {
-      RGB_Linear color = WAVELENGTH_COLORS_LINEAR[i];
-      draw_line_with_glow_additive_f(fb, width, height,
-        x0, y0, x1, y1,
-        color.r, color.g, color.b,
-        glow_width, marker_glow_intensity, marker_glow_falloff,
-        0, circle_clip, 0);
-    }
+    // Draw with pure white
+    draw_line_with_glow_additive_f(fb, width, height,
+      x0, y0, x1, y1,
+      1.0f, 1.0f, 1.0f,
+      glow_width, marker_glow_intensity, marker_glow_falloff,
+      0, circle_clip, 0);
   }
 }
 
