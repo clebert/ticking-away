@@ -1103,6 +1103,12 @@ static void finalize_framebuffer(
   // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
   // Applied in perceptual space for uniform noise across all brightness levels.
   float grain_strength = grain_intensity * 0.06f;
+
+  // Brightness threshold (0-1) at which grain reaches full intensity.
+  // Below this, grain fades linearly to zero (avoids noise on black areas).
+  // Lower = more grain on dark pixels, higher = grain only on bright pixels.
+  float grain_brightness_threshold = 0.25f;
+  float grain_brightness_scale = 1.0f / grain_brightness_threshold;
   int apply_grain = grain_intensity > 0.0f;
 
   float r2 = radius * radius;
@@ -1128,7 +1134,7 @@ static void finalize_framebuffer(
       float dist_sq = dx * dx + dy * dy;
 
       // Apply film grain in sRGB space (perceptually uniform)
-      // Either applies to full watchface or prism only, with static (non-animated) grain
+      // Grain is scaled by pixel brightness to avoid noise on black areas
       int in_grain_region = dist_sq <= r2;
       if (grain_prism_only && prism) {
         in_grain_region = in_grain_region && point_in_triangle(px, py,
@@ -1137,10 +1143,13 @@ static void finalize_framebuffer(
           prism->vertices[4], prism->vertices[5]);
       }
       if (apply_grain && in_grain_region) {
+        float brightness = (out_r + out_g + out_b) / 3.0f;
+        float brightness_scale = clampf(brightness * grain_brightness_scale, 0.0f, 1.0f);
+
         int gx = (int)((float)x / grain_scale);
         int gy = (int)((float)y / grain_scale);
         uint32_t hash = hash_pixel(gx, gy);
-        float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f;
+        float grain = ((float)(hash & 0xFF) / 255.0f - 0.5f) * grain_strength * 2.0f * brightness_scale;
 
         out_r += grain;
         out_g += grain;
