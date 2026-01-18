@@ -30,6 +30,7 @@ export interface Settings {
   displayHighDpi: boolean;
 
   backgroundGrainIntensity: number;
+  backgroundGrainPrismOnly: boolean;
 }
 
 export function loadSettings(): Partial<Settings> {
@@ -79,6 +80,7 @@ export function saveSettings({
       markersGlowFalloff: markers.glowFalloff.value,
 
       backgroundGrainIntensity: background.grainIntensity.value,
+      backgroundGrainPrismOnly: background.grainPrismOnly.value,
 
       displayMarkers: display.markers.value,
       displayPebble: display.pebble.value,

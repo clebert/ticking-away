@@ -36,6 +36,7 @@
 //   marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 //   grain_intensity: 0.0-1.0 (intensity of film grain effect)
 //   grain_scale: device pixel ratio to scale grain size (1.0 = no scaling)
+//   grain_prism_only: 0 or 1 (1 = only apply grain inside prism)
 //   gradient_fill: 0 or 1 (1 = fill gradient between rainbow rays)
 //   vignette: 0 or 1 (1 = apply vignette to background)
 //   palette: 0-4 (color palette: 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted)
@@ -48,7 +49,7 @@ render_watchface(float *float_fb, uint8_t *fb, int width, int height, int hour, 
                  float marker_length_percent,
                  float marker_glow_width_percent, float marker_glow_intensity,
                  int marker_glow_falloff, float grain_intensity, float grain_scale,
-                 int gradient_fill, int vignette, int palette) {
+                 int grain_prism_only, int gradient_fill, int vignette, int palette) {
   // Calculate watch geometry
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
@@ -78,5 +79,5 @@ render_watchface(float *float_fb, uint8_t *fb, int width, int height, int hour, 
       ray_glow_width, ray_glow_intensity, ray_glow_falloff,
       marker_length_percent, marker_glow_width_percent,
       marker_glow_intensity, marker_glow_falloff, grain_intensity, grain_scale,
-      gradient_fill, vignette, palette);
+      grain_prism_only, gradient_fill, vignette, palette);
 }

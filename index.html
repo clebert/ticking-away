@@ -458,6 +458,15 @@
               data-bind="value:background.grainIntensity, oninput:background.setGrainIntensity, disabled:background.grainDisabled"
             />
           </div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:background.grainPrismOnly, onchange:background.toggleGrainPrismOnly, disabled:background.grainDisabled"
+              />
+              Prism Only</label
+            >
+          </div>
 
           <!-- Display Options -->
           <div class="section-title">Display</div>

@@ -1092,7 +1092,9 @@ static void finalize_framebuffer(
   float grain_intensity,    // 0.0-1.0
   float grain_scale,        // DPR to scale grain (1.0 = no scaling)
   float cx, float cy, float radius,  // Watch circle for grain region
-  int apply_vignette_dither  // 1 = dither vignette region (outside circle)
+  int apply_vignette_dither,  // 1 = dither vignette region (outside circle)
+  const Prism* prism,       // Prism for grain_prism_only mode (can be NULL)
+  int grain_prism_only      // 1 = only apply grain inside prism
 ) {
   // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
   // Applied in perceptual space for uniform noise across all brightness levels.
@@ -1122,8 +1124,15 @@ static void finalize_framebuffer(
       float dist_sq = dx * dx + dy * dy;
 
       // Apply film grain in sRGB space (perceptually uniform)
-      // Always applies to full watchface with static (non-animated) grain
-      if (apply_grain && dist_sq <= r2) {
+      // Either applies to full watchface or prism only, with static (non-animated) grain
+      int in_grain_region = dist_sq <= r2;
+      if (grain_prism_only && prism) {
+        in_grain_region = in_grain_region && point_in_triangle(px, py,
+          prism->vertices[0], prism->vertices[1],
+          prism->vertices[2], prism->vertices[3],
+          prism->vertices[4], prism->vertices[5]);
+      }
+      if (apply_grain && in_grain_region) {
         int gx = (int)((float)x / grain_scale);
         int gy = (int)((float)y / grain_scale);
         uint32_t hash = hash_pixel(gx, gy);
@@ -1180,6 +1189,7 @@ static void finalize_framebuffer(
 // - marker_glow_falloff: 0=linear, 1=quadratic, 2=cubic, 3=exponential
 // - grain_intensity: 0.0-1.0 intensity of film grain effect
 // - grain_scale: DPR to scale grain size (1.0 = no scaling)
+// - grain_prism_only: 1 = only apply grain inside prism
 // - gradient_fill: 1 = fill gradient between rainbow rays
 // - vignette: 1 = apply vignette effect to background
 // - palette: ColorPalette enum value (0-4) for rainbow color scheme
@@ -1208,6 +1218,7 @@ static void render_watchface_scene(
   int marker_glow_falloff,
   float grain_intensity,
   float grain_scale,
+  int grain_prism_only,
   int gradient_fill,
   int vignette,
   int palette
@@ -1242,7 +1253,8 @@ static void render_watchface_scene(
     }
     // Convert float buffer to output buffer with sRGB gamma correction and film grain
     finalize_framebuffer(float_fb, fb, width, height,
-                         grain_intensity, grain_scale, cx, cy, radius, vignette);
+                         grain_intensity, grain_scale, cx, cy, radius, vignette,
+                         prism, grain_prism_only);
     return;
   }
 
@@ -1444,5 +1456,6 @@ static void render_watchface_scene(
 
   // Convert float buffer to output buffer with sRGB gamma correction and film grain
   finalize_framebuffer(float_fb, fb, width, height,
-                       grain_intensity, grain_scale, cx, cy, radius, vignette);
+                       grain_intensity, grain_scale, cx, cy, radius, vignette,
+                       prism, grain_prism_only);
 }

@@ -24,6 +24,7 @@ export interface WasmModule {
     marker_glow_falloff: number,
     grain_intensity: number,
     grain_scale: number,
+    grain_prism_only: number,
     gradient_fill: number,
     vignette: number,
     palette: number, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted

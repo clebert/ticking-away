@@ -30,6 +30,7 @@ const defaults = {
   },
   background: {
     grainIntensity: 80,
+    grainPrismOnly: true,
   },
   display: {
     markers: true,
@@ -271,6 +272,7 @@ export const markers = {
 export const background = {
   // Signals: effect intensities
   grainIntensity: signal(settings.backgroundGrainIntensity ?? defaults.background.grainIntensity),
+  grainPrismOnly: signal(settings.backgroundGrainPrismOnly ?? defaults.background.grainPrismOnly),
 
   // Computed
   grainDisabled: computed((): boolean => display.pebble.value),
@@ -278,6 +280,10 @@ export const background = {
   // Actions
   setGrainIntensity(e: Event): void {
     background.grainIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  toggleGrainPrismOnly(): void {
+    background.grainPrismOnly.value = !background.grainPrismOnly.value;
   },
 };
 
@@ -332,6 +338,7 @@ export const resetAll = {
 
       // Background
       background.grainIntensity.value = defaults.background.grainIntensity;
+      background.grainPrismOnly.value = defaults.background.grainPrismOnly;
 
       // Display
       display.markers.value = defaults.display.markers;
