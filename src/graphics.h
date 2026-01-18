@@ -81,9 +81,9 @@ static inline RGB_Linear oklab_to_linear(OkLab lab) {
   rgb.b = -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s;
 
   // Clamp to valid range (OkLab can produce out-of-gamut values)
-  if (rgb.r < 0.0f) rgb.r = 0.0f;
-  if (rgb.g < 0.0f) rgb.g = 0.0f;
-  if (rgb.b < 0.0f) rgb.b = 0.0f;
+  rgb.r = maxf_impl(rgb.r, 0.0f);
+  rgb.g = maxf_impl(rgb.g, 0.0f);
+  rgb.b = maxf_impl(rgb.b, 0.0f);
 
   return rgb;
 }
@@ -205,9 +205,7 @@ static float point_to_segment_distance(
   }
 
   // Project point onto line, clamped to segment
-  float t = ((px - x0) * dx + (py - y0) * dy) / len_sq;
-  if (t < 0.0f) t = 0.0f;
-  if (t > 1.0f) t = 1.0f;
+  float t = clampf(((px - x0) * dx + (py - y0) * dy) / len_sq, 0.0f, 1.0f);
 
   float proj_x = x0 + t * dx;
   float proj_y = y0 + t * dy;
@@ -298,8 +296,7 @@ static inline float point_to_segment_distance_sq(const SegmentParams* s, float p
   float fy = py - s->y0;
   float t = (fx * s->dx + fy * s->dy) * s->inv_len_sq;
 
-  if (t < 0.0f) t = 0.0f;
-  else if (t > 1.0f) t = 1.0f;
+  t = clampf(t, 0.0f, 1.0f);
 
   float proj_x = s->x0 + t * s->dx;
   float proj_y = s->y0 + t * s->dy;
@@ -544,9 +541,7 @@ static void init_watch_framebuffer_f(
       } else {
         // Outside watchface - vignette
         float dist_from_center = sqrtf_impl(dist2);
-        float vignette_t = (dist_from_center - radius) / (max_dist - radius);
-        if (vignette_t < 0.0f) vignette_t = 0.0f;
-        if (vignette_t > 1.0f) vignette_t = 1.0f;
+        float vignette_t = clampf((dist_from_center - radius) / (max_dist - radius), 0.0f, 1.0f);
         // Smoothstep for perceptually smoother gradient
         float smooth_t = vignette_t * vignette_t * (3.0f - 2.0f * vignette_t);
         float vignette = 1.0f - smooth_t * vignette_strength;
@@ -821,8 +816,7 @@ typedef enum {
 // Returns smoothly interpolated color between the 6 discrete bands.
 static RGB_Linear interpolate_rainbow_color(float t) {
   // Clamp t to [0, 1]
-  if (t < 0.0f) t = 0.0f;
-  if (t > 1.0f) t = 1.0f;
+  t = clampf(t, 0.0f, 1.0f);
 
   // Map t to band index: t=0 -> band 0 (red), t=1 -> band 5 (violet)
   float scaled = t * (float)(NUM_BANDS - 1);
@@ -962,8 +956,7 @@ static void draw_gradient_continuous_f(
       }
 
       // Clamp t to [0, 1] - pixels in epsilon-expanded zone get boundary colors
-      if (t < 0.0f) t = 0.0f;
-      if (t > 1.0f) t = 1.0f;
+      t = clampf(t, 0.0f, 1.0f);
 
       // Reverse t if angles were swapped
       if (reverse) t = 1.0f - t;
@@ -1005,17 +998,10 @@ static void finalize_framebuffer(
     for (int x = 0; x < width; x++) {
       int i = (y * width + x) * 4;
 
-      float r = float_fb[i];
-      float g = float_fb[i + 1];
-      float b = float_fb[i + 2];
-
       // Clamp values (additive blending can exceed 1.0)
-      if (r < 0.0f) r = 0.0f;
-      if (g < 0.0f) g = 0.0f;
-      if (b < 0.0f) b = 0.0f;
-      if (r > 1.0f) r = 1.0f;
-      if (g > 1.0f) g = 1.0f;
-      if (b > 1.0f) b = 1.0f;
+      float r = clampf(float_fb[i], 0.0f, 1.0f);
+      float g = clampf(float_fb[i + 1], 0.0f, 1.0f);
+      float b = clampf(float_fb[i + 2], 0.0f, 1.0f);
 
       // Apply proper sRGB gamma correction (linear -> sRGB)
       float out_r = linear_to_srgb(r);
