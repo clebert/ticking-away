@@ -31,7 +31,7 @@ const defaults = {
   },
   background: {
     grainIntensity: 80,
-    grainPrismOnly: true,
+    grainPrismOnly: false,
     grainBrightnessThreshold: 20,
   },
   display: {
