@@ -7,43 +7,8 @@
 #include "prism.h"
 
 // =================================================================================================
-// Rainbow Ray Geometry
+// Rainbow Gradient Rendering
 // =================================================================================================
-
-// Maximum spread in radians (30 degrees)
-#define MAX_SPREAD_RAD (30.0f * PI / 180.0f)
-
-// Internal fan spread factor (how much colors separate inside prism)
-#define INTERNAL_FAN_FACTOR 0.15f
-
-// Compute the exit angle for a given position t within the spread.
-// t=0 is the infrared edge, t=1 is the ultraviolet edge.
-// Returns angle that fans around the hour_angle based on spread.
-// Uses physical dispersion: violet bends most (negative offset), red bends least (positive offset).
-static float compute_exit_angle_t(
-  float hour_angle,
-  float rainbow_spread,  // 0.0 to 1.0
-  float t                // 0.0 = infrared edge, 1.0 = ultraviolet edge
-) {
-  float spread_rad = rainbow_spread * MAX_SPREAD_RAD;
-  // Physical: t=0 (infrared) gets positive offset, t=1 (ultraviolet) gets negative
-  float offset = (0.5f - t) * spread_rad;
-  return hour_angle + offset;
-}
-
-// Compute the exit angle for a given band index.
-// Uses centered spacing so edge bands (red/violet) aren't clipped at spread boundaries.
-// Band 0 (red) maps to t=0.5/N, Band N-1 (violet) maps to t=(N-0.5)/N.
-static float compute_exit_angle(
-  float hour_angle,
-  float rainbow_spread,  // 0.0 to 1.0
-  int band_idx           // 0 = red, NUM_BANDS-1 = violet
-) {
-  // Centered spacing: t = (i + 0.5) / N instead of i / (N-1)
-  // This keeps edge bands away from the boundaries (e.g., for 7 bands: 0.071 to 0.929)
-  float t = ((float)band_idx + 0.5f) / (float)NUM_BANDS;
-  return compute_exit_angle_t(hour_angle, rainbow_spread, t);
-}
 
 // Gradient mode: determines pixel inclusion and iteration bounds
 typedef enum {

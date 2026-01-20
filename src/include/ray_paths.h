@@ -3,8 +3,8 @@
 #include "bounce.h"
 #include "geometry.h"
 #include "math.h"
+#include "palette.h"
 #include "prism.h"
-#include "rainbow.h"
 
 // =================================================================================================
 // Ray Path Geometry
@@ -23,7 +23,40 @@
 // =================================================================================================
 
 #define RAINBOW_SPREAD_EPSILON 0.001f  // Threshold for treating rainbow_spread as zero
-#define INTERNAL_SPREAD_SCALE 2.0f     // Multiplier for internal ray fan visual width
+#define MAX_SPREAD_RAD (30.0f * PI / 180.0f)  // Maximum spread in radians (30 degrees)
+
+// =================================================================================================
+// Exit Angle Computation
+// =================================================================================================
+
+// Compute the exit angle for a given position t within the spread.
+// t=0 is the infrared edge, t=1 is the ultraviolet edge.
+// Returns angle that fans around the hour_angle based on spread.
+// Uses physical dispersion: violet bends most (negative offset), red bends least (positive offset).
+static float compute_exit_angle_t(
+  float hour_angle,
+  float rainbow_spread,  // 0.0 to 1.0
+  float t                // 0.0 = infrared edge, 1.0 = ultraviolet edge
+) {
+  float spread_rad = rainbow_spread * MAX_SPREAD_RAD;
+  // Physical: t=0 (infrared) gets positive offset, t=1 (ultraviolet) gets negative
+  float offset = (0.5f - t) * spread_rad;
+  return hour_angle + offset;
+}
+
+// Compute the exit angle for a given band index.
+// Uses centered spacing so edge bands (red/violet) aren't clipped at spread boundaries.
+// Band 0 (red) maps to t=0.5/N, Band N-1 (violet) maps to t=(N-0.5)/N.
+static float compute_exit_angle(
+  float hour_angle,
+  float rainbow_spread,  // 0.0 to 1.0
+  int band_idx           // 0 = red, NUM_BANDS-1 = violet
+) {
+  // Centered spacing: t = (i + 0.5) / N instead of i / (N-1)
+  // This keeps edge bands away from the boundaries (e.g., for 7 bands: 0.071 to 0.929)
+  float t = ((float)band_idx + 0.5f) / (float)NUM_BANDS;
+  return compute_exit_angle_t(hour_angle, rainbow_spread, t);
+}
 
 // =================================================================================================
 // Data Structures
@@ -203,13 +236,10 @@ static RayPaths compute_ray_paths(
     band->prism_exit_x = prism_exit.px;
     band->prism_exit_y = prism_exit.py;
 
-    // Apply internal fan offset
-    float internal_t = (float)i / (float)(NUM_BANDS - 1);
-    float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
-    float internal_offset = (0.5f - internal_t) * internal_spread;
-
-    band->internal_exit_x = prism_exit.px + cosf_approx(band->exit_angle + PI/2) * internal_offset * INTERNAL_SPREAD_SCALE;
-    band->internal_exit_y = prism_exit.py + sinf_approx(band->exit_angle + PI/2) * internal_offset * INTERNAL_SPREAD_SCALE;
+    // Internal exit is the same as prism exit - the natural spread from
+    // different exit angles creates the internal fan effect
+    band->internal_exit_x = prism_exit.px;
+    band->internal_exit_y = prism_exit.py;
 
     // Internal path segments
     if (bounce.needs_bounce) {

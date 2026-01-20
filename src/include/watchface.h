@@ -5,6 +5,7 @@
 #include "framebuffer.h"
 #include "math.h"
 #include "palette.h"
+#include "rainbow.h"
 #include "ray_paths.h"
 
 // =================================================================================================
