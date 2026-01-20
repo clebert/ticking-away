@@ -40,6 +40,10 @@ export function render(): void {
   config.gradientFill = rays.gradientFill.value;
   config.palette = rays.palette.value;
   config.reverseSpectrum = rays.reverseSpectrum.value;
+  config.entryVertexProximity = rays.entryVertexProximity.value / 100.0;
+  config.exitVertexProximity = rays.exitVertexProximity.value / 100.0;
+  config.simpleBounce = rays.simpleBounce.value;
+  config.hideRaysUnderGradient = rays.hideRaysUnderGradient.value;
 
   config.showMarkers = display.markers.value;
   config.markerLengthPercent = markers.length.value / 100.0;

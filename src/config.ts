@@ -36,6 +36,10 @@ const fields = {
   gradientFill: "boolean",
   palette: "int32",
   reverseSpectrum: "boolean",
+  entryVertexProximity: "float32",
+  exitVertexProximity: "float32",
+  simpleBounce: "boolean",
+  hideRaysUnderGradient: "boolean",
 
   // Markers
   showMarkers: "boolean",

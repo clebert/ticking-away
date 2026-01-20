@@ -30,6 +30,10 @@ typedef struct {
   int32_t gradient_fill;             // 0 or 1
   int32_t palette;                   // 0-4 (color palette)
   int32_t reverse_spectrum;          // 0 or 1 (album art style)
+  float entry_vertex_proximity;      // 0.0-0.5 (entry threshold for bounce near shared vertex)
+  float exit_vertex_proximity;       // 0.0-0.5 (exit threshold for bounce near opposite vertex)
+  int32_t simple_bounce;             // 0 or 1 (use simplified bounce logic)
+  int32_t hide_rays_under_gradient;  // 0 or 1 (hide rainbow rays when gradient fill is active)
 
   // Marker settings
   int32_t show_markers;              // 0 or 1

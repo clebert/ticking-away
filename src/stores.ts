@@ -22,6 +22,10 @@ const defaults = {
     gradientFill: true,
     palette: 2, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
     reverseSpectrum: true, // Album art style: red on top, violet on bottom
+    entryVertexProximity: 25, // 0-50 (% of edge length for entry near-vertex bounce threshold)
+    exitVertexProximity: 25, // 0-50 (% of edge length for exit near-vertex bounce threshold)
+    simpleBounce: false, // Use simplified bounce logic (always bounce through opposite vertex)
+    hideRaysUnderGradient: false, // Hide rainbow rays when gradient fill is active
   },
   markers: {
     length: 15,
@@ -223,6 +227,18 @@ export const rays = {
   palette: signal(settings.raysPalette ?? defaults.rays.palette),
   reverseSpectrum: signal(settings.raysReverseSpectrum ?? defaults.rays.reverseSpectrum),
 
+  // Signals: bounce behavior
+  entryVertexProximity: signal(
+    settings.raysEntryVertexProximity ?? defaults.rays.entryVertexProximity,
+  ),
+  exitVertexProximity: signal(
+    settings.raysExitVertexProximity ?? defaults.rays.exitVertexProximity,
+  ),
+  simpleBounce: signal(settings.raysSimpleBounce ?? defaults.rays.simpleBounce),
+  hideRaysUnderGradient: signal(
+    settings.raysHideRaysUnderGradient ?? defaults.rays.hideRaysUnderGradient,
+  ),
+
   // Actions
   setGlowWidth(e: Event): void {
     rays.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
@@ -246,6 +262,22 @@ export const rays = {
 
   toggleReverseSpectrum(): void {
     rays.reverseSpectrum.value = !rays.reverseSpectrum.value;
+  },
+
+  setEntryVertexProximity(e: Event): void {
+    rays.entryVertexProximity.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  setExitVertexProximity(e: Event): void {
+    rays.exitVertexProximity.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  toggleSimpleBounce(): void {
+    rays.simpleBounce.value = !rays.simpleBounce.value;
+  },
+
+  toggleHideRaysUnderGradient(): void {
+    rays.hideRaysUnderGradient.value = !rays.hideRaysUnderGradient.value;
   },
 };
 
@@ -344,6 +376,10 @@ export const resetAll = {
       rays.gradientFill.value = defaults.rays.gradientFill;
       rays.palette.value = defaults.rays.palette;
       rays.reverseSpectrum.value = defaults.rays.reverseSpectrum;
+      rays.entryVertexProximity.value = defaults.rays.entryVertexProximity;
+      rays.exitVertexProximity.value = defaults.rays.exitVertexProximity;
+      rays.simpleBounce.value = defaults.rays.simpleBounce;
+      rays.hideRaysUnderGradient.value = defaults.rays.hideRaysUnderGradient;
 
       // Markers
       markers.length.value = defaults.markers.length;

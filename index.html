@@ -414,6 +414,48 @@
               Reverse Spectrum</label
             >
           </div>
+          <div class="control-group">
+            <label
+              >Entry Proximity:
+              <span data-bind="textContent:rays.entryVertexProximity">25</span>%</label
+            >
+            <input
+              type="range"
+              min="0"
+              max="50"
+              data-bind="value:rays.entryVertexProximity, oninput:rays.setEntryVertexProximity"
+            />
+          </div>
+          <div class="control-group">
+            <label
+              >Exit Proximity:
+              <span data-bind="textContent:rays.exitVertexProximity">25</span>%</label
+            >
+            <input
+              type="range"
+              min="0"
+              max="50"
+              data-bind="value:rays.exitVertexProximity, oninput:rays.setExitVertexProximity"
+            />
+          </div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:rays.simpleBounce, onchange:rays.toggleSimpleBounce"
+              />
+              Simple Bounce</label
+            >
+          </div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:rays.hideRaysUnderGradient, onchange:rays.toggleHideRaysUnderGradient"
+              />
+              Hide Rays Under Gradient</label
+            >
+          </div>
 
           <!-- Marker Controls -->
           <div class="section-title">Markers</div>

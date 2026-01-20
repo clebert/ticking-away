@@ -20,6 +20,10 @@ export interface Settings {
   raysGradientFill: boolean;
   raysPalette: number;
   raysReverseSpectrum: boolean;
+  raysEntryVertexProximity: number;
+  raysExitVertexProximity: number;
+  raysSimpleBounce: boolean;
+  raysHideRaysUnderGradient: boolean;
 
   markersLength: number;
   markersGlowWidth: number;
@@ -76,6 +80,10 @@ export function saveSettings({
       raysGradientFill: rays.gradientFill.value,
       raysPalette: rays.palette.value,
       raysReverseSpectrum: rays.reverseSpectrum.value,
+      raysEntryVertexProximity: rays.entryVertexProximity.value,
+      raysExitVertexProximity: rays.exitVertexProximity.value,
+      raysSimpleBounce: rays.simpleBounce.value,
+      raysHideRaysUnderGradient: rays.hideRaysUnderGradient.value,
 
       markersLength: markers.length.value,
       markersGlowWidth: markers.glowWidth.value,
