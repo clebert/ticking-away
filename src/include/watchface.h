@@ -65,6 +65,22 @@ static void init_watch_framebuffer_f(
   }
 }
 
+// Draw prism outline (linear color space)
+static void stroke_prism_f(
+  float* fb, int width, int height,
+  const Prism* prism,
+  float r, float g, float b, float a
+) {
+  for (int i = 0; i < 3; i++) {
+    int j = (i + 1) % 3;
+    int x0 = (int)(prism->vertices[i * 2] + 0.5f);
+    int y0 = (int)(prism->vertices[i * 2 + 1] + 0.5f);
+    int x1 = (int)(prism->vertices[j * 2] + 0.5f);
+    int y1 = (int)(prism->vertices[j * 2 + 1] + 0.5f);
+    draw_line_alpha_f(fb, width, height, x0, y0, x1, y1, r, g, b, a);
+  }
+}
+
 // =================================================================================================
 // Prism Inner Glow (Distance Field)
 // =================================================================================================
@@ -147,6 +163,9 @@ static void draw_prism_glow_f(
       }
     }
   }
+
+  // Draw the edge line on top for crisp boundary
+  stroke_prism_f(fb, width, height, prism, r, g, b, 1.0f);
 }
 
 // Draw watch overlay (hour markers) - linear color space
@@ -241,11 +260,7 @@ static void render_watchface_scene(
   int vignette,
   int palette,
   int reverse_spectrum,
-  float grain_brightness_threshold,
-  float entry_vertex_proximity,
-  float exit_vertex_proximity,
-  int simple_bounce,
-  int hide_rays_under_gradient
+  float grain_brightness_threshold
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -297,10 +312,7 @@ static void render_watchface_scene(
   BounceInfo bounce = compute_bounce_info(
     prism_entry.edge_idx, prism_entry.u,
     hour_angle,
-    prism,
-    entry_vertex_proximity,
-    exit_vertex_proximity,
-    simple_bounce
+    prism
   );
 
   // Draw gradient fill between rainbow rays (when enabled and spread > 0)
@@ -390,17 +402,6 @@ static void render_watchface_scene(
     }
   }
 
-  // Compute edge path for input ray (travels along prism edges to bounce vertex)
-  EdgePath edge_path = {0, {0}};
-  if (bounce.needs_bounce) {
-    edge_path = compute_shortest_edge_path(
-      prism_entry.edge_idx,
-      prism_entry.px, prism_entry.py,
-      bounce.bounce_vertex_idx,
-      prism
-    );
-  }
-
   // Draw all rays per-band for consistent brightness (additive blending)
   // Outside ray: always white (all bands add to white)
   // Internal rays: always use band colors (inner spectrum always on)
@@ -409,37 +410,12 @@ static void render_watchface_scene(
     int color_idx = reverse_spectrum ? (NUM_BANDS - 1 - i) : i;
     RGB_Linear color = BAND_COLORS_LINEAR[color_idx];
 
-    // Draw incoming ray (outside prism to entry point) - pure white
+    // Draw incoming ray (outside prism) - pure white
     if (has_clipped_entry) {
       draw_line_with_glow_additive_f(float_fb, width, height,
         clip_x0, clip_y0, clip_x1, clip_y1,
         1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
         0, circle_clip, prism->vertices);
-    }
-
-    // Draw edge path segments (input ray travels along prism edges) - pure white
-    // Use triangle_clip to keep glow inside the prism
-    if (bounce.needs_bounce && edge_path.num_points >= 2) {
-      // First segment: entry point to first waypoint
-      draw_line_with_glow_additive_f(float_fb, width, height,
-        edge_path.points[0], edge_path.points[1],
-        edge_path.points[2], edge_path.points[3],
-        1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-        prism->vertices, 0, 0);
-
-      // Second segment (if 3 points): intermediate vertex to bounce vertex
-      if (edge_path.num_points == 3) {
-        draw_line_with_glow_additive_f(float_fb, width, height,
-          edge_path.points[2], edge_path.points[3],
-          edge_path.points[4], edge_path.points[5],
-          1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-          prism->vertices, 0, 0);
-      }
-    }
-
-    // Skip rainbow rays when gradient fill is enabled and hide option is set
-    if (gradient_fill && hide_rays_under_gradient) {
-      continue;
     }
 
     // Compute exit angle for this band
@@ -449,8 +425,8 @@ static void render_watchface_scene(
     RayHit prism_exit = find_prism_exit_from_center(cx, cy, exit_angle, prism);
 
     if (prism_exit.hit) {
-      // Compute internal exit point with slight fan offset for dispersion effect.
-      // Each band's exit is shifted perpendicular to the exit angle.
+      // Internal path: from entry point to exit point (inside prism)
+      // Apply slight internal fan for visual effect
       float internal_t = (float)i / (float)(NUM_BANDS - 1);
       float internal_spread = rainbow_spread * INTERNAL_FAN_FACTOR * MAX_SPREAD_RAD;
       float internal_offset = (0.5f - internal_t) * internal_spread;
@@ -460,7 +436,14 @@ static void render_watchface_scene(
       float internal_exit_y = prism_exit.py + sinf_approx(exit_angle + PI/2) * internal_offset * 2.0f;
 
       if (bounce.needs_bounce) {
-        // Bounced path: bounce vertex → exit (colored, inside prism)
+        // Entry→bounce segment: pure white (input ray continuation, not dispersion)
+        draw_line_with_glow_additive_f(float_fb, width, height,
+          prism_entry.px, prism_entry.py,
+          bounce.bounce_x, bounce.bounce_y,
+          1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+          prism->vertices, 0, 0);
+
+        // Bounced path: bounce → exit
         draw_line_with_glow_additive_f(float_fb, width, height,
           bounce.bounce_x, bounce.bounce_y,
           internal_exit_x, internal_exit_y,

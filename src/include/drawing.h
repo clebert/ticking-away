@@ -60,6 +60,30 @@ static inline void set_pixel_alpha_f(
 }
 
 // =================================================================================================
+// Line Drawing (Bresenham, Linear Space)
+// =================================================================================================
+
+static void draw_line_alpha_f(
+  float* fb, int width, int height,
+  int x0, int y0, int x1, int y1,
+  float r, float g, float b, float a
+) {
+  int dx = x1 > x0 ? x1 - x0 : x0 - x1;
+  int dy = y1 > y0 ? y1 - y0 : y0 - y1;
+  int sx = x0 < x1 ? 1 : -1;
+  int sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy;
+
+  while (1) {
+    set_pixel_alpha_f(fb, width, height, x0, y0, r, g, b, a);
+    if (x0 == x1 && y0 == y1) break;
+    int e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
+
+// =================================================================================================
 // Line Drawing with Glow (Distance Field, Additive Blending, Linear Color Space)
 // =================================================================================================
 
