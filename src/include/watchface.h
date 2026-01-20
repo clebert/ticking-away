@@ -65,22 +65,6 @@ static void init_watch_framebuffer_f(
   }
 }
 
-// Draw prism outline (linear color space)
-static void stroke_prism_f(
-  float* fb, int width, int height,
-  const Prism* prism,
-  float r, float g, float b, float a
-) {
-  for (int i = 0; i < 3; i++) {
-    int j = (i + 1) % 3;
-    int x0 = (int)(prism->vertices[i * 2] + 0.5f);
-    int y0 = (int)(prism->vertices[i * 2 + 1] + 0.5f);
-    int x1 = (int)(prism->vertices[j * 2] + 0.5f);
-    int y1 = (int)(prism->vertices[j * 2 + 1] + 0.5f);
-    draw_line_alpha_f(fb, width, height, x0, y0, x1, y1, r, g, b, a);
-  }
-}
-
 // =================================================================================================
 // Prism Inner Glow (Distance Field)
 // =================================================================================================
@@ -163,9 +147,6 @@ static void draw_prism_glow_f(
       }
     }
   }
-
-  // Draw the edge line on top for crisp boundary
-  stroke_prism_f(fb, width, height, prism, r, g, b, 1.0f);
 }
 
 // Draw watch overlay (hour markers) - linear color space
