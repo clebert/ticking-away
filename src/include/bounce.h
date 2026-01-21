@@ -108,8 +108,7 @@ static BounceInfo compute_bounce_info(
   int entry_edge,
   float entry_u,
   float hour_angle,
-  const Prism* prism,
-  float corner_hug_threshold
+  const Prism* prism
 ) {
   BounceInfo info = {0, -1, 0.0f, 0.0f};
 
@@ -188,36 +187,6 @@ static BounceInfo compute_bounce_info(
         float dx = cosf_approx(hour_angle);
         bounce_idx = (dx >= 0.0f) ? 2 : 1;
         needs_bounce = 1;
-      }
-    }
-  }
-
-  // Corner-hugging detection: entry near one vertex, exit on adjacent face but far from
-  // that vertex. This creates a long flat internal path with minimal dispersion, followed
-  // by sudden high dispersion outside - visually jarring.
-  // Good paths (no bounce needed): entry and exit both near same vertex → short steep path.
-  // Bad paths (bounce needed): entry near vertex V, exit far from V → long flat path.
-  if (!needs_bounce && entry_location < 3 && exit_location < 3) {
-    // Case 1: Entry near END of face. Example: 07:19 - entry near v1, exit far from v1.
-    int entry_near_end_vertex = entry_u > corner_hug_threshold;
-    int next_face = (entry_edge + 1) % 3;
-    int exit_on_next_face = exit_hit.edge_idx == next_face;
-    int exit_far_from_shared_corner = exit_hit.u > (1.0f - corner_hug_threshold);
-    if (entry_near_end_vertex && exit_on_next_face && exit_far_from_shared_corner) {
-      needs_bounce = 1;
-      bounce_idx = entry_edge;  // Start vertex of entry face
-    }
-
-    // Case 2: Entry near START of face. Example: 11:01 - entry near v0, exit far from v0.
-    // Counter-example: 07:41 - entry near v2, exit also near v2 → no bounce needed.
-    if (!needs_bounce) {
-      int entry_near_start_vertex = entry_u < (1.0f - corner_hug_threshold);
-      int prev_face = (entry_edge + 2) % 3;
-      int exit_on_prev_face = exit_hit.edge_idx == prev_face;
-      int exit_far_from_shared_corner = exit_hit.u < corner_hug_threshold;
-      if (entry_near_start_vertex && exit_on_prev_face && exit_far_from_shared_corner) {
-        needs_bounce = 1;
-        bounce_idx = (entry_edge + 1) % 3;  // End vertex of entry face
       }
     }
   }

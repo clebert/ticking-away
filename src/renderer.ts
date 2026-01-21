@@ -40,7 +40,6 @@ export function render(): void {
   config.gradientFill = rays.gradientFill.value;
   config.palette = rays.palette.value;
   config.reverseSpectrum = rays.reverseSpectrum.value;
-  config.cornerHugThreshold = rays.cornerHugThreshold.value / 100.0;
 
   config.showMarkers = display.markers.value;
   config.markerLengthPercent = markers.length.value / 100.0;

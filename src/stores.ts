@@ -22,7 +22,6 @@ const defaults = {
     gradientFill: true,
     palette: 2, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
     reverseSpectrum: true, // Album art style: red on top, violet on bottom
-    cornerHugThreshold: 80, // 50-95 (edge position % for corner hug detection)
   },
   markers: {
     length: 15,
@@ -224,9 +223,6 @@ export const rays = {
   palette: signal(settings.raysPalette ?? defaults.rays.palette),
   reverseSpectrum: signal(settings.raysReverseSpectrum ?? defaults.rays.reverseSpectrum),
 
-  // Signals: bounce detection
-  cornerHugThreshold: signal(settings.raysCornerHugThreshold ?? defaults.rays.cornerHugThreshold),
-
   // Actions
   setGlowWidth(e: Event): void {
     rays.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
@@ -250,10 +246,6 @@ export const rays = {
 
   toggleReverseSpectrum(): void {
     rays.reverseSpectrum.value = !rays.reverseSpectrum.value;
-  },
-
-  setCornerHugThreshold(e: Event): void {
-    rays.cornerHugThreshold.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 };
 
@@ -352,7 +344,6 @@ export const resetAll = {
       rays.gradientFill.value = defaults.rays.gradientFill;
       rays.palette.value = defaults.rays.palette;
       rays.reverseSpectrum.value = defaults.rays.reverseSpectrum;
-      rays.cornerHugThreshold.value = defaults.rays.cornerHugThreshold;
 
       // Markers
       markers.length.value = defaults.markers.length;

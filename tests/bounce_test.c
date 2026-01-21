@@ -81,8 +81,7 @@ static bool run_test(const TestCase *tc) {
 
   RayHit entry_hit = find_prism_entry(entry_x, entry_y, entry_dx, entry_dy, &prism);
 
-  BounceInfo bounce =
-      compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism, 0);
+  BounceInfo bounce = compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism);
 
   return bounce.needs_bounce == tc->expect_bounce;
 }
@@ -107,8 +106,7 @@ static void print_failure(const TestCase *tc) {
   RayHit entry_hit = find_prism_entry(entry_x, entry_y, entry_dx, entry_dy, &prism);
   RayHit exit_hit = find_prism_exit_from_center(cx, cy, hour_angle, &prism);
 
-  BounceInfo bounce =
-      compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism, 0);
+  BounceInfo bounce = compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism);
 
   int entry_loc = classify_edge_position(entry_hit.edge_idx, entry_hit.u);
   int exit_loc = classify_edge_position(exit_hit.edge_idx, exit_hit.u);

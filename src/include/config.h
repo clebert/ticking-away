@@ -45,6 +45,4 @@ typedef struct {
   float grain_brightness_threshold;  // 0.01-1.0
   int32_t vignette;                  // 0 or 1
 
-  // Bounce detection
-  float corner_hug_threshold;        // 0.5-0.95 (edge position threshold for corner hug detection)
 } WatchfaceConfig;

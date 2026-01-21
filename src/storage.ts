@@ -20,7 +20,6 @@ export interface Settings {
   raysGradientFill: boolean;
   raysPalette: number;
   raysReverseSpectrum: boolean;
-  raysCornerHugThreshold: number;
 
   markersLength: number;
   markersGlowWidth: number;
@@ -77,7 +76,6 @@ export function saveSettings({
       raysGradientFill: rays.gradientFill.value,
       raysPalette: rays.palette.value,
       raysReverseSpectrum: rays.reverseSpectrum.value,
-      raysCornerHugThreshold: rays.cornerHugThreshold.value,
 
       markersLength: markers.length.value,
       markersGlowWidth: markers.glowWidth.value,

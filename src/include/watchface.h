@@ -209,7 +209,6 @@ static void draw_watch_overlay_f(
 // - vignette: 1 = apply vignette effect to background
 // - palette: ColorPalette enum value (0-4) for rainbow color scheme
 // - reverse_spectrum: 1 = reverse spectral order (album art style: red on top)
-// - corner_hug_threshold: 0.5-0.95 (edge position threshold for corner hug detection)
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
   uint8_t* fb,      // Output buffer (gamma-corrected)
@@ -240,8 +239,7 @@ static void render_watchface_scene(
   int vignette,
   int palette,
   int reverse_spectrum,
-  float grain_brightness_threshold,
-  float corner_hug_threshold
+  float grain_brightness_threshold
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -255,7 +253,7 @@ static void render_watchface_scene(
   init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius, vignette ? 1.0f : 0.0f, 0);
 
   // Compute all ray path geometry (decoupled from rendering)
-  RayPaths paths = compute_ray_paths(cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, prism, corner_hug_threshold);
+  RayPaths paths = compute_ray_paths(cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, prism);
 
   if (!paths.hits_prism) {
     // Ray doesn't hit prism - just draw overlay and return
