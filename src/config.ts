@@ -50,4 +50,7 @@ const fields = {
   grainPrismOnly: "boolean",
   grainBrightnessThreshold: "float32",
   vignette: "boolean",
+
+  // Bounce detection
+  cornerHugThreshold: "float32",
 } as const;

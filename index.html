@@ -414,6 +414,18 @@
               Reverse Spectrum</label
             >
           </div>
+          <div class="control-group">
+            <label
+              >Corner Hug:
+              <span data-bind="textContent:rays.cornerHugThreshold">80</span>%</label
+            >
+            <input
+              type="range"
+              min="50"
+              max="95"
+              data-bind="value:rays.cornerHugThreshold, oninput:rays.setCornerHugThreshold"
+            />
+          </div>
 
           <!-- Marker Controls -->
           <div class="section-title">Markers</div>

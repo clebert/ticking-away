@@ -132,6 +132,7 @@ typedef struct {
 //   hour_angle: Angle to hour position from center
 //   rainbow_spread: 0.0 (no spread) to 1.0 (30 degree spread)
 //   prism: The prism geometry
+//   corner_hug_threshold: 0.5-0.95 (edge position threshold for corner hug detection)
 //
 // Returns:
 //   RayPaths struct containing all computed coordinates
@@ -140,7 +141,8 @@ static RayPaths compute_ray_paths(
   float entry_x, float entry_y,
   float hour_angle,
   float rainbow_spread,
-  const Prism* prism
+  const Prism* prism,
+  float corner_hug_threshold
 ) {
   RayPaths paths = {0};
 
@@ -183,7 +185,8 @@ static RayPaths compute_ray_paths(
   BounceInfo bounce = compute_bounce_info(
     prism_entry.edge_idx, prism_entry.u,
     hour_angle,
-    prism
+    prism,
+    corner_hug_threshold
   );
 
   paths.needs_bounce = bounce.needs_bounce;
