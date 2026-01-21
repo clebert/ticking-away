@@ -61,9 +61,9 @@ typedef struct {
 //   0-2: Point is on a face (0=right, 1=bottom, 2=left)
 //   3-5: Point is at a vertex (3=v0, 4=v1, 5=v2)
 //
-// Vertex detection uses a scale-independent threshold: if u < 0.05 or u > 0.95,
+// Vertex detection uses a scale-independent threshold: if u < 0.02 or u > 0.98,
 // the point is considered to be at the start or end vertex of the edge.
-// This 5% threshold provides stability against floating-point variation at 60fps.
+// This 2% threshold defines the geometric "vertex zone" for bounce logic.
 static int classify_edge_position(int edge_idx, float u) {
   // Guard against invalid inputs (e.g., from failed ray intersection)
   if (edge_idx < 0 || edge_idx > 2) return -1;
