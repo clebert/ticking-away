@@ -2,14 +2,21 @@
 
 set -e
 
-# Common flags
-COMMON_FLAGS="--target=wasm32 -std=c23 -O3 -flto -nostdlib -Wall -Wextra -Werror -Wl,--no-entry -Wl,--export-dynamic -Wl,--import-memory -Wl,--strip-all"
-
-# Build index.wasm
 clang \
-  $COMMON_FLAGS \
-  -msimd128 \
+  --target=wasm32 \
+  -std=c23 \
+  -O3 \
+  -flto \
+  -nostdlib \
+  -Wall \
+  -Wextra \
+  -Werror \
   -mbulk-memory \
+  -msimd128 \
+  -Wl,--export-dynamic \
+  -Wl,--import-memory \
+  -Wl,--no-entry \
+  -Wl,--strip-all \
   -o public/index.wasm \
   src/wasm.c
 

@@ -3,15 +3,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
     "prebuild": "./build.sh",
+    "build": "vite build",
     "check": "biome check",
     "check:fix": "biome check --write --unsafe",
-    "ci": "npm run build && npm run check && npm run compile && npm run format",
+    "ci": "npm run build && npm run check && npm run compile && npm run format && npm test",
     "compile": "tsc",
     "format": "prettier --check \"**/*.{md,yaml,yml}\"",
     "format:fix": "prettier --write \"**/*.{md,yaml,yml}\"",
-    "start": "vite"
+    "start": "vite",
+    "pretest": "./build_test.sh",
+    "test": "./tests/bounce_test"
+  },
+  "dependencies": {
+    "@preact/signals-core": "^1.12.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
@@ -19,8 +24,5 @@
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"
-  },
-  "dependencies": {
-    "@preact/signals-core": "^1.12.1"
   }
 }

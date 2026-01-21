@@ -1,0 +1,20 @@
+If:
+  PathMatch: src/.*\.c
+CompileFlags:
+  Add:
+    - --target=wasm32
+    - -std=c23
+    - -nostdlib
+    - -Wall
+    - -Wextra
+    - -mbulk-memory
+    - -msimd128
+---
+If:
+  PathMatch: tests/.*\.c
+CompileFlags:
+  Add:
+    - -std=c23
+    - -Wall
+    - -Wextra
+    - -I../src/include
