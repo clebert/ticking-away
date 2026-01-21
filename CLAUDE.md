@@ -29,6 +29,7 @@ npm run compile     # TypeScript compilation
 npm run format      # Prettier check (md, yaml)
 npm run format:fix  # Prettier with auto-fix
 npm run start       # Vite dev server
+npm test            # Run C test harness
 ```
 
 ## TypeScript

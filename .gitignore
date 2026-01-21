@@ -3,3 +3,4 @@
 /public/*.wasm
 /tests/*
 !/tests/*.c
+!/tests/*.h

@@ -8,18 +8,17 @@
 #include "math.h"
 #include "prism.h"
 
+// Test case definitions
+#include "bounce_test_cases.h"
+
 // Constants from wasm.c
 #define ANGLE_0 (-PI / 2.0f)
 #define HOUR_ARC (TAU / 12.0f)
 
-// Test case definition
-typedef struct {
-  int hour;
-  int minute;
-  float threshold;
-  bool expect_bounce;
-  const char *description;
-} TestCase;
+// Shared prism setup
+#define CANVAS_SIZE 400
+#define PRISM_SIZE_PERCENT 50.0f
+#define APEX_ANGLE_DEG 60.0f
 
 // Classification names for output
 static const char *location_name(int loc) {
@@ -54,21 +53,20 @@ static const char *vertex_name(int idx) {
   }
 }
 
-// Run a single test case, returns true if passed
-// Matches wasm.c and ray_paths.h exactly
+// Initialize prism with standard parameters
+static void init_prism(Prism *prism, float *cx, float *cy, float *radius) {
+  *cx = (float)CANVAS_SIZE / 2.0f;
+  *cy = (float)CANVAS_SIZE / 2.0f;
+  *radius = (float)CANVAS_SIZE / 2.0f - 1.0f;
+  float prism_size = (PRISM_SIZE_PERCENT / 100.0f) * (*radius);
+  create_prism(*cx, *cy, prism_size, APEX_ANGLE_DEG, prism);
+}
+
+// Run a single test case (hour is embedded in test case), returns true if passed
 static bool run_test(const TestCase *tc) {
-  const int width = 400;
-  const int height = 400;
-  const float prism_size_percent = 50.0f;
-  const float apex_angle_deg = 60.0f;
-
-  float cx = (float)width / 2.0f;
-  float cy = (float)height / 2.0f;
-  float radius = (width < height ? (float)width : (float)height) / 2.0f - 1.0f;
-
-  float prism_size = (prism_size_percent / 100.0f) * radius;
   Prism prism;
-  create_prism(cx, cy, prism_size, apex_angle_deg, &prism);
+  float cx, cy, radius;
+  init_prism(&prism, &cx, &cy, &radius);
 
   float minute_angle = ANGLE_0 + (tc->minute / 60.0f) * TAU;
   float entry_x = cx + cosf_approx(minute_angle) * radius;
@@ -84,25 +82,16 @@ static bool run_test(const TestCase *tc) {
   RayHit entry_hit = find_prism_entry(entry_x, entry_y, entry_dx, entry_dy, &prism);
 
   BounceInfo bounce =
-      compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism, tc->threshold);
+      compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism, 0);
 
   return bounce.needs_bounce == tc->expect_bounce;
 }
 
 // Print detailed failure info for a test case
 static void print_failure(const TestCase *tc) {
-  const int width = 400;
-  const int height = 400;
-  const float prism_size_percent = 50.0f;
-  const float apex_angle_deg = 60.0f;
-
-  float cx = (float)width / 2.0f;
-  float cy = (float)height / 2.0f;
-  float radius = (width < height ? (float)width : (float)height) / 2.0f - 1.0f;
-
-  float prism_size = (prism_size_percent / 100.0f) * radius;
   Prism prism;
-  create_prism(cx, cy, prism_size, apex_angle_deg, &prism);
+  float cx, cy, radius;
+  init_prism(&prism, &cx, &cy, &radius);
 
   float minute_angle = ANGLE_0 + (tc->minute / 60.0f) * TAU;
   float entry_x = cx + cosf_approx(minute_angle) * radius;
@@ -119,13 +108,12 @@ static void print_failure(const TestCase *tc) {
   RayHit exit_hit = find_prism_exit_from_center(cx, cy, hour_angle, &prism);
 
   BounceInfo bounce =
-      compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism, tc->threshold);
+      compute_bounce_info(entry_hit.edge_idx, entry_hit.u, hour_angle, &prism, 0);
 
   int entry_loc = classify_edge_position(entry_hit.edge_idx, entry_hit.u);
   int exit_loc = classify_edge_position(exit_hit.edge_idx, exit_hit.u);
 
-  printf("FAIL: %02d:%02d (threshold=%.2f) - %s\n", tc->hour, tc->minute, tc->threshold,
-         tc->description);
+  printf("FAIL: %02d:%05.2f\n", tc->hour, tc->minute);
   printf("  Expected: %s, Got: %s\n", tc->expect_bounce ? "BOUNCE" : "NO_BOUNCE",
          bounce.needs_bounce ? "BOUNCE" : "NO_BOUNCE");
   printf("  Entry: edge=%d u=%.4f (%s)\n", entry_hit.edge_idx, entry_hit.u,
@@ -139,50 +127,34 @@ static void print_failure(const TestCase *tc) {
 }
 
 int main(void) {
-  // Define test cases
-  // clang-format off
-  TestCase tests[] = {
-    // Time   Thresh  Expect   Description
-    {7,  19, 0.75f, true,  "Entry near v1, exit in middle of face 1"},
-    {11,  1, 0.75f, true,  "Entry near v0, exit in middle of face 2"},
-    {7,  41, 0.75f, false, "Entry near v2, exit also near v2 (same corner)"},
-    // {3,  57, 0.75f, false, "Diagonal path v0->v1 (exit near opposite corner)"},
-    {0,  21, 0.75f, true,  "Entry near v1, exit near v0 (needs bounce)"},
-    {0,  22, 0.75f, true,  "Entry near v1, exit near v0 (needs bounce)"},
-    {0,  23, 0.75f, true,  "Entry near v1, exit near v0 (needs bounce)"},
-    {0,  24, 0.75f, false, "Path has sufficient angle for good dispersion"},
-  };
-  // clang-format on
-
-  int num_tests = sizeof(tests) / sizeof(tests[0]);
   int passed = 0;
   int failed = 0;
+  int total = 0;
 
-  for (int i = 0; i < num_tests; i++) {
-    if (run_test(&tests[i])) {
+  for (int i = 0; i < (int)TEST_COUNT; i++) {
+    total++;
+    if (run_test(&test_cases[i])) {
       passed++;
     } else {
       if (failed == 0) {
-        printf(
-            "================================================================================\n");
+        printf("=========================================="
+               "========================================\n");
         printf("FAILURES:\n");
-        printf(
-            "================================================================================\n\n");
+        printf("=========================================="
+               "========================================\n\n");
       }
-      print_failure(&tests[i]);
+      print_failure(&test_cases[i]);
       failed++;
     }
   }
 
   printf("================================================================================\n");
-  printf("SUMMARY: %d/%d tests passed", passed, num_tests);
+  printf("SUMMARY: %d/%d tests passed", passed, total);
   if (failed > 0) {
     printf(", %d failed\n", failed);
-    printf("================================================================================\n");
-    return 1;
   } else {
     printf("\n");
-    printf("================================================================================\n");
-    return 0;
   }
+  printf("================================================================================\n");
+  return failed > 0 ? 1 : 0;
 }
