@@ -68,13 +68,9 @@ static int classify_edge_position(int edge_idx, float u) {
   // Guard against invalid inputs (e.g., from failed ray intersection)
   if (edge_idx < 0 || edge_idx > 2) return -1;
 
-  // Threshold: within 2% of edge length counts as "at vertex".
-  // This defines the "vertex zone" for bounce logic decisions.
-  // Empirical analysis shows u values like 0.0156 occur near vertices,
-  // so 2% correctly classifies these as vertex hits rather than face hits.
-  // Values transition smoothly (no frame-to-frame jitter), so the threshold
-  // is purely a geometric definition, not a stability margin.
-  const float VERTEX_THRESHOLD = 0.02f;
+  // Threshold: within 0.15% of edge length counts as "at vertex".
+  // Smallest margin that reliably detects all vertex hits.
+  const float VERTEX_THRESHOLD = 0.0015f;
 
   if (u < VERTEX_THRESHOLD) {
     // At start vertex of edge: edge 0→v0, edge 1→v1, edge 2→v2

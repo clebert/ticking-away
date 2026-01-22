@@ -24,7 +24,7 @@ static const TestCase test_cases[] = {
     {0, 19.8f, true},
     {0, 19.9f, true},
     {0, 20.0f, true},
-    {0, 20.1f, true},
+    {0, 20.1f, false},
     {0, 20.2f, false},
 
     // ----- v2 (bottom-left vertex) region around :40 -----
@@ -45,7 +45,7 @@ static const TestCase test_cases[] = {
 
     // ----- v0 (top vertex) region around :00 -----
     {0, 59.8f, false},
-    {0, 59.9f, true},
+    {0, 59.9f, false},
     {1, 0.0f, true},
     {1, 0.1f, true},
     {1, 0.2f, true},
@@ -54,7 +54,7 @@ static const TestCase test_cases[] = {
     {1, 19.8f, true},
     {1, 19.9f, true},
     {1, 20.0f, true},
-    {1, 20.1f, true},
+    {1, 20.1f, false},
     {1, 20.2f, false},
 
     // ----- v2 (bottom-left vertex) region around :40 -----
@@ -75,7 +75,7 @@ static const TestCase test_cases[] = {
 
     // ----- v0 (top vertex) region around :00 -----
     {1, 59.8f, false},
-    {1, 59.9f, true},
+    {1, 59.9f, false},
     {2, 0.0f, true},
     {2, 0.1f, true},
     {2, 0.2f, true},
@@ -84,7 +84,7 @@ static const TestCase test_cases[] = {
     {2, 19.8f, true},
     {2, 19.9f, true},
     {2, 20.0f, true},
-    {2, 20.1f, true},
+    {2, 20.1f, false},
     {2, 20.2f, false},
 
     // ----- v2 (bottom-left vertex) region around :40 -----
@@ -105,7 +105,7 @@ static const TestCase test_cases[] = {
 
     // ----- v0 (top vertex) region around :00 -----
     {2, 59.8f, false},
-    {2, 59.9f, true},
+    {2, 59.9f, false},
     {3, 0.0f, true},
     {3, 0.1f, true},
     {3, 0.2f, true},
@@ -114,7 +114,7 @@ static const TestCase test_cases[] = {
     {3, 19.8f, true},
     {3, 19.9f, true},
     {3, 20.0f, true},
-    {3, 20.1f, true},
+    {3, 20.1f, false},
     {3, 20.2f, false},
 
     // ----- v2 (bottom-left vertex) region around :40 -----
@@ -142,7 +142,7 @@ static const TestCase test_cases[] = {
 
     // ----- v1 (bottom-right vertex) region around :20 -----
     {4, 19.8f, false},
-    {4, 19.9f, true},
+    {4, 19.9f, false},
     {4, 20.0f, true},
     {4, 20.1f, true},
     {4, 20.2f, true},
@@ -151,7 +151,7 @@ static const TestCase test_cases[] = {
     {4, 39.8f, true},
     {4, 39.9f, true},
     {4, 40.0f, true},
-    {4, 40.1f, true},
+    {4, 40.1f, false},
     {4, 40.2f, false},
 
     // ----- Discrete minutes (face midpoints) -----
@@ -172,7 +172,7 @@ static const TestCase test_cases[] = {
 
     // ----- v1 (bottom-right vertex) region around :20 -----
     {5, 19.8f, false},
-    {5, 19.9f, true},
+    {5, 19.9f, false},
     {5, 20.0f, true},
     {5, 20.1f, true},
     {5, 20.2f, true},
@@ -181,7 +181,7 @@ static const TestCase test_cases[] = {
     {5, 39.8f, true},
     {5, 39.9f, true},
     {5, 40.0f, true},
-    {5, 40.1f, true},
+    {5, 40.1f, false},
     {5, 40.2f, false},
 
     // ----- Discrete minutes (face midpoints) -----
@@ -202,7 +202,7 @@ static const TestCase test_cases[] = {
 
     // ----- v1 (bottom-right vertex) region around :20 -----
     {6, 19.8f, false},
-    {6, 19.9f, true},
+    {6, 19.9f, false},
     {6, 20.0f, true},
     {6, 20.1f, true},
     {6, 20.2f, true},
@@ -211,7 +211,7 @@ static const TestCase test_cases[] = {
     {6, 39.8f, true},
     {6, 39.9f, true},
     {6, 40.0f, true},
-    {6, 40.1f, true},
+    {6, 40.1f, false},
     {6, 40.2f, false},
 
     // ----- Discrete minutes (face midpoints) -----
@@ -232,7 +232,7 @@ static const TestCase test_cases[] = {
 
     // ----- v1 (bottom-right vertex) region around :20 -----
     {7, 19.8f, false},
-    {7, 19.9f, true},
+    {7, 19.9f, false},
     {7, 20.0f, true},
     {7, 20.1f, true},
     {7, 20.2f, true},
@@ -241,7 +241,7 @@ static const TestCase test_cases[] = {
     {7, 39.8f, true},
     {7, 39.9f, true},
     {7, 40.0f, true},
-    {7, 40.1f, true},
+    {7, 40.1f, false},
     {7, 40.2f, false},
 
     // ----- Discrete minutes (face midpoints) -----
@@ -269,7 +269,7 @@ static const TestCase test_cases[] = {
 
     // ----- v2 (bottom-left vertex) region around :40 -----
     {8, 39.8f, false},
-    {8, 39.9f, true},
+    {8, 39.9f, false},
     {8, 40.0f, true},
     {8, 40.1f, true},
     {8, 40.2f, true},
@@ -287,7 +287,7 @@ static const TestCase test_cases[] = {
     {8, 59.8f, true},
     {8, 59.9f, true},
     {9, 0.0f, true},
-    {9, 0.1f, true},
+    {9, 0.1f, false},
     {9, 0.2f, false},
 
     // ----- v1 (bottom-right vertex) region around :20 -----
@@ -299,7 +299,7 @@ static const TestCase test_cases[] = {
 
     // ----- v2 (bottom-left vertex) region around :40 -----
     {9, 39.8f, false},
-    {9, 39.9f, true},
+    {9, 39.9f, false},
     {9, 40.0f, true},
     {9, 40.1f, true},
     {9, 40.2f, true},
@@ -317,7 +317,7 @@ static const TestCase test_cases[] = {
     {9, 59.8f, true},
     {9, 59.9f, true},
     {10, 0.0f, true},
-    {10, 0.1f, true},
+    {10, 0.1f, false},
     {10, 0.2f, false},
 
     // ----- v1 (bottom-right vertex) region around :20 -----
@@ -329,7 +329,7 @@ static const TestCase test_cases[] = {
 
     // ----- v2 (bottom-left vertex) region around :40 -----
     {10, 39.8f, false},
-    {10, 39.9f, true},
+    {10, 39.9f, false},
     {10, 40.0f, true},
     {10, 40.1f, true},
     {10, 40.2f, true},
@@ -347,7 +347,7 @@ static const TestCase test_cases[] = {
     {10, 59.8f, true},
     {10, 59.9f, true},
     {11, 0.0f, true},
-    {11, 0.1f, true},
+    {11, 0.1f, false},
     {11, 0.2f, false},
 
     // ----- v1 (bottom-right vertex) region around :20 -----
@@ -359,7 +359,7 @@ static const TestCase test_cases[] = {
 
     // ----- v2 (bottom-left vertex) region around :40 -----
     {11, 39.8f, false},
-    {11, 39.9f, true},
+    {11, 39.9f, false},
     {11, 40.0f, true},
     {11, 40.1f, true},
     {11, 40.2f, true},
