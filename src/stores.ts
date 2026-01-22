@@ -10,34 +10,34 @@ const defaults = {
     size: 90,
     rainbowSpread: 50,
     gray: 255,
-    blueTint: 80,
+    blueTint: 100,
     glowWidth: 6,
     glowIntensity: 100,
-    glowFalloff: 3,
+    glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
   rays: {
     glowWidth: 1,
     glowIntensity: 100,
-    glowFalloff: 3,
+    glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     gradientFill: true,
     palette: 2, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
     reverseSpectrum: true, // Album art style: red on top, violet on bottom
   },
   markers: {
-    length: 15,
+    length: 10,
     glowWidth: 1,
     glowIntensity: 100,
-    glowFalloff: 3,
+    glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
   background: {
-    grainIntensity: 80,
+    grainIntensity: 100,
     grainPrismOnly: false,
-    grainBrightnessThreshold: 20,
+    grainBrightnessThreshold: 30,
   },
   display: {
-    markers: true,
+    markers: false,
     pebble: false,
-    highDpi: true,
+    highDpi: false,
   },
 };
 
@@ -85,7 +85,7 @@ export const mode = {
   clockOnly: signal(new URLSearchParams(window.location.search).has("clock")),
 
   // Signals: time behavior
-  live: signal(true),
+  live: signal(settings.modeLive ?? true),
   accelerated: signal(settings.modeAccelerated ?? defaults.mode.accelerated),
   accelerationFactor: signal(settings.modeAccelerationFactor ?? defaults.mode.accelerationFactor),
 
@@ -142,10 +142,19 @@ export const mode = {
   },
 };
 
+// Use persisted time if not in live mode, otherwise use current time
+const persistedLive = settings.modeLive ?? true;
+
 export const time = {
   // Signals
-  hours: signal(initialTime.getHours() % 12),
-  minutes: signal(initialTime.getMinutes()),
+  hours: signal(
+    persistedLive
+      ? initialTime.getHours() % 12
+      : (settings.timeHours ?? initialTime.getHours() % 12),
+  ),
+  minutes: signal(
+    persistedLive ? initialTime.getMinutes() : (settings.timeMinutes ?? initialTime.getMinutes()),
+  ),
   seconds: signal(initialTime.getSeconds()), // Used internally for animation
 
   // Actions
@@ -319,6 +328,16 @@ export const display = {
   toggleHighDpi(): void {
     display.highDpi.value = !display.highDpi.value;
   },
+};
+
+export const debug = {
+  // Signals: debug output from WASM (updated after each render)
+  entryU: signal(0),
+  exitU: signal(0),
+
+  // Computed: formatted for display (3 decimal places)
+  entryUFormatted: computed((): string => debug.entryU.value.toFixed(5)),
+  exitUFormatted: computed((): string => debug.exitU.value.toFixed(5)),
 };
 
 export const resetAll = {

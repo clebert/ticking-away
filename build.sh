@@ -11,6 +11,7 @@ clang \
   -Wall \
   -Wextra \
   -Werror \
+  -Iinclude \
   -mbulk-memory \
   -msimd128 \
   -Wl,--export-dynamic \

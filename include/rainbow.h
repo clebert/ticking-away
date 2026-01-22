@@ -122,14 +122,17 @@ static void draw_gradient_continuous_f(
   // Save original boundary angles for interpolation (before epsilon expansion)
   float a1_orig = a1;
 
+  // Determine wrap-around based on original geometry (before epsilon expansion).
+  // After the reverse swap above, a1→a2 is the CCW arc we want to fill.
+  // If a1 > a2, that arc crosses the 0/2π boundary.
+  int wrap_around = (a1 > a2);
+
   // Expand acceptance range by epsilon to ensure boundary pixels are included
   float eps = 0.002f;
   a1 -= eps;
   a2 += eps;
   if (a1 < 0) a1 += 2.0f * PI;
   if (a2 >= 2.0f * PI) a2 -= 2.0f * PI;
-
-  int wrap_around = (a1 > a2);
 
   int x_start = 0, x_end = width, y_start = 0, y_end = height;
   float radius_sq = radius * radius;

@@ -209,6 +209,13 @@
         font-size: 11px;
         color: #888;
       }
+
+      .debug-label {
+        margin-left: 8px;
+        font-size: 12px;
+        color: #999;
+        font-family: monospace;
+      }
     </style>
   </head>
 
@@ -252,7 +259,9 @@
           </div>
           <div class="control-group">
             <label>Speed</label>
-            <select data-bind="value:mode.accelerationFactor, onchange:mode.setAccelerationFactor, disabled:!mode.accelerated">
+            <select
+              data-bind="value:mode.accelerationFactor, onchange:mode.setAccelerationFactor, disabled:!mode.accelerated"
+            >
               <option value="1">1 min/sec</option>
               <option value="10">10 min/sec</option>
               <option value="30">30 min/sec</option>
@@ -264,7 +273,12 @@
           <!-- Time Controls (hidden in live mode) -->
           <div class="section-title" data-bind="hidden:mode.live">Time</div>
           <div class="control-group" data-bind="hidden:mode.live">
-            <label>Hour: <span data-bind="textContent:time.hours">10</span></label>
+            <label
+              >Hour: <span data-bind="textContent:time.hours">10</span>
+              <span class="debug-label"
+                >(exit u: <span data-bind="textContent:debug.exitUFormatted">0</span>)</span
+              >
+            </label>
             <input
               type="range"
               min="0"
@@ -273,7 +287,12 @@
             />
           </div>
           <div class="control-group" data-bind="hidden:mode.live">
-            <label>Minute: <span data-bind="textContent:time.minutes">10</span></label>
+            <label
+              >Minute: <span data-bind="textContent:time.minutes">10</span>
+              <span class="debug-label"
+                >(entry u: <span data-bind="textContent:debug.entryUFormatted">0</span>)</span
+              >
+            </label>
             <input
               type="range"
               min="0"

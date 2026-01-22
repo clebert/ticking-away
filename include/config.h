@@ -45,4 +45,8 @@ typedef struct {
   float grain_brightness_threshold;  // 0.01-1.0
   int32_t vignette;                  // 0 or 1
 
+  // Debug output (written by render, read by JS)
+  float entry_u;                     // Parametric position of entry point on prism edge (0-1)
+  float exit_u;                      // Parametric position of exit point on prism edge (0-1)
+
 } WatchfaceConfig;

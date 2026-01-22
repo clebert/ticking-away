@@ -7,6 +7,7 @@ CompileFlags:
     - -nostdlib
     - -Wall
     - -Wextra
+    - -I../include
     - -mbulk-memory
     - -msimd128
 ---
@@ -17,4 +18,4 @@ CompileFlags:
     - -std=c23
     - -Wall
     - -Wextra
-    - -I../src/include
+    - -I../include

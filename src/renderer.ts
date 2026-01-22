@@ -1,6 +1,6 @@
 import { getCanvas, getFramebufferPointers } from "./canvas.ts";
 import { getConfig } from "./config.ts";
-import { background, display, markers, prism, rays, time } from "./stores.ts";
+import { background, debug, display, markers, prism, rays, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
 export function render(): void {
@@ -57,6 +57,10 @@ export function render(): void {
   config.vignette = !display.pebble.value;
 
   wasmModule.render_watchface(pointers.floatPtr, pointers.uint8Ptr, width, height);
+
+  // Update debug signals with values computed by WASM
+  debug.entryU.value = config.entryU;
+  debug.exitU.value = config.exitU;
 
   const framebufferArray = new Uint8ClampedArray(
     wasmMemory.buffer,

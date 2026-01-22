@@ -7,7 +7,7 @@ clang \
   -Wall \
   -Wextra \
   -Werror \
-  -Isrc/include \
+  -Iinclude \
   -lm \
   -o tests/bounce_test \
   tests/bounce_test.c

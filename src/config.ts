@@ -50,4 +50,8 @@ const fields = {
   grainPrismOnly: "boolean",
   grainBrightnessThreshold: "float32",
   vignette: "boolean",
+
+  // Debug output (read-only, written by WASM)
+  entryU: "float32",
+  exitU: "float32",
 } as const;

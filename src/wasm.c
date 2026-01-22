@@ -1,5 +1,6 @@
-#include "include/config.h"
-#include "include/watchface.h"
+#include "config.h"
+#include "prism.h"
+#include "watchface.h"
 
 #define WASM_EXPORT __attribute__((visibility("default")))
 
@@ -51,6 +52,17 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
   // Hour position advances smoothly as minutes progress
   float hour12 = (float)config.hour; // 0-11 for angles
   float hour_angle = ANGLE_0 + (hour12 / 12.0f) * TAU + (config.minute / 60.0f) * HOUR_ARC;
+
+  // Compute entry_u (where minute ray enters prism)
+  float entry_dx = cx - entry_x;
+  float entry_dy = cy - entry_y;
+  vec2_normalize(&entry_dx, &entry_dy);
+  RayHit prism_entry = find_prism_entry(entry_x, entry_y, entry_dx, entry_dy, &prism);
+  config.entry_u = prism_entry.hit ? prism_entry.u : -1.0f;
+
+  // Compute exit_u (where hour ray exits prism)
+  RayHit prism_exit = find_prism_exit_from_center(cx, cy, hour_angle, &prism);
+  config.exit_u = prism_exit.hit ? prism_exit.u : -1.0f;
 
   // Render the watchface scene
   float ray_glow_width = config.ray_glow_width_percent * radius;
