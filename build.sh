@@ -6,7 +6,6 @@ clang \
   --target=wasm32 \
   -std=c23 \
   -O3 \
-  -flto \
   -nostdlib \
   -Wall \
   -Wextra \

@@ -4,6 +4,7 @@ set -e
 
 clang \
   -std=c23 \
+  -O3 \
   -Wall \
   -Wextra \
   -Werror \
