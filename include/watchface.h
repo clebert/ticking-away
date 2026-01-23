@@ -9,23 +9,12 @@
 // Watch-Specific Drawing
 // =================================================================================================
 
-// Initialize watch framebuffer with background (linear color space, 0.0-1.0 range)
-// transparent_background: 1 = transparent outside circle (for PNG export), 0 = opaque with vignette
+// Initialize watch framebuffer with pure black background inside circle (linear color space)
+// Outside circle is set to black with alpha=0 (will be filled with UI background after processing)
 static void init_watch_framebuffer_f(
   float* fb, int width, int height,
-  float cx, float cy, float radius,
-  float vignette_intensity, // 0.0-1.0
-  int transparent_background // 1 = transparent outside circle (alpha=0)
+  float cx, float cy, float radius
 ) {
-  // Base colors converted from sRGB to linear space
-  // Original sRGB values: watch = 10, bg = 35
-  float watch_base = srgb_to_linear(10);
-  float bg_base = srgb_to_linear(35);
-
-  // Vignette parameters (for background)
-  float max_dist = sqrtf_impl((float)(width * width + height * height)) * 0.5f;
-  float vignette_strength = vignette_intensity * 0.4f;  // Max 40% darkening at corners
-
   float r2 = radius * radius;
 
   for (int y = 0; y < height; y++) {
@@ -39,30 +28,17 @@ static void init_watch_framebuffer_f(
       int idx = row_offset + x * 4;
 
       if (dist2 <= r2) {
-        // Inside watchface - dark with full alpha
-        fb[idx] = watch_base;
-        fb[idx + 1] = watch_base;
-        fb[idx + 2] = watch_base;
+        // Inside watchface - pure black with full alpha
+        fb[idx] = 0.0f;
+        fb[idx + 1] = 0.0f;
+        fb[idx + 2] = 0.0f;
         fb[idx + 3] = 1.0f;
-      } else if (transparent_background) {
-        // Outside watchface - fully transparent
+      } else {
+        // Outside watchface - black with zero alpha (UI fills this later)
         fb[idx] = 0.0f;
         fb[idx + 1] = 0.0f;
         fb[idx + 2] = 0.0f;
         fb[idx + 3] = 0.0f;
-      } else {
-        // Outside watchface - opaque with vignette
-        float dist_from_center = sqrtf_impl(dist2);
-        float vignette_t = clampf((dist_from_center - radius) / (max_dist - radius), 0.0f, 1.0f);
-        // Smoothstep for perceptually smoother gradient
-        float smooth_t = vignette_t * vignette_t * (3.0f - 2.0f * vignette_t);
-        float vignette = 1.0f - smooth_t * vignette_strength;
-
-        float final_val = bg_base * vignette;
-        fb[idx] = final_val;
-        fb[idx + 1] = final_val;
-        fb[idx + 2] = final_val;
-        fb[idx + 3] = 1.0f;
       }
     }
   }
@@ -218,7 +194,6 @@ static void draw_watch_overlay_f(
 // - palette_mode: 0=IDEAL, 1=DEVICE, 2=BLEND (for dithering)
 // - palette_saturation: 0.0-1.0, blend factor (only used when palette_mode=BLEND)
 // - dither_kernel: 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
-// - force_black_background: 1 = force background pixels to palette black (no dither noise)
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
   uint8_t* fb,      // Output buffer (gamma-corrected)
@@ -256,8 +231,7 @@ static void render_watchface_scene(
   float palette_saturation,
   float dither_strength,
   int dither_kernel,
-  int dither_oklab_error,
-  int force_black_background
+  int dither_oklab_error
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -267,11 +241,9 @@ static void render_watchface_scene(
   float prism_g_f = srgb_to_linear(prism_g);
   float prism_b_f = srgb_to_linear(prism_b);
 
-  // Initialize background (to float buffer)
-  // Disable vignette when dithering (doesn't work well with limited palette)
-  float vignette_intensity = transparent_background ? 0.0f : (vignette && !dither_enabled ? 1.0f : 0.0f);
-  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius,
-                           vignette_intensity, transparent_background);
+  // Initialize background with pure black inside circle
+  // UI background (grey + vignette) is applied after processing in finalize_framebuffer
+  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius);
 
   // Compute all ray path geometry (decoupled from rendering)
   RayPaths paths = compute_ray_paths(cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, prism);
@@ -287,9 +259,10 @@ static void render_watchface_scene(
     }
     // Convert float buffer to output buffer with sRGB gamma correction and film grain
     finalize_framebuffer(float_fb, fb, width, height,
-                         grain_intensity, grain_scale, cx, cy, radius, vignette,
-                         prism, grain_prism_only, grain_brightness_threshold, transparent_background,
-                         dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error, force_black_background);
+                         grain_intensity, grain_scale, cx, cy, radius,
+                         prism, grain_prism_only, grain_brightness_threshold,
+                         transparent_background, vignette,
+                         dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error);
     return;
   }
 
@@ -420,7 +393,8 @@ static void render_watchface_scene(
 
   // Convert float buffer to output buffer with sRGB gamma correction and film grain
   finalize_framebuffer(float_fb, fb, width, height,
-                       grain_intensity, grain_scale, cx, cy, radius, vignette,
-                       prism, grain_prism_only, grain_brightness_threshold, transparent_background,
-                       dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error, force_black_background);
+                       grain_intensity, grain_scale, cx, cy, radius,
+                       prism, grain_prism_only, grain_brightness_threshold,
+                       transparent_background, vignette,
+                       dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error);
 }

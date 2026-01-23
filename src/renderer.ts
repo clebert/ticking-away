@@ -62,7 +62,6 @@ export function render(): void {
   config.ditherStrength = dither.strength.value / 100.0;
   config.ditherKernel = dither.kernel.value;
   config.ditherOklabError = dither.oklabError.value;
-  config.ditherCleanBackground = dither.cleanBackground.value;
 
   wasmModule.render_watchface(pointers.floatPtr, pointers.uint8Ptr, width, height);
 

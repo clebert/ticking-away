@@ -58,7 +58,6 @@ const fields = {
   ditherStrength: "float32",
   ditherKernel: "int32",
   ditherOklabError: "boolean",
-  ditherCleanBackground: "boolean",
 
   // Debug output (read-only, written by WASM)
   entryU: "float32",

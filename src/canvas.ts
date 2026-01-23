@@ -30,7 +30,7 @@ export function resizeCanvas(pebbleMode: boolean, highDpi: boolean): void {
     canvas.style.transform = "";
   }
 
-  container.style.background = "#262626";
+  container.style.background = "#232323";
 }
 
 export interface FramebufferPointers {

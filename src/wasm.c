@@ -75,5 +75,5 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
       config.grain_scale, config.grain_prism_only, config.gradient_fill, config.vignette,
       config.palette, config.reverse_spectrum, config.grain_brightness_threshold, 0,
       config.dither_enabled, config.dither_palette_mode, config.dither_palette_saturation,
-      config.dither_strength, config.dither_kernel, config.dither_oklab_error, config.dither_clean_background);
+      config.dither_strength, config.dither_kernel, config.dither_oklab_error);
 }
