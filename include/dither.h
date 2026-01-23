@@ -14,9 +14,10 @@ typedef struct {
 
 // Palette mode enum
 typedef enum {
-  DITHER_PALETTE_IDEAL = 0,   // Pure RGB colors (ideal for quantization)
-  DITHER_PALETTE_DEVICE = 1,  // Inky Impression 13.3" device colors
-  DITHER_PALETTE_BLEND = 2    // Interpolated between IDEAL and DEVICE
+  DITHER_PALETTE_IDEAL = 0,    // Pure RGB colors (ideal for quantization)
+  DITHER_PALETTE_DEVICE = 1,   // Inky Impression 13.3" device colors
+  DITHER_PALETTE_BLEND = 2,    // Interpolated between IDEAL and DEVICE
+  DITHER_PALETTE_SPECTRA6 = 3  // Measured Spectra 6 colors (epdoptimize)
 } DitherPaletteMode;
 
 // Dither kernel enum
@@ -49,6 +50,21 @@ static const DitherRGB INKY_DEVICE_PALETTE[6] = {
     {156, 72, 75},   // 3: Burgundy/Red
     {61, 59, 94},    // 4: Dark Blue
     {58, 91, 70},    // 5: Forest Green
+};
+
+// =================================================================================================
+// Measured Spectra 6 Palette (from epdoptimize)
+// =================================================================================================
+// Measured colors from actual Spectra 6 e-ink display hardware.
+// Source: https://github.com/Utzel-Butzel/epdoptimize
+
+static const DitherRGB SPECTRA6_DEVICE_PALETTE[6] = {
+    {25, 30, 33},    // 0: Black (#191E21)
+    {232, 232, 232}, // 1: White (#e8e8e8)
+    {239, 222, 68},  // 2: Yellow (#efde44)
+    {178, 19, 24},   // 3: Red (#b21318)
+    {33, 87, 186},   // 4: Blue (#2157ba)
+    {18, 95, 32},    // 5: Green (#125f20)
 };
 
 #define DITHER_PALETTE_SIZE 6
@@ -104,6 +120,8 @@ static inline const DitherRGB* get_dither_palette(DitherPaletteMode palette_mode
   switch (palette_mode) {
     case DITHER_PALETTE_DEVICE:
       return INKY_DEVICE_PALETTE;
+    case DITHER_PALETTE_SPECTRA6:
+      return SPECTRA6_DEVICE_PALETTE;
     case DITHER_PALETTE_BLEND: {
       float clamped_sat = clampf(saturation, 0.0f, 1.0f);
       float diff = dither_blend_saturation - clamped_sat;
