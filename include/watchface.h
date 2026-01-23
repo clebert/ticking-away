@@ -15,13 +15,12 @@ static void init_watch_framebuffer_f(
   float* fb, int width, int height,
   float cx, float cy, float radius,
   float vignette_intensity, // 0.0-1.0
-  int white_background,     // 1 = white background instead of dark
   int transparent_background // 1 = transparent outside circle (alpha=0)
 ) {
   // Base colors converted from sRGB to linear space
-  // Original sRGB values: watch = 10, bg = 35 (or 255 for white)
+  // Original sRGB values: watch = 10, bg = 35
   float watch_base = srgb_to_linear(10);
-  float bg_base = white_background ? 1.0f : srgb_to_linear(35);
+  float bg_base = srgb_to_linear(35);
 
   // Vignette parameters (for background)
   float max_dist = sqrtf_impl((float)(width * width + height * height)) * 0.5f;
@@ -266,11 +265,10 @@ static void render_watchface_scene(
   float prism_b_f = srgb_to_linear(prism_b);
 
   // Initialize background (to float buffer)
-  // When dithering for e-ink, use white background without vignette
+  // Disable vignette when dithering (doesn't work well with limited palette)
   float vignette_intensity = transparent_background ? 0.0f : (vignette && !dither_enabled ? 1.0f : 0.0f);
-  int white_background = dither_enabled && !transparent_background;
   init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius,
-                           vignette_intensity, white_background, transparent_background);
+                           vignette_intensity, transparent_background);
 
   // Compute all ray path geometry (decoupled from rendering)
   RayPaths paths = compute_ray_paths(cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, prism);
