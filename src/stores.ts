@@ -41,6 +41,7 @@ const defaults = {
     strength: 20, // 0-100, maps to 0.0-1.0
     kernel: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
+    cleanBackground: true, // true = force background pixels to pure black (no dither noise)
   },
   display: {
     markers: false,
@@ -326,6 +327,7 @@ export const dither = {
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
   kernel: signal(settings.ditherKernel ?? defaults.dither.kernel),
   oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
+  cleanBackground: signal(settings.ditherCleanBackground ?? defaults.dither.cleanBackground),
 
   // Computed
   saturationDisabled: computed((): boolean => dither.paletteMode.value !== 2),
@@ -353,6 +355,10 @@ export const dither = {
 
   toggleOklabError(): void {
     dither.oklabError.value = !dither.oklabError.value;
+  },
+
+  toggleCleanBackground(): void {
+    dither.cleanBackground.value = !dither.cleanBackground.value;
   },
 };
 
@@ -428,6 +434,7 @@ export const resetAll = {
       dither.strength.value = defaults.dither.strength;
       dither.kernel.value = defaults.dither.kernel;
       dither.oklabError.value = defaults.dither.oklabError;
+      dither.cleanBackground.value = defaults.dither.cleanBackground;
 
       // Display
       display.markers.value = defaults.display.markers;

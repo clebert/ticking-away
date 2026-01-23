@@ -98,6 +98,54 @@ static inline void compute_blended_palette(float saturation) {
 // Large float value for distance initialization (approximates FLT_MAX without stdlib)
 #define DITHER_MAX_DISTANCE 3.4e38f
 
+// =================================================================================================
+// Background Detection for Clean Black Dithering
+// =================================================================================================
+// The watch background is initialized to srgb_to_linear(10) ≈ 0.003. Content is additively
+// blended on top, so background pixels remain at this value. We detect them to:
+// 1. Force output to palette black (no dither noise on background)
+// 2. Skip error diffusion to/from background (keeps edges clean)
+
+// Background color: sRGB value 10, converted to linear at runtime
+// This matches the watch_base value in watchface.h
+#define DITHER_BACKGROUND_SRGB 10
+#define DITHER_BACKGROUND_THRESHOLD 0.0005f
+
+// Compute background linear value once (matches srgb_to_linear(10))
+static float dither_background_linear = -1.0f;
+
+static inline float get_dither_background_linear(void) {
+  if (dither_background_linear < 0.0f) {
+    dither_background_linear = srgb_to_linear(DITHER_BACKGROUND_SRGB);
+  }
+  return dither_background_linear;
+}
+
+// Check if a pixel in the float framebuffer is a background pixel
+// Returns 1 if pixel is background (should be forced to black), 0 otherwise
+static inline int is_background_pixel(const float* float_fb, int idx) {
+  float bg = get_dither_background_linear();
+  float r = float_fb[idx];
+  float g = float_fb[idx + 1];
+  float b = float_fb[idx + 2];
+
+  float dr = r - bg;
+  float dg = g - bg;
+  float db = b - bg;
+
+  // All channels must be within threshold of background
+  return (dr > -DITHER_BACKGROUND_THRESHOLD && dr < DITHER_BACKGROUND_THRESHOLD &&
+          dg > -DITHER_BACKGROUND_THRESHOLD && dg < DITHER_BACKGROUND_THRESHOLD &&
+          db > -DITHER_BACKGROUND_THRESHOLD && db < DITHER_BACKGROUND_THRESHOLD);
+}
+
+// Helper macro: should we skip error diffusion to pixel at (px, py)?
+// Returns 1 if we should skip (target is background pixel with clean bg enabled), 0 otherwise
+// Includes full bounds check for px and py to prevent out-of-bounds access
+#define SKIP_DIFFUSE_TO(force_bg, fb, px, py, w, h) \
+  ((force_bg) && (px) >= 0 && (px) < (w) && (py) >= 0 && (py) < (h) && \
+   is_background_pixel((fb), ((py) * (w) + (px)) * 4))
+
 // Get the appropriate palette based on mode and saturation.
 // For BLEND mode, computes the blended palette if saturation changed.
 static inline const DitherRGB* get_dither_palette(DitherPaletteMode palette_mode, float saturation) {
@@ -235,7 +283,7 @@ static inline void dither_buffer_atkinson(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength, int oklab_error) {
+    float strength, int oklab_error, int force_black_background) {
 
   if (width > DITHER_MAX_WIDTH) return;
 
@@ -268,6 +316,17 @@ static inline void dither_buffer_atkinson(
       int i = (y * width + x) * 4;
       float a = clampf(float_fb[i + 3], 0.0f, 1.0f);
 
+      // Force background pixels to palette black (no dithering noise)
+      if (force_black_background && is_background_pixel(float_fb, i)) {
+        out_fb[i] = palette[0].r;
+        out_fb[i + 1] = palette[0].g;
+        out_fb[i + 2] = palette[0].b;
+        out_fb[i + 3] = preserve_alpha ? (uint8_t)(a * 255.0f + 0.5f) : 255;
+        // Clear error for this pixel (don't propagate from background)
+        err_curr_r[x] = err_curr_g[x] = err_curr_b[x] = 0.0f;
+        continue;
+      }
+
       OkLab color;
       int idx;
 
@@ -292,16 +351,32 @@ static inline void dither_buffer_atkinson(
         float err_b = (color.b - quantized.b) * d;
 
         // Diffuse error (reusing r/g/b buffers for L/a/b)
+        // Skip diffusion to background pixels to keep edges clean
         int fwd1 = x + x_step;
         int fwd2 = x + 2 * x_step;
         int back1 = x - x_step;
 
-        if (fwd1 >= 0 && fwd1 < width) { err_curr_r[fwd1] += err_L; err_curr_g[fwd1] += err_a; err_curr_b[fwd1] += err_b; }
-        if (fwd2 >= 0 && fwd2 < width) { err_curr_r[fwd2] += err_L; err_curr_g[fwd2] += err_a; err_curr_b[fwd2] += err_b; }
-        if (back1 >= 0 && back1 < width) { err_next1_r[back1] += err_L; err_next1_g[back1] += err_a; err_next1_b[back1] += err_b; }
-        err_next1_r[x] += err_L; err_next1_g[x] += err_a; err_next1_b[x] += err_b;
-        if (fwd1 >= 0 && fwd1 < width) { err_next1_r[fwd1] += err_L; err_next1_g[fwd1] += err_a; err_next1_b[fwd1] += err_b; }
-        err_next2_r[x] += err_L; err_next2_g[x] += err_a; err_next2_b[x] += err_b;
+        // Current row: fwd1, fwd2
+        if (fwd1 >= 0 && fwd1 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd1, y, width, height)) {
+          err_curr_r[fwd1] += err_L; err_curr_g[fwd1] += err_a; err_curr_b[fwd1] += err_b;
+        }
+        if (fwd2 >= 0 && fwd2 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd2, y, width, height)) {
+          err_curr_r[fwd2] += err_L; err_curr_g[fwd2] += err_a; err_curr_b[fwd2] += err_b;
+        }
+        // Next row (y+1): back1, x, fwd1
+        if (back1 >= 0 && back1 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, back1, y + 1, width, height)) {
+          err_next1_r[back1] += err_L; err_next1_g[back1] += err_a; err_next1_b[back1] += err_b;
+        }
+        if (!SKIP_DIFFUSE_TO(force_black_background, float_fb, x, y + 1, width, height)) {
+          err_next1_r[x] += err_L; err_next1_g[x] += err_a; err_next1_b[x] += err_b;
+        }
+        if (fwd1 >= 0 && fwd1 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd1, y + 1, width, height)) {
+          err_next1_r[fwd1] += err_L; err_next1_g[fwd1] += err_a; err_next1_b[fwd1] += err_b;
+        }
+        // Row after next (y+2): x only
+        if (!SKIP_DIFFUSE_TO(force_black_background, float_fb, x, y + 2, width, height)) {
+          err_next2_r[x] += err_L; err_next2_g[x] += err_a; err_next2_b[x] += err_b;
+        }
       } else {
         // Linear RGB error diffusion (original behavior)
         float r = clampf(float_fb[i] + err_curr_r[x], 0.0f, 1.0f);
@@ -318,16 +393,32 @@ static inline void dither_buffer_atkinson(
         float err_b = (b - quantized.b) * d;
 
         // Diffuse error
+        // Skip diffusion to background pixels to keep edges clean
         int fwd1 = x + x_step;
         int fwd2 = x + 2 * x_step;
         int back1 = x - x_step;
 
-        if (fwd1 >= 0 && fwd1 < width) { err_curr_r[fwd1] += err_r; err_curr_g[fwd1] += err_g; err_curr_b[fwd1] += err_b; }
-        if (fwd2 >= 0 && fwd2 < width) { err_curr_r[fwd2] += err_r; err_curr_g[fwd2] += err_g; err_curr_b[fwd2] += err_b; }
-        if (back1 >= 0 && back1 < width) { err_next1_r[back1] += err_r; err_next1_g[back1] += err_g; err_next1_b[back1] += err_b; }
-        err_next1_r[x] += err_r; err_next1_g[x] += err_g; err_next1_b[x] += err_b;
-        if (fwd1 >= 0 && fwd1 < width) { err_next1_r[fwd1] += err_r; err_next1_g[fwd1] += err_g; err_next1_b[fwd1] += err_b; }
-        err_next2_r[x] += err_r; err_next2_g[x] += err_g; err_next2_b[x] += err_b;
+        // Current row: fwd1, fwd2
+        if (fwd1 >= 0 && fwd1 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd1, y, width, height)) {
+          err_curr_r[fwd1] += err_r; err_curr_g[fwd1] += err_g; err_curr_b[fwd1] += err_b;
+        }
+        if (fwd2 >= 0 && fwd2 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd2, y, width, height)) {
+          err_curr_r[fwd2] += err_r; err_curr_g[fwd2] += err_g; err_curr_b[fwd2] += err_b;
+        }
+        // Next row (y+1): back1, x, fwd1
+        if (back1 >= 0 && back1 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, back1, y + 1, width, height)) {
+          err_next1_r[back1] += err_r; err_next1_g[back1] += err_g; err_next1_b[back1] += err_b;
+        }
+        if (!SKIP_DIFFUSE_TO(force_black_background, float_fb, x, y + 1, width, height)) {
+          err_next1_r[x] += err_r; err_next1_g[x] += err_g; err_next1_b[x] += err_b;
+        }
+        if (fwd1 >= 0 && fwd1 < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd1, y + 1, width, height)) {
+          err_next1_r[fwd1] += err_r; err_next1_g[fwd1] += err_g; err_next1_b[fwd1] += err_b;
+        }
+        // Row after next (y+2): x only
+        if (!SKIP_DIFFUSE_TO(force_black_background, float_fb, x, y + 2, width, height)) {
+          err_next2_r[x] += err_r; err_next2_g[x] += err_g; err_next2_b[x] += err_b;
+        }
       }
 
       // Output the quantized color
@@ -379,7 +470,7 @@ static inline void dither_buffer_floyd_steinberg(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength, int oklab_error) {
+    float strength, int oklab_error, int force_black_background) {
 
   if (width > DITHER_MAX_WIDTH) return;
 
@@ -413,6 +504,17 @@ static inline void dither_buffer_floyd_steinberg(
     for (int x = x_start; x != x_end; x += x_step) {
       int i = (y * width + x) * 4;
       float a = clampf(float_fb[i + 3], 0.0f, 1.0f);
+
+      // Force background pixels to palette black (no dithering noise)
+      if (force_black_background && is_background_pixel(float_fb, i)) {
+        out_fb[i] = palette[0].r;
+        out_fb[i + 1] = palette[0].g;
+        out_fb[i + 2] = palette[0].b;
+        out_fb[i + 3] = preserve_alpha ? (uint8_t)(a * 255.0f + 0.5f) : 255;
+        // Clear error for this pixel (don't propagate from background)
+        err_curr_r[x] = err_curr_g[x] = err_curr_b[x] = 0.0f;
+        continue;
+      }
 
       OkLab color;
       int idx;
@@ -460,26 +562,29 @@ static inline void dither_buffer_floyd_steinberg(
       out_fb[i + 3] = preserve_alpha ? (uint8_t)(a * 255.0f + 0.5f) : 255;
 
       // Floyd-Steinberg distributes 100% of error
+      // Skip diffusion to background pixels to keep edges clean
       int fwd = x + x_step;
       int back = x - x_step;
 
       // Current row: forward pixel gets 7/16
-      if (fwd >= 0 && fwd < width) {
+      if (fwd >= 0 && fwd < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd, y, width, height)) {
         err_curr_r[fwd] += err_1 * d7;
         err_curr_g[fwd] += err_2 * d7;
         err_curr_b[fwd] += err_3 * d7;
       }
 
-      // Next row: back pixel gets 3/16, same x gets 5/16, forward gets 1/16
-      if (back >= 0 && back < width) {
+      // Next row (y+1): back pixel gets 3/16, same x gets 5/16, forward gets 1/16
+      if (back >= 0 && back < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, back, y + 1, width, height)) {
         err_next1_r[back] += err_1 * d3;
         err_next1_g[back] += err_2 * d3;
         err_next1_b[back] += err_3 * d3;
       }
-      err_next1_r[x] += err_1 * d5;
-      err_next1_g[x] += err_2 * d5;
-      err_next1_b[x] += err_3 * d5;
-      if (fwd >= 0 && fwd < width) {
+      if (!SKIP_DIFFUSE_TO(force_black_background, float_fb, x, y + 1, width, height)) {
+        err_next1_r[x] += err_1 * d5;
+        err_next1_g[x] += err_2 * d5;
+        err_next1_b[x] += err_3 * d5;
+      }
+      if (fwd >= 0 && fwd < width && !SKIP_DIFFUSE_TO(force_black_background, float_fb, fwd, y + 1, width, height)) {
         err_next1_r[fwd] += err_1 * d1;
         err_next1_g[fwd] += err_2 * d1;
         err_next1_b[fwd] += err_3 * d1;
@@ -506,17 +611,17 @@ static inline void dither_buffer(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength, DitherKernel kernel, int oklab_error) {
+    float strength, DitherKernel kernel, int oklab_error, int force_black_background) {
 
   switch (kernel) {
     case DITHER_KERNEL_FLOYD_STEINBERG:
       dither_buffer_floyd_steinberg(float_fb, out_fb, width, height,
-                                    palette_mode, saturation, preserve_alpha, strength, oklab_error);
+                                    palette_mode, saturation, preserve_alpha, strength, oklab_error, force_black_background);
       break;
     case DITHER_KERNEL_ATKINSON:
     default:
       dither_buffer_atkinson(float_fb, out_fb, width, height,
-                             palette_mode, saturation, preserve_alpha, strength, oklab_error);
+                             palette_mode, saturation, preserve_alpha, strength, oklab_error, force_black_background);
       break;
   }
 }
