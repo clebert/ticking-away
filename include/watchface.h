@@ -1,10 +1,7 @@
 #pragma once
 
-#include "color.h"
 #include "drawing.h"
 #include "framebuffer.h"
-#include "math.h"
-#include "palette.h"
 #include "rainbow.h"
 #include "ray_paths.h"
 
@@ -13,11 +10,13 @@
 // =================================================================================================
 
 // Initialize watch framebuffer with background (linear color space, 0.0-1.0 range)
+// transparent_background: 1 = transparent outside circle (for PNG export), 0 = opaque with vignette
 static void init_watch_framebuffer_f(
   float* fb, int width, int height,
   float cx, float cy, float radius,
   float vignette_intensity, // 0.0-1.0
-  int white_background      // 1 = white background instead of dark
+  int white_background,     // 1 = white background instead of dark
+  int transparent_background // 1 = transparent outside circle (alpha=0)
 ) {
   // Base colors converted from sRGB to linear space
   // Original sRGB values: watch = 10, bg = 35 (or 255 for white)
@@ -40,25 +39,32 @@ static void init_watch_framebuffer_f(
       float dist2 = dx * dx + dy2;
       int idx = row_offset + x * 4;
 
-      float final_val;
       if (dist2 <= r2) {
-        // Inside watchface - dark
-        final_val = watch_base;
+        // Inside watchface - dark with full alpha
+        fb[idx] = watch_base;
+        fb[idx + 1] = watch_base;
+        fb[idx + 2] = watch_base;
+        fb[idx + 3] = 1.0f;
+      } else if (transparent_background) {
+        // Outside watchface - fully transparent
+        fb[idx] = 0.0f;
+        fb[idx + 1] = 0.0f;
+        fb[idx + 2] = 0.0f;
+        fb[idx + 3] = 0.0f;
       } else {
-        // Outside watchface - vignette
+        // Outside watchface - opaque with vignette
         float dist_from_center = sqrtf_impl(dist2);
         float vignette_t = clampf((dist_from_center - radius) / (max_dist - radius), 0.0f, 1.0f);
         // Smoothstep for perceptually smoother gradient
         float smooth_t = vignette_t * vignette_t * (3.0f - 2.0f * vignette_t);
         float vignette = 1.0f - smooth_t * vignette_strength;
 
-        final_val = bg_base * vignette;
+        float final_val = bg_base * vignette;
+        fb[idx] = final_val;
+        fb[idx + 1] = final_val;
+        fb[idx + 2] = final_val;
+        fb[idx + 3] = 1.0f;
       }
-
-      fb[idx] = final_val;
-      fb[idx + 1] = final_val;
-      fb[idx + 2] = final_val;
-      fb[idx + 3] = 1.0f;
     }
   }
 }
@@ -209,6 +215,7 @@ static void draw_watch_overlay_f(
 // - vignette: 1 = apply vignette effect to background
 // - palette: ColorPalette enum value (0-4) for rainbow color scheme
 // - reverse_spectrum: 1 = reverse spectral order (album art style: red on top)
+// - transparent_background: 1 = transparent outside circle (for PNG export)
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
   uint8_t* fb,      // Output buffer (gamma-corrected)
@@ -239,7 +246,8 @@ static void render_watchface_scene(
   int vignette,
   int palette,
   int reverse_spectrum,
-  float grain_brightness_threshold
+  float grain_brightness_threshold,
+  int transparent_background
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -250,7 +258,9 @@ static void render_watchface_scene(
   float prism_b_f = srgb_to_linear(prism_b);
 
   // Initialize background (to float buffer)
-  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius, vignette ? 1.0f : 0.0f, 0);
+  init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius,
+                           transparent_background ? 0.0f : (vignette ? 1.0f : 0.0f),
+                           0, transparent_background);
 
   // Compute all ray path geometry (decoupled from rendering)
   RayPaths paths = compute_ray_paths(cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, prism);
@@ -267,7 +277,7 @@ static void render_watchface_scene(
     // Convert float buffer to output buffer with sRGB gamma correction and film grain
     finalize_framebuffer(float_fb, fb, width, height,
                          grain_intensity, grain_scale, cx, cy, radius, vignette,
-                         prism, grain_prism_only, grain_brightness_threshold);
+                         prism, grain_prism_only, grain_brightness_threshold, transparent_background);
     return;
   }
 
@@ -399,5 +409,5 @@ static void render_watchface_scene(
   // Convert float buffer to output buffer with sRGB gamma correction and film grain
   finalize_framebuffer(float_fb, fb, width, height,
                        grain_intensity, grain_scale, cx, cy, radius, vignette,
-                       prism, grain_prism_only, grain_brightness_threshold);
+                       prism, grain_prism_only, grain_brightness_threshold, transparent_background);
 }

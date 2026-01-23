@@ -9,8 +9,8 @@ clang \
   -Wextra \
   -Werror \
   -Iinclude \
-  -lm \
-  -o tests/bounce_test \
-  tests/bounce_test.c
+  -o tools/export_png \
+  tools/export_png.c \
+  -lm
 
-echo "Built tests/bounce_test"
+echo "Built tools/export_png"

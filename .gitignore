@@ -4,3 +4,6 @@
 /tests/*
 !/tests/*.c
 !/tests/*.h
+/tools/*
+!/tools/*.c
+!/tools/*.h

@@ -2,9 +2,7 @@
 
 #include "bounce.h"
 #include "geometry.h"
-#include "math.h"
 #include "palette.h"
-#include "prism.h"
 
 // =================================================================================================
 // Ray Path Geometry

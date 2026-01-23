@@ -2,7 +2,6 @@
 
 #include "color.h"
 #include "geometry.h"
-#include "math.h"
 #include "prism.h"
 
 // =================================================================================================
@@ -20,6 +19,7 @@ static inline uint32_t hash_pixel(int x, int y) {
 // Applies proper sRGB transfer function with optional film grain in perceptual (sRGB) space.
 // Grain is applied AFTER gamma correction for authentic film grain look (perceptually uniform).
 // Vignette dithering is also applied in sRGB space to eliminate banding in dark gradients.
+// preserve_alpha: 1 = read alpha from float_fb (for transparent PNG), 0 = always opaque
 static void finalize_framebuffer(
   const float* float_fb, uint8_t* out_fb,
   int width, int height,
@@ -29,7 +29,8 @@ static void finalize_framebuffer(
   int apply_vignette_dither,  // 1 = dither vignette region (outside circle)
   const Prism* prism,       // Prism for grain_prism_only mode (can be NULL)
   int grain_prism_only,     // 1 = only apply grain inside prism
-  float grain_brightness_threshold  // 0.01-1.0: brightness at which grain reaches full intensity
+  float grain_brightness_threshold,  // 0.01-1.0: brightness at which grain reaches full intensity
+  int preserve_alpha        // 1 = preserve alpha from float_fb, 0 = always opaque
 ) {
   // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
   // Applied in perceptual space for uniform noise across all brightness levels.
@@ -51,6 +52,7 @@ static void finalize_framebuffer(
       float r = clampf(float_fb[i], 0.0f, 1.0f);
       float g = clampf(float_fb[i + 1], 0.0f, 1.0f);
       float b = clampf(float_fb[i + 2], 0.0f, 1.0f);
+      float a = clampf(float_fb[i + 3], 0.0f, 1.0f);
 
       // Apply proper sRGB gamma correction (linear -> sRGB)
       float out_r = linear_to_srgb(r);
@@ -88,7 +90,8 @@ static void finalize_framebuffer(
 
       // Apply vignette dithering in sRGB space (outside watch circle)
       // Dither amplitude ±0.5/255 to break up quantization banding
-      if (apply_vignette_dither && dist_sq > r2) {
+      // Skip when preserving alpha (transparent background mode)
+      if (apply_vignette_dither && !preserve_alpha && dist_sq > r2) {
         uint32_t hash = hash_pixel(x, y);
         float dither = ((float)(hash & 0xFF) / 255.0f - 0.5f) * (2.0f / 255.0f);
         out_r += dither;
@@ -100,12 +103,13 @@ static void finalize_framebuffer(
       float final_r = out_r * 255.0f + 0.5f;
       float final_g = out_g * 255.0f + 0.5f;
       float final_b = out_b * 255.0f + 0.5f;
+      float final_a = preserve_alpha ? (a * 255.0f + 0.5f) : 255.0f;
 
       // Clamp and store
       out_fb[i] = final_r < 0.0f ? 0 : (final_r > 255.0f ? 255 : (uint8_t)final_r);
       out_fb[i + 1] = final_g < 0.0f ? 0 : (final_g > 255.0f ? 255 : (uint8_t)final_g);
       out_fb[i + 2] = final_b < 0.0f ? 0 : (final_b > 255.0f ? 255 : (uint8_t)final_b);
-      out_fb[i + 3] = 255;  // Fully opaque
+      out_fb[i + 3] = final_a < 0.0f ? 0 : (final_a > 255.0f ? 255 : (uint8_t)final_a);
     }
   }
 }

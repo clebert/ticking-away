@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.h"
+#include "fastmath.h"
 
 // =================================================================================================
 // Prism Geometry (Simplified - no optical properties)

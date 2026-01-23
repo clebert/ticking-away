@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+clang \
+  -std=c23 \
+  -O3 \
+  -Wall \
+  -Wextra \
+  -Werror \
+  -Iinclude \
+  -o tests/bounce_test \
+  tests/bounce_test.c
+
+echo "Built tests/bounce_test"

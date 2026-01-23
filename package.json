@@ -12,7 +12,7 @@
     "format": "prettier --check \"**/*.{md,yaml,yml}\"",
     "format:fix": "prettier --write \"**/*.{md,yaml,yml}\"",
     "start": "vite",
-    "pretest": "./build_test.sh",
+    "pretest": "./build_tests.sh",
     "test": "./tests/bounce_test"
   },
   "dependencies": {

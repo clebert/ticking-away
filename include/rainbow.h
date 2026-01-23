@@ -1,8 +1,6 @@
 #pragma once
 
-#include "color.h"
 #include "geometry.h"
-#include "math.h"
 #include "palette.h"
 #include "prism.h"
 

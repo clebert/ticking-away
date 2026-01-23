@@ -19,3 +19,12 @@ CompileFlags:
     - -Wall
     - -Wextra
     - -I../include
+---
+If:
+  PathMatch: tools/.*\.c
+CompileFlags:
+  Add:
+    - -std=c23
+    - -Wall
+    - -Wextra
+    - -I../include

@@ -1,15 +1,8 @@
 // Test harness for prism bounce detection
 
-#include <stdbool.h>
-#include <stdio.h>
-
-// Include real project headers (order matters due to dependencies)
 #include "bounce.h"
-#include "math.h"
-#include "prism.h"
-
-// Test case definitions
 #include "bounce_test_cases.h"
+#include <stdio.h>
 
 // Constants from wasm.c
 #define ANGLE_0 (-PI / 2.0f)

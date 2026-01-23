@@ -9,7 +9,8 @@
       "Bash(npm run format:fix)",
       "Bash(npm run format)",
       "Bash(npm test:*)",
-      "Bash(./build_test.sh:*)"
+      "Bash(./build_tests.sh:*)",
+      "Bash(./build_tools.sh:*)"
     ]
   }
 }
