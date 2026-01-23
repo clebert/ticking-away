@@ -16,6 +16,10 @@ typedef enum {
   PALETTE_SPECTRAL = 2,        // Closer to physical spectrum
   PALETTE_NEON = 3,            // Electric/neon look
   PALETTE_MUTED = 4,           // Desaturated, cinematic
+  PALETTE_EINK_PURE = 5,       // Pure e-ink colors only (R,Y,G,B) - minimal dithering
+  PALETTE_EINK_DITHER = 6,     // Optimized for e-ink dithering, skip violet
+  PALETTE_EINK_FULL = 7,       // Full spectrum, violet biased toward blue
+  PALETTE_ALBUM_COVER = 8,     // Dark Side aesthetic - deep saturated edges
   PALETTE_COUNT
 } ColorPalette;
 
@@ -70,6 +74,50 @@ static const uint8_t PALETTE_COLORS[PALETTE_COUNT][NUM_BANDS][3] = {
     { 80, 150, 180},  // Steel cyan
     {100, 110, 200},  // Dusty blue
     {150, 100, 200}   // Muted violet
+  },
+  // PALETTE_EINK_PURE (pure e-ink colors only - minimal dithering)
+  // Uses only R,Y,G,B - colors that map directly to e-ink palette
+  {
+    {255,   0,   0},  // Red
+    {255, 255,   0},  // Yellow (skip orange)
+    {255, 255,   0},  // Yellow
+    {  0, 255,   0},  // Green
+    {  0, 255,   0},  // Green
+    {  0,   0, 255},  // Blue
+    {  0,   0, 255}   // Blue (skip violet)
+  },
+  // PALETTE_EINK_DITHER (optimized for e-ink dithering)
+  // Good dither pairs: R+Y for orange, G+B for cyan, skip violet
+  {
+    {255,   0,   0},  // Red - pure
+    {255, 176,   0},  // Orange - R+Y dither (biased yellow)
+    {255, 255,   0},  // Yellow - pure
+    {  0, 255,   0},  // Green - pure
+    {  0, 160, 255},  // Sky blue - G+B dither (biased blue)
+    {  0,   0, 255},  // Blue - pure
+    {  0,   0, 255}   // Blue (no violet - avoids ugly B+R)
+  },
+  // PALETTE_EINK_FULL (full spectrum, violet optimized)
+  // Violet biased heavily toward blue to avoid magenta dithering
+  {
+    {255,   0,   0},  // Red
+    {255, 160,   0},  // Orange
+    {255, 255,   0},  // Yellow
+    {  0, 255,   0},  // Green
+    {  0, 180, 220},  // Teal-cyan
+    {  0,   0, 255},  // Blue
+    { 40,   0, 255}   // Violet (almost pure blue, minimal R)
+  },
+  // PALETTE_ALBUM_COVER (Dark Side of the Moon aesthetic)
+  // Deep saturated edges using black dithering for depth
+  {
+    {200,   0,   0},  // Deep red (dithers R+Black)
+    {255, 140,   0},  // Rich orange
+    {255, 255,   0},  // Bright yellow
+    {  0, 220,   0},  // Vivid green
+    {  0, 100, 255},  // Deep cyan-blue
+    {  0,   0, 200},  // Deep blue (dithers B+Black)
+    { 60,   0, 180}   // Deep violet
   }
 };
 
