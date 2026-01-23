@@ -43,6 +43,7 @@ export interface Settings {
   ditherPaletteSaturation: number;
   ditherStrength: number;
   ditherKernel: number;
+  ditherOklabError: boolean;
 }
 
 export function loadSettings(): Partial<Settings> {
@@ -107,6 +108,7 @@ export function saveSettings({
       ditherPaletteSaturation: dither.paletteSaturation.value,
       ditherStrength: dither.strength.value,
       ditherKernel: dither.kernel.value,
+      ditherOklabError: dither.oklabError.value,
 
       displayMarkers: display.markers.value,
       displayPebble: display.pebble.value,

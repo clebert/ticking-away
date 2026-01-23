@@ -40,6 +40,7 @@ const defaults = {
     paletteSaturation: 50, // 0-100, maps to 0.0-1.0 (only used when mode=BLEND)
     strength: 20, // 0-100, maps to 0.0-1.0
     kernel: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
+    oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
   },
   display: {
     markers: false,
@@ -324,6 +325,7 @@ export const dither = {
   paletteSaturation: signal(settings.ditherPaletteSaturation ?? defaults.dither.paletteSaturation),
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
   kernel: signal(settings.ditherKernel ?? defaults.dither.kernel),
+  oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
 
   // Computed
   saturationDisabled: computed((): boolean => dither.paletteMode.value !== 2),
@@ -347,6 +349,10 @@ export const dither = {
 
   setKernel(e: Event): void {
     dither.kernel.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  },
+
+  toggleOklabError(): void {
+    dither.oklabError.value = !dither.oklabError.value;
   },
 };
 
@@ -421,6 +427,7 @@ export const resetAll = {
       dither.paletteSaturation.value = defaults.dither.paletteSaturation;
       dither.strength.value = defaults.dither.strength;
       dither.kernel.value = defaults.dither.kernel;
+      dither.oklabError.value = defaults.dither.oklabError;
 
       // Display
       display.markers.value = defaults.display.markers;

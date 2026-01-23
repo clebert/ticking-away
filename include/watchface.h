@@ -254,7 +254,8 @@ static void render_watchface_scene(
   int palette_mode,
   float palette_saturation,
   float dither_strength,
-  int dither_kernel
+  int dither_kernel,
+  int dither_oklab_error
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -286,7 +287,7 @@ static void render_watchface_scene(
     finalize_framebuffer(float_fb, fb, width, height,
                          grain_intensity, grain_scale, cx, cy, radius, vignette,
                          prism, grain_prism_only, grain_brightness_threshold, transparent_background,
-                         dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel);
+                         dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error);
     return;
   }
 
@@ -419,5 +420,5 @@ static void render_watchface_scene(
   finalize_framebuffer(float_fb, fb, width, height,
                        grain_intensity, grain_scale, cx, cy, radius, vignette,
                        prism, grain_prism_only, grain_brightness_threshold, transparent_background,
-                       dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel);
+                       dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error);
 }

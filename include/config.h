@@ -51,6 +51,7 @@ typedef struct {
   float dither_palette_saturation;   // 0.0-1.0: blend factor (only used when mode=BLEND)
   float dither_strength;             // 0.0-1.0: intensity of dither pattern (default 0.2)
   int32_t dither_kernel;             // 0 = ATKINSON, 1 = FLOYD_STEINBERG
+  int32_t dither_oklab_error;        // 0 = linear RGB error diffusion, 1 = OkLab error diffusion
 
   // Debug output (written by render, read by JS)
   float entry_u;                     // Parametric position of entry point on prism edge (0-1)

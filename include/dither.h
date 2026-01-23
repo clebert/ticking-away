@@ -206,19 +206,20 @@ static inline int find_closest_palette_color_oklab(OkLab color) {
 // =================================================================================================
 // Atkinson Dithered Color Quantization
 // =================================================================================================
-// Uses OkLab for perceptually accurate palette matching, but diffuses error in linear RGB
-// for more stable results (OkLab chroma diffusion can cause weird color shifts).
+// Uses OkLab for perceptually accurate palette matching. Error can be diffused in either
+// linear RGB (more stable) or OkLab space (more perceptually uniform gradients).
 
 // Maximum supported width for error diffusion buffers
 #define DITHER_MAX_WIDTH 5120
 
-// Three row buffers for error diffusion in linear RGB (Atkinson spreads error 2 rows down)
+// Three row buffers for error diffusion (Atkinson spreads error 2 rows down)
+// Used for either linear RGB (r,g,b) or OkLab (L,a,b) depending on oklab_error mode
 static float err_curr_r[DITHER_MAX_WIDTH], err_curr_g[DITHER_MAX_WIDTH], err_curr_b[DITHER_MAX_WIDTH];
 static float err_next1_r[DITHER_MAX_WIDTH], err_next1_g[DITHER_MAX_WIDTH], err_next1_b[DITHER_MAX_WIDTH];
 static float err_next2_r[DITHER_MAX_WIDTH], err_next2_g[DITHER_MAX_WIDTH], err_next2_b[DITHER_MAX_WIDTH];
 
 // Apply Atkinson error diffusion dithering to an entire buffer.
-// Uses OkLab for palette matching, linear RGB for error diffusion.
+// Uses OkLab for palette matching. Error diffusion can be in linear RGB or OkLab space.
 //
 // Parameters:
 //   float_fb: Input framebuffer in LINEAR RGB space (RGBA, 0.0-1.0)
@@ -228,12 +229,13 @@ static float err_next2_r[DITHER_MAX_WIDTH], err_next2_g[DITHER_MAX_WIDTH], err_n
 //   saturation: 0.0-1.0, blend factor (only used when palette_mode=BLEND)
 //   preserve_alpha: 1 = preserve alpha from float_fb, 0 = always opaque
 //   strength: 0.0-1.0, scales error diffusion (1.0 = full Atkinson 75%, 0.0 = no diffusion)
+//   oklab_error: 0 = diffuse error in linear RGB, 1 = diffuse error in OkLab space
 //
 static inline void dither_buffer_atkinson(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength) {
+    float strength, int oklab_error) {
 
   if (width > DITHER_MAX_WIDTH) return;
 
@@ -264,47 +266,75 @@ static inline void dither_buffer_atkinson(
 
     for (int x = x_start; x != x_end; x += x_step) {
       int i = (y * width + x) * 4;
-
-      // Get input color (linear RGB) and add accumulated error
-      float r = clampf(float_fb[i] + err_curr_r[x], 0.0f, 1.0f);
-      float g = clampf(float_fb[i + 1] + err_curr_g[x], 0.0f, 1.0f);
-      float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
       float a = clampf(float_fb[i + 3], 0.0f, 1.0f);
 
-      // Convert to OkLab for perceptually accurate palette matching
-      OkLab color = linear_to_oklab(r, g, b);
-      int idx = find_closest_palette_color_oklab(color);
+      OkLab color;
+      int idx;
 
-      // Calculate quantization error in linear RGB (more stable than OkLab)
-      LinearRGB quantized = DITHER_PALETTE_LINEAR[idx];
-      float err_r = (r - quantized.r) * d;
-      float err_g = (g - quantized.g) * d;
-      float err_b = (b - quantized.b) * d;
+      if (oklab_error) {
+        // OkLab error diffusion: add accumulated error in OkLab space
+        float r = clampf(float_fb[i], 0.0f, 1.0f);
+        float g = clampf(float_fb[i + 1], 0.0f, 1.0f);
+        float b = clampf(float_fb[i + 2], 0.0f, 1.0f);
+        color = linear_to_oklab(r, g, b);
+
+        // Add accumulated OkLab error (buffers hold L, a, b)
+        color.L = clampf(color.L + err_curr_r[x], 0.0f, 1.0f);
+        color.a = color.a + err_curr_g[x];  // a/b can be negative, don't clamp to 0
+        color.b = color.b + err_curr_b[x];
+
+        idx = find_closest_palette_color_oklab(color);
+
+        // Calculate quantization error in OkLab space
+        OkLab quantized = DITHER_PALETTE_OKLAB[idx];
+        float err_L = (color.L - quantized.L) * d;
+        float err_a = (color.a - quantized.a) * d;
+        float err_b = (color.b - quantized.b) * d;
+
+        // Diffuse error (reusing r/g/b buffers for L/a/b)
+        int fwd1 = x + x_step;
+        int fwd2 = x + 2 * x_step;
+        int back1 = x - x_step;
+
+        if (fwd1 >= 0 && fwd1 < width) { err_curr_r[fwd1] += err_L; err_curr_g[fwd1] += err_a; err_curr_b[fwd1] += err_b; }
+        if (fwd2 >= 0 && fwd2 < width) { err_curr_r[fwd2] += err_L; err_curr_g[fwd2] += err_a; err_curr_b[fwd2] += err_b; }
+        if (back1 >= 0 && back1 < width) { err_next1_r[back1] += err_L; err_next1_g[back1] += err_a; err_next1_b[back1] += err_b; }
+        err_next1_r[x] += err_L; err_next1_g[x] += err_a; err_next1_b[x] += err_b;
+        if (fwd1 >= 0 && fwd1 < width) { err_next1_r[fwd1] += err_L; err_next1_g[fwd1] += err_a; err_next1_b[fwd1] += err_b; }
+        err_next2_r[x] += err_L; err_next2_g[x] += err_a; err_next2_b[x] += err_b;
+      } else {
+        // Linear RGB error diffusion (original behavior)
+        float r = clampf(float_fb[i] + err_curr_r[x], 0.0f, 1.0f);
+        float g = clampf(float_fb[i + 1] + err_curr_g[x], 0.0f, 1.0f);
+        float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
+
+        color = linear_to_oklab(r, g, b);
+        idx = find_closest_palette_color_oklab(color);
+
+        // Calculate quantization error in linear RGB
+        LinearRGB quantized = DITHER_PALETTE_LINEAR[idx];
+        float err_r = (r - quantized.r) * d;
+        float err_g = (g - quantized.g) * d;
+        float err_b = (b - quantized.b) * d;
+
+        // Diffuse error
+        int fwd1 = x + x_step;
+        int fwd2 = x + 2 * x_step;
+        int back1 = x - x_step;
+
+        if (fwd1 >= 0 && fwd1 < width) { err_curr_r[fwd1] += err_r; err_curr_g[fwd1] += err_g; err_curr_b[fwd1] += err_b; }
+        if (fwd2 >= 0 && fwd2 < width) { err_curr_r[fwd2] += err_r; err_curr_g[fwd2] += err_g; err_curr_b[fwd2] += err_b; }
+        if (back1 >= 0 && back1 < width) { err_next1_r[back1] += err_r; err_next1_g[back1] += err_g; err_next1_b[back1] += err_b; }
+        err_next1_r[x] += err_r; err_next1_g[x] += err_g; err_next1_b[x] += err_b;
+        if (fwd1 >= 0 && fwd1 < width) { err_next1_r[fwd1] += err_r; err_next1_g[fwd1] += err_g; err_next1_b[fwd1] += err_b; }
+        err_next2_r[x] += err_r; err_next2_g[x] += err_g; err_next2_b[x] += err_b;
+      }
 
       // Output the quantized color
       out_fb[i] = palette[idx].r;
       out_fb[i + 1] = palette[idx].g;
       out_fb[i + 2] = palette[idx].b;
       out_fb[i + 3] = preserve_alpha ? (uint8_t)(a * 255.0f + 0.5f) : 255;
-
-      // Atkinson distributes only 6/8 (75%) of the error, creating higher contrast
-      // Serpentine: mirror pattern horizontally on right-to-left rows
-      //
-      // Left-to-right:        Right-to-left (mirrored):
-      //       X   +1  +2            -2  -1  X
-      //   -1  0   +1                    -1  0   +1
-      //       0                             0
-
-      int fwd1 = x + x_step;       // +1 when L->R, -1 when R->L
-      int fwd2 = x + 2 * x_step;   // +2 when L->R, -2 when R->L
-      int back1 = x - x_step;      // -1 when L->R, +1 when R->L
-
-      if (fwd1 >= 0 && fwd1 < width) { err_curr_r[fwd1] += err_r; err_curr_g[fwd1] += err_g; err_curr_b[fwd1] += err_b; }
-      if (fwd2 >= 0 && fwd2 < width) { err_curr_r[fwd2] += err_r; err_curr_g[fwd2] += err_g; err_curr_b[fwd2] += err_b; }
-      if (back1 >= 0 && back1 < width) { err_next1_r[back1] += err_r; err_next1_g[back1] += err_g; err_next1_b[back1] += err_b; }
-      err_next1_r[x] += err_r; err_next1_g[x] += err_g; err_next1_b[x] += err_b;
-      if (fwd1 >= 0 && fwd1 < width) { err_next1_r[fwd1] += err_r; err_next1_g[fwd1] += err_g; err_next1_b[fwd1] += err_b; }
-      err_next2_r[x] += err_r; err_next2_g[x] += err_g; err_next2_b[x] += err_b;
     }
 
     // Rotate row buffers: next1 becomes current, next2 becomes next1, clear next2
@@ -332,7 +362,7 @@ static inline void dither_buffer_atkinson(
 // Where X is current pixel. All error is diffused (100%).
 
 // Apply Floyd-Steinberg error diffusion dithering to an entire buffer.
-// Uses OkLab for palette matching, linear RGB for error diffusion.
+// Uses OkLab for palette matching. Error diffusion can be in linear RGB or OkLab space.
 //
 // Parameters:
 //   float_fb: Input framebuffer in LINEAR RGB space (RGBA, 0.0-1.0)
@@ -343,12 +373,13 @@ static inline void dither_buffer_atkinson(
 //   preserve_alpha: 1 = preserve alpha from float_fb, 0 = always opaque
 //   strength: 0.0-1.0, scales error diffusion (1.0 = full FS 100%, 0.0 = no diffusion)
 //             Suggested default: 0.6-0.9 (lower than Atkinson since FS diffuses 100%)
+//   oklab_error: 0 = diffuse error in linear RGB, 1 = diffuse error in OkLab space
 //
 static inline void dither_buffer_floyd_steinberg(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength) {
+    float strength, int oklab_error) {
 
   if (width > DITHER_MAX_WIDTH) return;
 
@@ -381,22 +412,46 @@ static inline void dither_buffer_floyd_steinberg(
 
     for (int x = x_start; x != x_end; x += x_step) {
       int i = (y * width + x) * 4;
-
-      // Get input color (linear RGB) and add accumulated error
-      float r = clampf(float_fb[i] + err_curr_r[x], 0.0f, 1.0f);
-      float g = clampf(float_fb[i + 1] + err_curr_g[x], 0.0f, 1.0f);
-      float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
       float a = clampf(float_fb[i + 3], 0.0f, 1.0f);
 
-      // Convert to OkLab for perceptually accurate palette matching
-      OkLab color = linear_to_oklab(r, g, b);
-      int idx = find_closest_palette_color_oklab(color);
+      OkLab color;
+      int idx;
+      float err_1, err_2, err_3;  // Error values (RGB or Lab)
 
-      // Calculate quantization error in linear RGB (more stable than OkLab)
-      LinearRGB quantized = DITHER_PALETTE_LINEAR[idx];
-      float err_r = r - quantized.r;
-      float err_g = g - quantized.g;
-      float err_b = b - quantized.b;
+      if (oklab_error) {
+        // OkLab error diffusion: add accumulated error in OkLab space
+        float r = clampf(float_fb[i], 0.0f, 1.0f);
+        float g = clampf(float_fb[i + 1], 0.0f, 1.0f);
+        float b = clampf(float_fb[i + 2], 0.0f, 1.0f);
+        color = linear_to_oklab(r, g, b);
+
+        // Add accumulated OkLab error (buffers hold L, a, b)
+        color.L = clampf(color.L + err_curr_r[x], 0.0f, 1.0f);
+        color.a = color.a + err_curr_g[x];
+        color.b = color.b + err_curr_b[x];
+
+        idx = find_closest_palette_color_oklab(color);
+
+        // Calculate quantization error in OkLab space
+        OkLab quantized = DITHER_PALETTE_OKLAB[idx];
+        err_1 = color.L - quantized.L;
+        err_2 = color.a - quantized.a;
+        err_3 = color.b - quantized.b;
+      } else {
+        // Linear RGB error diffusion (original behavior)
+        float r = clampf(float_fb[i] + err_curr_r[x], 0.0f, 1.0f);
+        float g = clampf(float_fb[i + 1] + err_curr_g[x], 0.0f, 1.0f);
+        float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
+
+        color = linear_to_oklab(r, g, b);
+        idx = find_closest_palette_color_oklab(color);
+
+        // Calculate quantization error in linear RGB
+        LinearRGB quantized = DITHER_PALETTE_LINEAR[idx];
+        err_1 = r - quantized.r;
+        err_2 = g - quantized.g;
+        err_3 = b - quantized.b;
+      }
 
       // Output the quantized color
       out_fb[i] = palette[idx].r;
@@ -405,36 +460,29 @@ static inline void dither_buffer_floyd_steinberg(
       out_fb[i + 3] = preserve_alpha ? (uint8_t)(a * 255.0f + 0.5f) : 255;
 
       // Floyd-Steinberg distributes 100% of error
-      // Serpentine: mirror pattern horizontally on right-to-left rows
-      //
-      // Left-to-right:              Right-to-left (mirrored):
-      //       X   7/16  (fwd)           7/16   X
-      //   3/16  5/16  1/16          1/16  5/16  3/16
-      //  (back) (same) (fwd)       (back) (same) (fwd)
-
-      int fwd = x + x_step;   // +1 when L->R, -1 when R->L
-      int back = x - x_step;  // -1 when L->R, +1 when R->L
+      int fwd = x + x_step;
+      int back = x - x_step;
 
       // Current row: forward pixel gets 7/16
       if (fwd >= 0 && fwd < width) {
-        err_curr_r[fwd] += err_r * d7;
-        err_curr_g[fwd] += err_g * d7;
-        err_curr_b[fwd] += err_b * d7;
+        err_curr_r[fwd] += err_1 * d7;
+        err_curr_g[fwd] += err_2 * d7;
+        err_curr_b[fwd] += err_3 * d7;
       }
 
       // Next row: back pixel gets 3/16, same x gets 5/16, forward gets 1/16
       if (back >= 0 && back < width) {
-        err_next1_r[back] += err_r * d3;
-        err_next1_g[back] += err_g * d3;
-        err_next1_b[back] += err_b * d3;
+        err_next1_r[back] += err_1 * d3;
+        err_next1_g[back] += err_2 * d3;
+        err_next1_b[back] += err_3 * d3;
       }
-      err_next1_r[x] += err_r * d5;
-      err_next1_g[x] += err_g * d5;
-      err_next1_b[x] += err_b * d5;
+      err_next1_r[x] += err_1 * d5;
+      err_next1_g[x] += err_2 * d5;
+      err_next1_b[x] += err_3 * d5;
       if (fwd >= 0 && fwd < width) {
-        err_next1_r[fwd] += err_r * d1;
-        err_next1_g[fwd] += err_g * d1;
-        err_next1_b[fwd] += err_b * d1;
+        err_next1_r[fwd] += err_1 * d1;
+        err_next1_g[fwd] += err_2 * d1;
+        err_next1_b[fwd] += err_3 * d1;
       }
     }
 
@@ -458,17 +506,17 @@ static inline void dither_buffer(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength, DitherKernel kernel) {
+    float strength, DitherKernel kernel, int oklab_error) {
 
   switch (kernel) {
     case DITHER_KERNEL_FLOYD_STEINBERG:
       dither_buffer_floyd_steinberg(float_fb, out_fb, width, height,
-                                    palette_mode, saturation, preserve_alpha, strength);
+                                    palette_mode, saturation, preserve_alpha, strength, oklab_error);
       break;
     case DITHER_KERNEL_ATKINSON:
     default:
       dither_buffer_atkinson(float_fb, out_fb, width, height,
-                             palette_mode, saturation, preserve_alpha, strength);
+                             palette_mode, saturation, preserve_alpha, strength, oklab_error);
       break;
   }
 }

@@ -25,6 +25,7 @@ static inline uint32_t hash_pixel(int x, int y) {
 // palette_mode: 0=IDEAL, 1=DEVICE, 2=BLEND (used when dither_enabled)
 // palette_saturation: 0.0-1.0, blend factor (only used when palette_mode=BLEND)
 // dither_kernel: 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
+// dither_oklab_error: 0=linear RGB error diffusion, 1=OkLab error diffusion
 static void finalize_framebuffer(
   const float* float_fb, uint8_t* out_fb,
   int width, int height,
@@ -40,12 +41,13 @@ static void finalize_framebuffer(
   int palette_mode,         // 0=IDEAL, 1=DEVICE, 2=BLEND
   float palette_saturation, // 0.0-1.0: blend factor (only used when palette_mode=BLEND)
   float dither_strength,    // 0.0-1.0: error diffusion strength
-  int dither_kernel         // 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
+  int dither_kernel,        // 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
+  int dither_oklab_error    // 0=linear RGB error diffusion, 1=OkLab error diffusion
 ) {
   // Apply error diffusion dithering directly from linear RGB
   // Skip all preprocessing (grain, vignette dither) - not applicable for e-ink output
   if (dither_enabled) {
-    dither_buffer(float_fb, out_fb, width, height, (DitherPaletteMode)palette_mode, palette_saturation, preserve_alpha, dither_strength, (DitherKernel)dither_kernel);
+    dither_buffer(float_fb, out_fb, width, height, (DitherPaletteMode)palette_mode, palette_saturation, preserve_alpha, dither_strength, (DitherKernel)dither_kernel, dither_oklab_error);
     return;
   }
 
