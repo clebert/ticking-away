@@ -1,6 +1,7 @@
 #pragma once
 
 #include "color.h"
+#include "dither.h"
 #include "geometry.h"
 #include "prism.h"
 
@@ -20,6 +21,10 @@ static inline uint32_t hash_pixel(int x, int y) {
 // Grain is applied AFTER gamma correction for authentic film grain look (perceptually uniform).
 // Vignette dithering is also applied in sRGB space to eliminate banding in dark gradients.
 // preserve_alpha: 1 = read alpha from float_fb (for transparent PNG), 0 = always opaque
+// dither_enabled: 1 = apply dithering to 6-color palette, 0 = normal quantization
+// palette_mode: 0=IDEAL, 1=DEVICE, 2=BLEND (used when dither_enabled)
+// palette_saturation: 0.0-1.0, blend factor (only used when palette_mode=BLEND)
+// dither_kernel: 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
 static void finalize_framebuffer(
   const float* float_fb, uint8_t* out_fb,
   int width, int height,
@@ -30,8 +35,20 @@ static void finalize_framebuffer(
   const Prism* prism,       // Prism for grain_prism_only mode (can be NULL)
   int grain_prism_only,     // 1 = only apply grain inside prism
   float grain_brightness_threshold,  // 0.01-1.0: brightness at which grain reaches full intensity
-  int preserve_alpha        // 1 = preserve alpha from float_fb, 0 = always opaque
+  int preserve_alpha,       // 1 = preserve alpha from float_fb, 0 = always opaque
+  int dither_enabled,       // 1 = apply dithering to 6-color palette
+  int palette_mode,         // 0=IDEAL, 1=DEVICE, 2=BLEND
+  float palette_saturation, // 0.0-1.0: blend factor (only used when palette_mode=BLEND)
+  float dither_strength,    // 0.0-1.0: error diffusion strength
+  int dither_kernel         // 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
 ) {
+  // Apply error diffusion dithering directly from linear RGB
+  // Skip all preprocessing (grain, vignette dither) - not applicable for e-ink output
+  if (dither_enabled) {
+    dither_buffer(float_fb, out_fb, width, height, (DitherPaletteMode)palette_mode, palette_saturation, preserve_alpha, dither_strength, (DitherKernel)dither_kernel);
+    return;
+  }
+
   // Grain strength in sRGB space: ±6% at full intensity (≈ ±15/255, classic film grain)
   // Applied in perceptual space for uniform noise across all brightness levels.
   float grain_strength = grain_intensity * 0.06f;

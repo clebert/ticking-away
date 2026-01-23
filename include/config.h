@@ -45,6 +45,13 @@ typedef struct {
   float grain_brightness_threshold;  // 0.01-1.0
   int32_t vignette;                  // 0 or 1
 
+  // Dithering settings (for e-ink display output)
+  int32_t dither_enabled;            // 0 or 1
+  int32_t dither_palette_mode;       // 0 = IDEAL, 1 = DEVICE, 2 = BLEND
+  float dither_palette_saturation;   // 0.0-1.0: blend factor (only used when mode=BLEND)
+  float dither_strength;             // 0.0-1.0: intensity of dither pattern (default 0.2)
+  int32_t dither_kernel;             // 0 = ATKINSON, 1 = FLOYD_STEINBERG
+
   // Debug output (written by render, read by JS)
   float entry_u;                     // Parametric position of entry point on prism edge (0-1)
   float exit_u;                      // Parametric position of exit point on prism edge (0-1)

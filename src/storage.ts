@@ -37,6 +37,12 @@ export interface Settings {
   backgroundGrainIntensity: number;
   backgroundGrainPrismOnly: boolean;
   backgroundGrainBrightnessThreshold: number;
+
+  ditherEnabled: boolean;
+  ditherPaletteMode: number;
+  ditherPaletteSaturation: number;
+  ditherStrength: number;
+  ditherKernel: number;
 }
 
 export function loadSettings(): Partial<Settings> {
@@ -61,6 +67,7 @@ export function saveSettings({
   markers,
   display,
   background,
+  dither,
 }: typeof stores): void {
   try {
     const settings: Settings = {
@@ -94,6 +101,12 @@ export function saveSettings({
       backgroundGrainIntensity: background.grainIntensity.value,
       backgroundGrainPrismOnly: background.grainPrismOnly.value,
       backgroundGrainBrightnessThreshold: background.grainBrightnessThreshold.value,
+
+      ditherEnabled: dither.enabled.value,
+      ditherPaletteMode: dither.paletteMode.value,
+      ditherPaletteSaturation: dither.paletteSaturation.value,
+      ditherStrength: dither.strength.value,
+      ditherKernel: dither.kernel.value,
 
       displayMarkers: display.markers.value,
       displayPebble: display.pebble.value,

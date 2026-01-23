@@ -34,6 +34,13 @@ const defaults = {
     grainPrismOnly: false,
     grainBrightnessThreshold: 30,
   },
+  dither: {
+    enabled: false,
+    paletteMode: 0, // 0 = IDEAL, 1 = DEVICE, 2 = BLEND
+    paletteSaturation: 50, // 0-100, maps to 0.0-1.0 (only used when mode=BLEND)
+    strength: 20, // 0-100, maps to 0.0-1.0
+    kernel: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
+  },
   display: {
     markers: false,
     pebble: false,
@@ -310,6 +317,39 @@ export const background = {
   },
 };
 
+export const dither = {
+  // Signals
+  enabled: signal(settings.ditherEnabled ?? defaults.dither.enabled),
+  paletteMode: signal(settings.ditherPaletteMode ?? defaults.dither.paletteMode),
+  paletteSaturation: signal(settings.ditherPaletteSaturation ?? defaults.dither.paletteSaturation),
+  strength: signal(settings.ditherStrength ?? defaults.dither.strength),
+  kernel: signal(settings.ditherKernel ?? defaults.dither.kernel),
+
+  // Computed
+  saturationDisabled: computed((): boolean => dither.paletteMode.value !== 2),
+
+  // Actions
+  toggleEnabled(): void {
+    dither.enabled.value = !dither.enabled.value;
+  },
+
+  setPaletteMode(e: Event): void {
+    dither.paletteMode.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  },
+
+  setPaletteSaturation(e: Event): void {
+    dither.paletteSaturation.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  setStrength(e: Event): void {
+    dither.strength.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
+  setKernel(e: Event): void {
+    dither.kernel.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  },
+};
+
 export const display = {
   // Signals
   markers: signal(settings.displayMarkers ?? defaults.display.markers),
@@ -374,6 +414,13 @@ export const resetAll = {
       background.grainIntensity.value = defaults.background.grainIntensity;
       background.grainPrismOnly.value = defaults.background.grainPrismOnly;
       background.grainBrightnessThreshold.value = defaults.background.grainBrightnessThreshold;
+
+      // Dither
+      dither.enabled.value = defaults.dither.enabled;
+      dither.paletteMode.value = defaults.dither.paletteMode;
+      dither.paletteSaturation.value = defaults.dither.paletteSaturation;
+      dither.strength.value = defaults.dither.strength;
+      dither.kernel.value = defaults.dither.kernel;
 
       // Display
       display.markers.value = defaults.display.markers;

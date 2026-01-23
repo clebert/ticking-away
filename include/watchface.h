@@ -216,6 +216,9 @@ static void draw_watch_overlay_f(
 // - palette: ColorPalette enum value (0-4) for rainbow color scheme
 // - reverse_spectrum: 1 = reverse spectral order (album art style: red on top)
 // - transparent_background: 1 = transparent outside circle (for PNG export)
+// - palette_mode: 0=IDEAL, 1=DEVICE, 2=BLEND (for dithering)
+// - palette_saturation: 0.0-1.0, blend factor (only used when palette_mode=BLEND)
+// - dither_kernel: 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
   uint8_t* fb,      // Output buffer (gamma-corrected)
@@ -247,7 +250,12 @@ static void render_watchface_scene(
   int palette,
   int reverse_spectrum,
   float grain_brightness_threshold,
-  int transparent_background
+  int transparent_background,
+  int dither_enabled,
+  int palette_mode,
+  float palette_saturation,
+  float dither_strength,
+  int dither_kernel
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -258,9 +266,11 @@ static void render_watchface_scene(
   float prism_b_f = srgb_to_linear(prism_b);
 
   // Initialize background (to float buffer)
+  // When dithering for e-ink, use white background without vignette
+  float vignette_intensity = transparent_background ? 0.0f : (vignette && !dither_enabled ? 1.0f : 0.0f);
+  int white_background = dither_enabled && !transparent_background;
   init_watch_framebuffer_f(float_fb, width, height, cx, cy, radius,
-                           transparent_background ? 0.0f : (vignette ? 1.0f : 0.0f),
-                           0, transparent_background);
+                           vignette_intensity, white_background, transparent_background);
 
   // Compute all ray path geometry (decoupled from rendering)
   RayPaths paths = compute_ray_paths(cx, cy, radius, entry_x, entry_y, hour_angle, rainbow_spread, prism);
@@ -277,7 +287,8 @@ static void render_watchface_scene(
     // Convert float buffer to output buffer with sRGB gamma correction and film grain
     finalize_framebuffer(float_fb, fb, width, height,
                          grain_intensity, grain_scale, cx, cy, radius, vignette,
-                         prism, grain_prism_only, grain_brightness_threshold, transparent_background);
+                         prism, grain_prism_only, grain_brightness_threshold, transparent_background,
+                         dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel);
     return;
   }
 
@@ -409,5 +420,6 @@ static void render_watchface_scene(
   // Convert float buffer to output buffer with sRGB gamma correction and film grain
   finalize_framebuffer(float_fb, fb, width, height,
                        grain_intensity, grain_scale, cx, cy, radius, vignette,
-                       prism, grain_prism_only, grain_brightness_threshold, transparent_background);
+                       prism, grain_prism_only, grain_brightness_threshold, transparent_background,
+                       dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel);
 }

@@ -73,5 +73,7 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
       config.ray_glow_falloff, config.marker_length_percent, config.marker_glow_width_percent,
       config.marker_glow_intensity, config.marker_glow_falloff, config.grain_intensity,
       config.grain_scale, config.grain_prism_only, config.gradient_fill, config.vignette,
-      config.palette, config.reverse_spectrum, config.grain_brightness_threshold, 0);
+      config.palette, config.reverse_spectrum, config.grain_brightness_threshold, 0,
+      config.dither_enabled, config.dither_palette_mode, config.dither_palette_saturation,
+      config.dither_strength, config.dither_kernel);
 }

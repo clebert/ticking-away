@@ -51,6 +51,13 @@ const fields = {
   grainBrightnessThreshold: "float32",
   vignette: "boolean",
 
+  // Dithering
+  ditherEnabled: "boolean",
+  ditherPaletteMode: "int32",
+  ditherPaletteSaturation: "float32",
+  ditherStrength: "float32",
+  ditherKernel: "int32",
+
   // Debug output (read-only, written by WASM)
   entryU: "float32",
   exitU: "float32",

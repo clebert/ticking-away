@@ -153,7 +153,12 @@ int main(int argc, char *argv[]) {
       DEFAULT_GRAIN_PRISM_ONLY, DEFAULT_GRADIENT_FILL,
       0, // vignette (disabled for transparent export)
       DEFAULT_PALETTE, DEFAULT_REVERSE_SPECTRUM, DEFAULT_GRAIN_BRIGHTNESS_THRESHOLD / 100.0f,
-      1 // transparent_background
+      1,    // transparent_background
+      0,    // dither_enabled (disabled for PNG export)
+      0,    // palette_mode (IDEAL, unused when dithering disabled)
+      0.5f, // palette_saturation (unused when dithering disabled)
+      0.2f, // dither_strength (default, unused when disabled)
+      0     // dither_kernel (ATKINSON, unused when disabled)
   );
 
   // Write PNG

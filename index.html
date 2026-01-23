@@ -507,6 +507,58 @@
             />
           </div>
 
+          <!-- Dithering -->
+          <div class="section-title">Dithering (6-Color E-Ink)</div>
+          <div class="control-group">
+            <label
+              ><input
+                type="checkbox"
+                data-bind="checked:dither.enabled, onchange:dither.toggleEnabled"
+              />
+              Enable Dithering</label
+            >
+          </div>
+          <div class="control-group">
+            <label>Kernel</label>
+            <select
+              data-bind="value:dither.kernel, onchange:dither.setKernel, disabled:!dither.enabled"
+            >
+              <option value="0">Atkinson (75%)</option>
+              <option value="1">Floyd-Steinberg (100%)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label>Palette Mode</label>
+            <select
+              data-bind="value:dither.paletteMode, onchange:dither.setPaletteMode, disabled:!dither.enabled"
+            >
+              <option value="0">Ideal (Pure RGB)</option>
+              <option value="1">Device (Inky 13.3")</option>
+              <option value="2">Blend</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label
+              >Saturation:
+              <span data-bind="textContent:dither.paletteSaturation">50</span>%</label
+            >
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:dither.paletteSaturation, oninput:dither.setPaletteSaturation, disabled:dither.saturationDisabled"
+            />
+          </div>
+          <div class="control-group">
+            <label>Strength: <span data-bind="textContent:dither.strength">100</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:dither.strength, oninput:dither.setStrength, disabled:!dither.enabled"
+            />
+          </div>
+
           <!-- Display Options -->
           <div class="section-title">Display</div>
           <div class="control-group">

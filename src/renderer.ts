@@ -1,6 +1,6 @@
 import { getCanvas, getFramebufferPointers } from "./canvas.ts";
 import { getConfig } from "./config.ts";
-import { background, debug, display, markers, prism, rays, time } from "./stores.ts";
+import { background, debug, display, dither, markers, prism, rays, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
 export function render(): void {
@@ -55,6 +55,12 @@ export function render(): void {
   config.grainPrismOnly = background.grainPrismOnly.value;
   config.grainBrightnessThreshold = background.grainBrightnessThreshold.value / 100.0;
   config.vignette = !display.pebble.value;
+
+  config.ditherEnabled = dither.enabled.value;
+  config.ditherPaletteMode = dither.paletteMode.value;
+  config.ditherPaletteSaturation = dither.paletteSaturation.value / 100.0;
+  config.ditherStrength = dither.strength.value / 100.0;
+  config.ditherKernel = dither.kernel.value;
 
   wasmModule.render_watchface(pointers.floatPtr, pointers.uint8Ptr, width, height);
 
