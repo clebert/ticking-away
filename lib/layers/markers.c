@@ -8,13 +8,11 @@
 #include "draw/line.h"
 #include "fastmath.h"
 
-#include <stddef.h>
-
 // =================================================================================================
 // Constants
 // =================================================================================================
 
-#define NUM_MARKERS 12
+enum { NUM_MARKERS = 12 };
 #define MARKER_OUTER_PERCENT 0.98f // Markers end at 98% of radius
 
 // =================================================================================================
@@ -50,9 +48,9 @@ void markers_draw(float *fb, int width, int height, float cx, float cy, float ra
     // Draw marker with pure white color
     line_draw_glow(fb, width, height, x0, y0, x1, y1, 1.0f, 1.0f, 1.0f, // Pure white
                    glow_width, config->glow_intensity, config->falloff,
-                   NULL,        // No triangle clip
+                   nullptr,     // No triangle clip
                    circle_clip, // Clip to watch circle
-                   NULL         // No exclude region
+                   nullptr      // No exclude region
     );
   }
 }

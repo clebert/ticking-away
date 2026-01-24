@@ -64,19 +64,19 @@ static int last_width = 0;
 static int last_height = 0;
 
 // Dither cache (static allocation for max supported dimensions)
-#define MAX_DITHER_WIDTH 5120
-#define MAX_DITHER_COLORS 16
+enum { MAX_DITHER_WIDTH = 5120, MAX_DITHER_COLORS = 16 };
 DITHER_CACHE_STATIC(dither_cache, MAX_DITHER_COLORS, MAX_DITHER_WIDTH);
 
 // =================================================================================================
 // WASM Exports
 // =================================================================================================
 
-// NOLINTNEXTLINE(bugprone-reserved-identifier,readability-identifier-naming)
+// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
 extern unsigned char __heap_base; // First byte after static data (provided by the linker)
 
 // Get the address where it's safe to allocate
 WASM_EXPORT void *get_heap_base(void) { return &__heap_base; }
+// NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
 
 // Get pointer to the config struct (returns byte offset into memory.buffer)
 WASM_EXPORT WatchfaceConfig *get_config(void) { return &config; }
@@ -151,7 +151,7 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
   pipeline_init(&pipeline);
 
   // Gamma correction (linear -> sRGB)
-  pipeline_add_kernel(&pipeline, &KERNEL_GAMMA, (void *)0, (void *)0);
+  pipeline_add_kernel(&pipeline, &KERNEL_GAMMA, nullptr, (void *)0);
 
   // Grain (in sRGB space)
   float prism_verts[6];
@@ -162,7 +162,7 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
   GrainGeometry grain_geom = {.cx = cx,
                               .cy = cy,
                               .radius = radius,
-                              .prism_vertices = config.grain.prism_only ? prism_verts : (void *)0};
+                              .prism_vertices = config.grain.prism_only ? prism_verts : nullptr};
 
   if (config.grain.intensity > 0.0f) {
     pipeline_add_kernel(&pipeline, &KERNEL_GRAIN, &config.grain, &grain_geom);

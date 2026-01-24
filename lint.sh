@@ -40,12 +40,14 @@ else
 fi
 
 echo "==> cppcheck (C)"
+# Define nullptr for cppcheck since it only supports up to C11
 cppcheck --enable=warning,style,performance,portability \
+    -D 'nullptr=((void*)0)' \
     --suppressions-list=.cppcheck-suppressions \
     --error-exitcode=1 --quiet lib/ bin/ tests/
 
 echo "==> clang-tidy (C)"
-tidy_output=$(find lib bin tests -name '*.c' | xargs -I {} clang-tidy {} -- -I lib 2>&1 \
+tidy_output=$(find lib bin tests -name '*.c' | xargs -I {} clang-tidy {} -- -std=c23 -I lib 2>&1 \
     | grep -Ev "^[0-9]+ warnings generated\.$|^Suppressed [0-9]+ warnings|^Use -header-filter|^Use -system-headers" \
     || true)
 if [ -n "$tidy_output" ]; then
@@ -54,7 +56,7 @@ if [ -n "$tidy_output" ]; then
 fi
 
 echo "==> include-what-you-use (C)"
-iwyu_output=$(find lib bin tests -name '*.c' -o -name '*.h' | xargs -I {} iwyu -I lib {} 2>&1 \
+iwyu_output=$(find lib bin tests -name '*.c' -o -name '*.h' | xargs -I {} iwyu -std=c2x -I lib {} 2>&1 \
     | grep -Ev "has correct #includes/fwd-decls\)|^$" \
     || true)
 if [ -n "$iwyu_output" ]; then

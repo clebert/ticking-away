@@ -42,7 +42,7 @@ void test_vignette_no_config(void) {
   // With NULL config, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.3f};
-  kernel_vignette_apply(fb, 1, 1, NULL, &geom);
+  kernel_vignette_apply(fb, 1, 1, nullptr, &geom);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[1], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[2], 0.5f, 0.0001f);
@@ -54,7 +54,7 @@ void test_vignette_no_geometry(void) {
   // With NULL geometry, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   VignetteConfig cfg = {.enabled = 1, .strength = 0.4f, .background = 0.137f};
-  kernel_vignette_apply(fb, 1, 1, &cfg, NULL);
+  kernel_vignette_apply(fb, 1, 1, &cfg, nullptr);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[1], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[2], 0.5f, 0.0001f);

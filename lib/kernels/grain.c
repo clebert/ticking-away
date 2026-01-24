@@ -65,7 +65,7 @@ void kernel_grain_apply(float *fb, int width, int height, const void *config, co
   }
 
   // Prism vertices (if prism_only mode)
-  const float *prism = NULL;
+  const float *prism = nullptr;
   if (cfg->prism_only && geom && geom->prism_vertices) {
     prism = geom->prism_vertices;
   }

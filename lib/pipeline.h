@@ -31,7 +31,7 @@
 // -------------------------------------------------------------------------------------------------
 
 // Maximum number of kernels in a pipeline (stack-allocatable)
-#define PIPELINE_MAX_KERNELS 8
+enum { PIPELINE_MAX_KERNELS = 8 };
 
 // -------------------------------------------------------------------------------------------------
 // Pipeline Entry

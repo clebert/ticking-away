@@ -20,7 +20,7 @@
 // Constants
 // -------------------------------------------------------------------------------------------------
 
-#define RAYS_NUM_BANDS 7          // Number of color bands in rainbow
+enum { RAYS_NUM_BANDS = 7 };      // Number of color bands in rainbow
 #define RAYS_MAX_SPREAD_DEG 30.0f // Maximum rainbow spread in degrees
 
 // -------------------------------------------------------------------------------------------------

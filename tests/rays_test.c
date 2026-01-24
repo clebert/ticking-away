@@ -367,7 +367,7 @@ void test_ray_paths_max_spread(void) {
 void test_layer_render_null_context(void) {
   TEST_BEGIN("layer_render_null_context");
 
-  RenderContext ctx = {0};
+  RenderContext ctx = {0}; // NOLINT(modernize-use-nullptr)
 
   // Should not crash with null fields
   layer_rays_render(&ctx);
@@ -408,8 +408,8 @@ void test_layer_render_basic(void) {
                        .time_minutes = 195.0f, // 3:15
                        .prism_config = &prism_cfg,
                        .ray_config = &ray_cfg,
-                       .glow_config = 0,
-                       .marker_config = 0};
+                       .glow_config = nullptr,
+                       .marker_config = nullptr};
 
   layer_rays_render(&ctx);
 
@@ -456,8 +456,8 @@ void test_layer_render_with_gradient(void) {
                        .time_minutes = 195.0f, // 3:15
                        .prism_config = &prism_cfg,
                        .ray_config = &ray_cfg,
-                       .glow_config = 0,
-                       .marker_config = 0};
+                       .glow_config = nullptr,
+                       .marker_config = nullptr};
 
   layer_rays_render(&ctx);
 
@@ -535,7 +535,7 @@ void test_layer_render_reverse_spectrum(void) {
 void test_layer_descriptor(void) {
   TEST_BEGIN("layer_descriptor");
 
-  ASSERT_TRUE(LAYER_RAYS.name != 0);
+  ASSERT_TRUE(LAYER_RAYS.name != nullptr);
   ASSERT_TRUE(LAYER_RAYS.render == layer_rays_render);
 
   TEST_END();

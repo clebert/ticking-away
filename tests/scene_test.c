@@ -17,8 +17,7 @@ TEST_RUNNER_BEGIN();
 // Test Framebuffer
 // =================================================================================================
 
-#define TEST_WIDTH 100
-#define TEST_HEIGHT 100
+enum { TEST_WIDTH = 100, TEST_HEIGHT = 100 };
 #define FB_SIZE (TEST_WIDTH * TEST_HEIGHT * 4)
 
 static float test_fb[FB_SIZE];
@@ -238,7 +237,7 @@ void test_scene_update_prism(void) {
 
   // Prism should be valid
   const Prism *p = scene_get_prism(&scene);
-  ASSERT_TRUE(p != 0);
+  ASSERT_TRUE(p != nullptr);
 
   TEST_END();
 }

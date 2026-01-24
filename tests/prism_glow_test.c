@@ -296,7 +296,7 @@ void test_layer_render_null_config(void) {
       .cy = 8.0f,
       .radius = 8.0f,
       .prism = &prism,
-      .glow_config = NULL // No config
+      .glow_config = nullptr // No config
   };
 
   // Should not crash with null config

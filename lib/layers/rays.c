@@ -32,16 +32,16 @@
 // Palette colors in sRGB (0-255). These match the palettes in palette.h.
 
 typedef enum {
-  RAYS_PALETTE_OKLCH_BALANCED = 0,
-  RAYS_PALETTE_SATURATED = 1,
-  RAYS_PALETTE_SPECTRAL = 2,
-  RAYS_PALETTE_NEON = 3,
-  RAYS_PALETTE_MUTED = 4,
-  RAYS_PALETTE_EINK_PURE = 5,
-  RAYS_PALETTE_EINK_DITHER = 6,
-  RAYS_PALETTE_EINK_FULL = 7,
-  RAYS_PALETTE_ALBUM_COVER = 8,
-  RAYS_PALETTE_SPECTRA6 = 9,
+  RAYS_PALETTE_OKLCH_BALANCED,
+  RAYS_PALETTE_SATURATED,
+  RAYS_PALETTE_SPECTRAL,
+  RAYS_PALETTE_NEON,
+  RAYS_PALETTE_MUTED,
+  RAYS_PALETTE_EINK_PURE,
+  RAYS_PALETTE_EINK_DITHER,
+  RAYS_PALETTE_EINK_FULL,
+  RAYS_PALETTE_ALBUM_COVER,
+  RAYS_PALETTE_SPECTRA6,
   RAYS_PALETTE_COUNT
 } RaysPaletteId;
 
@@ -784,7 +784,7 @@ static void render_rays(float *fb, int width, int height, float cx, float cy, fl
     if (paths->entry_ray.valid) {
       line_draw_glow(fb, width, height, paths->entry_ray.x0, paths->entry_ray.y0,
                      paths->entry_ray.x1, paths->entry_ray.y1, 1.0f, 1.0f, 1.0f, ray_glow_width,
-                     ray_glow_intensity, ray_glow_falloff, 0, circle_clip, prism_verts);
+                     ray_glow_intensity, ray_glow_falloff, nullptr, circle_clip, prism_verts);
     }
 
     // Draw internal path segments
@@ -793,35 +793,38 @@ static void render_rays(float *fb, int width, int height, float cx, float cy, fl
         // Entry→bounce segment: pure white
         line_draw_glow(fb, width, height, band->internal_seg1.x0, band->internal_seg1.y0,
                        band->internal_seg1.x1, band->internal_seg1.y1, 1.0f, 1.0f, 1.0f,
-                       ray_glow_width, ray_glow_intensity, ray_glow_falloff, prism_verts, 0, 0);
+                       ray_glow_width, ray_glow_intensity, ray_glow_falloff, prism_verts, nullptr,
+                       nullptr);
 
         // Bounced path: bounce → exit (colored)
         if (band->internal_seg2.valid && draw_internal_colored_rays) {
           if (use_gradient_intensity) {
-            line_draw_glow_gradient(
-                fb, width, height, band->internal_seg2.x0, band->internal_seg2.y0,
-                band->internal_seg2.x1, band->internal_seg2.y1, color.r, color.g, color.b,
-                ray_glow_width, ray_glow_intensity, 0.0f, ray_glow_falloff, prism_verts, 0, 0);
+            line_draw_glow_gradient(fb, width, height, band->internal_seg2.x0,
+                                    band->internal_seg2.y0, band->internal_seg2.x1,
+                                    band->internal_seg2.y1, color.r, color.g, color.b,
+                                    ray_glow_width, ray_glow_intensity, 0.0f, ray_glow_falloff,
+                                    prism_verts, nullptr, nullptr);
           } else {
             line_draw_glow(fb, width, height, band->internal_seg2.x0, band->internal_seg2.y0,
                            band->internal_seg2.x1, band->internal_seg2.y1, color.r, color.g,
                            color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-                           prism_verts, 0, 0);
+                           prism_verts, nullptr, nullptr);
           }
         }
       } else {
         // Direct path: entry → exit (colored)
         if (draw_internal_colored_rays) {
           if (use_gradient_intensity) {
-            line_draw_glow_gradient(
-                fb, width, height, band->internal_seg1.x0, band->internal_seg1.y0,
-                band->internal_seg1.x1, band->internal_seg1.y1, color.r, color.g, color.b,
-                ray_glow_width, ray_glow_intensity, 0.0f, ray_glow_falloff, prism_verts, 0, 0);
+            line_draw_glow_gradient(fb, width, height, band->internal_seg1.x0,
+                                    band->internal_seg1.y0, band->internal_seg1.x1,
+                                    band->internal_seg1.y1, color.r, color.g, color.b,
+                                    ray_glow_width, ray_glow_intensity, 0.0f, ray_glow_falloff,
+                                    prism_verts, nullptr, nullptr);
           } else {
             line_draw_glow(fb, width, height, band->internal_seg1.x0, band->internal_seg1.y0,
                            band->internal_seg1.x1, band->internal_seg1.y1, color.r, color.g,
                            color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-                           prism_verts, 0, 0);
+                           prism_verts, nullptr, nullptr);
           }
         }
       }
@@ -831,7 +834,7 @@ static void render_rays(float *fb, int width, int height, float cx, float cy, fl
     if (band->exit_ray.valid && draw_exit_rays) {
       line_draw_glow(fb, width, height, band->exit_ray.x0, band->exit_ray.y0, band->exit_ray.x1,
                      band->exit_ray.y1, color.r, color.g, color.b, ray_glow_width,
-                     ray_glow_intensity, ray_glow_falloff, 0, circle_clip, prism_verts);
+                     ray_glow_intensity, ray_glow_falloff, nullptr, circle_clip, prism_verts);
     }
   }
 }

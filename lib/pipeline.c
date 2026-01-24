@@ -8,9 +8,9 @@ void pipeline_init(Pipeline *p) {
   p->count = 0;
   // Zero out entries for safety
   for (int i = 0; i < PIPELINE_MAX_KERNELS; i++) {
-    p->entries[i].kernel = 0;
-    p->entries[i].config = 0;
-    p->entries[i].cache = 0;
+    p->entries[i].kernel = nullptr;
+    p->entries[i].config = nullptr;
+    p->entries[i].cache = nullptr;
   }
 }
 
@@ -18,7 +18,7 @@ int pipeline_add_kernel(Pipeline *p, const Kernel *kernel, const void *config, v
   if (p->count >= PIPELINE_MAX_KERNELS) {
     return -1; // Pipeline full
   }
-  if (kernel == 0) {
+  if (kernel == nullptr) {
     return -1; // Invalid kernel
   }
 
@@ -34,7 +34,7 @@ int pipeline_add_kernel(Pipeline *p, const Kernel *kernel, const void *config, v
 void pipeline_execute(const Pipeline *p, float *fb, int width, int height) {
   for (int i = 0; i < p->count; i++) {
     const PipelineEntry *entry = &p->entries[i];
-    if (entry->kernel != 0 && entry->kernel->apply != 0) {
+    if (entry->kernel != nullptr && entry->kernel->apply != nullptr) {
       entry->kernel->apply(fb, width, height, entry->config, entry->cache);
     }
   }

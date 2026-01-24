@@ -624,7 +624,7 @@ void test_null_input_rejected(void) {
                          .strength = 1.0f};
   DITHER_CACHE_STATIC(cache, 6, 16);
 
-  int result = kernel_dither_apply(NULL, output, 1, 1, &config, &cache);
+  int result = kernel_dither_apply(nullptr, output, 1, 1, &config, &cache);
   ASSERT_EQ(result, -1);
   TEST_END();
 }
@@ -638,7 +638,7 @@ void test_null_output_rejected(void) {
                          .strength = 1.0f};
   DITHER_CACHE_STATIC(cache, 6, 16);
 
-  int result = kernel_dither_apply(input, NULL, 1, 1, &config, &cache);
+  int result = kernel_dither_apply(input, nullptr, 1, 1, &config, &cache);
   ASSERT_EQ(result, -1);
   TEST_END();
 }
@@ -648,7 +648,7 @@ void test_null_palette_rejected(void) {
   float input[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   uint8_t output[4] = {0};
   DitherConfig config = {
-      .palette = NULL, .palette_count = 6, .algorithm = DITHER_ATKINSON, .strength = 1.0f};
+      .palette = nullptr, .palette_count = 6, .algorithm = DITHER_ATKINSON, .strength = 1.0f};
   DITHER_CACHE_STATIC(cache, 6, 16);
 
   int result = kernel_dither_apply(input, output, 1, 1, &config, &cache);

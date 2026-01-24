@@ -290,7 +290,7 @@ void test_layer_render_null_config(void) {
       .cx = 16.0f,
       .cy = 16.0f,
       .radius = 14.0f,
-      .marker_config = NULL // No config
+      .marker_config = nullptr // No config
   };
 
   // Should not crash with null config

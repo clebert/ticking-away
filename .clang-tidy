@@ -1,6 +1,7 @@
 Checks: >
-  -*, bugprone-*, cert-* clang-analyzer-*, misc-*, performance-*, portability-*,
-  readability-identifier-naming, -bugprone-easily-swappable-parameters, -misc-include-cleaner,
+  -*, bugprone-*, cert-*, clang-analyzer-*, misc-*, performance-*, portability-*,
+  readability-identifier-naming, modernize-macro-to-enum, modernize-use-nullptr,
+  -bugprone-easily-swappable-parameters, -misc-include-cleaner,
 
 WarningsAsErrors: "*"
 

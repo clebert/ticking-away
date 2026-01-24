@@ -40,7 +40,7 @@ void test_line_horizontal(void) {
   line_draw_glow(fb, w, h, 2.0f, 10.0f, 18.0f, 10.0f, 1.0f, 1.0f, 1.0f, // White
                  3.0f,                                                  // glow_width
                  1.0f,                                                  // intensity
-                 FALLOFF_LINEAR, NULL, NULL, NULL);
+                 FALLOFF_LINEAR, nullptr, nullptr, nullptr);
 
   // Check that pixels near the line have non-zero values
   float r, g, b;
@@ -61,7 +61,7 @@ void test_line_vertical(void) {
   int w = 20, h = 20;
 
   line_draw_glow(fb, w, h, 10.0f, 2.0f, 10.0f, 18.0f, 0.0f, 1.0f, 0.0f, // Green
-                 3.0f, 1.0f, FALLOFF_LINEAR, NULL, NULL, NULL);
+                 3.0f, 1.0f, FALLOFF_LINEAR, nullptr, nullptr, nullptr);
 
   float r, g, b;
   get_pixel(fb, w, 10, 10, &r, &g, &b);
@@ -78,7 +78,7 @@ void test_line_diagonal(void) {
   int w = 20, h = 20;
 
   line_draw_glow(fb, w, h, 2.0f, 2.0f, 18.0f, 18.0f, 1.0f, 0.0f, 0.0f, // Red
-                 3.0f, 1.0f, FALLOFF_LINEAR, NULL, NULL, NULL);
+                 3.0f, 1.0f, FALLOFF_LINEAR, nullptr, nullptr, nullptr);
 
   // Check diagonal pixels
   float r, g, b;
@@ -109,7 +109,7 @@ void test_line_gradient_intensity(void) {
   line_draw_glow_gradient(fb, w, h, 5.0f, 10.0f, 45.0f, 10.0f, 1.0f, 1.0f, 1.0f, 3.0f,
                           1.0f, // intensity_start
                           0.1f, // intensity_end (much dimmer)
-                          FALLOFF_LINEAR, NULL, NULL, NULL);
+                          FALLOFF_LINEAR, nullptr, nullptr, nullptr);
 
   // Pixel near start should be brighter than pixel near end
   float r1, g1, b1, r2, g2, b2;
@@ -134,10 +134,10 @@ void test_line_falloff_quadratic(void) {
 
   // Same line with different falloffs
   line_draw_glow(fb1, w, h, 5.0f, 10.0f, 15.0f, 10.0f, 1.0f, 1.0f, 1.0f, 5.0f, 1.0f, FALLOFF_LINEAR,
-                 NULL, NULL, NULL);
+                 nullptr, nullptr, nullptr);
 
   line_draw_glow(fb2, w, h, 5.0f, 10.0f, 15.0f, 10.0f, 1.0f, 1.0f, 1.0f, 5.0f, 1.0f,
-                 FALLOFF_QUADRATIC, NULL, NULL, NULL);
+                 FALLOFF_QUADRATIC, nullptr, nullptr, nullptr);
 
   // Quadratic should fall off faster, so total light should be less
   float sum1 = sum_rgb(fb1, w, h);
@@ -163,7 +163,7 @@ void test_line_clip_circle(void) {
 
   // Long horizontal line clipped to circle
   line_draw_glow(fb, w, h, 0.0f, 10.0f, 20.0f, 10.0f, 1.0f, 1.0f, 1.0f, 2.0f, 1.0f, FALLOFF_LINEAR,
-                 NULL, circle, NULL);
+                 nullptr, circle, nullptr);
 
   // Pixel inside circle should have value
   float r, g, b;
@@ -195,7 +195,7 @@ void test_line_clip_triangle(void) {
 
   // Line that crosses both inside and outside triangle
   line_draw_glow(fb, w, h, 0.0f, 5.0f, 20.0f, 5.0f, 1.0f, 1.0f, 1.0f, 2.0f, 1.0f, FALLOFF_LINEAR,
-                 tri, NULL, NULL);
+                 tri, nullptr, nullptr);
 
   // Pixel inside triangle should have value
   float r, g, b;
@@ -224,7 +224,7 @@ void test_line_exclude_triangle(void) {
 
   // Line through center
   line_draw_glow(fb, w, h, 0.0f, 10.0f, 20.0f, 10.0f, 1.0f, 1.0f, 1.0f, 2.0f, 1.0f, FALLOFF_LINEAR,
-                 NULL, NULL, exclude);
+                 nullptr, nullptr, exclude);
 
   // Pixel outside exclusion should have value
   float r, g, b;
@@ -250,7 +250,7 @@ void test_line_zero_length(void) {
 
   // Zero-length line (point)
   line_draw_glow(fb, w, h, 10.0f, 10.0f, 10.0f, 10.0f, 1.0f, 1.0f, 1.0f, 3.0f, 1.0f, FALLOFF_LINEAR,
-                 NULL, NULL, NULL);
+                 nullptr, nullptr, nullptr);
 
   // Should create a circular glow around the point
   float r, g, b;
@@ -268,7 +268,7 @@ void test_line_outside_framebuffer(void) {
 
   // Line completely outside framebuffer
   line_draw_glow(fb, w, h, 100.0f, 100.0f, 200.0f, 100.0f, 1.0f, 1.0f, 1.0f, 3.0f, 1.0f,
-                 FALLOFF_LINEAR, NULL, NULL, NULL);
+                 FALLOFF_LINEAR, nullptr, nullptr, nullptr);
 
   // Framebuffer should remain zero
   float sum = sum_rgb(fb, w, h);
@@ -285,7 +285,7 @@ void test_line_zero_intensity(void) {
 
   line_draw_glow(fb, w, h, 5.0f, 10.0f, 15.0f, 10.0f, 1.0f, 1.0f, 1.0f, 3.0f,
                  0.0f, // Zero intensity
-                 FALLOFF_LINEAR, NULL, NULL, NULL);
+                 FALLOFF_LINEAR, nullptr, nullptr, nullptr);
 
   // No light should be added
   float sum = sum_rgb(fb, w, h);

@@ -127,7 +127,7 @@ void test_kernel_gamma_apply(void) {
                   // Pixel 3: red (linear)
                   0.5f, 0.0f, 0.0f, 1.0f};
 
-  kernel_gamma_apply(fb, 2, 2, (void *)0, (void *)0);
+  kernel_gamma_apply(fb, 2, 2, nullptr, nullptr);
 
   // Check black stayed black
   ASSERT_NEAR(fb[0], 0.0f, 0.001f);
@@ -151,7 +151,7 @@ void test_kernel_gamma_clamps_values(void) {
   // Create framebuffer with out-of-range values (from additive blending)
   float fb[4] = {1.5f, -0.2f, 2.0f, 1.0f};
 
-  kernel_gamma_apply(fb, 1, 1, (void *)0, (void *)0);
+  kernel_gamma_apply(fb, 1, 1, nullptr, nullptr);
 
   // Values should be clamped before gamma conversion
   ASSERT_NEAR(fb[0], 1.0f, 0.001f); // 1.5 clamped to 1.0, then gamma = 1.0

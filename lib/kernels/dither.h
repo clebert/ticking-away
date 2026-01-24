@@ -47,15 +47,15 @@ typedef struct {
 
 // Pure RGB palette (ideal target colors) - 6 colors
 extern const DitherRGB DITHER_PALETTE_IDEAL[];
-#define DITHER_PALETTE_IDEAL_COUNT 6
+enum { DITHER_PALETTE_IDEAL_COUNT = 6 };
 
 // Inky Impression 13.3" device palette (Spectra 6) - 6 colors
 extern const DitherRGB DITHER_PALETTE_DEVICE[];
-#define DITHER_PALETTE_DEVICE_COUNT 6
+enum { DITHER_PALETTE_DEVICE_COUNT = 6 };
 
 // Measured Spectra 6 palette (from epdoptimize) - 6 colors
 extern const DitherRGB DITHER_PALETTE_SPECTRA6[];
-#define DITHER_PALETTE_SPECTRA6_COUNT 6
+enum { DITHER_PALETTE_SPECTRA6_COUNT = 6 };
 
 // -------------------------------------------------------------------------------------------------
 // OkLab Color Type

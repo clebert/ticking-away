@@ -20,7 +20,7 @@
 // Constants
 // -------------------------------------------------------------------------------------------------
 
-#define GRADIENT_NUM_BANDS 7 // Number of color bands in rainbow
+enum { GRADIENT_NUM_BANDS = 7 }; // Number of color bands in rainbow
 
 // Edge margin factor for extending gradient beyond visible rays into IR/UV zones
 // With centered band spacing, rays span (N-1)/N of the gradient

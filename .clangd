@@ -6,6 +6,7 @@ CompileFlags:
     - "-std=c23"
     - "-Wall"
     - "-Wextra"
+    - "-Wno-unused-function"
     - "-Ilib"
     - "-I../lib"
     - "-I../../lib"

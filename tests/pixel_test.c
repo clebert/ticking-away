@@ -56,6 +56,7 @@ void test_falloff_default(void) {
   TEST_BEGIN("falloff_default");
 
   // Unknown type should default to quadratic
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
   ASSERT_NEAR(compute_falloff((FalloffType)99, 0.5f), 0.25f, 0.001f);
 
   TEST_END();

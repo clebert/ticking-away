@@ -42,11 +42,11 @@ void test_pipeline_add_kernel(void) {
   Pipeline p;
   pipeline_init(&p);
 
-  int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, (void *)0, (void *)0);
+  int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
   ASSERT_EQ(result, 0);
   ASSERT_EQ(pipeline_count(&p), 1);
 
-  result = pipeline_add_kernel(&p, &KERNEL_GRAIN, (void *)0, (void *)0);
+  result = pipeline_add_kernel(&p, &KERNEL_GRAIN, nullptr, (void *)0);
   ASSERT_EQ(result, 0);
   ASSERT_EQ(pipeline_count(&p), 2);
 
@@ -58,7 +58,7 @@ void test_pipeline_add_null_kernel(void) {
   Pipeline p;
   pipeline_init(&p);
 
-  int result = pipeline_add_kernel(&p, (void *)0, (void *)0, (void *)0);
+  int result = pipeline_add_kernel(&p, nullptr, nullptr, (void *)0);
   ASSERT_EQ(result, -1);            // Should fail
   ASSERT_EQ(pipeline_count(&p), 0); // Count unchanged
 
@@ -72,13 +72,13 @@ void test_pipeline_full(void) {
 
   // Fill the pipeline to capacity
   for (int i = 0; i < PIPELINE_MAX_KERNELS; i++) {
-    int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, (void *)0, (void *)0);
+    int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
     ASSERT_EQ(result, 0);
   }
   ASSERT_EQ(pipeline_count(&p), PIPELINE_MAX_KERNELS);
 
   // Try to add one more - should fail
-  int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, (void *)0, (void *)0);
+  int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
   ASSERT_EQ(result, -1);
   ASSERT_EQ(pipeline_count(&p), PIPELINE_MAX_KERNELS); // Count unchanged
 
@@ -110,7 +110,7 @@ void test_pipeline_execute_single_kernel(void) {
   TEST_BEGIN("pipeline_execute_single_kernel");
   Pipeline p;
   pipeline_init(&p);
-  pipeline_add_kernel(&p, &KERNEL_GAMMA, (void *)0, (void *)0);
+  pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
 
   // Linear gray (0.5) should become sRGB gray (~0.735)
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
@@ -130,11 +130,11 @@ void test_pipeline_execute_gamma_then_grain(void) {
   pipeline_init(&p);
 
   // Add gamma kernel first
-  pipeline_add_kernel(&p, &KERNEL_GAMMA, (void *)0, (void *)0);
+  pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
 
   // Add grain kernel with config
   GrainConfig grain_cfg = {.intensity = 0.1f, .scale = 1.0f, .threshold = 0.01f, .prism_only = 0};
-  GrainGeometry grain_geom = {.cx = 2.0f, .cy = 2.0f, .radius = 10.0f, .prism_vertices = (void *)0};
+  GrainGeometry grain_geom = {.cx = 2.0f, .cy = 2.0f, .radius = 10.0f, .prism_vertices = nullptr};
   pipeline_add_kernel(&p, &KERNEL_GRAIN, &grain_cfg, &grain_geom);
 
   ASSERT_EQ(pipeline_count(&p), 2);
@@ -167,7 +167,7 @@ void test_pipeline_execute_order_matters(void) {
   // Execute gamma then vignette
   Pipeline p1;
   pipeline_init(&p1);
-  pipeline_add_kernel(&p1, &KERNEL_GAMMA, (void *)0, (void *)0);
+  pipeline_add_kernel(&p1, &KERNEL_GAMMA, nullptr, (void *)0);
 
   VignetteConfig vignette_cfg = {.enabled = 1, .strength = 0.4f, .background = 0.137f};
   VignetteGeometry vignette_geom = {
@@ -185,7 +185,7 @@ void test_pipeline_execute_order_matters(void) {
   Pipeline p2;
   pipeline_init(&p2);
   pipeline_add_kernel(&p2, &KERNEL_VIGNETTE, &vignette_cfg, &vignette_geom);
-  pipeline_add_kernel(&p2, &KERNEL_GAMMA, (void *)0, (void *)0);
+  pipeline_add_kernel(&p2, &KERNEL_GAMMA, nullptr, (void *)0);
 
   float fb2[64];
   fill_framebuffer(fb2, 4, 4, 0.5f, 0.5f, 0.5f, 1.0f);
@@ -219,11 +219,10 @@ void test_pipeline_three_kernels(void) {
   pipeline_init(&p);
 
   // Standard post-processing pipeline: gamma -> grain -> vignette
-  pipeline_add_kernel(&p, &KERNEL_GAMMA, (void *)0, (void *)0);
+  pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
 
   GrainConfig grain_cfg = {.intensity = 0.05f, .scale = 1.0f, .threshold = 0.01f, .prism_only = 0};
-  GrainGeometry grain_geom = {
-      .cx = 4.0f, .cy = 4.0f, .radius = 100.0f, .prism_vertices = (void *)0};
+  GrainGeometry grain_geom = {.cx = 4.0f, .cy = 4.0f, .radius = 100.0f, .prism_vertices = nullptr};
   pipeline_add_kernel(&p, &KERNEL_GRAIN, &grain_cfg, &grain_geom);
 
   VignetteConfig vignette_cfg = {.enabled = 1, .strength = 0.3f, .background = 0.1f};
@@ -269,7 +268,7 @@ void test_pipeline_passes_config_and_cache(void) {
   // Grain with zero intensity should not modify the framebuffer much
   GrainConfig grain_cfg_off = {
       .intensity = 0.0f, .scale = 1.0f, .threshold = 0.01f, .prism_only = 0};
-  GrainGeometry grain_geom = {.cx = 2.0f, .cy = 2.0f, .radius = 10.0f, .prism_vertices = (void *)0};
+  GrainGeometry grain_geom = {.cx = 2.0f, .cy = 2.0f, .radius = 10.0f, .prism_vertices = nullptr};
   pipeline_add_kernel(&p, &KERNEL_GRAIN, &grain_cfg_off, &grain_geom);
 
   float fb[16];
