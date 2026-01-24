@@ -68,6 +68,7 @@ export function render(): void {
   config.ditherKernel = dither.kernel.value;
   config.ditherOklabError = dither.oklabError.value;
   config.ditherBwThreshold = (dither.bwThreshold.value / 100.0) * MAX_BW_CHROMA_THRESHOLD;
+  config.ditherChromaWeight = dither.chromaWeight.value / 100.0;
 
   wasmModule.render_watchface(pointers.floatPtr, pointers.uint8Ptr, width, height);
 

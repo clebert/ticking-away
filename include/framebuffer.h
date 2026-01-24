@@ -92,6 +92,7 @@ static void apply_ui_background(
 // dither_kernel: 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
 // dither_oklab_error: 0=linear RGB error diffusion, 1=OkLab error diffusion
 // dither_bw_threshold: OkLab chroma threshold for B/W-only dithering (0.0 = disabled)
+// dither_chroma_weight: 0.5-4.0, weight for hue/chroma vs lightness (1.0 = default, higher = prioritize hue)
 static void finalize_framebuffer(
   const float* float_fb, uint8_t* out_fb,
   int width, int height,
@@ -109,14 +110,15 @@ static void finalize_framebuffer(
   float dither_strength,    // 0.0-1.0: error diffusion strength
   int dither_kernel,        // 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
   int dither_oklab_error,   // 0=linear RGB error diffusion, 1=OkLab error diffusion
-  float dither_bw_threshold // OkLab chroma threshold (0.0-1.0): pixels below this use B/W only
+  float dither_bw_threshold, // OkLab chroma threshold (0.0-1.0): pixels below this use B/W only
+  float dither_chroma_weight // 0.5-4.0: weight for hue/chroma vs lightness (1.0 = default)
 ) {
   // Apply error diffusion dithering directly from linear RGB
   // Skip grain - not applicable for e-ink output
   if (dither_enabled) {
     dither_buffer(float_fb, out_fb, width, height, (DitherPaletteMode)palette_mode,
                   palette_saturation, transparent_background, dither_strength,
-                  (DitherKernel)dither_kernel, dither_oklab_error, dither_bw_threshold);
+                  (DitherKernel)dither_kernel, dither_oklab_error, dither_bw_threshold, dither_chroma_weight);
     // Apply UI background after dithering (grey + vignette outside circle)
     apply_ui_background(out_fb, width, height, cx, cy, radius,
                         transparent_background, vignette_enabled);

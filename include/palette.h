@@ -20,6 +20,7 @@ typedef enum {
   PALETTE_EINK_DITHER = 6,     // Optimized for e-ink dithering, skip violet
   PALETTE_EINK_FULL = 7,       // Full spectrum, violet biased toward blue
   PALETTE_ALBUM_COVER = 8,     // Dark Side aesthetic - deep saturated edges
+  PALETTE_SPECTRA6 = 9,        // Optimized for Spectra 6 e-ink display
   PALETTE_COUNT
 } ColorPalette;
 
@@ -118,6 +119,18 @@ static const uint8_t PALETTE_COLORS[PALETTE_COUNT][NUM_BANDS][3] = {
     {  0, 100, 255},  // Deep cyan-blue
     {  0,   0, 200},  // Deep blue (dithers B+Black)
     { 60,   0, 180}   // Deep violet
+  },
+  // PALETTE_SPECTRA6 (optimized for Spectra 6 e-ink display)
+  // Colors close to actual Spectra 6 hardware capabilities for smoother dithering
+  // Spectra 6: Black #191E21, White #E8E8E8, Yellow #EFDE44, Red #B21318, Blue #2157BA, Green #125F20
+  {
+    {178,  19,  24},  // Red (Spectra 6 red)
+    {220, 130,  35},  // Orange (balanced, gives yellow more room)
+    {240, 220,  60},  // Yellow (bright, close to Spectra 6)
+    { 70, 145,  55},  // Green (brighter, dithers G+Y/W for luminance)
+    {  0, 140, 200},  // Cyan (blue-biased, gives green more room)
+    { 30,  70, 160},  // Blue (toned down, gives green more room)
+    {100,  30, 160}   // Violet (dithers Blue+Red for purple)
   }
 };
 

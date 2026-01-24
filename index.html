@@ -426,6 +426,7 @@
               <option value="6">E-Ink Dither</option>
               <option value="7">E-Ink Full</option>
               <option value="8">Album Cover</option>
+              <option value="9">Spectra 6</option>
             </select>
           </div>
           <div class="control-group">
@@ -581,6 +582,17 @@
               min="0"
               max="100"
               data-bind="value:dither.bwThreshold, oninput:dither.setBwThreshold, disabled:!dither.enabled"
+            />
+          </div>
+          <div class="control-group">
+            <label
+              >Chroma Weight: <span data-bind="textContent:dither.chromaWeight">100</span>%</label
+            >
+            <input
+              type="range"
+              min="50"
+              max="400"
+              data-bind="value:dither.chromaWeight, oninput:dither.setChromaWeight, disabled:!dither.enabled"
             />
           </div>
 

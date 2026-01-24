@@ -195,6 +195,7 @@ static void draw_watch_overlay_f(
 // - palette_saturation: 0.0-1.0, blend factor (only used when palette_mode=BLEND)
 // - dither_kernel: 0=ATKINSON (75%), 1=FLOYD_STEINBERG (100%)
 // - dither_bw_threshold: OkLab chroma threshold for B/W-only dithering (0.0 = disabled)
+// - dither_chroma_weight: 0.5-4.0, weight for hue/chroma vs lightness (1.0 = default, higher = prioritize hue)
 static void render_watchface_scene(
   float* float_fb,  // Float buffer for linear rendering
   uint8_t* fb,      // Output buffer (gamma-corrected)
@@ -233,7 +234,8 @@ static void render_watchface_scene(
   float dither_strength,
   int dither_kernel,
   int dither_oklab_error,
-  float dither_bw_threshold
+  float dither_bw_threshold,
+  float dither_chroma_weight
 ) {
   // Initialize precomputed data (reinitializes if palette changed)
   init_band_colors((ColorPalette)palette);
@@ -264,7 +266,7 @@ static void render_watchface_scene(
                          grain_intensity, grain_scale, cx, cy, radius,
                          prism, grain_prism_only, grain_brightness_threshold,
                          transparent_background, vignette,
-                         dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error, dither_bw_threshold);
+                         dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error, dither_bw_threshold, dither_chroma_weight);
     return;
   }
 
@@ -439,5 +441,5 @@ static void render_watchface_scene(
                        grain_intensity, grain_scale, cx, cy, radius,
                        prism, grain_prism_only, grain_brightness_threshold,
                        transparent_background, vignette,
-                       dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error, dither_bw_threshold);
+                       dither_enabled, palette_mode, palette_saturation, dither_strength, dither_kernel, dither_oklab_error, dither_bw_threshold, dither_chroma_weight);
 }

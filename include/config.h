@@ -53,6 +53,7 @@ typedef struct {
   int32_t dither_kernel;             // 0 = ATKINSON, 1 = FLOYD_STEINBERG
   int32_t dither_oklab_error;        // 0 = linear RGB error diffusion, 1 = OkLab error diffusion
   float dither_bw_threshold;         // 0.0-1.0: OkLab chroma threshold for B/W-only (0.0 = disabled)
+  float dither_chroma_weight;        // 0.5-4.0: weight for hue/chroma vs lightness (default 1.0, higher = prioritize hue)
 
   // Debug output (written by render, read by JS)
   float entry_u;                     // Parametric position of entry point on prism edge (0-1)

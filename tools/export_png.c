@@ -159,7 +159,9 @@ int main(int argc, char *argv[]) {
       0.5f, // palette_saturation (unused when dithering disabled)
       0.2f, // dither_strength (default, unused when disabled)
       0,    // dither_kernel (ATKINSON, unused when disabled)
-      0     // dither_oklab_error (unused when disabled)
+      0,    // dither_oklab_error (unused when disabled)
+      0.0f, // dither_bw_threshold (unused when disabled)
+      1.0f  // dither_chroma_weight (default, unused when disabled)
   );
 
   // Write PNG

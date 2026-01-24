@@ -45,6 +45,7 @@ export interface Settings {
   ditherKernel: number;
   ditherOklabError: boolean;
   ditherBwThreshold: number;
+  ditherChromaWeight: number;
 }
 
 export function loadSettings(): Partial<Settings> {
@@ -111,6 +112,7 @@ export function saveSettings({
       ditherKernel: dither.kernel.value,
       ditherOklabError: dither.oklabError.value,
       ditherBwThreshold: dither.bwThreshold.value,
+      ditherChromaWeight: dither.chromaWeight.value,
 
       displayMarkers: display.markers.value,
       displayPebble: display.pebble.value,
