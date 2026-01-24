@@ -167,7 +167,7 @@ void test_kernel_gamma_clamps_values(void) {
 
 int main(void) {
   printf("Gamma kernel tests\n");
-  printf("==================\n\n");
+  printf("==================\n");
 
   // sRGB to linear tests
   test_srgb_to_linear_black();

@@ -95,6 +95,6 @@
 
 #define TEST_RUNNER_END()                                                                          \
   do {                                                                                             \
-    printf("\n%d passed, %d failed\n", test_passed, test_failed);                                  \
+    printf("%d passed, %d failed\n", test_passed, test_failed);                                    \
     return test_failed > 0 ? 1 : 0;                                                                \
   } while (0)

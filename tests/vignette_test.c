@@ -380,7 +380,7 @@ void test_kernel_descriptor(void) {
 
 int main(void) {
   printf("Vignette kernel tests\n");
-  printf("=====================\n\n");
+  printf("=====================\n");
 
   // Hash function tests
   test_hash_deterministic();

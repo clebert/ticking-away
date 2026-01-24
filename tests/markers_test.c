@@ -416,7 +416,7 @@ void test_markers_clipped_to_circle(void) {
 
 int main(void) {
   printf("Markers Layer Tests\n");
-  printf("===================\n\n");
+  printf("===================\n");
 
   // Basic drawing tests
   test_markers_draw_no_crash();

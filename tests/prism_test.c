@@ -259,7 +259,7 @@ void test_prism_contains_point_outside(void) {
 
 int main(void) {
   printf("Prism geometry tests\n");
-  printf("====================\n\n");
+  printf("====================\n");
 
   // Prism creation tests
   test_prism_create_basic();

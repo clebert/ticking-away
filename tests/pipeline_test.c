@@ -322,7 +322,7 @@ void test_pipeline_disabled_vignette(void) {
 
 int main(void) {
   printf("Pipeline tests\n");
-  printf("==============\n\n");
+  printf("==============\n");
 
   // Initialization tests
   test_pipeline_init();

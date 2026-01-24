@@ -695,7 +695,7 @@ void test_palette_exceeds_cache_rejected(void) {
 
 int main(void) {
   printf("Dither kernel tests\n");
-  printf("===================\n\n");
+  printf("===================\n");
 
   // sRGB to linear tests
   test_srgb_to_linear_black();

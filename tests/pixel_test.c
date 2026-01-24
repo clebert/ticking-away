@@ -232,7 +232,7 @@ void test_pixel_correct_index(void) {
 
 int main(void) {
   printf("Pixel drawing tests\n");
-  printf("===================\n\n");
+  printf("===================\n");
 
   // Falloff tests
   test_falloff_linear();

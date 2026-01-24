@@ -278,7 +278,7 @@ void test_matches_original_center(void) {
 
 int main(void) {
   printf("Background layer tests\n");
-  printf("======================\n\n");
+  printf("======================\n");
 
   // Basic initialization
   test_background_inside_circle();

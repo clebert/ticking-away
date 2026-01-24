@@ -316,7 +316,7 @@ void test_gradient_reverse_spectrum(void) {
 
 int main(void) {
   printf("Gradient Layer Tests\n");
-  printf("====================\n\n");
+  printf("====================\n");
 
   // Palette cache tests
   test_palette_cache_init();

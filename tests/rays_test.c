@@ -547,7 +547,7 @@ void test_layer_descriptor(void) {
 
 int main(void) {
   printf("Rays layer tests\n");
-  printf("================\n\n");
+  printf("================\n");
 
   // Palette cache tests
   test_palette_cache_init();

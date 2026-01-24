@@ -361,7 +361,7 @@ void test_layer_descriptor(void) {
 
 int main(void) {
   printf("Prism Glow Layer Tests\n");
-  printf("======================\n\n");
+  printf("======================\n");
 
   // Smooth minimum tests
   test_smooth_min_equal_values();

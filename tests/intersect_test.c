@@ -270,7 +270,7 @@ void test_clip_segment_one_inside(void) {
 
 int main(void) {
   printf("Intersection geometry tests\n");
-  printf("===========================\n\n");
+  printf("===========================\n");
 
   // Ray-segment tests
   test_ray_segment_hit_middle();

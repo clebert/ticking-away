@@ -236,7 +236,7 @@ void test_capsule_scanline_endcap_only(void) {
 
 int main(void) {
   printf("Segment geometry tests\n");
-  printf("======================\n\n");
+  printf("======================\n");
 
   // Segment initialization tests
   test_segment_init_basic();

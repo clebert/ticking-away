@@ -300,7 +300,7 @@ void test_line_zero_intensity(void) {
 
 int main(void) {
   printf("Line drawing tests\n");
-  printf("==================\n\n");
+  printf("==================\n");
 
   // Basic line drawing
   test_line_horizontal();

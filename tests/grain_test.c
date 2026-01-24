@@ -276,7 +276,7 @@ void test_grain_clamps_output(void) {
 
 int main(void) {
   printf("Grain kernel tests\n");
-  printf("==================\n\n");
+  printf("==================\n");
 
   // Hash function tests
   test_hash_deterministic();

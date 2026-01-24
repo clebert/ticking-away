@@ -347,7 +347,7 @@ void test_scene_render_at_different_times(void) {
 
 int main(void) {
   printf("Scene Tests\n");
-  printf("===========\n\n");
+  printf("===========\n");
 
   // Initialization
   test_scene_init_dimensions();
