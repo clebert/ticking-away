@@ -41,6 +41,7 @@ const defaults = {
     strength: 20, // 0-100, maps to 0.0-1.0
     kernel: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
+    bwThreshold: 10, // 0-100, maps to 0.0-0.3 OkLab chroma (0 = disabled, ~10 = B/W for grays)
   },
   display: {
     markers: false,
@@ -326,6 +327,7 @@ export const dither = {
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
   kernel: signal(settings.ditherKernel ?? defaults.dither.kernel),
   oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
+  bwThreshold: signal(settings.ditherBwThreshold ?? defaults.dither.bwThreshold),
 
   // Computed
   saturationDisabled: computed((): boolean => dither.paletteMode.value !== 2),
@@ -353,6 +355,10 @@ export const dither = {
 
   toggleOklabError(): void {
     dither.oklabError.value = !dither.oklabError.value;
+  },
+
+  setBwThreshold(e: Event): void {
+    dither.bwThreshold.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 };
 
@@ -428,6 +434,7 @@ export const resetAll = {
       dither.strength.value = defaults.dither.strength;
       dither.kernel.value = defaults.dither.kernel;
       dither.oklabError.value = defaults.dither.oklabError;
+      dither.bwThreshold.value = defaults.dither.bwThreshold;
 
       // Display
       display.markers.value = defaults.display.markers;

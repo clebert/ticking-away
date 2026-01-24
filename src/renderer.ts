@@ -3,6 +3,11 @@ import { getConfig } from "./config.ts";
 import { background, debug, display, dither, markers, prism, rays, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
+// Maximum OkLab chroma for B/W threshold mapping.
+// Near-gray colors typically have chroma < 0.1, saturated colors > 0.2.
+// 0.3 covers the full "could be perceived as grayish" range.
+const MAX_BW_CHROMA_THRESHOLD = 0.3;
+
 export function render(): void {
   const wasmModule = getWasmModule();
   const wasmMemory = getWasmMemory();
@@ -62,6 +67,7 @@ export function render(): void {
   config.ditherStrength = dither.strength.value / 100.0;
   config.ditherKernel = dither.kernel.value;
   config.ditherOklabError = dither.oklabError.value;
+  config.ditherBwThreshold = (dither.bwThreshold.value / 100.0) * MAX_BW_CHROMA_THRESHOLD;
 
   wasmModule.render_watchface(pointers.floatPtr, pointers.uint8Ptr, width, height);
 

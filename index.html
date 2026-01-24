@@ -572,6 +572,17 @@
               OkLab Error Diffusion</label
             >
           </div>
+          <div class="control-group">
+            <label
+              >B/W Threshold: <span data-bind="textContent:dither.bwThreshold">10</span>%</label
+            >
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:dither.bwThreshold, oninput:dither.setBwThreshold, disabled:!dither.enabled"
+            />
+          </div>
 
           <!-- Display Options -->
           <div class="section-title">Display</div>

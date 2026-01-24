@@ -184,6 +184,17 @@ static inline void init_dither_palette(const DitherRGB* palette,
 // Where * is current pixel. Only 75% of error is diffused, 25% is discarded.
 
 // =================================================================================================
+// OkLab Chroma (Saturation Metric)
+// =================================================================================================
+// Chroma in OkLab is the distance from the neutral axis (a=0, b=0).
+// Low chroma = grayscale/desaturated, high chroma = saturated/colorful.
+// Used to detect grayscale pixels for B/W-only dithering.
+
+static inline float oklab_chroma(OkLab color) {
+  return sqrtf_impl(color.a * color.a + color.b * color.b);
+}
+
+// =================================================================================================
 // Color Distance (Euclidean in OkLab - Perceptually Uniform)
 // =================================================================================================
 
@@ -221,6 +232,36 @@ static inline int find_closest_palette_color_oklab(OkLab color) {
   return best_idx;
 }
 
+// Palette index constants for B/W dithering.
+// IMPORTANT: These must match the palette order in DITHER_PALETTE (index 0 = black, index 1 = white).
+// If the palette order changes, update these constants accordingly.
+#define DITHER_IDX_BLACK 0
+#define DITHER_IDX_WHITE 1
+
+// Find the closest B/W color (black or white only) using OkLab distance.
+// Used for low-saturation pixels to avoid color artifacts on grayscale areas.
+// Returns: DITHER_IDX_BLACK (0) or DITHER_IDX_WHITE (1)
+// Note: Caller must call init_dither_palette() first
+static inline int find_closest_bw_color_oklab(OkLab color) {
+  float dist_black = oklab_distance_sq(color, DITHER_PALETTE_OKLAB[DITHER_IDX_BLACK]);
+  float dist_white = oklab_distance_sq(color, DITHER_PALETTE_OKLAB[DITHER_IDX_WHITE]);
+  return (dist_black < dist_white) ? DITHER_IDX_BLACK : DITHER_IDX_WHITE;
+}
+
+// Find the closest palette color, using B/W only for low-chroma (grayscale) pixels.
+// This avoids color artifacts on nearly-gray areas by restricting them to black/white.
+// Parameters:
+//   color: OkLab color to match
+//   bw_threshold: chroma threshold (0.0 = disabled, use full palette; >0 = B/W for low chroma)
+// Returns: palette index of closest color
+// Note: Caller must call init_dither_palette() first
+static inline int find_palette_color_with_bw_threshold(OkLab color, float bw_threshold) {
+  if (bw_threshold > 0.0f && oklab_chroma(color) < bw_threshold) {
+    return find_closest_bw_color_oklab(color);
+  }
+  return find_closest_palette_color_oklab(color);
+}
+
 // =================================================================================================
 // Atkinson Dithered Color Quantization
 // =================================================================================================
@@ -248,12 +289,14 @@ static float err_next2_r[DITHER_MAX_WIDTH], err_next2_g[DITHER_MAX_WIDTH], err_n
 //   preserve_alpha: 1 = preserve alpha from float_fb, 0 = always opaque
 //   strength: 0.0-1.0, scales error diffusion (1.0 = full Atkinson 75%, 0.0 = no diffusion)
 //   oklab_error: 0 = diffuse error in linear RGB, 1 = diffuse error in OkLab space
+//   bw_threshold: OkLab chroma threshold (0.0-1.0). Pixels with chroma below this use B/W only.
+//                 0.0 = disabled (full color everywhere), ~0.1 = grayscale uses B/W only.
 //
 static inline void dither_buffer_atkinson(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength, int oklab_error) {
+    float strength, int oklab_error, float bw_threshold) {
 
   if (width > DITHER_MAX_WIDTH) return;
 
@@ -301,7 +344,7 @@ static inline void dither_buffer_atkinson(
         color.a = color.a + err_curr_g[x];  // a/b can be negative, don't clamp to 0
         color.b = color.b + err_curr_b[x];
 
-        idx = find_closest_palette_color_oklab(color);
+        idx = find_palette_color_with_bw_threshold(color, bw_threshold);
 
         // Calculate quantization error in OkLab space
         OkLab quantized = DITHER_PALETTE_OKLAB[idx];
@@ -338,7 +381,7 @@ static inline void dither_buffer_atkinson(
         float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
 
         color = linear_to_oklab(r, g, b);
-        idx = find_closest_palette_color_oklab(color);
+        idx = find_palette_color_with_bw_threshold(color, bw_threshold);
 
         // Calculate quantization error in linear RGB
         LinearRGB quantized = DITHER_PALETTE_LINEAR[idx];
@@ -414,12 +457,14 @@ static inline void dither_buffer_atkinson(
 //   strength: 0.0-1.0, scales error diffusion (1.0 = full FS 100%, 0.0 = no diffusion)
 //             Suggested default: 0.6-0.9 (lower than Atkinson since FS diffuses 100%)
 //   oklab_error: 0 = diffuse error in linear RGB, 1 = diffuse error in OkLab space
+//   bw_threshold: OkLab chroma threshold (0.0-1.0). Pixels with chroma below this use B/W only.
+//                 0.0 = disabled (full color everywhere), ~0.1 = grayscale uses B/W only.
 //
 static inline void dither_buffer_floyd_steinberg(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength, int oklab_error) {
+    float strength, int oklab_error, float bw_threshold) {
 
   if (width > DITHER_MAX_WIDTH) return;
 
@@ -470,7 +515,7 @@ static inline void dither_buffer_floyd_steinberg(
         color.a = color.a + err_curr_g[x];
         color.b = color.b + err_curr_b[x];
 
-        idx = find_closest_palette_color_oklab(color);
+        idx = find_palette_color_with_bw_threshold(color, bw_threshold);
 
         // Calculate quantization error in OkLab space
         OkLab quantized = DITHER_PALETTE_OKLAB[idx];
@@ -484,7 +529,7 @@ static inline void dither_buffer_floyd_steinberg(
         float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
 
         color = linear_to_oklab(r, g, b);
-        idx = find_closest_palette_color_oklab(color);
+        idx = find_palette_color_with_bw_threshold(color, bw_threshold);
 
         // Calculate quantization error in linear RGB
         LinearRGB quantized = DITHER_PALETTE_LINEAR[idx];
@@ -546,17 +591,17 @@ static inline void dither_buffer(
     const float* float_fb, uint8_t* out_fb,
     int width, int height,
     DitherPaletteMode palette_mode, float saturation, int preserve_alpha,
-    float strength, DitherKernel kernel, int oklab_error) {
+    float strength, DitherKernel kernel, int oklab_error, float bw_threshold) {
 
   switch (kernel) {
     case DITHER_KERNEL_FLOYD_STEINBERG:
       dither_buffer_floyd_steinberg(float_fb, out_fb, width, height,
-                                    palette_mode, saturation, preserve_alpha, strength, oklab_error);
+                                    palette_mode, saturation, preserve_alpha, strength, oklab_error, bw_threshold);
       break;
     case DITHER_KERNEL_ATKINSON:
     default:
       dither_buffer_atkinson(float_fb, out_fb, width, height,
-                             palette_mode, saturation, preserve_alpha, strength, oklab_error);
+                             palette_mode, saturation, preserve_alpha, strength, oklab_error, bw_threshold);
       break;
   }
 }
