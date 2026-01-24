@@ -328,6 +328,25 @@ static void render_watchface_scene(
     );
   }
 
+  // Compute internal ray fade when gradient is enabled
+  // The rays should fade out along their length, from full at entry to zero at exit
+  int draw_internal_colored_rays = 1;
+  int draw_exit_rays = 1;
+  int use_gradient_intensity = 0;  // Use gradient function for spatial fade along ray
+
+  if (gradient_fill && paths.gradient_valid) {
+    // Don't draw exit rays at all - gradient handles that region
+    draw_exit_rays = 0;
+
+    // Use gradient intensity along the ray length
+    use_gradient_intensity = 1;
+
+    // At maximum spread, don't draw internal rays at all
+    if (rainbow_spread > 0.99f) {
+      draw_internal_colored_rays = 0;
+    }
+  }
+
   // Draw all rays per-band using precomputed geometry
   for (int i = 0; i < NUM_BANDS; i++) {
     // When reverse_spectrum is true, reverse the color lookup (album art style)
@@ -354,26 +373,48 @@ static void render_watchface_scene(
           1.0f, 1.0f, 1.0f, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
           prism->vertices, 0, 0);
 
-        // Bounced path: bounce → exit (colored)
-        if (band->internal_seg2.valid) {
-          draw_line_with_glow_additive_f(float_fb, width, height,
-            band->internal_seg2.x0, band->internal_seg2.y0,
-            band->internal_seg2.x1, band->internal_seg2.y1,
-            color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-            prism->vertices, 0, 0);
+        // Bounced path: bounce → exit (colored, with fade when gradient enabled)
+        if (band->internal_seg2.valid && draw_internal_colored_rays) {
+          if (use_gradient_intensity) {
+            // Fade intensity along the ray: full at bounce, zero at exit
+            draw_line_with_glow_gradient_f(float_fb, width, height,
+              band->internal_seg2.x0, band->internal_seg2.y0,
+              band->internal_seg2.x1, band->internal_seg2.y1,
+              color.r, color.g, color.b, ray_glow_width,
+              ray_glow_intensity, 0.0f,  // full intensity at start, zero at end
+              ray_glow_falloff, prism->vertices, 0, 0);
+          } else {
+            draw_line_with_glow_additive_f(float_fb, width, height,
+              band->internal_seg2.x0, band->internal_seg2.y0,
+              band->internal_seg2.x1, band->internal_seg2.y1,
+              color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+              prism->vertices, 0, 0);
+          }
         }
       } else {
-        // Direct path: entry → exit (colored)
-        draw_line_with_glow_additive_f(float_fb, width, height,
-          band->internal_seg1.x0, band->internal_seg1.y0,
-          band->internal_seg1.x1, band->internal_seg1.y1,
-          color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
-          prism->vertices, 0, 0);
+        // Direct path: entry → exit (colored, with fade when gradient enabled)
+        if (draw_internal_colored_rays) {
+          if (use_gradient_intensity) {
+            // Fade intensity along the ray: full at entry, zero at exit
+            draw_line_with_glow_gradient_f(float_fb, width, height,
+              band->internal_seg1.x0, band->internal_seg1.y0,
+              band->internal_seg1.x1, band->internal_seg1.y1,
+              color.r, color.g, color.b, ray_glow_width,
+              ray_glow_intensity, 0.0f,  // full intensity at start, zero at end
+              ray_glow_falloff, prism->vertices, 0, 0);
+          } else {
+            draw_line_with_glow_additive_f(float_fb, width, height,
+              band->internal_seg1.x0, band->internal_seg1.y0,
+              band->internal_seg1.x1, band->internal_seg1.y1,
+              color.r, color.g, color.b, ray_glow_width, ray_glow_intensity, ray_glow_falloff,
+              prism->vertices, 0, 0);
+          }
+        }
       }
     }
 
-    // Draw exit ray (from prism exit to circle edge)
-    if (band->exit_ray.valid) {
+    // Draw exit ray (from prism exit to circle edge) - skip when gradient is enabled
+    if (band->exit_ray.valid && draw_exit_rays) {
       draw_line_with_glow_additive_f(float_fb, width, height,
         band->exit_ray.x0, band->exit_ray.y0,
         band->exit_ray.x1, band->exit_ray.y1,

@@ -67,6 +67,32 @@ static inline float point_to_segment_distance_sq(const SegmentParams* s, float p
   return dist_x * dist_x + dist_y * dist_y;
 }
 
+// Returns squared distance and also outputs position along segment (0=start, 1=end)
+static inline float point_to_segment_distance_sq_with_t(
+  const SegmentParams* s, float px, float py, float* out_t
+) {
+  if (s->len_sq < EPS_NORM) {
+    float fx = px - s->x0;
+    float fy = py - s->y0;
+    *out_t = 0.0f;
+    return fx * fx + fy * fy;
+  }
+
+  float fx = px - s->x0;
+  float fy = py - s->y0;
+  float t = (fx * s->dx + fy * s->dy) * s->inv_len_sq;
+
+  t = clampf(t, 0.0f, 1.0f);
+  *out_t = t;
+
+  float proj_x = s->x0 + t * s->dx;
+  float proj_y = s->y0 + t * s->dy;
+  float dist_x = px - proj_x;
+  float dist_y = py - proj_y;
+
+  return dist_x * dist_x + dist_y * dist_y;
+}
+
 // Compute distance from point (px, py) to line segment (x0, y0)-(x1, y1)
 static float point_to_segment_distance(
   float px, float py,

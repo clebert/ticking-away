@@ -62,16 +62,18 @@ static inline void set_pixel_alpha_f(
 // Line Drawing with Glow (Distance Field, Additive Blending, Linear Color Space)
 // =================================================================================================
 
-// Draw a line with glow effect using distance field approach and additive blending.
-// Designed for light rays where drawing multiple overlapping rays (e.g., per-band)
-// accumulates to correct brightness.
+// Draw a line with glow effect and intensity gradient along its length.
+// intensity_start: intensity at (x0, y0)
+// intensity_end: intensity at (x1, y1)
+// Intensity is linearly interpolated based on position along the line.
 // r, g, b are in 0.0-1.0 range (linear color space)
-static void draw_line_with_glow_additive_f(
+static void draw_line_with_glow_gradient_f(
   float* fb, int width, int height,
   float x0, float y0, float x1, float y1,
   float r, float g, float b,
   float glow_width,
-  float intensity,
+  float intensity_start,
+  float intensity_end,
   int falloff,
   const float* clip_triangle,
   const float* clip_circle,
@@ -126,15 +128,40 @@ static void draw_line_with_glow_additive_f(
         continue;
       }
 
-      float dist_sq = point_to_segment_distance_sq(&seg, px, py);
+      // Get both distance and position along line
+      float line_t;
+      float dist_sq = point_to_segment_distance_sq_with_t(&seg, px, py, &line_t);
       if (dist_sq >= glow_width_sq) continue;
 
       float dist = sqrtf_impl(dist_sq);
       float t = dist / glow_width;
       float falloff_value = compute_falloff(falloff, t);
 
+      // Interpolate intensity based on position along line
+      float intensity = intensity_start + (intensity_end - intensity_start) * line_t;
+
       float alpha = falloff_value * intensity;
       set_pixel_additive_f(fb, width, height, x, y, r, g, b, alpha);
     }
   }
+}
+
+// Draw a line with glow effect using uniform intensity along its length.
+// Convenience wrapper around draw_line_with_glow_gradient_f.
+static inline void draw_line_with_glow_additive_f(
+  float* fb, int width, int height,
+  float x0, float y0, float x1, float y1,
+  float r, float g, float b,
+  float glow_width,
+  float intensity,
+  int falloff,
+  const float* clip_triangle,
+  const float* clip_circle,
+  const float* exclude_triangle
+) {
+  draw_line_with_glow_gradient_f(
+    fb, width, height, x0, y0, x1, y1, r, g, b,
+    glow_width, intensity, intensity, falloff,
+    clip_triangle, clip_circle, exclude_triangle
+  );
 }
