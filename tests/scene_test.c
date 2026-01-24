@@ -152,7 +152,7 @@ void test_scene_set_prism_config(void) {
   ASSERT_EQ(scene.prism_dirty, 0);
 
   // Set new config
-  PrismConfig cfg = {.size = 0.8f, .rainbow_spread = 0.7f, .blue_tint = 0.1f, .gray = 0.3f};
+  PrismConfig cfg = {.size = 0.8f, .rainbow_spread = 0.7f};
   scene_set_prism_config(&scene, &cfg);
 
   ASSERT_NEAR(scene.prism_config.size, 0.8f, 0.01f);

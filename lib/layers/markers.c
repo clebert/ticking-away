@@ -8,7 +8,7 @@
 #include "draw/line.h"
 #include "fastmath.h"
 
-#include <stddef.h> // For NULL
+#include <stddef.h>
 
 // =================================================================================================
 // Constants

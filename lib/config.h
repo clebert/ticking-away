@@ -6,7 +6,7 @@
 // Focused configuration types that replace the monolithic WatchfaceConfig.
 // Each struct groups related settings for a specific aspect of rendering.
 
-#include "kernels/kernel.h" // For FalloffType
+#include "kernels/kernel.h"
 #include <stdint.h>
 
 // -------------------------------------------------------------------------------------------------
@@ -16,8 +16,6 @@
 typedef struct {
   float size;           // Size as fraction of watch radius (0.1 - 0.9)
   float rainbow_spread; // 0.0 - 1.0 (0 = no spread, 1 = 30 degrees)
-  float blue_tint;      // Blue tint for white light (0.0 - 1.0)
-  float gray;           // Gray level for prism stroke (0.0 - 1.0)
 } PrismConfig;
 
 // -------------------------------------------------------------------------------------------------

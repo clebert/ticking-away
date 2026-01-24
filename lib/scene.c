@@ -21,8 +21,6 @@
 // Prism defaults
 #define DEFAULT_PRISM_SIZE 0.65f
 #define DEFAULT_RAINBOW_SPREAD 0.5f
-#define DEFAULT_BLUE_TINT 0.0f
-#define DEFAULT_PRISM_GRAY 0.5f
 
 // Glow defaults
 #define DEFAULT_GLOW_R 128
@@ -71,8 +69,6 @@ void scene_init(Scene *scene, int width, int height) {
   // Set default prism configuration
   scene->prism_config.size = DEFAULT_PRISM_SIZE;
   scene->prism_config.rainbow_spread = DEFAULT_RAINBOW_SPREAD;
-  scene->prism_config.blue_tint = DEFAULT_BLUE_TINT;
-  scene->prism_config.gray = DEFAULT_PRISM_GRAY;
 
   // Set default glow configuration
   scene->glow_config.r = DEFAULT_GLOW_R;

@@ -389,7 +389,7 @@ void test_layer_render_basic(void) {
   Prism prism;
   prism_create(200.0f, 200.0f, 100.0f, 60.0f, &prism);
 
-  PrismConfig prism_cfg = {.size = 0.5f, .rainbow_spread = 0.5f, .blue_tint = 0.0f, .gray = 0.5f};
+  PrismConfig prism_cfg = {.size = 0.5f, .rainbow_spread = 0.5f};
 
   RayConfig ray_cfg = {.glow_width = 0.02f,
                        .intensity = 1.0f,
@@ -437,7 +437,7 @@ void test_layer_render_with_gradient(void) {
   Prism prism;
   prism_create(200.0f, 200.0f, 100.0f, 60.0f, &prism);
 
-  PrismConfig prism_cfg = {.size = 0.5f, .rainbow_spread = 0.5f, .blue_tint = 0.0f, .gray = 0.5f};
+  PrismConfig prism_cfg = {.size = 0.5f, .rainbow_spread = 0.5f};
 
   RayConfig ray_cfg = {.glow_width = 0.02f,
                        .intensity = 1.0f,

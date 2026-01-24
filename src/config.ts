@@ -13,52 +13,73 @@ export function getConfig(wasmModule: WasmModule, wasmMemory: WebAssembly.Memory
   return cachedConfig;
 }
 
-// Order must match C struct layout in config.h
+// Order must match C struct layout in bin/wasm/main.c
+// Nested structs match definitions in lib/config.h
 const fields = {
   // Time
   hour: "int32",
   minute: "float32",
 
-  // Prism
-  prismSizePercent: "float32",
-  rainbowSpread: "float32",
-  prismR: "int32",
-  prismG: "int32",
-  prismB: "int32",
-  glowWidthPercent: "float32",
-  glowIntensity: "float32",
-  glowFalloff: "int32",
+  // PrismConfig
+  prism: {
+    size: "float32", // 0.1-0.9 (fraction of watch radius)
+    rainbowSpread: "float32", // 0.0-1.0
+  },
 
-  // Rays
-  rayGlowWidthPercent: "float32",
-  rayGlowIntensity: "float32",
-  rayGlowFalloff: "int32",
-  gradientFill: "boolean",
-  palette: "int32",
-  reverseSpectrum: "boolean",
+  // GlowConfig
+  glow: {
+    r: "int32", // 0-255
+    g: "int32",
+    b: "int32",
+    width: "float32", // 0.05-0.50
+    intensity: "float32", // 0.1-1.0
+    falloff: "int32", // FalloffType enum
+  },
 
-  // Markers
-  showMarkers: "boolean",
-  markerLengthPercent: "float32",
-  markerGlowWidthPercent: "float32",
-  markerGlowIntensity: "float32",
-  markerGlowFalloff: "int32",
+  // RayConfig
+  ray: {
+    glowWidth: "float32", // 0.0-0.10
+    intensity: "float32", // 0.0-1.0
+    falloff: "int32", // FalloffType enum
+    palette: "int32", // 0-4
+    gradientFill: "boolean",
+    reverse: "boolean",
+  },
 
-  // Background
-  grainIntensity: "float32",
-  grainScale: "float32",
-  grainPrismOnly: "boolean",
-  grainBrightnessThreshold: "float32",
-  vignette: "boolean",
+  // MarkerConfig
+  marker: {
+    visible: "boolean",
+    length: "float32", // 0.0-0.20
+    glowWidth: "float32", // 0.0-0.05
+    glowIntensity: "float32", // 0.0-1.0
+    falloff: "int32", // FalloffType enum
+  },
 
-  // Dithering
-  ditherEnabled: "boolean",
-  ditherPaletteMode: "int32",
-  ditherStrength: "float32",
-  ditherKernel: "int32",
-  ditherOklabError: "boolean",
-  ditherBwThreshold: "float32",
-  ditherChromaWeight: "float32",
+  // GrainConfig
+  grain: {
+    intensity: "float32", // 0.0-1.0
+    scale: "float32", // DPR
+    threshold: "float32", // 0.01-1.0
+    prismOnly: "boolean",
+  },
+
+  // VignetteConfig
+  vignette: {
+    enabled: "boolean",
+    strength: "float32", // 0.0-1.0
+    background: "float32", // 0.0-1.0
+  },
+
+  // SceneDitherConfig
+  dither: {
+    enabled: "boolean",
+    mode: "int32", // DitherPaletteMode enum
+    strength: "float32", // 0.0-1.0
+    kernel: "int32", // DitherKernelType enum
+    oklabError: "boolean",
+    bwThreshold: "float32", // 0.0-1.0
+    chromaWeight: "float32", // 0.5-4.0
+  },
 
   // Debug output (read-only, written by WASM)
   entryU: "float32",

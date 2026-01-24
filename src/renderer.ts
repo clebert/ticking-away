@@ -30,44 +30,54 @@ export function render(): void {
   config.hour = time.hours.value;
   config.minute = time.minutes.value;
 
-  config.prismSizePercent = prism.size.value;
-  config.rainbowSpread = prism.rainbowSpread.value / 100.0;
-  config.prismR = Math.max(0, prism.gray.value - prism.blueTint.value);
-  config.prismG = Math.max(0, prism.gray.value - Math.floor(prism.blueTint.value / 2));
-  config.prismB = prism.gray.value;
-  config.glowWidthPercent = prism.glowWidth.value / 100.0;
-  config.glowIntensity = prism.glowIntensity.value / 100.0;
-  config.glowFalloff = prism.glowFalloff.value;
+  // Prism geometry
+  config.prism.size = prism.size.value / 100.0;
+  config.prism.rainbowSpread = prism.rainbowSpread.value / 100.0;
 
-  config.rayGlowWidthPercent = rays.glowWidth.value / 100.0;
-  config.rayGlowIntensity = rays.glowIntensity.value / 100.0;
-  config.rayGlowFalloff = rays.glowFalloff.value;
-  config.gradientFill = rays.gradientFill.value;
-  config.palette = rays.palette.value;
-  config.reverseSpectrum = rays.reverseSpectrum.value;
+  // Prism glow (RGB computed from UI stores: gray and blueTint)
+  config.glow.r = Math.max(0, prism.gray.value - prism.blueTint.value);
+  config.glow.g = Math.max(0, prism.gray.value - Math.floor(prism.blueTint.value / 2));
+  config.glow.b = prism.gray.value;
+  config.glow.width = prism.glowWidth.value / 100.0;
+  config.glow.intensity = prism.glowIntensity.value / 100.0;
+  config.glow.falloff = prism.glowFalloff.value;
 
-  config.showMarkers = display.markers.value;
-  config.markerLengthPercent = markers.length.value / 100.0;
-  config.markerGlowWidthPercent = markers.glowWidth.value / 100.0;
-  config.markerGlowIntensity = markers.glowIntensity.value / 100.0;
-  config.markerGlowFalloff = markers.glowFalloff.value;
+  // Rays
+  config.ray.glowWidth = rays.glowWidth.value / 100.0;
+  config.ray.intensity = rays.glowIntensity.value / 100.0;
+  config.ray.falloff = rays.glowFalloff.value;
+  config.ray.gradientFill = rays.gradientFill.value;
+  config.ray.palette = rays.palette.value;
+  config.ray.reverse = rays.reverseSpectrum.value;
 
-  config.grainIntensity = background.grainDisabled.value
+  // Markers
+  config.marker.visible = display.markers.value;
+  config.marker.length = markers.length.value / 100.0;
+  config.marker.glowWidth = markers.glowWidth.value / 100.0;
+  config.marker.glowIntensity = markers.glowIntensity.value / 100.0;
+  config.marker.falloff = markers.glowFalloff.value;
+
+  // Grain
+  config.grain.intensity = background.grainDisabled.value
     ? 0
     : background.grainIntensity.value / 100.0;
+  config.grain.scale = display.highDpi.value ? window.devicePixelRatio || 1 : 1;
+  config.grain.threshold = background.grainBrightnessThreshold.value / 100.0;
+  config.grain.prismOnly = background.grainPrismOnly.value;
 
-  config.grainScale = display.highDpi.value ? window.devicePixelRatio || 1 : 1;
-  config.grainPrismOnly = background.grainPrismOnly.value;
-  config.grainBrightnessThreshold = background.grainBrightnessThreshold.value / 100.0;
-  config.vignette = !display.pebble.value;
+  // Vignette
+  config.vignette.enabled = !display.pebble.value;
+  config.vignette.strength = 0.4;
+  config.vignette.background = 35.0 / 255.0;
 
-  config.ditherEnabled = dither.enabled.value;
-  config.ditherPaletteMode = dither.paletteMode.value;
-  config.ditherStrength = dither.strength.value / 100.0;
-  config.ditherKernel = dither.kernel.value;
-  config.ditherOklabError = dither.oklabError.value;
-  config.ditherBwThreshold = (dither.bwThreshold.value / 100.0) * MAX_BW_CHROMA_THRESHOLD;
-  config.ditherChromaWeight = dither.chromaWeight.value / 100.0;
+  // Dithering
+  config.dither.enabled = dither.enabled.value;
+  config.dither.mode = dither.paletteMode.value;
+  config.dither.strength = dither.strength.value / 100.0;
+  config.dither.kernel = dither.kernel.value;
+  config.dither.oklabError = dither.oklabError.value;
+  config.dither.bwThreshold = (dither.bwThreshold.value / 100.0) * MAX_BW_CHROMA_THRESHOLD;
+  config.dither.chromaWeight = dither.chromaWeight.value / 100.0;
 
   wasmModule.render_watchface(pointers.floatPtr, pointers.uint8Ptr, width, height);
 
