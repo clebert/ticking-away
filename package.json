@@ -3,17 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "./build.sh",
-    "build": "vite build",
-    "check": "biome check",
-    "check:fix": "biome check --write --unsafe",
-    "ci": "npm run build && npm run check && npm run compile && npm run format && npm test",
-    "compile": "tsc",
-    "format": "prettier --check \"**/*.{md,yaml,yml}\"",
-    "format:fix": "prettier --write \"**/*.{md,yaml,yml}\"",
+    "build": "./build.sh",
+    "ci": "npm run build && npm run lint && npm test",
+    "lint": "./lint.sh",
+    "lint:fix": "./lint.sh --fix",
     "start": "vite",
-    "pretest": "./build_tests.sh",
-    "test": "./tests/bounce_test"
+    "test": "./test.sh"
   },
   "dependencies": {
     "@preact/signals-core": "^1.12.1"

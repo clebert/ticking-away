@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -e
+
+clang \
+  --target=wasm32 \
+  -std=c23 \
+  -O3 \
+  -flto \
+  -nostdlib \
+  -Wall \
+  -Wextra \
+  -Werror \
+  -Ilib \
+  -mbulk-memory \
+  -msimd128 \
+  -Wl,--export-dynamic \
+  -Wl,--import-memory \
+  -Wl,--no-entry \
+  -Wl,--strip-all \
+  -Wl,--lto-O3 \
+  -o public/index.wasm \
+  bin/wasm/main.c \
+  lib/scene.c \
+  lib/pipeline.c \
+  lib/geometry/prism.c \
+  lib/geometry/intersect.c \
+  lib/geometry/segment.c \
+  lib/draw/pixel.c \
+  lib/draw/line.c \
+  lib/layers/background.c \
+  lib/layers/rays.c \
+  lib/layers/gradient.c \
+  lib/layers/prism_glow.c \
+  lib/layers/markers.c \
+  lib/kernels/gamma.c \
+  lib/kernels/grain.c \
+  lib/kernels/dither.c \
+  lib/kernels/vignette.c
+
+echo "Built index.wasm ($(wc -c < public/index.wasm | xargs) bytes)"

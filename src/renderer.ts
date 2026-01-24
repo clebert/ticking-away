@@ -63,7 +63,6 @@ export function render(): void {
 
   config.ditherEnabled = dither.enabled.value;
   config.ditherPaletteMode = dither.paletteMode.value;
-  config.ditherPaletteSaturation = dither.paletteSaturation.value / 100.0;
   config.ditherStrength = dither.strength.value / 100.0;
   config.ditherKernel = dither.kernel.value;
   config.ditherOklabError = dither.oklabError.value;

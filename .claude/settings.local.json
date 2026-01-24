@@ -1,16 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build)",
-      "Bash(npm run check:fix)",
-      "Bash(npm run check)",
-      "Bash(npm run ci)",
-      "Bash(npm run compile)",
-      "Bash(npm run format:fix)",
-      "Bash(npm run format)",
-      "Bash(npm test:*)",
-      "Bash(./build_tests.sh:*)",
-      "Bash(./build_tools.sh:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run ci:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run lint:fix:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

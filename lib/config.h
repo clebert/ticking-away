@@ -1,0 +1,100 @@
+#pragma once
+
+// =================================================================================================
+// Configuration Structs
+// =================================================================================================
+// Focused configuration types that replace the monolithic WatchfaceConfig.
+// Each struct groups related settings for a specific aspect of rendering.
+
+#include "kernels/kernel.h" // For FalloffType
+#include <stdint.h>
+
+// -------------------------------------------------------------------------------------------------
+// Prism Configuration
+// -------------------------------------------------------------------------------------------------
+
+typedef struct {
+  float size;           // Size as fraction of watch radius (0.1 - 0.9)
+  float rainbow_spread; // 0.0 - 1.0 (0 = no spread, 1 = 30 degrees)
+  float blue_tint;      // Blue tint for white light (0.0 - 1.0)
+  float gray;           // Gray level for prism stroke (0.0 - 1.0)
+} PrismConfig;
+
+// -------------------------------------------------------------------------------------------------
+// Prism Glow Configuration
+// -------------------------------------------------------------------------------------------------
+
+typedef struct {
+  int32_t r, g, b;     // RGB color for prism stroke (0-255)
+  float width;         // Glow width as fraction of radius (0.05 - 0.50)
+  float intensity;     // Glow intensity (0.1 - 1.0)
+  FalloffType falloff; // Falloff curve type
+} GlowConfig;
+
+// -------------------------------------------------------------------------------------------------
+// Ray Configuration
+// -------------------------------------------------------------------------------------------------
+
+typedef struct {
+  float glow_width;      // Glow width as fraction of radius (0.0 - 0.10)
+  float intensity;       // Glow intensity (0.0 - 1.0)
+  FalloffType falloff;   // Falloff curve type
+  int32_t palette;       // Color palette index (0-4)
+  int32_t gradient_fill; // Fill gradient between rays (0 or 1)
+  int32_t reverse;       // Reverse spectrum (album art style, 0 or 1)
+} RayConfig;
+
+// -------------------------------------------------------------------------------------------------
+// Marker Configuration
+// -------------------------------------------------------------------------------------------------
+
+typedef struct {
+  int32_t visible;      // Show markers (0 or 1)
+  float length;         // Length as fraction of radius (0.0 - 0.20)
+  float glow_width;     // Glow width as fraction of radius (0.0 - 0.05)
+  float glow_intensity; // Glow intensity (0.0 - 1.0)
+  FalloffType falloff;  // Falloff curve type
+} MarkerConfig;
+
+// -------------------------------------------------------------------------------------------------
+// Grain Configuration
+// -------------------------------------------------------------------------------------------------
+
+typedef struct {
+  float intensity;    // Grain intensity (0.0 - 1.0)
+  float scale;        // DPR to scale grain size
+  float threshold;    // Brightness threshold (0.01 - 1.0)
+  int32_t prism_only; // Apply grain only inside prism (0 or 1)
+} GrainConfig;
+
+// -------------------------------------------------------------------------------------------------
+// Dither Configuration
+// -------------------------------------------------------------------------------------------------
+
+typedef enum {
+  DITHER_MODE_IDEAL = 0,  // Ideal spectrum colors
+  DITHER_MODE_DEVICE = 1, // Device-measured colors
+  DITHER_MODE_BLEND = 2   // Blend between ideal and device
+} DitherPaletteMode;
+
+typedef enum { DITHER_KERNEL_ATKINSON = 0, DITHER_KERNEL_FLOYD_STEINBERG = 1 } DitherKernelType;
+
+typedef struct {
+  int32_t enabled;         // Enable dithering (0 or 1)
+  DitherPaletteMode mode;  // Palette mode
+  float strength;          // Dither pattern intensity (0.0 - 1.0)
+  DitherKernelType kernel; // Error diffusion kernel
+  int32_t oklab_error;     // Use OkLab error diffusion (0 or 1)
+  float bw_threshold;      // OkLab chroma threshold for B/W-only (0.0 = disabled)
+  float chroma_weight;     // Weight for hue/chroma vs lightness (0.5 - 4.0)
+} SceneDitherConfig;
+
+// -------------------------------------------------------------------------------------------------
+// Vignette Configuration
+// -------------------------------------------------------------------------------------------------
+
+typedef struct {
+  int32_t enabled;  // Enable vignette (0 or 1)
+  float strength;   // Max darkening at corners (0.0-1.0, default 0.4 = 40%)
+  float background; // Grey level in sRGB space (0.0-1.0, default ~0.137 = 35/255)
+} VignetteConfig;

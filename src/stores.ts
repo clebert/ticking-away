@@ -36,8 +36,7 @@ const defaults = {
   },
   dither: {
     enabled: false,
-    paletteMode: 0, // 0 = IDEAL, 1 = DEVICE, 2 = BLEND
-    paletteSaturation: 50, // 0-100, maps to 0.0-1.0 (only used when mode=BLEND)
+    paletteMode: 0, // 0 = IDEAL, 1 = DEVICE, 2 = SPECTRA6
     strength: 20, // 0-100, maps to 0.0-1.0
     kernel: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
@@ -324,15 +323,11 @@ export const dither = {
   // Signals
   enabled: signal(settings.ditherEnabled ?? defaults.dither.enabled),
   paletteMode: signal(settings.ditherPaletteMode ?? defaults.dither.paletteMode),
-  paletteSaturation: signal(settings.ditherPaletteSaturation ?? defaults.dither.paletteSaturation),
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
   kernel: signal(settings.ditherKernel ?? defaults.dither.kernel),
   oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
   bwThreshold: signal(settings.ditherBwThreshold ?? defaults.dither.bwThreshold),
   chromaWeight: signal(settings.ditherChromaWeight ?? defaults.dither.chromaWeight),
-
-  // Computed
-  saturationDisabled: computed((): boolean => dither.paletteMode.value !== 2),
 
   // Actions
   toggleEnabled(): void {
@@ -341,10 +336,6 @@ export const dither = {
 
   setPaletteMode(e: Event): void {
     dither.paletteMode.value = parseInt((e.target as HTMLSelectElement).value, 10);
-  },
-
-  setPaletteSaturation(e: Event): void {
-    dither.paletteSaturation.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setStrength(e: Event): void {
@@ -436,7 +427,6 @@ export const resetAll = {
       // Dither
       dither.enabled.value = defaults.dither.enabled;
       dither.paletteMode.value = defaults.dither.paletteMode;
-      dither.paletteSaturation.value = defaults.dither.paletteSaturation;
       dither.strength.value = defaults.dither.strength;
       dither.kernel.value = defaults.dither.kernel;
       dither.oklabError.value = defaults.dither.oklabError;

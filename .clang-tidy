@@ -1,0 +1,44 @@
+Checks: >
+  -*, bugprone-*, cert-* clang-analyzer-*, misc-*, performance-*, portability-*,
+  readability-identifier-naming, -bugprone-easily-swappable-parameters, -misc-include-cleaner,
+
+WarningsAsErrors: "*"
+
+HeaderFilterRegex: ".*"
+
+CheckOptions:
+  # Functions: snake_case
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+
+  # Variables: snake_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalVariableCase
+    value: lower_case
+
+  # Parameters: snake_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+
+  # Types: PascalCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE
+
+  # Macros and constants: UPPER_CASE
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.ConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.StaticConstantCase
+    value: UPPER_CASE

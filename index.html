@@ -539,21 +539,8 @@
             >
               <option value="0">Ideal (Pure RGB)</option>
               <option value="1">Device (Inky 13.3")</option>
-              <option value="2">Blend</option>
-              <option value="3">Spectra 6 (Measured)</option>
+              <option value="2">Spectra 6 (Measured)</option>
             </select>
-          </div>
-          <div class="control-group">
-            <label
-              >Saturation:
-              <span data-bind="textContent:dither.paletteSaturation">50</span>%</label
-            >
-            <input
-              type="range"
-              min="0"
-              max="100"
-              data-bind="value:dither.paletteSaturation, oninput:dither.setPaletteSaturation, disabled:dither.saturationDisabled"
-            />
           </div>
           <div class="control-group">
             <label>Strength: <span data-bind="textContent:dither.strength">100</span>%</label>

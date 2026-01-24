@@ -54,7 +54,6 @@ const fields = {
   // Dithering
   ditherEnabled: "boolean",
   ditherPaletteMode: "int32",
-  ditherPaletteSaturation: "float32",
   ditherStrength: "float32",
   ditherKernel: "int32",
   ditherOklabError: "boolean",

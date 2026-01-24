@@ -40,7 +40,6 @@ export interface Settings {
 
   ditherEnabled: boolean;
   ditherPaletteMode: number;
-  ditherPaletteSaturation: number;
   ditherStrength: number;
   ditherKernel: number;
   ditherOklabError: boolean;
@@ -107,7 +106,6 @@ export function saveSettings({
 
       ditherEnabled: dither.enabled.value,
       ditherPaletteMode: dither.paletteMode.value,
-      ditherPaletteSaturation: dither.paletteSaturation.value,
       ditherStrength: dither.strength.value,
       ditherKernel: dither.kernel.value,
       ditherOklabError: dither.oklabError.value,

@@ -1,30 +1,20 @@
 If:
-  PathMatch: src/.*\.c
+  PathMatch: [.*\.c, .*\.h]
 CompileFlags:
   Add:
-    - --target=wasm32
-    - -std=c23
-    - -nostdlib
-    - -Wall
-    - -Wextra
-    - -I../include
-    - -mbulk-memory
-    - -msimd128
+    - "-xc"
+    - "-std=c23"
+    - "-Wall"
+    - "-Wextra"
+    - "-Ilib"
+    - "-I../lib"
+    - "-I../../lib"
 ---
 If:
-  PathMatch: tests/.*\.c
+  PathMatch: [.*/bin/wasm/.*\.c, .*/bin/wasm/.*\.h, .*/lib/.*\.c, .*/lib/.*\.h]
 CompileFlags:
   Add:
-    - -std=c23
-    - -Wall
-    - -Wextra
-    - -I../include
----
-If:
-  PathMatch: tools/.*\.c
-CompileFlags:
-  Add:
-    - -std=c23
-    - -Wall
-    - -Wextra
-    - -I../include
+    - "--target=wasm32"
+    - "-nostdlib"
+    - "-mbulk-memory"
+    - "-msimd128"
