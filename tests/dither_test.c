@@ -4,6 +4,7 @@
 
 #include "quantize/dither.h"
 #include "quantize/dither_error.h"
+#include "quantize/dither_ordered.h"
 #include "test_harness.h"
 #include <stdio.h>
 
@@ -634,6 +635,416 @@ void test_palette_exceeds_cache_rejected(void) {
 }
 
 // =================================================================================================
+// Test: Ordered Dithering
+// =================================================================================================
+
+void test_ordered_solid_black(void) {
+  TEST_BEGIN("ordered_solid_black");
+
+  // 2x2 solid black image
+  float input[16] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+                     0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+  uint8_t output[16] = {0};
+
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, output, 2, 2, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // All pixels should be black (0, 0, 0) - threshold can't push black to anything else
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(output[i * 4 + 0], 0);
+    ASSERT_EQ(output[i * 4 + 1], 0);
+    ASSERT_EQ(output[i * 4 + 2], 0);
+    ASSERT_EQ(output[i * 4 + 3], 255);
+  }
+
+  TEST_END();
+}
+
+void test_ordered_solid_white(void) {
+  TEST_BEGIN("ordered_solid_white");
+
+  // 2x2 solid white image
+  float input[16] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                     1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+  uint8_t output[16] = {0};
+
+  // Use spread=0 so threshold doesn't affect result
+  // (with high spread, threshold can push white close to other colors in OkLab)
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.0f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, output, 2, 2, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // All pixels should be white (255, 255, 255)
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(output[i * 4 + 0], 255);
+    ASSERT_EQ(output[i * 4 + 1], 255);
+    ASSERT_EQ(output[i * 4 + 2], 255);
+    ASSERT_EQ(output[i * 4 + 3], 255);
+  }
+
+  TEST_END();
+}
+
+void test_ordered_solid_red(void) {
+  TEST_BEGIN("ordered_solid_red");
+
+  // 2x2 solid red image
+  float input[16] = {1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+                     1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f};
+  uint8_t output[16] = {0};
+
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, output, 2, 2, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // All pixels should be red (255, 0, 0)
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(output[i * 4 + 0], 255);
+    ASSERT_EQ(output[i * 4 + 1], 0);
+    ASSERT_EQ(output[i * 4 + 2], 0);
+  }
+
+  TEST_END();
+}
+
+void test_ordered_bayer_2x2(void) {
+  TEST_BEGIN("ordered_bayer_2x2");
+
+  // 2x2 solid black image (black stays black regardless of threshold)
+  float input[16] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+                     0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+  uint8_t output[16] = {0};
+
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_2X2,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, output, 2, 2, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // Should produce black output
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(output[i * 4 + 0], 0);
+    ASSERT_EQ(output[i * 4 + 1], 0);
+    ASSERT_EQ(output[i * 4 + 2], 0);
+  }
+
+  TEST_END();
+}
+
+void test_ordered_bayer_8x8(void) {
+  TEST_BEGIN("ordered_bayer_8x8");
+
+  // 2x2 solid black image
+  float input[16] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+                     0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+  uint8_t output[16] = {0};
+
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_8X8,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, output, 2, 2, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // Should produce black output
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(output[i * 4 + 0], 0);
+    ASSERT_EQ(output[i * 4 + 1], 0);
+    ASSERT_EQ(output[i * 4 + 2], 0);
+  }
+
+  TEST_END();
+}
+
+void test_ordered_spread_zero(void) {
+  TEST_BEGIN("ordered_spread_zero");
+
+  // Mid-gray with black/white palette - spread=0 means no dithering
+  DitherRGB bw_palette[] = {{0, 0, 0}, {255, 255, 255}};
+
+  // 2x2 mid-gray image in linear RGB (0.5 linear ≈ 0.74 OkLab L, closer to white)
+  float input[16] = {0.5f, 0.5f, 0.5f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f,
+                     0.5f, 0.5f, 0.5f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f};
+  uint8_t output[16] = {0};
+
+  DitherOrderedConfig config = {.palette = bw_palette,
+                                .palette_count = 2,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.0f, // No threshold variation
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 2);
+  int result = dither_ordered_apply(input, output, 2, 2, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // Linear RGB 0.5 maps to OkLab L ≈ 0.74, which is closer to white (L=1) than black (L=0)
+  // All pixels should be white since spread=0 means no threshold variation
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(output[i * 4 + 0], 255);
+    ASSERT_EQ(output[i * 4 + 1], 255);
+    ASSERT_EQ(output[i * 4 + 2], 255);
+  }
+
+  TEST_END();
+}
+
+void test_ordered_spread_creates_pattern(void) {
+  TEST_BEGIN("ordered_spread_creates_pattern");
+
+  // Mid-gray with black/white palette and high spread should create pattern
+  DitherRGB bw_palette[] = {{0, 0, 0}, {255, 255, 255}};
+
+  // 4x4 mid-gray image
+  float input[64];
+  for (int i = 0; i < 16; i++) {
+    input[i * 4 + 0] = 0.5f;
+    input[i * 4 + 1] = 0.5f;
+    input[i * 4 + 2] = 0.5f;
+    input[i * 4 + 3] = 1.0f;
+  }
+  uint8_t output[64] = {0};
+
+  DitherOrderedConfig config = {.palette = bw_palette,
+                                .palette_count = 2,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 1.0f, // Full threshold variation
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 2);
+  int result = dither_ordered_apply(input, output, 4, 4, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // With spread=1.0 and mid-gray, we should get a mix of black and white
+  int black_count = 0;
+  int white_count = 0;
+  for (int i = 0; i < 16; i++) {
+    if (output[i * 4 + 0] == 0)
+      black_count++;
+    else if (output[i * 4 + 0] == 255)
+      white_count++;
+  }
+
+  // Should have some of each (not all the same)
+  ASSERT_TRUE(black_count > 0);
+  ASSERT_TRUE(white_count > 0);
+
+  TEST_END();
+}
+
+void test_ordered_preserves_alpha(void) {
+  TEST_BEGIN("ordered_preserves_alpha");
+
+  // Image with varying alpha
+  float input[16] = {1.0f, 1.0f, 1.0f, 1.0f,  1.0f, 1.0f, 1.0f, 0.5f,
+                     1.0f, 1.0f, 1.0f, 0.25f, 1.0f, 1.0f, 1.0f, 0.0f};
+  uint8_t output[16] = {0};
+
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, output, 2, 2, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  ASSERT_EQ(output[3], 255); // 1.0 * 255
+  ASSERT_EQ(output[7], 128); // 0.5 * 255 ≈ 128
+  ASSERT_EQ(output[11], 64); // 0.25 * 255 ≈ 64
+  ASSERT_EQ(output[15], 0);  // 0.0 * 255
+
+  TEST_END();
+}
+
+void test_ordered_cache_init(void) {
+  TEST_BEGIN("ordered_cache_init");
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  ASSERT_EQ(result, 0);
+
+  // Black should have L=0
+  ASSERT_NEAR(cache.palette_oklab[0].L, 0.0f, 0.001f);
+
+  // White should have L=1
+  ASSERT_NEAR(cache.palette_oklab[1].L, 1.0f, 0.001f);
+
+  // Cache should track the palette
+  ASSERT_TRUE(cache.last_palette == DITHER_PALETTE_IDEAL);
+  ASSERT_EQ(cache.last_palette_count, DITHER_PALETTE_IDEAL_COUNT);
+
+  TEST_END();
+}
+
+void test_ordered_cache_reuses(void) {
+  TEST_BEGIN("ordered_cache_reuses");
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+
+  dither_ordered_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  ASSERT_TRUE(cache.last_palette == DITHER_PALETTE_IDEAL);
+
+  // Call again - should still point to same palette
+  dither_ordered_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  ASSERT_TRUE(cache.last_palette == DITHER_PALETTE_IDEAL);
+
+  TEST_END();
+}
+
+void test_ordered_null_input_rejected(void) {
+  TEST_BEGIN("ordered_null_input_rejected");
+
+  uint8_t output[4] = {0};
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(nullptr, output, 1, 1, &config, &cache);
+  ASSERT_EQ(result, -1);
+
+  TEST_END();
+}
+
+void test_ordered_null_output_rejected(void) {
+  TEST_BEGIN("ordered_null_output_rejected");
+
+  float input[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  DitherOrderedConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                                .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, nullptr, 1, 1, &config, &cache);
+  ASSERT_EQ(result, -1);
+
+  TEST_END();
+}
+
+void test_ordered_palette_exceeds_cache(void) {
+  TEST_BEGIN("ordered_palette_exceeds_cache");
+
+  float input[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  uint8_t output[4] = {0};
+
+  DitherRGB big_palette[16] = {{0}};
+  DitherOrderedConfig config = {.palette = big_palette,
+                                .palette_count = 16,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.5f,
+                                .chroma_weight = 1.0f};
+
+  // Cache only holds 6 colors
+  DITHER_ORDERED_CACHE_STATIC(cache, 6);
+  int result = dither_ordered_apply(input, output, 1, 1, &config, &cache);
+  ASSERT_EQ(result, -1);
+
+  TEST_END();
+}
+
+void test_ordered_chroma_weight_low_prefers_lightness(void) {
+  TEST_BEGIN("ordered_chroma_weight_low_prefers_lightness");
+
+  // Input: pure red (1.0, 0.0, 0.0) linear RGB → OkLab L≈0.63, a≈0.23, b≈0.13
+  // Palette designed so chroma_weight flips the winner:
+  // - Dark red (80,0,0): L≈0.32 (far), but similar hue (close in a,b)
+  // - Mid gray (160,160,160): L≈0.64 (close), but no chroma (far in a,b)
+  DitherRGB palette[] = {
+      {80, 0, 0},     // Dark red: L≈0.32, similar hue
+      {160, 160, 160} // Mid gray: L≈0.64, no chroma
+  };
+
+  float input[4] = {1.0f, 0.0f, 0.0f, 1.0f}; // Pure red
+  uint8_t output[4] = {0};
+
+  // With low chroma_weight (clamped to 0.5), lightness dominates:
+  // dist_gray = 4*dL² + 0.5*chroma² ≈ 4*0.0001 + 0.5*0.07 ≈ 0.035
+  // dist_red  = 4*dL² + 0.5*chroma² ≈ 4*0.096 + 0.5*0.012 ≈ 0.39
+  // Gray wins (much lower distance)
+  DitherOrderedConfig config = {.palette = palette,
+                                .palette_count = 2,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.0f,
+                                .chroma_weight = 0.5f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 2);
+  int result = dither_ordered_apply(input, output, 1, 1, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // Should pick gray (closer in lightness)
+  ASSERT_EQ(output[0], 160);
+  ASSERT_EQ(output[1], 160);
+  ASSERT_EQ(output[2], 160);
+
+  TEST_END();
+}
+
+void test_ordered_chroma_weight_high_prefers_hue(void) {
+  TEST_BEGIN("ordered_chroma_weight_high_prefers_hue");
+
+  // Same palette and input as above
+  DitherRGB palette[] = {
+      {80, 0, 0},     // Dark red: L≈0.32, similar hue
+      {160, 160, 160} // Mid gray: L≈0.64, no chroma
+  };
+
+  float input[4] = {1.0f, 0.0f, 0.0f, 1.0f}; // Pure red
+  uint8_t output[4] = {0};
+
+  // With high chroma_weight (4.0), chroma/hue dominates:
+  // dist_gray = 0.5*dL² + 4*chroma² ≈ 0.5*0.0001 + 4*0.07 ≈ 0.28
+  // dist_red  = 0.5*dL² + 4*chroma² ≈ 0.5*0.096 + 4*0.012 ≈ 0.096
+  // Red wins (lower distance)
+  DitherOrderedConfig config = {.palette = palette,
+                                .palette_count = 2,
+                                .matrix = DITHER_BAYER_4X4,
+                                .spread = 0.0f,
+                                .chroma_weight = 4.0f};
+
+  DITHER_ORDERED_CACHE_STATIC(cache, 2);
+  int result = dither_ordered_apply(input, output, 1, 1, &config, &cache);
+  ASSERT_EQ(result, 0);
+
+  // Should pick dark red (closer in hue/chroma)
+  ASSERT_EQ(output[0], 80);
+  ASSERT_EQ(output[1], 0);
+  ASSERT_EQ(output[2], 0);
+
+  TEST_END();
+}
+
+// =================================================================================================
 // Main
 // =================================================================================================
 
@@ -695,6 +1106,23 @@ int main(void) {
   test_null_palette_rejected();
   test_zero_palette_rejected();
   test_palette_exceeds_cache_rejected();
+
+  // Ordered dithering tests
+  test_ordered_solid_black();
+  test_ordered_solid_white();
+  test_ordered_solid_red();
+  test_ordered_bayer_2x2();
+  test_ordered_bayer_8x8();
+  test_ordered_spread_zero();
+  test_ordered_spread_creates_pattern();
+  test_ordered_preserves_alpha();
+  test_ordered_cache_init();
+  test_ordered_cache_reuses();
+  test_ordered_null_input_rejected();
+  test_ordered_null_output_rejected();
+  test_ordered_palette_exceeds_cache();
+  test_ordered_chroma_weight_low_prefers_lightness();
+  test_ordered_chroma_weight_high_prefers_hue();
 
   TEST_RUNNER_END();
 }

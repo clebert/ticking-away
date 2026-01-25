@@ -16,7 +16,7 @@ build_test() {
 
 build_test gamma      lib/effects/gamma.c -lm
 build_test grain      lib/effects/grain.c
-build_test dither     lib/quantize/dither.c lib/quantize/dither_error.c -lm
+build_test dither     lib/quantize/dither.c lib/quantize/dither_error.c lib/quantize/dither_ordered.c -lm
 build_test vignette   lib/effects/vignette.c -lm
 build_test pipeline   lib/pipeline.c lib/effects/{gamma,grain,vignette}.c -lm
 build_test prism      lib/geometry/prism.c -lm
