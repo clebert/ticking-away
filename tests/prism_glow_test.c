@@ -7,9 +7,9 @@
 #include <stdio.h>
 
 #include "config.h"
+#include "effects/effect.h"
 #include "geometry/prism.h"
 #include "geometry/types.h"
-#include "kernels/kernel.h"
 #include "layers/layer.h"
 #include "layers/prism_glow.h"
 #include "test_harness.h"

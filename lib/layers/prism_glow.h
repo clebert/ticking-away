@@ -9,8 +9,8 @@
 // The glow uses smooth minimum distance calculation to avoid visible creases at corners,
 // and supports multiple falloff curves for different visual styles.
 
+#include "effects/effect.h"
 #include "geometry/types.h"
-#include "kernels/kernel.h"
 #include "layers/layer.h"
 
 // -------------------------------------------------------------------------------------------------

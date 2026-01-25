@@ -1,6 +1,6 @@
-#include "kernels/gamma.h"
+#include "effects/gamma.h"
+#include "effects/effect.h"
 #include "fastmath.h"
-#include "kernels/kernel.h"
 
 // =================================================================================================
 // Color Space Conversion Implementation
@@ -26,10 +26,10 @@ float gamma_linear_to_srgb(float linear) {
 }
 
 // =================================================================================================
-// Kernel Implementation
+// Effect Implementation
 // =================================================================================================
 
-void kernel_gamma_apply(float *fb, int width, int height, const void *config, const void *cache) {
+void effect_gamma_apply(float *fb, int width, int height, const void *config, const void *cache) {
   (void)config; // Currently unused
   (void)cache;  // Currently unused
 
@@ -51,5 +51,5 @@ void kernel_gamma_apply(float *fb, int width, int height, const void *config, co
   }
 }
 
-// Kernel descriptor
-const Kernel KERNEL_GAMMA = {.name = "gamma", .apply = kernel_gamma_apply};
+// Effect descriptor
+const Effect EFFECT_GAMMA = {.name = "gamma", .apply = effect_gamma_apply};

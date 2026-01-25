@@ -7,15 +7,16 @@
 #include <stdint.h>
 
 #include "config.h"
+#include "effects/gamma.h"
+#include "effects/grain.h"
+#include "effects/vignette.h"
 #include "fastmath.h"
 #include "geometry/intersect.h"
 #include "geometry/prism.h"
 #include "geometry/types.h"
-#include "kernels/dither.h"
-#include "kernels/gamma.h"
-#include "kernels/grain.h"
-#include "kernels/vignette.h"
 #include "pipeline.h"
+#include "quantize/direct.h"
+#include "quantize/dither.h"
 #include "scene.h"
 
 #define WASM_EXPORT __attribute__((visibility("default")))
@@ -151,7 +152,7 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
   pipeline_init(&pipeline);
 
   // Gamma correction (linear -> sRGB)
-  pipeline_add_kernel(&pipeline, &KERNEL_GAMMA, nullptr, (void *)0);
+  pipeline_add_effect(&pipeline, &EFFECT_GAMMA, nullptr, (void *)0);
 
   // Grain (in sRGB space)
   float prism_verts[6];
@@ -165,14 +166,14 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
                               .prism_vertices = config.grain.prism_only ? prism_verts : nullptr};
 
   if (config.grain.intensity > 0.0f) {
-    pipeline_add_kernel(&pipeline, &KERNEL_GRAIN, &config.grain, &grain_geom);
+    pipeline_add_effect(&pipeline, &EFFECT_GRAIN, &config.grain, &grain_geom);
   }
 
   // Vignette (in sRGB space)
   VignetteGeometry vignette_geom = {.cx = cx, .cy = cy, .radius = radius};
 
   if (config.vignette.enabled) {
-    pipeline_add_kernel(&pipeline, &KERNEL_VIGNETTE, &config.vignette, &vignette_geom);
+    pipeline_add_effect(&pipeline, &EFFECT_VIGNETTE, &config.vignette, &vignette_geom);
   }
 
   // Execute pipeline
@@ -202,12 +203,12 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
       break;
     }
 
-    // Build kernel config from scene config + palette
+    // Build dither config from scene config + palette
     DitherConfig dither_cfg = {.palette = palette,
                                .palette_count = palette_count,
                                .bw_black_idx = 0, // Black is index 0 in all palettes
                                .bw_white_idx = 1, // White is index 1 in all palettes
-                               .algorithm = (DitherAlgorithm)config.dither.kernel,
+                               .algorithm = (DitherAlgorithm)config.dither.algorithm,
                                .strength = config.dither.strength,
                                .oklab_error = config.dither.oklab_error,
                                .preserve_alpha = 1,
@@ -215,42 +216,9 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
                                .chroma_weight = config.dither.chroma_weight};
 
     // Apply dithering (float -> uint8)
-    kernel_dither_apply(float_fb, fb, width, height, &dither_cfg, &dither_cache);
+    quantize_dither_apply(float_fb, fb, width, height, &dither_cfg, &dither_cache);
   } else {
     // Direct conversion (sRGB float -> sRGB uint8)
-    // The pipeline already applied gamma, so float_fb is in sRGB space
-    int total_pixels = width * height;
-    for (int i = 0; i < total_pixels; i++) {
-      int idx = i * 4;
-      // Clamp and convert
-      float r = float_fb[idx + 0];
-      float g = float_fb[idx + 1];
-      float b = float_fb[idx + 2];
-      float a = float_fb[idx + 3];
-
-      // Clamp to [0, 1]
-      if (r < 0.0f)
-        r = 0.0f;
-      else if (r > 1.0f)
-        r = 1.0f;
-      if (g < 0.0f)
-        g = 0.0f;
-      else if (g > 1.0f)
-        g = 1.0f;
-      if (b < 0.0f)
-        b = 0.0f;
-      else if (b > 1.0f)
-        b = 1.0f;
-      if (a < 0.0f)
-        a = 0.0f;
-      else if (a > 1.0f)
-        a = 1.0f;
-
-      // Convert to uint8
-      fb[idx + 0] = (uint8_t)(r * 255.0f + 0.5f);
-      fb[idx + 1] = (uint8_t)(g * 255.0f + 0.5f);
-      fb[idx + 2] = (uint8_t)(b * 255.0f + 0.5f);
-      fb[idx + 3] = (uint8_t)(a * 255.0f + 0.5f);
-    }
+    quantize_direct_apply(float_fb, fb, width, height);
   }
 }

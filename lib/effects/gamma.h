@@ -1,7 +1,7 @@
 #pragma once
 
 // =================================================================================================
-// Gamma Kernel
+// Gamma Effect
 // =================================================================================================
 // Converts framebuffer between linear RGB and sRGB color spaces.
 //
@@ -9,9 +9,9 @@
 // - A linear region below 0.0031308 (multiply by 12.92)
 // - A power curve above (x^(1/2.4) with offset)
 //
-// This kernel operates in-place on float framebuffers.
+// This effect operates in-place on float framebuffers.
 
-#include "kernel.h"
+#include "effect.h"
 #include <stdint.h>
 
 // -------------------------------------------------------------------------------------------------
@@ -37,14 +37,14 @@ float gamma_srgb_to_linear(uint8_t srgb);
 float gamma_linear_to_srgb(float linear);
 
 // -------------------------------------------------------------------------------------------------
-// Kernel Function
+// Effect Function
 // -------------------------------------------------------------------------------------------------
 
 // Apply gamma correction (linear -> sRGB) to entire framebuffer.
 // Converts float fb from linear RGB to sRGB space in-place.
 // Config can be NULL (uses standard sRGB transfer function).
 // Cache is unused (pass NULL).
-void kernel_gamma_apply(float *fb, int width, int height, const void *config, const void *cache);
+void effect_gamma_apply(float *fb, int width, int height, const void *config, const void *cache);
 
-// Kernel descriptor for pipeline registration
-extern const Kernel KERNEL_GAMMA;
+// Effect descriptor for pipeline registration
+extern const Effect EFFECT_GAMMA;

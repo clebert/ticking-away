@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 #include "config.h"
-#include "kernels/kernel.h"
+#include "effects/effect.h"
 #include "layers/layer.h"
 #include "layers/markers.h"
 #include "test_harness.h"

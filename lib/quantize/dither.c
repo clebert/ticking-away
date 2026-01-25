@@ -1,4 +1,4 @@
-#include "kernels/dither.h"
+#include "quantize/dither.h"
 #include "fastmath.h"
 #include <stddef.h>
 
@@ -148,7 +148,7 @@ static int find_color_with_bw_threshold(DitherOkLab color, const DitherOkLab *pa
 // =================================================================================================
 
 // Initialize the cache for a given palette
-int kernel_dither_init_cache(DitherCache *cache, const DitherRGB *palette, int palette_count) {
+int quantize_dither_init_cache(DitherCache *cache, const DitherRGB *palette, int palette_count) {
   if (!cache || !palette || palette_count <= 0)
     return -1;
   if (palette_count > cache->palette_capacity)
@@ -508,11 +508,11 @@ static void dither_floyd_steinberg(const float *float_fb, uint8_t *out_fb, int w
 }
 
 // =================================================================================================
-// Main Kernel Function
+// Main Quantizer Function
 // =================================================================================================
 
-int kernel_dither_apply(const float *float_fb, uint8_t *out_fb, int width, int height,
-                        const DitherConfig *config, DitherCache *cache) {
+int quantize_dither_apply(const float *float_fb, uint8_t *out_fb, int width, int height,
+                          const DitherConfig *config, DitherCache *cache) {
   // Validate inputs
   if (!float_fb || !out_fb || !config || !cache)
     return -1;
@@ -526,7 +526,7 @@ int kernel_dither_apply(const float *float_fb, uint8_t *out_fb, int width, int h
     return -1;
 
   // Initialize cache if palette changed
-  if (kernel_dither_init_cache(cache, config->palette, config->palette_count) != 0) {
+  if (quantize_dither_init_cache(cache, config->palette, config->palette_count) != 0) {
     return -1;
   }
 

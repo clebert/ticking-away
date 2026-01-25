@@ -7,7 +7,7 @@
 // outside. This is the first layer rendered, providing a clean canvas for subsequent layers.
 //
 // Inside circle: RGB=(0,0,0), Alpha=1.0 (opaque black)
-// Outside circle: RGB=(0,0,0), Alpha=0.0 (transparent, UI fills this later via vignette kernel)
+// Outside circle: RGB=(0,0,0), Alpha=0.0 (transparent, UI fills this later via vignette effect)
 
 #include "layers/layer.h"
 

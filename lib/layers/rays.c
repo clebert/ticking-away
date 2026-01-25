@@ -6,10 +6,10 @@
 #include "layers/rays.h"
 #include "config.h"
 #include "draw/line.h"
+#include "effects/effect.h"
 #include "fastmath.h"
 #include "geometry/intersect.h"
 #include "geometry/prism.h"
-#include "kernels/kernel.h"
 
 // =================================================================================================
 // Constants

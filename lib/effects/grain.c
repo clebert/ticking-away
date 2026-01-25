@@ -1,7 +1,7 @@
-#include "kernels/grain.h"
+#include "effects/grain.h"
 #include "config.h"
+#include "effects/effect.h"
 #include "fastmath.h"
-#include "kernels/kernel.h"
 
 #ifndef NULL
 #define NULL ((void *)0)
@@ -28,10 +28,10 @@ static int grain_point_in_triangle(float px, float py, float x0, float y0, float
 }
 
 // =================================================================================================
-// Kernel Implementation
+// Effect Implementation
 // =================================================================================================
 
-void kernel_grain_apply(float *fb, int width, int height, const void *config, const void *cache) {
+void effect_grain_apply(float *fb, int width, int height, const void *config, const void *cache) {
   // If no config, no grain to apply
   if (!config)
     return;
@@ -130,5 +130,5 @@ void kernel_grain_apply(float *fb, int width, int height, const void *config, co
   }
 }
 
-// Kernel descriptor
-const Kernel KERNEL_GRAIN = {.name = "grain", .apply = kernel_grain_apply};
+// Effect descriptor
+const Effect EFFECT_GRAIN = {.name = "grain", .apply = effect_grain_apply};

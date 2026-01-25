@@ -1,10 +1,10 @@
-// Test harness for vignette kernel
+// Test harness for vignette effect
 
 #include <stdint.h>
 #include <stdio.h>
 
 #include "config.h"
-#include "kernels/vignette.h"
+#include "effects/vignette.h"
 #include "test_harness.h"
 
 TEST_RUNNER_BEGIN();
@@ -42,7 +42,7 @@ void test_vignette_no_config(void) {
   // With NULL config, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.3f};
-  kernel_vignette_apply(fb, 1, 1, nullptr, &geom);
+  effect_vignette_apply(fb, 1, 1, nullptr, &geom);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[1], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[2], 0.5f, 0.0001f);
@@ -54,7 +54,7 @@ void test_vignette_no_geometry(void) {
   // With NULL geometry, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   VignetteConfig cfg = {.enabled = 1, .strength = 0.4f, .background = 0.137f};
-  kernel_vignette_apply(fb, 1, 1, &cfg, nullptr);
+  effect_vignette_apply(fb, 1, 1, &cfg, nullptr);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[1], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[2], 0.5f, 0.0001f);
@@ -67,7 +67,7 @@ void test_vignette_disabled(void) {
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   VignetteConfig cfg = {.enabled = 0, .strength = 0.4f, .background = 0.137f};
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.3f};
-  kernel_vignette_apply(fb, 1, 1, &cfg, &geom);
+  effect_vignette_apply(fb, 1, 1, &cfg, &geom);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[1], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[2], 0.5f, 0.0001f);
@@ -97,7 +97,7 @@ void test_vignette_inside_circle_unchanged(void) {
       .radius = 2.0f // Covers all pixels (max distance ~1.41 < 2)
   };
 
-  kernel_vignette_apply(fb, 3, 3, &cfg, &geom);
+  effect_vignette_apply(fb, 3, 3, &cfg, &geom);
 
   // All pixels should be unchanged (all inside circle)
   ASSERT_NEAR(fb[0], 0.6f, 0.0001f);             // (0,0)
@@ -127,7 +127,7 @@ void test_vignette_outside_circle_gets_background(void) {
       .radius = 0.1f // Very small - all pixels outside
   };
 
-  kernel_vignette_apply(fb, 3, 3, &cfg, &geom);
+  effect_vignette_apply(fb, 3, 3, &cfg, &geom);
 
   // All pixels should be close to background color (with dither noise)
   // At strength=0, there's no darkening, just flat background + dither
@@ -148,7 +148,7 @@ void test_vignette_background_alpha_is_one(void) {
       .radius = 0.1f // Pixel is outside circle
   };
 
-  kernel_vignette_apply(fb, 1, 1, &cfg, &geom);
+  effect_vignette_apply(fb, 1, 1, &cfg, &geom);
 
   // Alpha should be set to 1.0 for background
   ASSERT_NEAR(fb[3], 1.0f, 0.0001f);
@@ -177,7 +177,7 @@ void test_vignette_darkening_at_corners(void) {
       .radius = 2.0f // Small circle, lots of background
   };
 
-  kernel_vignette_apply(fb, 10, 10, &cfg, &geom);
+  effect_vignette_apply(fb, 10, 10, &cfg, &geom);
 
   // Corner pixel (0,0) should be darker than edge pixel (2,5)
   // Corner is far from center, edge is just outside circle
@@ -203,7 +203,7 @@ void test_vignette_zero_strength_no_darkening(void) {
   VignetteConfig cfg = {.enabled = 1, .strength = 0.0f, .background = bg};
   VignetteGeometry geom = {.cx = 5.0f, .cy = 5.0f, .radius = 2.0f};
 
-  kernel_vignette_apply(fb, 10, 10, &cfg, &geom);
+  effect_vignette_apply(fb, 10, 10, &cfg, &geom);
 
   // All background pixels should be approximately same (just dither noise)
   float corner = fb[0]; // (0,0) - clearly outside circle
@@ -236,7 +236,7 @@ void test_vignette_smoothstep_gradient(void) {
       .radius = 1.0f // Only x=0 is inside
   };
 
-  kernel_vignette_apply(fb, 10, 1, &cfg, &geom);
+  effect_vignette_apply(fb, 10, 1, &cfg, &geom);
 
   // Pixels x=1 through x=9 are outside circle
   // Verify gradient exists and is monotonic (darker toward right)
@@ -267,8 +267,8 @@ void test_vignette_dither_deterministic(void) {
   VignetteConfig cfg = {.enabled = 1, .strength = 0.4f, .background = 0.137f};
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.1f};
 
-  kernel_vignette_apply(fb1, 1, 1, &cfg, &geom);
-  kernel_vignette_apply(fb2, 1, 1, &cfg, &geom);
+  effect_vignette_apply(fb1, 1, 1, &cfg, &geom);
+  effect_vignette_apply(fb2, 1, 1, &cfg, &geom);
 
   ASSERT_NEAR(fb1[0], fb2[0], 0.0001f);
   ASSERT_NEAR(fb1[1], fb2[1], 0.0001f);
@@ -289,7 +289,7 @@ void test_vignette_dither_breaks_banding(void) {
                            .cy = 5.0f, // Far above, so both pixels have similar distance
                            .radius = 0.1f};
 
-  kernel_vignette_apply(fb, 2, 1, &cfg, &geom);
+  effect_vignette_apply(fb, 2, 1, &cfg, &geom);
 
   // Both pixels should be background-ish but slightly different due to dither
   // (or exactly same if hash happens to produce same value - rare)
@@ -311,7 +311,7 @@ void test_vignette_grey_uniform(void) {
   VignetteConfig cfg = {.enabled = 1, .strength = 0.4f, .background = 0.137f};
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.1f};
 
-  kernel_vignette_apply(fb, 1, 1, &cfg, &geom);
+  effect_vignette_apply(fb, 1, 1, &cfg, &geom);
 
   // All color channels should be equal (grey)
   ASSERT_NEAR(fb[0], fb[1], 0.0001f);
@@ -331,7 +331,7 @@ void test_vignette_uses_defaults(void) {
   VignetteConfig cfg = {.enabled = 1, .strength = 0.0f, .background = 0.0f};
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.1f};
 
-  kernel_vignette_apply(fb, 1, 1, &cfg, &geom);
+  effect_vignette_apply(fb, 1, 1, &cfg, &geom);
 
   // Should use default background (~0.137) and default strength (0.4)
   // With default strength and pixel at corner, should see some darkening
@@ -352,7 +352,7 @@ void test_vignette_clamps_output(void) {
   VignetteConfig cfg = {.enabled = 1, .strength = 2.0f, .background = 0.137f}; // Very strong
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.1f};
 
-  kernel_vignette_apply(fb, 1, 1, &cfg, &geom);
+  effect_vignette_apply(fb, 1, 1, &cfg, &geom);
 
   // Even with extreme strength, values should be clamped
   ASSERT_TRUE(fb[0] >= 0.0f && fb[0] <= 1.0f);
@@ -362,15 +362,15 @@ void test_vignette_clamps_output(void) {
 }
 
 // =================================================================================================
-// Test: Kernel Descriptor
+// Test: Effect Descriptor
 // =================================================================================================
 
-void test_kernel_descriptor(void) {
-  TEST_BEGIN("kernel_descriptor");
-  // Verify kernel descriptor is properly defined
-  ASSERT_TRUE(KERNEL_VIGNETTE.name != NULL);
-  ASSERT_TRUE(KERNEL_VIGNETTE.apply != NULL);
-  ASSERT_TRUE(KERNEL_VIGNETTE.apply == kernel_vignette_apply);
+void test_effect_descriptor(void) {
+  TEST_BEGIN("effect_descriptor");
+  // Verify effect descriptor is properly defined
+  ASSERT_TRUE(EFFECT_VIGNETTE.name != NULL);
+  ASSERT_TRUE(EFFECT_VIGNETTE.apply != NULL);
+  ASSERT_TRUE(EFFECT_VIGNETTE.apply == effect_vignette_apply);
   TEST_END();
 }
 
@@ -379,7 +379,7 @@ void test_kernel_descriptor(void) {
 // =================================================================================================
 
 int main(void) {
-  printf("Vignette kernel tests\n");
+  printf("Vignette effect tests\n");
   printf("=====================\n");
 
   // Hash function tests
@@ -416,8 +416,8 @@ int main(void) {
   // Clamping tests
   test_vignette_clamps_output();
 
-  // Kernel descriptor tests
-  test_kernel_descriptor();
+  // Effect descriptor tests
+  test_effect_descriptor();
 
   TEST_RUNNER_END();
 }

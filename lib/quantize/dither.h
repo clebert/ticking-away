@@ -1,7 +1,7 @@
 #pragma once
 
 // =================================================================================================
-// Dither Kernel
+// Dither Quantizer
 // =================================================================================================
 // Applies error diffusion dithering to quantize a linear RGB framebuffer to a limited palette.
 //
@@ -17,7 +17,7 @@
 // Output: sRGB framebuffer (uint8_t 0-255, RGBA)
 //
 // Memory model:
-// - All buffers are caller-owned (no static allocations in kernel)
+// - All buffers are caller-owned (no static allocations)
 // - Use DITHER_CACHE_STATIC() macro for easy stack allocation
 // - Cache can be reused across frames if palette doesn't change
 
@@ -78,11 +78,11 @@ typedef struct {
 // Dither Cache
 // -------------------------------------------------------------------------------------------------
 // Caller-owned structure for palette state and error diffusion buffers.
-// All memory is allocated by caller - kernel never allocates.
+// All memory is allocated by caller - quantizer never allocates.
 //
 // Usage with static macro (recommended):
 //   DITHER_CACHE_STATIC(cache, 64, 1920);  // 64 colors, 1920 max width
-//   kernel_dither_apply(..., &cache);
+//   quantize_dither_apply(..., &cache);
 //
 // Usage with manual allocation:
 //   DitherOkLab oklab[64];
@@ -111,7 +111,7 @@ typedef struct {
   float *err_buffer;
   int err_row_width; // Max width this cache can handle
 
-  // Cache invalidation tracking (managed by kernel)
+  // Cache invalidation tracking (managed internally)
   const DitherRGB *last_palette;
   int last_palette_count;
 } DitherCache;
@@ -123,7 +123,7 @@ typedef struct {
 //
 // Example:
 //   DITHER_CACHE_STATIC(my_cache, 6, 400);  // 6 colors, 400px wide
-//   kernel_dither_apply(in, out, 400, 400, &config, &my_cache);
+//   quantize_dither_apply(in, out, 400, 400, &config, &my_cache);
 
 #define DITHER_CACHE_STATIC(name, max_colors, max_width)                                           \
   DitherOkLab name##_oklab[max_colors];                                                            \
@@ -160,15 +160,15 @@ typedef struct {
 } DitherConfig;
 
 // -------------------------------------------------------------------------------------------------
-// Kernel Functions
+// Quantizer Functions
 // -------------------------------------------------------------------------------------------------
 
 // Initialize the cache for a given palette.
-// Called automatically by kernel_dither_apply if palette changed, but can be called
+// Called automatically by quantize_dither_apply if palette changed, but can be called
 // explicitly to pre-warm the cache.
 //
 // Returns 0 on success, -1 if cache capacity is insufficient.
-int kernel_dither_init_cache(DitherCache *cache, const DitherRGB *palette, int palette_count);
+int quantize_dither_init_cache(DitherCache *cache, const DitherRGB *palette, int palette_count);
 
 // Apply error diffusion dithering to a framebuffer.
 // Input:  float_fb - linear RGB framebuffer (RGBA, 0.0-1.0)
@@ -177,8 +177,8 @@ int kernel_dither_init_cache(DitherCache *cache, const DitherRGB *palette, int p
 // Cache:  caller-owned cache (required, use DITHER_CACHE_STATIC for easy setup)
 //
 // Returns 0 on success, -1 on error (null pointers, width exceeds cache capacity).
-int kernel_dither_apply(const float *float_fb, uint8_t *out_fb, int width, int height,
-                        const DitherConfig *config, DitherCache *cache);
+int quantize_dither_apply(const float *float_fb, uint8_t *out_fb, int width, int height,
+                          const DitherConfig *config, DitherCache *cache);
 
 // -------------------------------------------------------------------------------------------------
 // Utility Functions (exposed for testing)

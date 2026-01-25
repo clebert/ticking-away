@@ -1,18 +1,18 @@
 #pragma once
 
 // =================================================================================================
-// Vignette Kernel
+// Vignette Effect
 // =================================================================================================
 // Applies a vignette effect to the UI background area outside the watch circle.
 //
-// This kernel fills pixels outside the watch circle with a grey background and
+// This effect fills pixels outside the watch circle with a grey background and
 // applies darkening that increases toward the corners of the framebuffer.
 // Dithering noise is added to break up banding in the dark gradient.
 //
-// This kernel expects the framebuffer to be in sRGB space (i.e., gamma correction already applied).
+// This effect expects the framebuffer to be in sRGB space (i.e., gamma correction already applied).
 // Pixels inside the watch circle are left unchanged.
 
-#include "kernel.h"
+#include "effect.h"
 #include <stdint.h>
 
 // -------------------------------------------------------------------------------------------------
@@ -47,14 +47,14 @@ static inline uint32_t vignette_hash_pixel(int x, int y) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Kernel Function
+// Effect Function
 // -------------------------------------------------------------------------------------------------
 
 // Apply vignette effect to framebuffer background.
 // Expects fb to be in sRGB space (float 0.0-1.0).
 // Config: pointer to VignetteConfig (from config.h). If NULL, no effect is applied.
 // Cache: pointer to VignetteGeometry (required, defines watch circle bounds).
-void kernel_vignette_apply(float *fb, int width, int height, const void *config, const void *cache);
+void effect_vignette_apply(float *fb, int width, int height, const void *config, const void *cache);
 
-// Kernel descriptor for pipeline registration
-extern const Kernel KERNEL_VIGNETTE;
+// Effect descriptor for pipeline registration
+extern const Effect EFFECT_VIGNETTE;

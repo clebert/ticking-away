@@ -38,7 +38,7 @@ const defaults = {
     enabled: false,
     paletteMode: 0, // 0 = IDEAL, 1 = DEVICE, 2 = SPECTRA6
     strength: 20, // 0-100, maps to 0.0-1.0
-    kernel: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
+    algorithm: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
     bwThreshold: 10, // 0-100, maps to 0.0-0.3 OkLab chroma (0 = disabled, ~10 = B/W for grays)
     chromaWeight: 100, // 50-400, maps to 0.5-4.0 (100 = default 1.0, higher = prioritize hue for rainbows)
@@ -324,7 +324,7 @@ export const dither = {
   enabled: signal(settings.ditherEnabled ?? defaults.dither.enabled),
   paletteMode: signal(settings.ditherPaletteMode ?? defaults.dither.paletteMode),
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
-  kernel: signal(settings.ditherKernel ?? defaults.dither.kernel),
+  algorithm: signal(settings.ditherAlgorithm ?? defaults.dither.algorithm),
   oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
   bwThreshold: signal(settings.ditherBwThreshold ?? defaults.dither.bwThreshold),
   chromaWeight: signal(settings.ditherChromaWeight ?? defaults.dither.chromaWeight),
@@ -342,8 +342,8 @@ export const dither = {
     dither.strength.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  setKernel(e: Event): void {
-    dither.kernel.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  setAlgorithm(e: Event): void {
+    dither.algorithm.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   toggleOklabError(): void {
@@ -428,7 +428,7 @@ export const resetAll = {
       dither.enabled.value = defaults.dither.enabled;
       dither.paletteMode.value = defaults.dither.paletteMode;
       dither.strength.value = defaults.dither.strength;
-      dither.kernel.value = defaults.dither.kernel;
+      dither.algorithm.value = defaults.dither.algorithm;
       dither.oklabError.value = defaults.dither.oklabError;
       dither.bwThreshold.value = defaults.dither.bwThreshold;
       dither.chromaWeight.value = defaults.dither.chromaWeight;

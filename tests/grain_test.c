@@ -1,10 +1,10 @@
-// Test harness for grain kernel
+// Test harness for grain effect
 
 #include <stdint.h>
 #include <stdio.h>
 
 #include "config.h"
-#include "kernels/grain.h"
+#include "effects/grain.h"
 #include "test_harness.h"
 
 TEST_RUNNER_BEGIN();
@@ -59,7 +59,7 @@ void test_grain_no_config(void) {
   TEST_BEGIN("grain_no_config");
   // With NULL config, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
-  kernel_grain_apply(fb, 1, 1, nullptr, nullptr);
+  effect_grain_apply(fb, 1, 1, nullptr, nullptr);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[1], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[2], 0.5f, 0.0001f);
@@ -71,7 +71,7 @@ void test_grain_zero_intensity(void) {
   // With zero intensity, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   GrainConfig cfg = {.intensity = 0.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
-  kernel_grain_apply(fb, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb, 1, 1, &cfg, nullptr);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[1], 0.5f, 0.0001f);
   ASSERT_NEAR(fb[2], 0.5f, 0.0001f);
@@ -83,7 +83,7 @@ void test_grain_black_pixels_unaffected(void) {
   // Black pixels should have no grain (brightness scale = 0)
   float fb[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   GrainConfig cfg = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
-  kernel_grain_apply(fb, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb, 1, 1, &cfg, nullptr);
   // Should remain black (or very close due to floating point)
   ASSERT_NEAR(fb[0], 0.0f, 0.001f);
   ASSERT_NEAR(fb[1], 0.0f, 0.001f);
@@ -96,7 +96,7 @@ void test_grain_bright_pixels_affected(void) {
   // White pixels should have visible grain
   float fb[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   GrainConfig cfg = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
-  kernel_grain_apply(fb, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb, 1, 1, &cfg, nullptr);
   // At full intensity, grain is ±6%, so result should be within [0.94, 1.0]
   // (clamped at 1.0 for positive noise)
   ASSERT_TRUE(fb[0] >= 0.94f && fb[0] <= 1.0f);
@@ -108,7 +108,7 @@ void test_grain_alpha_unchanged(void) {
   // Alpha channel should never be modified
   float fb[4] = {0.5f, 0.5f, 0.5f, 0.7f};
   GrainConfig cfg = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
-  kernel_grain_apply(fb, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb, 1, 1, &cfg, nullptr);
   ASSERT_NEAR(fb[3], 0.7f, 0.0001f);
   TEST_END();
 }
@@ -118,7 +118,7 @@ void test_grain_monochromatic(void) {
   // Grain should be same for all channels (monochromatic noise)
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   GrainConfig cfg = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
-  kernel_grain_apply(fb, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb, 1, 1, &cfg, nullptr);
   // All channels should change by the same amount (grain is monochromatic)
   float r_change = fb[0] - 0.5f;
   float g_change = fb[1] - 0.5f;
@@ -134,8 +134,8 @@ void test_grain_deterministic(void) {
   float fb1[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   float fb2[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   GrainConfig cfg = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
-  kernel_grain_apply(fb1, 1, 1, &cfg, nullptr);
-  kernel_grain_apply(fb2, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb1, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb2, 1, 1, &cfg, nullptr);
   ASSERT_NEAR(fb1[0], fb2[0], 0.0001f);
   ASSERT_NEAR(fb1[1], fb2[1], 0.0001f);
   ASSERT_NEAR(fb1[2], fb2[2], 0.0001f);
@@ -156,8 +156,8 @@ void test_grain_scale_affects_pattern(void) {
   GrainConfig cfg1 = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
   GrainConfig cfg2 = {.intensity = 1.0f, .scale = 2.0f, .threshold = 0.1f, .prism_only = 0};
 
-  kernel_grain_apply(fb1, 4, 4, &cfg1, nullptr);
-  kernel_grain_apply(fb2, 4, 4, &cfg2, nullptr);
+  effect_grain_apply(fb1, 4, 4, &cfg1, nullptr);
+  effect_grain_apply(fb2, 4, 4, &cfg2, nullptr);
 
   // At scale=2, adjacent pixels should share grain values
   // fb2[0,0] and fb2[1,0] should have same grain (same scaled coord)
@@ -187,7 +187,7 @@ void test_grain_circle_mask(void) {
                         .radius = 0.6f, // Only center pixel
                         .prism_vertices = nullptr};
 
-  kernel_grain_apply(fb, 3, 3, &cfg, &geom);
+  effect_grain_apply(fb, 3, 3, &cfg, &geom);
 
   // Corner pixel (0,0) is at (0.5, 0.5), distance to center (1.5, 1.5) is ~1.41
   // This is > 0.6, so should be unchanged
@@ -223,7 +223,7 @@ void test_grain_prism_only(void) {
                         .radius = 10.0f, // Circle includes pixel
                         .prism_vertices = prism_verts};
 
-  kernel_grain_apply(fb, 1, 1, &cfg, &geom);
+  effect_grain_apply(fb, 1, 1, &cfg, &geom);
 
   // Pixel at (0.5, 0.5) is inside circle but outside prism, so unchanged
   ASSERT_NEAR(fb[0], original, 0.0001f);
@@ -245,7 +245,7 @@ void test_grain_prism_inside(void) {
   GrainConfig cfg = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 1};
   GrainGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 10.0f, .prism_vertices = prism_verts};
 
-  kernel_grain_apply(fb, 1, 1, &cfg, &geom);
+  effect_grain_apply(fb, 1, 1, &cfg, &geom);
 
   // Pixel at (0.5, 0.5) is inside both circle and prism, grain should be applied
   // Just verify value changed or is valid
@@ -262,7 +262,7 @@ void test_grain_clamps_output(void) {
   // Values should be clamped to [0, 1]
   float fb[4] = {0.99f, 0.99f, 0.99f, 1.0f};
   GrainConfig cfg = {.intensity = 1.0f, .scale = 1.0f, .threshold = 0.1f, .prism_only = 0};
-  kernel_grain_apply(fb, 1, 1, &cfg, nullptr);
+  effect_grain_apply(fb, 1, 1, &cfg, nullptr);
   // Even with positive grain, result should be clamped to 1.0
   ASSERT_TRUE(fb[0] <= 1.0f);
   ASSERT_TRUE(fb[1] <= 1.0f);
@@ -275,7 +275,7 @@ void test_grain_clamps_output(void) {
 // =================================================================================================
 
 int main(void) {
-  printf("Grain kernel tests\n");
+  printf("Grain effect tests\n");
   printf("==================\n");
 
   // Hash function tests

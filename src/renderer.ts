@@ -74,7 +74,7 @@ export function render(): void {
   config.dither.enabled = dither.enabled.value;
   config.dither.mode = dither.paletteMode.value;
   config.dither.strength = dither.strength.value / 100.0;
-  config.dither.kernel = dither.kernel.value;
+  config.dither.algorithm = dither.algorithm.value;
   config.dither.oklabError = dither.oklabError.value;
   config.dither.bwThreshold = (dither.bwThreshold.value / 100.0) * MAX_BW_CHROMA_THRESHOLD;
   config.dither.chromaWeight = dither.chromaWeight.value / 100.0;

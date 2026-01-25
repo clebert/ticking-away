@@ -75,7 +75,7 @@ const fields = {
     enabled: "boolean",
     mode: "int32", // DitherPaletteMode enum
     strength: "float32", // 0.0-1.0
-    kernel: "int32", // DitherKernelType enum
+    algorithm: "int32", // DitherAlgorithmType enum
     oklabError: "boolean",
     bwThreshold: "float32", // 0.0-1.0
     chromaWeight: "float32", // 0.5-4.0

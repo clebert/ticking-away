@@ -1,7 +1,7 @@
 #pragma once
 
 // =================================================================================================
-// Grain Kernel
+// Grain Effect
 // =================================================================================================
 // Applies film grain effect to a framebuffer in sRGB space.
 //
@@ -9,9 +9,9 @@
 // The noise is deterministic (based on pixel coordinates) so results are reproducible.
 // Grain intensity scales with pixel brightness to avoid noise on black areas.
 //
-// This kernel expects the framebuffer to be in sRGB space (i.e., gamma correction already applied).
+// This effect expects the framebuffer to be in sRGB space (i.e., gamma correction already applied).
 
-#include "kernel.h"
+#include "effect.h"
 #include <stdint.h>
 
 // -------------------------------------------------------------------------------------------------
@@ -52,14 +52,14 @@ static inline uint32_t grain_hash_pixel(int x, int y) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Kernel Function
+// Effect Function
 // -------------------------------------------------------------------------------------------------
 
 // Apply film grain to framebuffer.
 // Expects fb to be in sRGB space (float 0.0-1.0).
 // Config: pointer to GrainConfig (from config.h). If NULL, no grain is applied.
 // Cache: pointer to GrainGeometry (optional, required for prism_only mode).
-void kernel_grain_apply(float *fb, int width, int height, const void *config, const void *cache);
+void effect_grain_apply(float *fb, int width, int height, const void *config, const void *cache);
 
-// Kernel descriptor for pipeline registration
-extern const Kernel KERNEL_GRAIN;
+// Effect descriptor for pipeline registration
+extern const Effect EFFECT_GRAIN;

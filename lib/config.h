@@ -6,7 +6,7 @@
 // Focused configuration types that replace the monolithic WatchfaceConfig.
 // Each struct groups related settings for a specific aspect of rendering.
 
-#include "kernels/kernel.h"
+#include "effects/effect.h"
 #include <stdint.h>
 
 // -------------------------------------------------------------------------------------------------
@@ -75,16 +75,19 @@ typedef enum {
   DITHER_MODE_BLEND = 2   // Blend between ideal and device
 } DitherPaletteMode;
 
-typedef enum { DITHER_KERNEL_ATKINSON = 0, DITHER_KERNEL_FLOYD_STEINBERG = 1 } DitherKernelType;
+typedef enum {
+  DITHER_ALGORITHM_ATKINSON = 0,
+  DITHER_ALGORITHM_FLOYD_STEINBERG = 1
+} DitherAlgorithmType;
 
 typedef struct {
-  int32_t enabled;         // Enable dithering (0 or 1)
-  DitherPaletteMode mode;  // Palette mode
-  float strength;          // Dither pattern intensity (0.0 - 1.0)
-  DitherKernelType kernel; // Error diffusion kernel
-  int32_t oklab_error;     // Use OkLab error diffusion (0 or 1)
-  float bw_threshold;      // OkLab chroma threshold for B/W-only (0.0 = disabled)
-  float chroma_weight;     // Weight for hue/chroma vs lightness (0.5 - 4.0)
+  int32_t enabled;               // Enable dithering (0 or 1)
+  DitherPaletteMode mode;        // Palette mode
+  float strength;                // Dither pattern intensity (0.0 - 1.0)
+  DitherAlgorithmType algorithm; // Error diffusion algorithm
+  int32_t oklab_error;           // Use OkLab error diffusion (0 or 1)
+  float bw_threshold;            // OkLab chroma threshold for B/W-only (0.0 = disabled)
+  float chroma_weight;           // Weight for hue/chroma vs lightness (0.5 - 4.0)
 } SceneDitherConfig;
 
 // -------------------------------------------------------------------------------------------------

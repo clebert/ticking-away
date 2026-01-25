@@ -1,7 +1,7 @@
-#include "kernels/vignette.h"
+#include "effects/vignette.h"
 #include "config.h"
+#include "effects/effect.h"
 #include "fastmath.h"
-#include "kernels/kernel.h"
 
 #ifndef NULL
 #define NULL ((void *)0)
@@ -18,10 +18,10 @@
 #define VIGNETTE_DEFAULT_STRENGTH 0.4f
 
 // =================================================================================================
-// Kernel Implementation
+// Effect Implementation
 // =================================================================================================
 
-void kernel_vignette_apply(float *fb, int width, int height, const void *config,
+void effect_vignette_apply(float *fb, int width, int height, const void *config,
                            const void *cache) {
   // If no config or geometry, nothing to do
   if (!config || !cache)
@@ -94,5 +94,5 @@ void kernel_vignette_apply(float *fb, int width, int height, const void *config,
   }
 }
 
-// Kernel descriptor
-const Kernel KERNEL_VIGNETTE = {.name = "vignette", .apply = kernel_vignette_apply};
+// Effect descriptor
+const Effect EFFECT_VIGNETTE = {.name = "vignette", .apply = effect_vignette_apply};

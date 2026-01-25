@@ -21,21 +21,22 @@ clang \
   -Wl,--lto-O3 \
   -o public/index.wasm \
   bin/wasm/main.c \
-  lib/scene.c \
-  lib/pipeline.c \
-  lib/geometry/prism.c \
-  lib/geometry/intersect.c \
-  lib/geometry/segment.c \
-  lib/draw/pixel.c \
   lib/draw/line.c \
+  lib/draw/pixel.c \
+  lib/effects/gamma.c \
+  lib/effects/grain.c \
+  lib/effects/vignette.c \
+  lib/geometry/intersect.c \
+  lib/geometry/prism.c \
+  lib/geometry/segment.c \
   lib/layers/background.c \
-  lib/layers/rays.c \
   lib/layers/gradient.c \
-  lib/layers/prism_glow.c \
   lib/layers/markers.c \
-  lib/kernels/gamma.c \
-  lib/kernels/grain.c \
-  lib/kernels/dither.c \
-  lib/kernels/vignette.c
+  lib/layers/prism_glow.c \
+  lib/layers/rays.c \
+  lib/pipeline.c \
+  lib/quantize/direct.c \
+  lib/quantize/dither.c \
+  lib/scene.c 
 
 echo "Built index.wasm ($(wc -c < public/index.wasm | xargs) bytes)"

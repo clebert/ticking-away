@@ -6,7 +6,7 @@
 // Distance-field based line drawing with glow effects and clipping.
 // Lines are rendered with configurable falloff and intensity gradients.
 
-#include "kernels/kernel.h" // FalloffType
+#include "effects/effect.h" // FalloffType
 
 // -------------------------------------------------------------------------------------------------
 // Clipping Regions

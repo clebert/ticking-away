@@ -6,7 +6,7 @@
 // Low-level pixel blending operations for float framebuffers in linear color space.
 // All operations assume pre-multiplied alpha and RGBA layout (4 floats per pixel).
 
-#include "kernels/kernel.h" // FalloffType
+#include "effects/effect.h" // FalloffType
 
 // -------------------------------------------------------------------------------------------------
 // Falloff Computation

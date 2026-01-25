@@ -6,8 +6,8 @@
 #include <stdio.h>
 
 #include "config.h"
+#include "effects/effect.h"
 #include "geometry/types.h"
-#include "kernels/kernel.h"
 #include "scene.h"
 #include "test_harness.h"
 

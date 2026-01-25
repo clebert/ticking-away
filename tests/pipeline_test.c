@@ -1,9 +1,9 @@
-// Test harness for kernel pipeline
+// Test harness for effect pipeline
 
 #include "config.h"
-#include "kernels/gamma.h"
-#include "kernels/grain.h"
-#include "kernels/vignette.h"
+#include "effects/gamma.h"
+#include "effects/grain.h"
+#include "effects/vignette.h"
 #include "pipeline.h"
 #include "test_harness.h"
 #include <stdio.h>
@@ -37,28 +37,28 @@ void test_pipeline_init(void) {
   TEST_END();
 }
 
-void test_pipeline_add_kernel(void) {
-  TEST_BEGIN("pipeline_add_kernel");
+void test_pipeline_add_effect(void) {
+  TEST_BEGIN("pipeline_add_effect");
   Pipeline p;
   pipeline_init(&p);
 
-  int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
+  int result = pipeline_add_effect(&p, &EFFECT_GAMMA, nullptr, (void *)0);
   ASSERT_EQ(result, 0);
   ASSERT_EQ(pipeline_count(&p), 1);
 
-  result = pipeline_add_kernel(&p, &KERNEL_GRAIN, nullptr, (void *)0);
+  result = pipeline_add_effect(&p, &EFFECT_GRAIN, nullptr, (void *)0);
   ASSERT_EQ(result, 0);
   ASSERT_EQ(pipeline_count(&p), 2);
 
   TEST_END();
 }
 
-void test_pipeline_add_null_kernel(void) {
-  TEST_BEGIN("pipeline_add_null_kernel");
+void test_pipeline_add_null_effect(void) {
+  TEST_BEGIN("pipeline_add_null_effect");
   Pipeline p;
   pipeline_init(&p);
 
-  int result = pipeline_add_kernel(&p, nullptr, nullptr, (void *)0);
+  int result = pipeline_add_effect(&p, nullptr, nullptr, (void *)0);
   ASSERT_EQ(result, -1);            // Should fail
   ASSERT_EQ(pipeline_count(&p), 0); // Count unchanged
 
@@ -71,16 +71,16 @@ void test_pipeline_full(void) {
   pipeline_init(&p);
 
   // Fill the pipeline to capacity
-  for (int i = 0; i < PIPELINE_MAX_KERNELS; i++) {
-    int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
+  for (int i = 0; i < PIPELINE_MAX_EFFECTS; i++) {
+    int result = pipeline_add_effect(&p, &EFFECT_GAMMA, nullptr, (void *)0);
     ASSERT_EQ(result, 0);
   }
-  ASSERT_EQ(pipeline_count(&p), PIPELINE_MAX_KERNELS);
+  ASSERT_EQ(pipeline_count(&p), PIPELINE_MAX_EFFECTS);
 
   // Try to add one more - should fail
-  int result = pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
+  int result = pipeline_add_effect(&p, &EFFECT_GAMMA, nullptr, (void *)0);
   ASSERT_EQ(result, -1);
-  ASSERT_EQ(pipeline_count(&p), PIPELINE_MAX_KERNELS); // Count unchanged
+  ASSERT_EQ(pipeline_count(&p), PIPELINE_MAX_EFFECTS); // Count unchanged
 
   TEST_END();
 }
@@ -106,11 +106,11 @@ void test_pipeline_execute_empty(void) {
   TEST_END();
 }
 
-void test_pipeline_execute_single_kernel(void) {
-  TEST_BEGIN("pipeline_execute_single_kernel");
+void test_pipeline_execute_single_effect(void) {
+  TEST_BEGIN("pipeline_execute_single_effect");
   Pipeline p;
   pipeline_init(&p);
-  pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
+  pipeline_add_effect(&p, &EFFECT_GAMMA, nullptr, (void *)0);
 
   // Linear gray (0.5) should become sRGB gray (~0.735)
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
@@ -129,13 +129,13 @@ void test_pipeline_execute_gamma_then_grain(void) {
   Pipeline p;
   pipeline_init(&p);
 
-  // Add gamma kernel first
-  pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
+  // Add gamma effect first
+  pipeline_add_effect(&p, &EFFECT_GAMMA, nullptr, (void *)0);
 
-  // Add grain kernel with config
+  // Add grain effect with config
   GrainConfig grain_cfg = {.intensity = 0.1f, .scale = 1.0f, .threshold = 0.01f, .prism_only = 0};
   GrainGeometry grain_geom = {.cx = 2.0f, .cy = 2.0f, .radius = 10.0f, .prism_vertices = nullptr};
-  pipeline_add_kernel(&p, &KERNEL_GRAIN, &grain_cfg, &grain_geom);
+  pipeline_add_effect(&p, &EFFECT_GRAIN, &grain_cfg, &grain_geom);
 
   ASSERT_EQ(pipeline_count(&p), 2);
 
@@ -167,7 +167,7 @@ void test_pipeline_execute_order_matters(void) {
   // Execute gamma then vignette
   Pipeline p1;
   pipeline_init(&p1);
-  pipeline_add_kernel(&p1, &KERNEL_GAMMA, nullptr, (void *)0);
+  pipeline_add_effect(&p1, &EFFECT_GAMMA, nullptr, (void *)0);
 
   VignetteConfig vignette_cfg = {.enabled = 1, .strength = 0.4f, .background = 0.137f};
   VignetteGeometry vignette_geom = {
@@ -175,7 +175,7 @@ void test_pipeline_execute_order_matters(void) {
       .cy = 2.0f,
       .radius = 0.5f // Very small radius so most pixels are "outside"
   };
-  pipeline_add_kernel(&p1, &KERNEL_VIGNETTE, &vignette_cfg, &vignette_geom);
+  pipeline_add_effect(&p1, &EFFECT_VIGNETTE, &vignette_cfg, &vignette_geom);
 
   float fb1[64];
   fill_framebuffer(fb1, 4, 4, 0.5f, 0.5f, 0.5f, 1.0f);
@@ -184,8 +184,8 @@ void test_pipeline_execute_order_matters(void) {
   // Execute vignette then gamma
   Pipeline p2;
   pipeline_init(&p2);
-  pipeline_add_kernel(&p2, &KERNEL_VIGNETTE, &vignette_cfg, &vignette_geom);
-  pipeline_add_kernel(&p2, &KERNEL_GAMMA, nullptr, (void *)0);
+  pipeline_add_effect(&p2, &EFFECT_VIGNETTE, &vignette_cfg, &vignette_geom);
+  pipeline_add_effect(&p2, &EFFECT_GAMMA, nullptr, (void *)0);
 
   float fb2[64];
   fill_framebuffer(fb2, 4, 4, 0.5f, 0.5f, 0.5f, 1.0f);
@@ -210,24 +210,24 @@ void test_pipeline_execute_order_matters(void) {
 }
 
 // =================================================================================================
-// Test: Multiple kernel execution
+// Test: Multiple effect execution
 // =================================================================================================
 
-void test_pipeline_three_kernels(void) {
-  TEST_BEGIN("pipeline_three_kernels");
+void test_pipeline_three_effects(void) {
+  TEST_BEGIN("pipeline_three_effects");
   Pipeline p;
   pipeline_init(&p);
 
   // Standard post-processing pipeline: gamma -> grain -> vignette
-  pipeline_add_kernel(&p, &KERNEL_GAMMA, nullptr, (void *)0);
+  pipeline_add_effect(&p, &EFFECT_GAMMA, nullptr, (void *)0);
 
   GrainConfig grain_cfg = {.intensity = 0.05f, .scale = 1.0f, .threshold = 0.01f, .prism_only = 0};
   GrainGeometry grain_geom = {.cx = 4.0f, .cy = 4.0f, .radius = 100.0f, .prism_vertices = nullptr};
-  pipeline_add_kernel(&p, &KERNEL_GRAIN, &grain_cfg, &grain_geom);
+  pipeline_add_effect(&p, &EFFECT_GRAIN, &grain_cfg, &grain_geom);
 
   VignetteConfig vignette_cfg = {.enabled = 1, .strength = 0.3f, .background = 0.1f};
   VignetteGeometry vignette_geom = {.cx = 4.0f, .cy = 4.0f, .radius = 3.0f};
-  pipeline_add_kernel(&p, &KERNEL_VIGNETTE, &vignette_cfg, &vignette_geom);
+  pipeline_add_effect(&p, &EFFECT_VIGNETTE, &vignette_cfg, &vignette_geom);
 
   ASSERT_EQ(pipeline_count(&p), 3);
 
@@ -269,7 +269,7 @@ void test_pipeline_passes_config_and_cache(void) {
   GrainConfig grain_cfg_off = {
       .intensity = 0.0f, .scale = 1.0f, .threshold = 0.01f, .prism_only = 0};
   GrainGeometry grain_geom = {.cx = 2.0f, .cy = 2.0f, .radius = 10.0f, .prism_vertices = nullptr};
-  pipeline_add_kernel(&p, &KERNEL_GRAIN, &grain_cfg_off, &grain_geom);
+  pipeline_add_effect(&p, &EFFECT_GRAIN, &grain_cfg_off, &grain_geom);
 
   float fb[16];
   fill_framebuffer(fb, 2, 2, 0.5f, 0.6f, 0.7f, 1.0f);
@@ -296,7 +296,7 @@ void test_pipeline_disabled_vignette(void) {
   // Disabled vignette should not modify framebuffer
   VignetteConfig vignette_cfg = {.enabled = 0, .strength = 0.5f, .background = 0.2f};
   VignetteGeometry vignette_geom = {.cx = 2.0f, .cy = 2.0f, .radius = 1.0f};
-  pipeline_add_kernel(&p, &KERNEL_VIGNETTE, &vignette_cfg, &vignette_geom);
+  pipeline_add_effect(&p, &EFFECT_VIGNETTE, &vignette_cfg, &vignette_geom);
 
   float fb[16];
   fill_framebuffer(fb, 2, 2, 0.3f, 0.4f, 0.5f, 1.0f);
@@ -325,16 +325,16 @@ int main(void) {
 
   // Initialization tests
   test_pipeline_init();
-  test_pipeline_add_kernel();
-  test_pipeline_add_null_kernel();
+  test_pipeline_add_effect();
+  test_pipeline_add_null_effect();
   test_pipeline_full();
 
   // Execution tests
   test_pipeline_execute_empty();
-  test_pipeline_execute_single_kernel();
+  test_pipeline_execute_single_effect();
   test_pipeline_execute_gamma_then_grain();
   test_pipeline_execute_order_matters();
-  test_pipeline_three_kernels();
+  test_pipeline_three_effects();
 
   // Config/cache tests
   test_pipeline_passes_config_and_cache();

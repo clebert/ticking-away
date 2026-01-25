@@ -5,8 +5,8 @@
 // needed to render a complete frame, and scene_render_linear() orchestrates the layers.
 
 #include "scene.h"
+#include "effects/effect.h"
 #include "geometry/prism.h"
-#include "kernels/kernel.h"
 #include "layers/background.h"
 #include "layers/gradient.h"
 #include "layers/layer.h"

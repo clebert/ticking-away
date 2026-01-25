@@ -14,11 +14,11 @@ build_test() {
 # To add a new test, add a line like:
 #   build_test <name> <lib sources...> [-lm if needed]
 
-build_test gamma      lib/kernels/gamma.c -lm
-build_test grain      lib/kernels/grain.c
-build_test dither     lib/kernels/dither.c -lm
-build_test vignette   lib/kernels/vignette.c -lm
-build_test pipeline   lib/pipeline.c lib/kernels/{gamma,grain,vignette}.c -lm
+build_test gamma      lib/effects/gamma.c -lm
+build_test grain      lib/effects/grain.c
+build_test dither     lib/quantize/dither.c -lm
+build_test vignette   lib/effects/vignette.c -lm
+build_test pipeline   lib/pipeline.c lib/effects/{gamma,grain,vignette}.c -lm
 build_test prism      lib/geometry/prism.c -lm
 build_test intersect  lib/geometry/{intersect,prism}.c -lm
 build_test segment    lib/geometry/segment.c -lm
@@ -30,4 +30,4 @@ build_test gradient   lib/layers/gradient.c lib/geometry/prism.c -lm
 build_test prism_glow lib/layers/prism_glow.c lib/geometry/{prism,segment}.c lib/draw/pixel.c -lm
 build_test markers    lib/layers/markers.c lib/draw/{line,pixel}.c lib/geometry/{segment,prism}.c -lm
 build_test scene      lib/scene.c lib/layers/{background,rays,gradient,prism_glow,markers}.c \
-                      lib/geometry/{prism,intersect,segment}.c lib/draw/{line,pixel}.c lib/kernels/gamma.c -lm
+                      lib/geometry/{prism,intersect,segment}.c lib/draw/{line,pixel}.c lib/effects/gamma.c -lm

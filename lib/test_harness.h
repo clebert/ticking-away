@@ -3,7 +3,7 @@
 // =================================================================================================
 // Minimal Test Harness
 // =================================================================================================
-// Simple test infrastructure for verifying kernel and geometry extractions.
+// Simple test infrastructure for verifying effect and geometry extractions.
 // Designed to work without stdlib (uses only basic integer operations).
 //
 // Usage:
