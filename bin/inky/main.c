@@ -135,7 +135,7 @@ int main(void) {
 
   scene_set_marker_config(&scene, &marker_cfg);
 
-  DITHER_ERROR_CACHE_STATIC(dither_cache, 6, HEIGHT);
+  DITHER_ERROR_CACHE_STATIC(dither_cache, 6, WIDTH);
 
   DitherErrorConfig dither_cfg = {.palette = DITHER_PALETTE_SPECTRA6_EPDOPT,
                                   .palette_count = DITHER_PALETTE_SPECTRA6_EPDOPT_COUNT,

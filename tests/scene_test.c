@@ -283,13 +283,14 @@ void test_scene_render_sets_background(void) {
 
   scene_render_linear(&scene, test_fb);
 
-  // Center pixel should be opaque (alpha=1) since it's inside the circle
+  // Center pixel should be opaque black (inside circle)
   int center_idx = (TEST_HEIGHT / 2 * TEST_WIDTH + TEST_WIDTH / 2) * 4;
   ASSERT_NEAR(test_fb[center_idx + 3], 1.0f, 0.01f); // Alpha = 1
 
-  // Corner pixel should be transparent (alpha=0) since it's outside the circle
+  // Corner pixel should be opaque white (outside circle, for e-ink displays)
   int corner_idx = 0;
-  ASSERT_NEAR(test_fb[corner_idx + 3], 0.0f, 0.01f); // Alpha = 0
+  ASSERT_NEAR(test_fb[corner_idx], 1.0f, 0.01f);     // R = 1 (white)
+  ASSERT_NEAR(test_fb[corner_idx + 3], 1.0f, 0.01f); // Alpha = 1
 
   TEST_END();
 }

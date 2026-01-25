@@ -37,11 +37,11 @@ void layer_background_render(const RenderContext *ctx) {
         fb[idx + 2] = 0.0f;
         fb[idx + 3] = 1.0f;
       } else {
-        // Outside watchface - black with zero alpha (UI fills this later)
-        fb[idx] = 0.0f;
-        fb[idx + 1] = 0.0f;
-        fb[idx + 2] = 0.0f;
-        fb[idx + 3] = 0.0f;
+        // Outside watchface - white with full alpha (for e-ink displays)
+        fb[idx] = 1.0f;
+        fb[idx + 1] = 1.0f;
+        fb[idx + 2] = 1.0f;
+        fb[idx + 3] = 1.0f;
       }
     }
   }
