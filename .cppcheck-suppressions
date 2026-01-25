@@ -2,4 +2,4 @@
 normalCheckLevelMaxBranches
 
 // Test intentionally verifies pointer identity (not a logic error)
-knownConditionTrueFalse:tests/dither_test.c:250
+knownConditionTrueFalse:tests/dither_test.c:228

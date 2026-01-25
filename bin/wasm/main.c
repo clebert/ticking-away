@@ -206,12 +206,9 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
     // Build dither config from scene config + palette
     DitherConfig dither_cfg = {.palette = palette,
                                .palette_count = palette_count,
-                               .bw_black_idx = 0, // Black is index 0 in all palettes
-                               .bw_white_idx = 1, // White is index 1 in all palettes
                                .algorithm = (DitherAlgorithm)config.dither.algorithm,
                                .strength = config.dither.strength,
                                .oklab_error = config.dither.oklab_error,
-                               .bw_threshold = config.dither.bw_threshold,
                                .chroma_weight = config.dither.chroma_weight};
 
     // Apply dithering (float -> uint8)

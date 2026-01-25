@@ -77,7 +77,6 @@ const fields = {
     strength: "float32", // 0.0-1.0
     algorithm: "int32", // DitherAlgorithmType enum
     oklabError: "boolean",
-    bwThreshold: "float32", // 0.0-1.0
     chromaWeight: "float32", // 0.5-4.0
   },
 

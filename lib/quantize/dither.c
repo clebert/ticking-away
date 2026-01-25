@@ -122,24 +122,6 @@ int dither_find_closest_color(DitherOkLab color, const DitherOkLab *palette, int
   return best_idx;
 }
 
-// Find closest B/W color index from two specified palette indices
-int dither_find_closest_bw(DitherOkLab color, const DitherOkLab *palette, int black_idx,
-                           int white_idx, float chroma_weight) {
-  float dist_black = dither_oklab_distance_sq(color, palette[black_idx], chroma_weight);
-  float dist_white = dither_oklab_distance_sq(color, palette[white_idx], chroma_weight);
-  return (dist_black < dist_white) ? black_idx : white_idx;
-}
-
-// Find closest color with B/W threshold for grayscale regions
-static int find_color_with_bw_threshold(DitherOkLab color, const DitherOkLab *palette,
-                                        int palette_count, float bw_threshold, int bw_black_idx,
-                                        int bw_white_idx, float chroma_weight) {
-  if (bw_threshold > 0.0f && dither_oklab_chroma(color) < bw_threshold) {
-    return dither_find_closest_bw(color, palette, bw_black_idx, bw_white_idx, chroma_weight);
-  }
-  return dither_find_closest_color(color, palette, palette_count, chroma_weight);
-}
-
 // =================================================================================================
 // Cache Management
 // =================================================================================================
@@ -197,9 +179,6 @@ static void dither_atkinson(const float *float_fb, uint8_t *out_fb, int width, i
   int palette_count = config->palette_count;
   float strength = config->strength;
   int oklab_error = config->oklab_error;
-  float bw_threshold = config->bw_threshold;
-  int bw_black_idx = config->bw_black_idx;
-  int bw_white_idx = config->bw_white_idx;
   float chroma_weight = config->chroma_weight;
 
   // Atkinson diffuses 1/8 to each of 6 neighbors (75% total)
@@ -234,7 +213,6 @@ static void dither_atkinson(const float *float_fb, uint8_t *out_fb, int width, i
 
     for (int x = x_start; x != x_end; x += x_step) {
       int i = (y * width + x) * 4;
-      float a = clampf(float_fb[i + 3], 0.0f, 1.0f);
 
       DitherOkLab color;
       int idx;
@@ -251,8 +229,7 @@ static void dither_atkinson(const float *float_fb, uint8_t *out_fb, int width, i
         color.a = color.a + err_curr_g[x];
         color.b = color.b + err_curr_b[x];
 
-        idx = find_color_with_bw_threshold(color, cache->palette_oklab, palette_count, bw_threshold,
-                                           bw_black_idx, bw_white_idx, chroma_weight);
+        idx = dither_find_closest_color(color, cache->palette_oklab, palette_count, chroma_weight);
 
         // Calculate quantization error in OkLab space
         DitherOkLab quantized = cache->palette_oklab[idx];
@@ -301,8 +278,7 @@ static void dither_atkinson(const float *float_fb, uint8_t *out_fb, int width, i
         float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
 
         color = dither_linear_to_oklab(r, g, b);
-        idx = find_color_with_bw_threshold(color, cache->palette_oklab, palette_count, bw_threshold,
-                                           bw_black_idx, bw_white_idx, chroma_weight);
+        idx = dither_find_closest_color(color, cache->palette_oklab, palette_count, chroma_weight);
 
         // Calculate quantization error in linear RGB
         DitherLinearRGB quantized = cache->palette_linear[idx];
@@ -350,7 +326,7 @@ static void dither_atkinson(const float *float_fb, uint8_t *out_fb, int width, i
       out_fb[i] = palette[idx].r;
       out_fb[i + 1] = palette[idx].g;
       out_fb[i + 2] = palette[idx].b;
-      out_fb[i + 3] = round_f_to_u8(a * 255.0f);
+      out_fb[i + 3] = round_f_to_u8(clampf(float_fb[i + 3], 0.0f, 1.0f) * 255.0f);
     }
 
     // Rotate row buffers
@@ -380,9 +356,6 @@ static void dither_floyd_steinberg(const float *float_fb, uint8_t *out_fb, int w
   int palette_count = config->palette_count;
   float strength = config->strength;
   int oklab_error = config->oklab_error;
-  float bw_threshold = config->bw_threshold;
-  int bw_black_idx = config->bw_black_idx;
-  int bw_white_idx = config->bw_white_idx;
   float chroma_weight = config->chroma_weight;
 
   // Floyd-Steinberg weights scaled by strength
@@ -434,8 +407,7 @@ static void dither_floyd_steinberg(const float *float_fb, uint8_t *out_fb, int w
         color.a = color.a + err_curr_g[x];
         color.b = color.b + err_curr_b[x];
 
-        idx = find_color_with_bw_threshold(color, cache->palette_oklab, palette_count, bw_threshold,
-                                           bw_black_idx, bw_white_idx, chroma_weight);
+        idx = dither_find_closest_color(color, cache->palette_oklab, palette_count, chroma_weight);
 
         // Calculate quantization error in OkLab space
         DitherOkLab quantized = cache->palette_oklab[idx];
@@ -449,8 +421,7 @@ static void dither_floyd_steinberg(const float *float_fb, uint8_t *out_fb, int w
         float b = clampf(float_fb[i + 2] + err_curr_b[x], 0.0f, 1.0f);
 
         color = dither_linear_to_oklab(r, g, b);
-        idx = find_color_with_bw_threshold(color, cache->palette_oklab, palette_count, bw_threshold,
-                                           bw_black_idx, bw_white_idx, chroma_weight);
+        idx = dither_find_closest_color(color, cache->palette_oklab, palette_count, chroma_weight);
 
         // Calculate quantization error in linear RGB
         DitherLinearRGB quantized = cache->palette_linear[idx];

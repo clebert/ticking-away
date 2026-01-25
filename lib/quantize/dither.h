@@ -11,7 +11,6 @@
 // - Serpentine scanning to reduce directional artifacts
 // - Caller-provided palettes of any size (6, 64, etc.)
 // - Caller-owned cache/buffers for embedded-friendly operation
-// - Optional B/W-only dithering for grayscale regions
 //
 // Input:  Linear RGB framebuffer (float 0.0-1.0, RGBA)
 // Output: sRGB framebuffer (uint8_t 0-255, RGBA)
@@ -146,15 +145,10 @@ typedef struct {
   const DitherRGB *palette; // Pointer to palette colors
   int palette_count;        // Number of colors in palette
 
-  // B/W threshold settings (optional)
-  int bw_black_idx; // Palette index for black (used when bw_threshold > 0)
-  int bw_white_idx; // Palette index for white (used when bw_threshold > 0)
-
   // Algorithm settings
   DitherAlgorithm algorithm; // DITHER_ATKINSON or DITHER_FLOYD_STEINBERG
   float strength;            // Error diffusion strength (0.0-1.0, typically 1.0)
   int oklab_error;           // Use OkLab error diffusion (0 or 1)
-  float bw_threshold;        // OkLab chroma threshold for B/W-only (0.0 = disabled)
   float chroma_weight;       // Weight for hue/chroma vs lightness (0.5-4.0, default 1.0)
 } DitherConfig;
 
@@ -198,7 +192,3 @@ float dither_oklab_distance_sq(DitherOkLab a, DitherOkLab b, float chroma_weight
 // Find closest palette color index using OkLab distance
 int dither_find_closest_color(DitherOkLab color, const DitherOkLab *palette, int palette_count,
                               float chroma_weight);
-
-// Find closest color from two specified indices (for B/W threshold)
-int dither_find_closest_bw(DitherOkLab color, const DitherOkLab *palette, int black_idx,
-                           int white_idx, float chroma_weight);

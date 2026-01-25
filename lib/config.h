@@ -86,7 +86,6 @@ typedef struct {
   float strength;                // Dither pattern intensity (0.0 - 1.0)
   DitherAlgorithmType algorithm; // Error diffusion algorithm
   int32_t oklab_error;           // Use OkLab error diffusion (0 or 1)
-  float bw_threshold;            // OkLab chroma threshold for B/W-only (0.0 = disabled)
   float chroma_weight;           // Weight for hue/chroma vs lightness (0.5 - 4.0)
 } SceneDitherConfig;
 

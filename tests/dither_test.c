@@ -176,28 +176,6 @@ void test_find_closest_color_red(void) {
   TEST_END();
 }
 
-void test_find_closest_bw_dark(void) {
-  TEST_BEGIN("find_closest_bw_dark");
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
-
-  DitherOkLab dark = dither_linear_to_oklab(0.1f, 0.1f, 0.1f);
-  int idx = dither_find_closest_bw(dark, cache.palette_oklab, 0, 1, 1.0f);
-  ASSERT_EQ(idx, 0); // Should choose black (index 0)
-  TEST_END();
-}
-
-void test_find_closest_bw_light(void) {
-  TEST_BEGIN("find_closest_bw_light");
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
-
-  DitherOkLab light = dither_linear_to_oklab(0.9f, 0.9f, 0.9f);
-  int idx = dither_find_closest_bw(light, cache.palette_oklab, 0, 1, 1.0f);
-  ASSERT_EQ(idx, 1); // Should choose white (index 1)
-  TEST_END();
-}
-
 // =================================================================================================
 // Test: Cache Initialization
 // =================================================================================================
@@ -266,12 +244,9 @@ void test_dither_solid_black(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 6, 16);
@@ -299,12 +274,9 @@ void test_dither_solid_white(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 6, 16);
@@ -332,12 +304,9 @@ void test_dither_solid_red(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 6, 16);
@@ -364,12 +333,9 @@ void test_dither_floyd_steinberg(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_FLOYD_STEINBERG,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 6, 16);
@@ -396,12 +362,9 @@ void test_dither_preserves_alpha(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 6, 16);
@@ -425,12 +388,9 @@ void test_dither_alpha_preserved(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 6, 16);
@@ -454,12 +414,9 @@ void test_dither_oklab_error_mode(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 1, // OkLab error diffusion
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 6, 16);
@@ -485,12 +442,9 @@ void test_dither_width_limit(void) {
 
   DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
                          .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 1,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   // Cache only supports width 8
@@ -525,12 +479,9 @@ void test_custom_palette(void) {
 
   DitherConfig config = {.palette = test_palette,
                          .palette_count = 3,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 2,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 8, 16);
@@ -561,12 +512,9 @@ void test_large_palette(void) {
 
   DitherConfig config = {.palette = grayscale,
                          .palette_count = 16,
-                         .bw_black_idx = 0,
-                         .bw_white_idx = 15,
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
   DITHER_CACHE_STATIC(cache, 16, 16);
@@ -712,8 +660,6 @@ int main(void) {
   test_find_closest_color_black();
   test_find_closest_color_white();
   test_find_closest_color_red();
-  test_find_closest_bw_dark();
-  test_find_closest_bw_light();
 
   // Cache tests
   test_cache_init_ideal();

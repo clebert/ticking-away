@@ -42,7 +42,6 @@ export interface Settings {
   ditherStrength: number;
   ditherAlgorithm: number;
   ditherOklabError: boolean;
-  ditherBwThreshold: number;
   ditherChromaWeight: number;
 }
 
@@ -108,7 +107,6 @@ export function saveSettings({
       ditherStrength: dither.strength.value,
       ditherAlgorithm: dither.algorithm.value,
       ditherOklabError: dither.oklabError.value,
-      ditherBwThreshold: dither.bwThreshold.value,
       ditherChromaWeight: dither.chromaWeight.value,
 
       displayMarkers: display.markers.value,

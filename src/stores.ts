@@ -40,7 +40,6 @@ const defaults = {
     strength: 20, // 0-100, maps to 0.0-1.0
     algorithm: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
-    bwThreshold: 10, // 0-100, maps to 0.0-0.3 OkLab chroma (0 = disabled, ~10 = B/W for grays)
     chromaWeight: 100, // 50-400, maps to 0.5-4.0 (100 = default 1.0, higher = prioritize hue for rainbows)
   },
   display: {
@@ -325,7 +324,6 @@ export const dither = {
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
   algorithm: signal(settings.ditherAlgorithm ?? defaults.dither.algorithm),
   oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
-  bwThreshold: signal(settings.ditherBwThreshold ?? defaults.dither.bwThreshold),
   chromaWeight: signal(settings.ditherChromaWeight ?? defaults.dither.chromaWeight),
 
   // Actions
@@ -347,10 +345,6 @@ export const dither = {
 
   toggleOklabError(): void {
     dither.oklabError.value = !dither.oklabError.value;
-  },
-
-  setBwThreshold(e: Event): void {
-    dither.bwThreshold.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setChromaWeight(e: Event): void {
@@ -424,7 +418,6 @@ export const resetAll = {
       dither.strength.value = defaults.dither.strength;
       dither.algorithm.value = defaults.dither.algorithm;
       dither.oklabError.value = defaults.dither.oklabError;
-      dither.bwThreshold.value = defaults.dither.bwThreshold;
       dither.chromaWeight.value = defaults.dither.chromaWeight;
 
       // Display
