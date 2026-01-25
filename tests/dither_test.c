@@ -271,7 +271,6 @@ void test_dither_solid_black(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -305,7 +304,6 @@ void test_dither_solid_white(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -339,7 +337,6 @@ void test_dither_solid_red(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -372,7 +369,6 @@ void test_dither_floyd_steinberg(void) {
                          .algorithm = DITHER_FLOYD_STEINBERG,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -405,7 +401,6 @@ void test_dither_preserves_alpha(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -421,8 +416,8 @@ void test_dither_preserves_alpha(void) {
   TEST_END();
 }
 
-void test_dither_opaque_mode(void) {
-  TEST_BEGIN("dither_opaque_mode");
+void test_dither_alpha_preserved(void) {
+  TEST_BEGIN("dither_alpha_preserved");
 
   // Image with varying alpha
   float input[8] = {1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.5f};
@@ -435,7 +430,6 @@ void test_dither_opaque_mode(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 0, // Don't preserve alpha
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -443,9 +437,9 @@ void test_dither_opaque_mode(void) {
   int result = quantize_dither_apply(input, output, 2, 1, &config, &cache);
   ASSERT_EQ(result, 0);
 
-  // Both should be fully opaque
-  ASSERT_EQ(output[3], 255);
-  ASSERT_EQ(output[7], 255);
+  // Alpha should be preserved from input (0.0 -> 0, 0.5 -> 128)
+  ASSERT_EQ(output[3], 0);
+  ASSERT_EQ(output[7], 128);
 
   TEST_END();
 }
@@ -465,7 +459,6 @@ void test_dither_oklab_error_mode(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 1, // OkLab error diffusion
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -497,7 +490,6 @@ void test_dither_width_limit(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -538,7 +530,6 @@ void test_custom_palette(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -575,7 +566,6 @@ void test_large_palette(void) {
                          .algorithm = DITHER_ATKINSON,
                          .strength = 1.0f,
                          .oklab_error = 0,
-                         .preserve_alpha = 1,
                          .bw_threshold = 0.0f,
                          .chroma_weight = 1.0f};
 
@@ -736,7 +726,7 @@ int main(void) {
   test_dither_solid_red();
   test_dither_floyd_steinberg();
   test_dither_preserves_alpha();
-  test_dither_opaque_mode();
+  test_dither_alpha_preserved();
   test_dither_oklab_error_mode();
   test_dither_width_limit();
 

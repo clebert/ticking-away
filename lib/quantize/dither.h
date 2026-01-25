@@ -154,7 +154,6 @@ typedef struct {
   DitherAlgorithm algorithm; // DITHER_ATKINSON or DITHER_FLOYD_STEINBERG
   float strength;            // Error diffusion strength (0.0-1.0, typically 1.0)
   int oklab_error;           // Use OkLab error diffusion (0 or 1)
-  int preserve_alpha;        // Preserve alpha from input (0 or 1)
   float bw_threshold;        // OkLab chroma threshold for B/W-only (0.0 = disabled)
   float chroma_weight;       // Weight for hue/chroma vs lightness (0.5-4.0, default 1.0)
 } DitherConfig;

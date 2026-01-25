@@ -66,7 +66,7 @@ export function render(): void {
   config.grain.prismOnly = background.grainPrismOnly.value;
 
   // Vignette
-  config.vignette.enabled = !display.pebble.value;
+  config.vignette.enabled = !display.pebble.value && !dither.enabled.value;
   config.vignette.strength = 0.4;
   config.vignette.background = 35.0 / 255.0;
 

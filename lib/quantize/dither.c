@@ -1,10 +1,7 @@
 #include "quantize/dither.h"
 #include "fastmath.h"
+#include "quantize/direct.h"
 #include <stddef.h>
-
-// Round non-negative float to uint8_t (assumes f >= 0)
-// NOLINTNEXTLINE(bugprone-incorrect-roundings)
-static inline uint8_t round_f_to_u8(float f) { return (uint8_t)(f + 0.5f); }
 
 #ifndef NULL
 #define NULL ((void *)0)
@@ -198,7 +195,6 @@ static void dither_atkinson(const float *float_fb, uint8_t *out_fb, int width, i
                             DitherCache *cache, const DitherConfig *config) {
   const DitherRGB *palette = config->palette;
   int palette_count = config->palette_count;
-  int preserve_alpha = config->preserve_alpha;
   float strength = config->strength;
   int oklab_error = config->oklab_error;
   float bw_threshold = config->bw_threshold;
@@ -354,7 +350,7 @@ static void dither_atkinson(const float *float_fb, uint8_t *out_fb, int width, i
       out_fb[i] = palette[idx].r;
       out_fb[i + 1] = palette[idx].g;
       out_fb[i + 2] = palette[idx].b;
-      out_fb[i + 3] = preserve_alpha ? round_f_to_u8(a * 255.0f) : 255;
+      out_fb[i + 3] = round_f_to_u8(a * 255.0f);
     }
 
     // Rotate row buffers
@@ -382,7 +378,6 @@ static void dither_floyd_steinberg(const float *float_fb, uint8_t *out_fb, int w
                                    DitherCache *cache, const DitherConfig *config) {
   const DitherRGB *palette = config->palette;
   int palette_count = config->palette_count;
-  int preserve_alpha = config->preserve_alpha;
   float strength = config->strength;
   int oklab_error = config->oklab_error;
   float bw_threshold = config->bw_threshold;
@@ -468,7 +463,7 @@ static void dither_floyd_steinberg(const float *float_fb, uint8_t *out_fb, int w
       out_fb[i] = palette[idx].r;
       out_fb[i + 1] = palette[idx].g;
       out_fb[i + 2] = palette[idx].b;
-      out_fb[i + 3] = preserve_alpha ? round_f_to_u8(a * 255.0f) : 255;
+      out_fb[i + 3] = round_f_to_u8(a * 255.0f);
 
       // Distribute error
       int fwd = x + x_step;

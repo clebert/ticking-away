@@ -60,7 +60,7 @@ typedef struct {
 
 static WatchfaceConfig config;
 static Scene scene;
-static int scene_initialized = 0;
+static bool scene_initialized = false;
 static int last_width = 0;
 static int last_height = 0;
 
@@ -90,7 +90,7 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
   // Re-initialize scene if dimensions changed
   if (!scene_initialized || width != last_width || height != last_height) {
     scene_init(&scene, width, height);
-    scene_initialized = 1;
+    scene_initialized = true;
     last_width = width;
     last_height = height;
   }
@@ -195,7 +195,7 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
     case DITHER_MODE_DEVICE:
       palette = DITHER_PALETTE_DEVICE;
       break;
-    case DITHER_MODE_BLEND: // Using SPECTRA6 for blend mode
+    case DITHER_MODE_SPECTRA6:
       palette = DITHER_PALETTE_SPECTRA6;
       break;
     default:
@@ -211,7 +211,6 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
                                .algorithm = (DitherAlgorithm)config.dither.algorithm,
                                .strength = config.dither.strength,
                                .oklab_error = config.dither.oklab_error,
-                               .preserve_alpha = 1,
                                .bw_threshold = config.dither.bw_threshold,
                                .chroma_weight = config.dither.chroma_weight};
 
