@@ -3,16 +3,15 @@
 // =================================================================================================
 // Tests for prism glow rendering, smooth minimum, and edge distance calculations.
 
-#include <math.h>
-#include <stdio.h>
-
 #include "config.h"
-#include "effects/effect.h"
+#include "draw/pixel.h"
 #include "geometry/prism.h"
 #include "geometry/types.h"
 #include "layers/layer.h"
 #include "layers/prism_glow.h"
 #include "test_harness.h"
+#include <math.h>
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

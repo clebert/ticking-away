@@ -1,10 +1,9 @@
 // Test harness for segment geometry module
 
-#include <stdio.h>
-
 #include "geometry/segment.h"
 #include "geometry/types.h"
 #include "test_harness.h"
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

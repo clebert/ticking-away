@@ -5,13 +5,14 @@
 // needed to render a complete frame, and scene_render_linear() orchestrates the layers.
 
 #include "scene.h"
-#include "effects/effect.h"
+#include "draw/pixel.h"
 #include "geometry/prism.h"
 #include "layers/background.h"
 #include "layers/gradient.h"
 #include "layers/layer.h"
 #include "layers/markers.h"
 #include "layers/prism_glow.h"
+#include "layers/ray_palette.h"
 #include "layers/rays.h"
 
 // =================================================================================================
@@ -27,26 +28,26 @@ enum {
   DEFAULT_GLOW_R = 128,
   DEFAULT_GLOW_G = 128,
   DEFAULT_GLOW_B = 128,
-  DEFAULT_GLOW_FALLOFF = FALLOFF_QUADRATIC,
 };
+static const FalloffType DEFAULT_GLOW_FALLOFF = FALLOFF_QUADRATIC;
 #define DEFAULT_GLOW_WIDTH 0.15f
 #define DEFAULT_GLOW_INTENSITY 0.6f
 
 // Ray defaults
+static const RayPalette DEFAULT_RAY_PALETTE = RAY_PALETTE_OKLCH_BALANCED;
 enum {
-  DEFAULT_RAY_PALETTE = 0,
   DEFAULT_RAY_GRADIENT_FILL = 1,
   DEFAULT_RAY_REVERSE = 0,
-  DEFAULT_RAY_FALLOFF = FALLOFF_QUADRATIC,
 };
+static const FalloffType DEFAULT_RAY_FALLOFF = FALLOFF_QUADRATIC;
 #define DEFAULT_RAY_GLOW_WIDTH 0.025f
 #define DEFAULT_RAY_INTENSITY 0.8f
 
 // Marker defaults
 enum {
   DEFAULT_MARKER_VISIBLE = 1,
-  DEFAULT_MARKER_FALLOFF = FALLOFF_QUADRATIC,
 };
+static const FalloffType DEFAULT_MARKER_FALLOFF = FALLOFF_QUADRATIC;
 #define DEFAULT_MARKER_LENGTH 0.08f
 #define DEFAULT_MARKER_GLOW_WIDTH 0.01f
 #define DEFAULT_MARKER_GLOW_INTENSITY 0.7f

@@ -3,9 +3,6 @@
 // =================================================================================================
 // Uses the modular Scene + Pipeline APIs instead of the monolithic render_watchface_scene().
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "config.h"
 #include "effects/gamma.h"
 #include "effects/grain.h"
@@ -20,6 +17,8 @@
 #include "quantize/dither_error.h"
 #include "quantize/dither_ordered.h"
 #include "scene.h"
+#include <stddef.h>
+#include <stdint.h>
 
 #define WASM_EXPORT __attribute__((visibility("default")))
 

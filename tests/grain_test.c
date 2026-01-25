@@ -1,11 +1,10 @@
 // Test harness for grain effect
 
-#include <stdint.h>
-#include <stdio.h>
-
 #include "config.h"
 #include "effects/grain.h"
 #include "test_harness.h"
+#include <stdint.h>
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

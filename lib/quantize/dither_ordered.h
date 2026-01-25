@@ -21,9 +21,8 @@
 // - Use DITHER_ORDERED_CACHE_STATIC() macro for easy stack allocation
 // - Cache can be reused across frames if palette doesn't change
 
-#include <stdint.h>
-
 #include "quantize/dither.h"
+#include <stdint.h>
 
 // -------------------------------------------------------------------------------------------------
 // Ordered Dithering Matrix Type

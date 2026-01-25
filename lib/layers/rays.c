@@ -6,10 +6,12 @@
 #include "layers/rays.h"
 #include "config.h"
 #include "draw/line.h"
-#include "effects/effect.h"
+#include "draw/pixel.h"
 #include "fastmath.h"
 #include "geometry/intersect.h"
 #include "geometry/prism.h"
+#include "layers/gradient.h"
+#include "layers/ray_palette.h"
 
 // =================================================================================================
 // Constants
@@ -31,21 +33,7 @@
 // =================================================================================================
 // Palette colors in sRGB (0-255). These match the palettes in palette.h.
 
-typedef enum {
-  RAYS_PALETTE_OKLCH_BALANCED,
-  RAYS_PALETTE_SATURATED,
-  RAYS_PALETTE_SPECTRAL,
-  RAYS_PALETTE_NEON,
-  RAYS_PALETTE_MUTED,
-  RAYS_PALETTE_EINK_PURE,
-  RAYS_PALETTE_EINK_DITHER,
-  RAYS_PALETTE_EINK_FULL,
-  RAYS_PALETTE_ALBUM_COVER,
-  RAYS_PALETTE_SPECTRA6,
-  RAYS_PALETTE_COUNT
-} RaysPaletteId;
-
-static const unsigned char PALETTE_COLORS[RAYS_PALETTE_COUNT][RAYS_NUM_BANDS][3] = {
+static const unsigned char PALETTE_COLORS[RAY_PALETTE_COUNT][RAYS_NUM_BANDS][3] = {
     // PALETTE_OKLCH_BALANCED (friendly, even OkLCH hue spacing)
     {
         {255, 64, 64},  // Red
@@ -195,7 +183,7 @@ void rays_init_palette_cache(RaysPaletteCache *cache, int palette) {
   }
 
   // Clamp palette to valid range
-  if (palette < 0 || palette >= RAYS_PALETTE_COUNT) {
+  if (palette < 0 || palette >= RAY_PALETTE_COUNT) {
     palette = 0;
   }
 
@@ -547,11 +535,6 @@ RaysPaths rays_compute_paths(float cx, float cy, float radius, float entry_x, fl
 // Gradient Rendering
 // =================================================================================================
 
-typedef enum {
-  GRADIENT_EXTERNAL, // Inside circle, outside prism
-  GRADIENT_INTERNAL  // Inside prism only
-} GradientMode;
-
 // Draw continuous gradient fill with band-based color interpolation
 static void draw_gradient_continuous(float *fb, int width, int height, GradientMode mode,
                                      float origin_x, float origin_y, float cx, float cy,
@@ -608,7 +591,7 @@ static void draw_gradient_continuous(float *fb, int width, int height, GradientM
   prism_get_vertex(prism, 1, &v1x, &v1y);
   prism_get_vertex(prism, 2, &v2x, &v2y);
 
-  if (mode == GRADIENT_INTERNAL) {
+  if (mode == GRADIENT_MODE_INTERNAL) {
     float min_x = v0x < v1x ? (v0x < v2x ? v0x : v2x) : (v1x < v2x ? v1x : v2x);
     float max_x = v0x > v1x ? (v0x > v2x ? v0x : v2x) : (v1x > v2x ? v1x : v2x);
     float min_y = v0y < v1y ? (v0y < v2y ? v0y : v2y) : (v1y < v2y ? v1y : v2y);
@@ -634,7 +617,7 @@ static void draw_gradient_continuous(float *fb, int width, int height, GradientM
     for (int x = x_start; x < x_end; x++) {
       float px = (float)x + 0.5f;
 
-      if (mode == GRADIENT_EXTERNAL) {
+      if (mode == GRADIENT_MODE_EXTERNAL) {
         float dx_circle = px - cx;
         float dy_circle = py - cy;
         if (dx_circle * dx_circle + dy_circle * dy_circle > radius_sq)
@@ -729,7 +712,7 @@ static void render_rays(float *fb, int width, int height, float cx, float cy, fl
     float ext_angle_ultraviolet = ext_angle_last + edge_margin;
 
     // Draw external gradient (outside prism)
-    draw_gradient_continuous(fb, width, height, GRADIENT_EXTERNAL, cx, cy, cx, cy, radius,
+    draw_gradient_continuous(fb, width, height, GRADIENT_MODE_EXTERNAL, cx, cy, cx, cy, radius,
                              ext_angle_infrared, ext_angle_ultraviolet, prism, gradient_intensity,
                              reverse_spectrum, palette);
 
@@ -754,8 +737,8 @@ static void render_rays(float *fb, int width, int height, float cx, float cy, fl
     float internal_angle_infrared = internal_angle_first - internal_edge_margin;
     float internal_angle_ultraviolet = internal_angle_last + internal_edge_margin;
 
-    draw_gradient_continuous(fb, width, height, GRADIENT_INTERNAL, grad_origin_x, grad_origin_y, 0,
-                             0, 0, // cx, cy, radius unused for internal mode
+    draw_gradient_continuous(fb, width, height, GRADIENT_MODE_INTERNAL, grad_origin_x,
+                             grad_origin_y, 0, 0, 0, // cx, cy, radius unused for internal mode
                              internal_angle_infrared, internal_angle_ultraviolet, prism,
                              gradient_intensity, reverse_spectrum, palette);
   }

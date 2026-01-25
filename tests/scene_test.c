@@ -3,13 +3,12 @@
 // =================================================================================================
 // Tests for the Scene abstraction layer.
 
-#include <stdio.h>
-
 #include "config.h"
-#include "effects/effect.h"
+#include "draw/pixel.h"
 #include "geometry/types.h"
 #include "scene.h"
 #include "test_harness.h"
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

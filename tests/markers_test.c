@@ -3,14 +3,13 @@
 // =================================================================================================
 // Tests for hour marker rendering around the watch face.
 
-#include <math.h>
-#include <stdio.h>
-
 #include "config.h"
-#include "effects/effect.h"
+#include "draw/pixel.h"
 #include "layers/layer.h"
 #include "layers/markers.h"
 #include "test_harness.h"
+#include <math.h>
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

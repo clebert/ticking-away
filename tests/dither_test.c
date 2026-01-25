@@ -1,11 +1,10 @@
 // Test harness for dither quantizer
 
-#include <stdint.h>
-
 #include "quantize/dither.h"
 #include "quantize/dither_error.h"
 #include "quantize/dither_ordered.h"
 #include "test_harness.h"
+#include <stdint.h>
 #include <stdio.h>
 
 TEST_RUNNER_BEGIN();

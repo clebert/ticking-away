@@ -1,6 +1,7 @@
 // Test harness for line drawing module
 
 #include "draw/line.h"
+#include "draw/pixel.h"
 #include "test_harness.h"
 #include <stdio.h>
 

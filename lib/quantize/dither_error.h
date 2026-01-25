@@ -20,12 +20,11 @@
 // - Use DITHER_ERROR_CACHE_STATIC() macro for easy stack allocation
 // - Cache can be reused across frames if palette doesn't change
 
+#include "quantize/dither.h"
 #include <stdint.h>
 
-#include "quantize/dither.h"
-
 // -------------------------------------------------------------------------------------------------
-// Dither Algorithm Type
+// Error Diffusion Algorithm
 // -------------------------------------------------------------------------------------------------
 
 typedef enum {
@@ -93,7 +92,7 @@ typedef struct {
                            .palette_capacity = (max_colors),                                       \
                            .err_buffer = name##_err,                                               \
                            .err_row_width = (max_width),                                           \
-                           .last_palette = 0,                                                      \
+                           .last_palette = nullptr,                                                \
                            .last_palette_count = 0}
 
 // -------------------------------------------------------------------------------------------------

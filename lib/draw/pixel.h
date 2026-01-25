@@ -6,7 +6,16 @@
 // Low-level pixel blending operations for float framebuffers in linear color space.
 // All operations assume pre-multiplied alpha and RGBA layout (4 floats per pixel).
 
-#include "effects/effect.h" // FalloffType
+// -------------------------------------------------------------------------------------------------
+// Falloff Types
+// -------------------------------------------------------------------------------------------------
+
+typedef enum {
+  FALLOFF_LINEAR = 0,
+  FALLOFF_QUADRATIC = 1,
+  FALLOFF_CUBIC = 2,
+  FALLOFF_EXPONENTIAL = 3
+} FalloffType;
 
 // -------------------------------------------------------------------------------------------------
 // Falloff Computation

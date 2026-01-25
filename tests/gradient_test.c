@@ -3,12 +3,11 @@
 // =================================================================================================
 // Tests for gradient color interpolation and palette management.
 
-#include <stdio.h>
-
 #include "geometry/prism.h"
 #include "geometry/types.h"
 #include "layers/gradient.h"
 #include "test_harness.h"
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

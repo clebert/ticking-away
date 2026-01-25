@@ -1,11 +1,10 @@
 // Test harness for vignette effect
 
-#include <stdint.h>
-#include <stdio.h>
-
 #include "config.h"
 #include "effects/vignette.h"
 #include "test_harness.h"
+#include <stdint.h>
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

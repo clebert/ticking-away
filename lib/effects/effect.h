@@ -33,14 +33,3 @@ typedef struct {
   const char *name; // Human-readable name (e.g., "gamma", "grain")
   EffectFn apply;   // The effect function
 } Effect;
-
-// -------------------------------------------------------------------------------------------------
-// Falloff Types (shared across effects)
-// -------------------------------------------------------------------------------------------------
-
-typedef enum {
-  FALLOFF_LINEAR = 0,
-  FALLOFF_QUADRATIC = 1,
-  FALLOFF_CUBIC = 2,
-  FALLOFF_EXPONENTIAL = 3
-} FalloffType;

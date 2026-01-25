@@ -7,27 +7,14 @@
 #include "layers/gradient.h"
 #include "fastmath.h"
 #include "geometry/prism.h"
+#include "layers/ray_palette.h"
 
 // =================================================================================================
 // Color Palette Definitions
 // =================================================================================================
-// Palette colors in sRGB (0-255). These match the palettes in palette.h.
+// Palette colors in sRGB (0-255). Indexed by RayPalette enum.
 
-typedef enum {
-  GRADIENT_PALETTE_OKLCH_BALANCED,
-  GRADIENT_PALETTE_SATURATED,
-  GRADIENT_PALETTE_SPECTRAL,
-  GRADIENT_PALETTE_NEON,
-  GRADIENT_PALETTE_MUTED,
-  GRADIENT_PALETTE_EINK_PURE,
-  GRADIENT_PALETTE_EINK_DITHER,
-  GRADIENT_PALETTE_EINK_FULL,
-  GRADIENT_PALETTE_ALBUM_COVER,
-  GRADIENT_PALETTE_SPECTRA6,
-  GRADIENT_PALETTE_COUNT
-} GradientPaletteId;
-
-static const unsigned char PALETTE_COLORS[GRADIENT_PALETTE_COUNT][GRADIENT_NUM_BANDS][3] = {
+static const unsigned char PALETTE_COLORS[RAY_PALETTE_COUNT][GRADIENT_NUM_BANDS][3] = {
     // PALETTE_OKLCH_BALANCED (friendly, even OkLCH hue spacing)
     {
         {255, 64, 64},  // Red
@@ -177,7 +164,7 @@ void gradient_init_palette_cache(GradientPaletteCache *cache, int palette) {
   }
 
   // Clamp palette to valid range
-  if (palette < 0 || palette >= GRADIENT_PALETTE_COUNT) {
+  if (palette < 0 || palette >= RAY_PALETTE_COUNT) {
     palette = 0;
   }
 

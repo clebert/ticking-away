@@ -1,12 +1,11 @@
 // Test harness for intersection geometry module
 
-#include <stdio.h>
-
 #include "fastmath.h"
 #include "geometry/intersect.h"
 #include "geometry/prism.h"
 #include "geometry/types.h"
 #include "test_harness.h"
+#include <stdio.h>
 
 TEST_RUNNER_BEGIN();
 

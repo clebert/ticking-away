@@ -77,7 +77,7 @@ const fields = {
     mode: "int32", // DitherPaletteMode enum
     // Error diffusion params
     strength: "float32", // 0.0-1.0
-    algorithm: "int32", // DitherAlgorithmType enum
+    algorithm: "int32", // DitherErrorAlgorithm enum
     oklabError: "boolean",
     // Ordered params
     orderedMatrix: "int32", // DitherOrderedMatrixType enum (0=2x2, 1=4x4, 2=8x8)
