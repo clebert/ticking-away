@@ -1,6 +1,9 @@
 // Test harness for dither quantizer
 
+#include <stdint.h>
+
 #include "quantize/dither.h"
+#include "quantize/dither_error.h"
 #include "test_harness.h"
 #include <stdio.h>
 
@@ -145,8 +148,8 @@ void test_oklab_distance_chroma_weight(void) {
 
 void test_find_closest_color_black(void) {
   TEST_BEGIN("find_closest_color_black");
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  dither_error_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
 
   DitherOkLab black = dither_linear_to_oklab(0.0f, 0.0f, 0.0f);
   int idx = dither_find_closest_color(black, cache.palette_oklab, DITHER_PALETTE_IDEAL_COUNT, 1.0f);
@@ -156,8 +159,8 @@ void test_find_closest_color_black(void) {
 
 void test_find_closest_color_white(void) {
   TEST_BEGIN("find_closest_color_white");
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  dither_error_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
 
   DitherOkLab white = dither_linear_to_oklab(1.0f, 1.0f, 1.0f);
   int idx = dither_find_closest_color(white, cache.palette_oklab, DITHER_PALETTE_IDEAL_COUNT, 1.0f);
@@ -167,8 +170,8 @@ void test_find_closest_color_white(void) {
 
 void test_find_closest_color_red(void) {
   TEST_BEGIN("find_closest_color_red");
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  dither_error_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
 
   DitherOkLab red = dither_linear_to_oklab(1.0f, 0.0f, 0.0f);
   int idx = dither_find_closest_color(red, cache.palette_oklab, DITHER_PALETTE_IDEAL_COUNT, 1.0f);
@@ -182,8 +185,8 @@ void test_find_closest_color_red(void) {
 
 void test_cache_init_ideal(void) {
   TEST_BEGIN("cache_init_ideal");
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  dither_error_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
 
   // Black should have L=0
   ASSERT_NEAR(cache.palette_oklab[0].L, 0.0f, 0.001f);
@@ -202,8 +205,8 @@ void test_cache_init_ideal(void) {
 
 void test_cache_init_spectra6(void) {
   TEST_BEGIN("cache_init_spectra6");
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_SPECTRA6, DITHER_PALETTE_SPECTRA6_COUNT);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  dither_error_init_cache(&cache, DITHER_PALETTE_SPECTRA6, DITHER_PALETTE_SPECTRA6_COUNT);
 
   // Spectra6 black is not pure black (25, 30, 33)
   ASSERT_TRUE(cache.palette_oklab[0].L > 0.0f);
@@ -216,16 +219,17 @@ void test_cache_init_spectra6(void) {
 
 void test_cache_reuses_when_unchanged(void) {
   TEST_BEGIN("cache_reuses_when_unchanged");
-  DITHER_CACHE_STATIC(cache, 6, 16);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
 
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
-  const DitherRGB *first_palette = cache.last_palette;
+  dither_error_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  // Should point to the palette we passed in
+  ASSERT_TRUE(cache.last_palette == DITHER_PALETTE_IDEAL);
+  ASSERT_EQ(cache.last_palette_count, DITHER_PALETTE_IDEAL_COUNT);
 
-  quantize_dither_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
-  const DitherRGB *second_palette = cache.last_palette;
-
-  // Should be the same pointer (cache reused)
-  ASSERT_TRUE(first_palette == second_palette);
+  // Call again with same palette - cache should still point to same palette
+  dither_error_init_cache(&cache, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  ASSERT_TRUE(cache.last_palette == DITHER_PALETTE_IDEAL);
+  ASSERT_EQ(cache.last_palette_count, DITHER_PALETTE_IDEAL_COUNT);
 
   TEST_END();
 }
@@ -242,15 +246,15 @@ void test_dither_solid_black(void) {
                      0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
   uint8_t output[16] = {0};
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  int result = quantize_dither_apply(input, output, 2, 2, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  int result = dither_error_apply(input, output, 2, 2, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // All pixels should be black (0, 0, 0)
@@ -272,15 +276,15 @@ void test_dither_solid_white(void) {
                      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
   uint8_t output[16] = {0};
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  int result = quantize_dither_apply(input, output, 2, 2, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  int result = dither_error_apply(input, output, 2, 2, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // All pixels should be white (255, 255, 255)
@@ -302,15 +306,15 @@ void test_dither_solid_red(void) {
                      1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f};
   uint8_t output[16] = {0};
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  int result = quantize_dither_apply(input, output, 2, 2, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  int result = dither_error_apply(input, output, 2, 2, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // All pixels should be red (255, 0, 0)
@@ -331,15 +335,15 @@ void test_dither_floyd_steinberg(void) {
                      0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
   uint8_t output[16] = {0};
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_FLOYD_STEINBERG,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_FLOYD_STEINBERG,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  int result = quantize_dither_apply(input, output, 2, 2, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  int result = dither_error_apply(input, output, 2, 2, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // All pixels should be black
@@ -360,15 +364,15 @@ void test_dither_preserves_alpha(void) {
                      1.0f, 1.0f, 1.0f, 0.25f, 1.0f, 1.0f, 1.0f, 0.0f};
   uint8_t output[16] = {0};
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  int result = quantize_dither_apply(input, output, 2, 2, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  int result = dither_error_apply(input, output, 2, 2, &config, &cache);
   ASSERT_EQ(result, 0);
 
   ASSERT_EQ(output[3], 255); // 1.0 * 255
@@ -386,15 +390,15 @@ void test_dither_alpha_preserved(void) {
   float input[8] = {1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.5f};
   uint8_t output[8] = {0};
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  int result = quantize_dither_apply(input, output, 2, 1, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  int result = dither_error_apply(input, output, 2, 1, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // Alpha should be preserved from input (0.0 -> 0, 0.5 -> 128)
@@ -412,15 +416,15 @@ void test_dither_oklab_error_mode(void) {
                      1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f};
   uint8_t output[16] = {0};
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 1, // OkLab error diffusion
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 1, // OkLab error diffusion
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 6, 16);
-  int result = quantize_dither_apply(input, output, 2, 2, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
+  int result = dither_error_apply(input, output, 2, 2, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // Should still produce red
@@ -440,17 +444,17 @@ void test_dither_width_limit(void) {
   float input[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   uint8_t output[4] = {99, 99, 99, 99}; // Initialize with non-zero
 
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
   // Cache only supports width 8
-  DITHER_CACHE_STATIC(cache, 6, 8);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 8);
   // Width exceeds cache capacity - should return error
-  int result = quantize_dither_apply(input, output, 16, 1, &config, &cache);
+  int result = dither_error_apply(input, output, 16, 1, &config, &cache);
   ASSERT_EQ(result, -1);
 
   // Output should be unchanged
@@ -477,15 +481,15 @@ void test_custom_palette(void) {
   float input[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   uint8_t output[4] = {0};
 
-  DitherConfig config = {.palette = test_palette,
-                         .palette_count = 3,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = test_palette,
+                              .palette_count = 3,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 8, 16);
-  int result = quantize_dither_apply(input, output, 1, 1, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 8, 16);
+  int result = dither_error_apply(input, output, 1, 1, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // Should choose gray (128, 128, 128) as closest to 0.5 linear
@@ -510,15 +514,15 @@ void test_large_palette(void) {
   float input[4] = {0.1f, 0.1f, 0.1f, 1.0f};
   uint8_t output[4] = {0};
 
-  DitherConfig config = {.palette = grayscale,
-                         .palette_count = 16,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f,
-                         .oklab_error = 0,
-                         .chroma_weight = 1.0f};
+  DitherErrorConfig config = {.palette = grayscale,
+                              .palette_count = 16,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f,
+                              .oklab_error = 0,
+                              .chroma_weight = 1.0f};
 
-  DITHER_CACHE_STATIC(cache, 16, 16);
-  int result = quantize_dither_apply(input, output, 1, 1, &config, &cache);
+  DITHER_ERROR_CACHE_STATIC(cache, 16, 16);
+  int result = dither_error_apply(input, output, 1, 1, &config, &cache);
   ASSERT_EQ(result, 0);
 
   // Output should be a dark gray (one of the lower palette entries)
@@ -537,11 +541,11 @@ void test_palette_device_different(void) {
   TEST_BEGIN("palette_device_different");
 
   // White in DEVICE palette is grayish
-  DITHER_CACHE_STATIC(cache1, 6, 16);
-  quantize_dither_init_cache(&cache1, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
+  DITHER_ERROR_CACHE_STATIC(cache1, 6, 16);
+  dither_error_init_cache(&cache1, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
 
-  DITHER_CACHE_STATIC(cache2, 6, 16);
-  quantize_dither_init_cache(&cache2, DITHER_PALETTE_DEVICE, DITHER_PALETTE_DEVICE_COUNT);
+  DITHER_ERROR_CACHE_STATIC(cache2, 6, 16);
+  dither_error_init_cache(&cache2, DITHER_PALETTE_DEVICE, DITHER_PALETTE_DEVICE_COUNT);
 
   // DEVICE white should be darker than IDEAL white
   ASSERT_TRUE(cache2.palette_oklab[1].L < cache1.palette_oklab[1].L);
@@ -556,13 +560,13 @@ void test_palette_device_different(void) {
 void test_null_input_rejected(void) {
   TEST_BEGIN("null_input_rejected");
   uint8_t output[4] = {0};
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f};
-  DITHER_CACHE_STATIC(cache, 6, 16);
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f};
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
 
-  int result = quantize_dither_apply(nullptr, output, 1, 1, &config, &cache);
+  int result = dither_error_apply(nullptr, output, 1, 1, &config, &cache);
   ASSERT_EQ(result, -1);
   TEST_END();
 }
@@ -570,13 +574,13 @@ void test_null_input_rejected(void) {
 void test_null_output_rejected(void) {
   TEST_BEGIN("null_output_rejected");
   float input[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = DITHER_PALETTE_IDEAL_COUNT,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f};
-  DITHER_CACHE_STATIC(cache, 6, 16);
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = DITHER_PALETTE_IDEAL_COUNT,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f};
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
 
-  int result = quantize_dither_apply(input, nullptr, 1, 1, &config, &cache);
+  int result = dither_error_apply(input, nullptr, 1, 1, &config, &cache);
   ASSERT_EQ(result, -1);
   TEST_END();
 }
@@ -585,11 +589,11 @@ void test_null_palette_rejected(void) {
   TEST_BEGIN("null_palette_rejected");
   float input[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   uint8_t output[4] = {0};
-  DitherConfig config = {
+  DitherErrorConfig config = {
       .palette = nullptr, .palette_count = 6, .algorithm = DITHER_ATKINSON, .strength = 1.0f};
-  DITHER_CACHE_STATIC(cache, 6, 16);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
 
-  int result = quantize_dither_apply(input, output, 1, 1, &config, &cache);
+  int result = dither_error_apply(input, output, 1, 1, &config, &cache);
   ASSERT_EQ(result, -1);
   TEST_END();
 }
@@ -598,13 +602,13 @@ void test_zero_palette_rejected(void) {
   TEST_BEGIN("zero_palette_rejected");
   float input[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   uint8_t output[4] = {0};
-  DitherConfig config = {.palette = DITHER_PALETTE_IDEAL,
-                         .palette_count = 0,
-                         .algorithm = DITHER_ATKINSON,
-                         .strength = 1.0f};
-  DITHER_CACHE_STATIC(cache, 6, 16);
+  DitherErrorConfig config = {.palette = DITHER_PALETTE_IDEAL,
+                              .palette_count = 0,
+                              .algorithm = DITHER_ATKINSON,
+                              .strength = 1.0f};
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
 
-  int result = quantize_dither_apply(input, output, 1, 1, &config, &cache);
+  int result = dither_error_apply(input, output, 1, 1, &config, &cache);
   ASSERT_EQ(result, -1);
   TEST_END();
 }
@@ -616,13 +620,13 @@ void test_palette_exceeds_cache_rejected(void) {
 
   // 16-color palette
   DitherRGB big_palette[16] = {{0}};
-  DitherConfig config = {
+  DitherErrorConfig config = {
       .palette = big_palette, .palette_count = 16, .algorithm = DITHER_ATKINSON, .strength = 1.0f};
 
   // Cache only holds 6 colors
-  DITHER_CACHE_STATIC(cache, 6, 16);
+  DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
 
-  int result = quantize_dither_apply(input, output, 1, 1, &config, &cache);
+  int result = dither_error_apply(input, output, 1, 1, &config, &cache);
   ASSERT_EQ(result, -1);
   TEST_END();
 }

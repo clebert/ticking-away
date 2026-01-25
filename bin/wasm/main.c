@@ -17,6 +17,7 @@
 #include "pipeline.h"
 #include "quantize/direct.h"
 #include "quantize/dither.h"
+#include "quantize/dither_error.h"
 #include "scene.h"
 
 #define WASM_EXPORT __attribute__((visibility("default")))
@@ -66,7 +67,7 @@ static int last_height = 0;
 
 // Dither cache (static allocation for max supported dimensions)
 enum { MAX_DITHER_WIDTH = 5120, MAX_DITHER_COLORS = 16 };
-DITHER_CACHE_STATIC(dither_cache, MAX_DITHER_COLORS, MAX_DITHER_WIDTH);
+DITHER_ERROR_CACHE_STATIC(dither_cache, MAX_DITHER_COLORS, MAX_DITHER_WIDTH);
 
 // =================================================================================================
 // WASM Exports
@@ -204,15 +205,15 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
     }
 
     // Build dither config from scene config + palette
-    DitherConfig dither_cfg = {.palette = palette,
-                               .palette_count = palette_count,
-                               .algorithm = (DitherAlgorithm)config.dither.algorithm,
-                               .strength = config.dither.strength,
-                               .oklab_error = config.dither.oklab_error,
-                               .chroma_weight = config.dither.chroma_weight};
+    DitherErrorConfig dither_cfg = {.palette = palette,
+                                    .palette_count = palette_count,
+                                    .algorithm = (DitherErrorAlgorithm)config.dither.algorithm,
+                                    .strength = config.dither.strength,
+                                    .oklab_error = config.dither.oklab_error,
+                                    .chroma_weight = config.dither.chroma_weight};
 
     // Apply dithering (float -> uint8)
-    quantize_dither_apply(float_fb, fb, width, height, &dither_cfg, &dither_cache);
+    dither_error_apply(float_fb, fb, width, height, &dither_cfg, &dither_cache);
   } else {
     // Direct conversion (sRGB float -> sRGB uint8)
     quantize_direct_apply(float_fb, fb, width, height);

@@ -37,6 +37,7 @@ clang \
   lib/pipeline.c \
   lib/quantize/direct.c \
   lib/quantize/dither.c \
+  lib/quantize/dither_error.c \
   lib/scene.c 
 
 echo "Built index.wasm ($(wc -c < public/index.wasm | xargs) bytes)"
