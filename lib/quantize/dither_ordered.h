@@ -3,12 +3,12 @@
 // =================================================================================================
 // Ordered Dithering
 // =================================================================================================
-// Applies ordered dithering (Bayer matrix) to quantize a linear RGB framebuffer to a limited
-// palette.
+// Applies ordered dithering to quantize a linear RGB framebuffer to a limited palette.
 //
 // Key features:
 // - OkLab color space for perceptually accurate palette matching
-// - Bayer matrices (2x2, 4x4, 8x8) for different pattern granularity
+// - Bayer matrices (2x2, 4x4, 8x8) for regular pattern dithering
+// - Blue noise (64x64) for organic, pattern-free dithering
 // - Configurable spread to control threshold intensity
 // - Caller-provided palettes of any size
 // - Caller-owned cache for embedded-friendly operation
@@ -26,13 +26,14 @@
 #include "quantize/dither.h"
 
 // -------------------------------------------------------------------------------------------------
-// Bayer Matrix Type
+// Ordered Dithering Matrix Type
 // -------------------------------------------------------------------------------------------------
 
 typedef enum {
-  DITHER_BAYER_2X2 = 0, // 2x2 Bayer matrix (4 threshold levels)
-  DITHER_BAYER_4X4 = 1, // 4x4 Bayer matrix (16 threshold levels)
-  DITHER_BAYER_8X8 = 2  // 8x8 Bayer matrix (64 threshold levels)
+  DITHER_BAYER_2X2 = 0,    // 2x2 Bayer matrix (4 threshold levels)
+  DITHER_BAYER_4X4 = 1,    // 4x4 Bayer matrix (16 threshold levels)
+  DITHER_BAYER_8X8 = 2,    // 8x8 Bayer matrix (64 threshold levels)
+  DITHER_BLUE_NOISE_64 = 3 // 64x64 blue noise texture (organic, pattern-free)
 } DitherOrderedMatrix;
 
 // -------------------------------------------------------------------------------------------------

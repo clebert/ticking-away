@@ -7,6 +7,7 @@ CompileFlags:
     - "-Wall"
     - "-Wextra"
     - "-Wno-unused-function"
+    - "-Wno-unused-const-variable"
     - "-Ilib"
     - "-I../lib"
     - "-I../../lib"

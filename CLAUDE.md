@@ -10,6 +10,10 @@ refracts light into a rainbow.
 Always use `nullptr` for null pointers. Do not use `NULL` or `0`. When encountering existing code
 that uses `NULL` or `0` for null pointers, refactor it to use `nullptr`.
 
+### Header Include Guards
+
+Use `#pragma once` instead of traditional `#ifndef`/`#define`/`#endif` include guards.
+
 ### Stdlib-Free Library
 
 The `lib/` folder must remain free of standard library dependencies to support two use cases:

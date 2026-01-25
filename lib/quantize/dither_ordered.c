@@ -1,5 +1,6 @@
 #include "quantize/dither_ordered.h"
 #include "fastmath.h"
+#include "quantize/blue_noise_64.h"
 #include "quantize/direct.h"
 
 // =================================================================================================
@@ -78,6 +79,13 @@ static inline float get_threshold_4x4(int x, int y) { return BAYER_4X4[y & 3][x 
 
 static inline float get_threshold_8x8(int x, int y) { return BAYER_8X8[y & 7][x & 7]; }
 
+static inline float get_threshold_blue_noise(int x, int y) {
+  // Blue noise texture is 64x64, values 0-255
+  // Convert to [-0.5, 0.5] range to match Bayer matrix convention
+  int index = (y & 63) * BLUE_NOISE_SIZE + (x & 63);
+  return ((float)BLUE_NOISE_64[index] / 255.0f) - 0.5f;
+}
+
 // =================================================================================================
 // Ordered Dithering Implementation
 // =================================================================================================
@@ -112,6 +120,9 @@ int dither_ordered_apply(const float *float_fb, uint8_t *out_fb, int width, int 
     break;
   case DITHER_BAYER_8X8:
     get_threshold = get_threshold_8x8;
+    break;
+  case DITHER_BLUE_NOISE_64:
+    get_threshold = get_threshold_blue_noise;
     break;
   case DITHER_BAYER_2X2:
   default:
