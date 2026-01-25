@@ -36,7 +36,7 @@ const defaults = {
   },
   dither: {
     enabled: false,
-    paletteMode: 0, // 0 = IDEAL, 1 = DEVICE, 2 = SPECTRA6
+    paletteMode: 0, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
     strength: 20, // 0-100, maps to 0.0-1.0
     algorithm: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion

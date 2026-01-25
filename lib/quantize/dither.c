@@ -15,8 +15,9 @@ const DitherRGB DITHER_PALETTE_IDEAL[DITHER_PALETTE_IDEAL_COUNT] = {
     {0, 255, 0},     // 5: Green
 };
 
-// Inky Impression 13.3" device palette (Spectra 6)
-const DitherRGB DITHER_PALETTE_DEVICE[DITHER_PALETTE_DEVICE_COUNT] = {
+// Spectra 6 palette from Pimoroni Inky library (Inky Impression 13.3")
+// Source: https://github.com/pimoroni/inky
+const DitherRGB DITHER_PALETTE_SPECTRA6_INKY[DITHER_PALETTE_SPECTRA6_INKY_COUNT] = {
     {0, 0, 0},       // 0: Black
     {161, 164, 165}, // 1: Gray (device white appears grayish)
     {208, 190, 71},  // 2: Gold/Yellow
@@ -25,8 +26,9 @@ const DitherRGB DITHER_PALETTE_DEVICE[DITHER_PALETTE_DEVICE_COUNT] = {
     {58, 91, 70},    // 5: Forest Green
 };
 
-// Measured Spectra 6 palette (from epdoptimize)
-const DitherRGB DITHER_PALETTE_SPECTRA6[DITHER_PALETTE_SPECTRA6_COUNT] = {
+// Spectra 6 palette from EDP Optimize (measured values)
+// Source: https://github.com/Utzel-Butzel/epdoptimize
+const DitherRGB DITHER_PALETTE_SPECTRA6_EPDOPT[DITHER_PALETTE_SPECTRA6_EPDOPT_COUNT] = {
     {25, 30, 33},    // 0: Black (#191E21)
     {232, 232, 232}, // 1: White (#e8e8e8)
     {239, 222, 68},  // 2: Yellow (#efde44)

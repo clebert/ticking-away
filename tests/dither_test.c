@@ -203,15 +203,16 @@ void test_cache_init_ideal(void) {
   TEST_END();
 }
 
-void test_cache_init_spectra6(void) {
-  TEST_BEGIN("cache_init_spectra6");
+void test_cache_init_spectra6_epdopt(void) {
+  TEST_BEGIN("cache_init_spectra6_epdopt");
   DITHER_ERROR_CACHE_STATIC(cache, 6, 16);
-  dither_error_init_cache(&cache, DITHER_PALETTE_SPECTRA6, DITHER_PALETTE_SPECTRA6_COUNT);
+  dither_error_init_cache(&cache, DITHER_PALETTE_SPECTRA6_EPDOPT,
+                          DITHER_PALETTE_SPECTRA6_EPDOPT_COUNT);
 
-  // Spectra6 black is not pure black (25, 30, 33)
+  // epdoptimize black is not pure black (25, 30, 33)
   ASSERT_TRUE(cache.palette_oklab[0].L > 0.0f);
 
-  // Spectra6 white is not pure white (232, 232, 232)
+  // epdoptimize white is not pure white (232, 232, 232)
   ASSERT_TRUE(cache.palette_oklab[1].L < 1.0f);
 
   TEST_END();
@@ -537,17 +538,18 @@ void test_large_palette(void) {
 // Test: Palette Comparison
 // =================================================================================================
 
-void test_palette_device_different(void) {
-  TEST_BEGIN("palette_device_different");
+void test_palette_spectra6_inky_different(void) {
+  TEST_BEGIN("palette_spectra6_inky_different");
 
-  // White in DEVICE palette is grayish
+  // White in SPECTRA6_INKY palette is grayish
   DITHER_ERROR_CACHE_STATIC(cache1, 6, 16);
   dither_error_init_cache(&cache1, DITHER_PALETTE_IDEAL, DITHER_PALETTE_IDEAL_COUNT);
 
   DITHER_ERROR_CACHE_STATIC(cache2, 6, 16);
-  dither_error_init_cache(&cache2, DITHER_PALETTE_DEVICE, DITHER_PALETTE_DEVICE_COUNT);
+  dither_error_init_cache(&cache2, DITHER_PALETTE_SPECTRA6_INKY,
+                          DITHER_PALETTE_SPECTRA6_INKY_COUNT);
 
-  // DEVICE white should be darker than IDEAL white
+  // SPECTRA6_INKY white should be darker than IDEAL white
   ASSERT_TRUE(cache2.palette_oklab[1].L < cache1.palette_oklab[1].L);
 
   TEST_END();
@@ -667,7 +669,7 @@ int main(void) {
 
   // Cache tests
   test_cache_init_ideal();
-  test_cache_init_spectra6();
+  test_cache_init_spectra6_epdopt();
   test_cache_reuses_when_unchanged();
 
   // Dither application tests
@@ -685,7 +687,7 @@ int main(void) {
   test_large_palette();
 
   // Palette comparison tests
-  test_palette_device_different();
+  test_palette_spectra6_inky_different();
 
   // Error handling tests
   test_null_input_rejected();

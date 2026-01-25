@@ -193,11 +193,11 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
     case DITHER_MODE_IDEAL:
       palette = DITHER_PALETTE_IDEAL;
       break;
-    case DITHER_MODE_DEVICE:
-      palette = DITHER_PALETTE_DEVICE;
+    case DITHER_MODE_SPECTRA6_INKY:
+      palette = DITHER_PALETTE_SPECTRA6_INKY;
       break;
-    case DITHER_MODE_SPECTRA6:
-      palette = DITHER_PALETTE_SPECTRA6;
+    case DITHER_MODE_SPECTRA6_EPDOPT:
+      palette = DITHER_PALETTE_SPECTRA6_EPDOPT;
       break;
     default:
       palette = DITHER_PALETTE_IDEAL;

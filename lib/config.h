@@ -70,9 +70,9 @@ typedef struct {
 // -------------------------------------------------------------------------------------------------
 
 typedef enum {
-  DITHER_MODE_IDEAL = 0,    // Ideal spectrum colors
-  DITHER_MODE_DEVICE = 1,   // Device-measured colors
-  DITHER_MODE_SPECTRA6 = 2, // Spectra6 e-ink palette
+  DITHER_MODE_IDEAL = 0,           // Ideal spectrum colors
+  DITHER_MODE_SPECTRA6_INKY = 1,   // Spectra 6 from Pimoroni Inky library
+  DITHER_MODE_SPECTRA6_EPDOPT = 2, // Spectra 6 from EDP Optimize (measured)
 } DitherPaletteMode;
 
 typedef enum {

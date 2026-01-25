@@ -697,7 +697,7 @@ echo 1 > /sys/class/gpio/gpio27/value
 
 ## References
 
-- Original source: Pimoroni inky library (MIT License)
+- Original source: Pimoroni Inky library (MIT License)
   - https://github.com/pimoroni/inky
 - Display: Inky Impression 13.3" (Spectra 6)
 - Controller: EL133UF1

@@ -7,7 +7,7 @@
 //
 // This header provides:
 // - Color types (DitherRGB, DitherOkLab, DitherLinearRGB)
-// - Standard palettes (IDEAL, DEVICE, SPECTRA6)
+// - Standard palettes (IDEAL, SPECTRA6_INKY, SPECTRA6_EPDOPT)
 // - Color space conversions (sRGB ↔ linear, linear → OkLab)
 // - OkLab distance functions for perceptually accurate color matching
 //
@@ -51,13 +51,13 @@ typedef struct {
 extern const DitherRGB DITHER_PALETTE_IDEAL[];
 enum { DITHER_PALETTE_IDEAL_COUNT = 6 };
 
-// Inky Impression 13.3" device palette (Spectra 6) - 6 colors
-extern const DitherRGB DITHER_PALETTE_DEVICE[];
-enum { DITHER_PALETTE_DEVICE_COUNT = 6 };
+// Spectra 6 palette from Pimoroni Inky library (Inky Impression 13.3") - 6 colors
+extern const DitherRGB DITHER_PALETTE_SPECTRA6_INKY[];
+enum { DITHER_PALETTE_SPECTRA6_INKY_COUNT = 6 };
 
-// Measured Spectra 6 palette (from epdoptimize) - 6 colors
-extern const DitherRGB DITHER_PALETTE_SPECTRA6[];
-enum { DITHER_PALETTE_SPECTRA6_COUNT = 6 };
+// Spectra 6 palette from epdoptimize (measured values) - 6 colors
+extern const DitherRGB DITHER_PALETTE_SPECTRA6_EPDOPT[];
+enum { DITHER_PALETTE_SPECTRA6_EPDOPT_COUNT = 6 };
 
 // -------------------------------------------------------------------------------------------------
 // Color Space Conversion Functions
