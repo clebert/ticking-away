@@ -224,7 +224,7 @@ void test_background_zero_radius(void) {
 void test_layer_descriptor(void) {
   TEST_BEGIN("layer_descriptor");
 
-  ASSERT_TRUE(LAYER_BACKGROUND.name != NULL);
+  ASSERT_TRUE(LAYER_BACKGROUND.name != nullptr);
   ASSERT_TRUE(LAYER_BACKGROUND.render == layer_background_render);
 
   TEST_END();

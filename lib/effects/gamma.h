@@ -42,8 +42,8 @@ float gamma_linear_to_srgb(float linear);
 
 // Apply gamma correction (linear -> sRGB) to entire framebuffer.
 // Converts float fb from linear RGB to sRGB space in-place.
-// Config can be NULL (uses standard sRGB transfer function).
-// Cache is unused (pass NULL).
+// Config can be nullptr (uses standard sRGB transfer function).
+// Cache is unused (pass nullptr).
 void effect_gamma_apply(float *fb, int width, int height, const void *config, const void *cache);
 
 // Effect descriptor for pipeline registration

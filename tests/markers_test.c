@@ -369,8 +369,8 @@ void test_layer_render_with_config(void) {
 
 void test_layer_descriptor(void) {
   TEST_BEGIN("layer_descriptor");
-  ASSERT_TRUE(LAYER_MARKERS.name != NULL);
-  ASSERT_TRUE(LAYER_MARKERS.render != NULL);
+  ASSERT_TRUE(LAYER_MARKERS.name != nullptr);
+  ASSERT_TRUE(LAYER_MARKERS.render != nullptr);
   ASSERT_TRUE(LAYER_MARKERS.render == layer_markers_render);
   TEST_END();
 }

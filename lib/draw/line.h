@@ -13,15 +13,15 @@
 // -------------------------------------------------------------------------------------------------
 
 // Triangle clipping region (6 floats: x0, y0, x1, y1, x2, y2)
-// Pass NULL to disable triangle clipping
+// Pass nullptr to disable triangle clipping
 typedef const float *ClipTriangle;
 
 // Circle clipping region (3 floats: cx, cy, radius)
-// Pass NULL to disable circle clipping
+// Pass nullptr to disable circle clipping
 typedef const float *ClipCircle;
 
 // Triangle exclusion region (6 floats: x0, y0, x1, y1, x2, y2)
-// Pixels inside this triangle are skipped. Pass NULL to disable.
+// Pixels inside this triangle are skipped. Pass nullptr to disable.
 typedef const float *ExcludeTriangle;
 
 // -------------------------------------------------------------------------------------------------
@@ -38,9 +38,9 @@ typedef const float *ExcludeTriangle;
 //   glow_width: radius of glow effect in pixels
 //   intensity: overall brightness multiplier
 //   falloff: type of falloff curve (FALLOFF_LINEAR, etc.)
-//   clip_triangle: only draw inside this triangle (NULL = no clip)
-//   clip_circle: only draw inside this circle (NULL = no clip)
-//   exclude_triangle: skip pixels inside this triangle (NULL = no exclude)
+//   clip_triangle: only draw inside this triangle (nullptr = no clip)
+//   clip_circle: only draw inside this circle (nullptr = no clip)
+//   exclude_triangle: skip pixels inside this triangle (nullptr = no exclude)
 void line_draw_glow(float *fb, int width, int height, float x0, float y0, float x1, float y1,
                     float r, float g, float b, float glow_width, float intensity,
                     FalloffType falloff, ClipTriangle clip_triangle, ClipCircle clip_circle,

@@ -34,8 +34,8 @@ typedef struct {
   float cx, cy; // Center coordinates
   float radius; // Circle radius
 
-  // Prism vertices (for prism_only mode, can be NULL if not using prism mask)
-  // Stored as [x0, y0, x1, y1, x2, y2] or NULL
+  // Prism vertices (for prism_only mode, can be nullptr if not using prism mask)
+  // Stored as [x0, y0, x1, y1, x2, y2] or nullptr
   const float *prism_vertices;
 } GrainGeometry;
 
@@ -57,7 +57,7 @@ static inline uint32_t grain_hash_pixel(int x, int y) {
 
 // Apply film grain to framebuffer.
 // Expects fb to be in sRGB space (float 0.0-1.0).
-// Config: pointer to GrainConfig (from config.h). If NULL, no grain is applied.
+// Config: pointer to GrainConfig (from config.h). If nullptr, no grain is applied.
 // Cache: pointer to GrainGeometry (optional, required for prism_only mode).
 void effect_grain_apply(float *fb, int width, int height, const void *config, const void *cache);
 

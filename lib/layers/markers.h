@@ -27,7 +27,7 @@ void markers_draw(float *fb, int width, int height, float cx, float cy, float ra
 
 // Render the markers layer using RenderContext.
 // Reads marker configuration from ctx->marker_config.
-// If marker_config is NULL or marker_config->visible is 0, does nothing.
+// If marker_config is nullptr or marker_config->visible is 0, does nothing.
 void layer_markers_render(const RenderContext *ctx);
 
 // Layer descriptor

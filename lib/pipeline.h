@@ -11,7 +11,7 @@
 // Typical usage:
 //   Pipeline pipeline;
 //   pipeline_init(&pipeline);
-//   pipeline_add_effect(&pipeline, &EFFECT_GAMMA, NULL, NULL);
+//   pipeline_add_effect(&pipeline, &EFFECT_GAMMA, nullptr, nullptr);
 //   pipeline_add_effect(&pipeline, &EFFECT_GRAIN, &grain_cfg, &grain_geom);
 //   pipeline_add_effect(&pipeline, &EFFECT_VIGNETTE, &vignette_cfg, &vignette_geom);
 //   pipeline_execute(&pipeline, framebuffer, width, height);
@@ -40,8 +40,8 @@ enum { PIPELINE_MAX_EFFECTS = 8 };
 
 typedef struct {
   const Effect *effect; // Effect descriptor (contains apply function)
-  const void *config;   // Effect-specific configuration (can be NULL)
-  void *cache;          // Effect-specific cache/geometry (can be NULL)
+  const void *config;   // Effect-specific configuration (can be nullptr)
+  void *cache;          // Effect-specific cache/geometry (can be nullptr)
 } PipelineEntry;
 
 // -------------------------------------------------------------------------------------------------

@@ -52,7 +52,7 @@ static inline uint32_t vignette_hash_pixel(int x, int y) {
 
 // Apply vignette effect to framebuffer background.
 // Expects fb to be in sRGB space (float 0.0-1.0).
-// Config: pointer to VignetteConfig (from config.h). If NULL, no effect is applied.
+// Config: pointer to VignetteConfig (from config.h). If nullptr, no effect is applied.
 // Cache: pointer to VignetteGeometry (required, defines watch circle bounds).
 void effect_vignette_apply(float *fb, int width, int height, const void *config, const void *cache);
 

@@ -18,7 +18,7 @@
 //   - fb: linear RGBA framebuffer (float[width * height * 4])
 //   - width, height: framebuffer dimensions
 //   - config: effect-specific configuration (cast to appropriate type)
-//   - cache: optional caller-owned cache for effect state (NULL if not needed)
+//   - cache: optional caller-owned cache for effect state (nullptr if not needed)
 //
 // Effects modify fb in-place.
 

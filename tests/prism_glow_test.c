@@ -349,8 +349,8 @@ void test_layer_render_with_config(void) {
 
 void test_layer_descriptor(void) {
   TEST_BEGIN("layer_descriptor");
-  ASSERT_TRUE(LAYER_PRISM_GLOW.name != NULL);
-  ASSERT_TRUE(LAYER_PRISM_GLOW.render != NULL);
+  ASSERT_TRUE(LAYER_PRISM_GLOW.name != nullptr);
+  ASSERT_TRUE(LAYER_PRISM_GLOW.render != nullptr);
   ASSERT_TRUE(LAYER_PRISM_GLOW.render == layer_prism_glow_render);
   TEST_END();
 }

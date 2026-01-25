@@ -57,7 +57,7 @@ void test_hash_distribution(void) {
 
 void test_grain_no_config(void) {
   TEST_BEGIN("grain_no_config");
-  // With NULL config, framebuffer should be unchanged
+  // With nullptr config, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   effect_grain_apply(fb, 1, 1, nullptr, nullptr);
   ASSERT_NEAR(fb[0], 0.5f, 0.0001f);

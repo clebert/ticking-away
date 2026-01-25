@@ -39,7 +39,7 @@ void test_hash_different_for_different_coords(void) {
 
 void test_vignette_no_config(void) {
   TEST_BEGIN("vignette_no_config");
-  // With NULL config, framebuffer should be unchanged
+  // With nullptr config, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   VignetteGeometry geom = {.cx = 0.5f, .cy = 0.5f, .radius = 0.3f};
   effect_vignette_apply(fb, 1, 1, nullptr, &geom);
@@ -51,7 +51,7 @@ void test_vignette_no_config(void) {
 
 void test_vignette_no_geometry(void) {
   TEST_BEGIN("vignette_no_geometry");
-  // With NULL geometry, framebuffer should be unchanged
+  // With nullptr geometry, framebuffer should be unchanged
   float fb[4] = {0.5f, 0.5f, 0.5f, 1.0f};
   VignetteConfig cfg = {.enabled = 1, .strength = 0.4f, .background = 0.137f};
   effect_vignette_apply(fb, 1, 1, &cfg, nullptr);
@@ -368,8 +368,8 @@ void test_vignette_clamps_output(void) {
 void test_effect_descriptor(void) {
   TEST_BEGIN("effect_descriptor");
   // Verify effect descriptor is properly defined
-  ASSERT_TRUE(EFFECT_VIGNETTE.name != NULL);
-  ASSERT_TRUE(EFFECT_VIGNETTE.apply != NULL);
+  ASSERT_TRUE(EFFECT_VIGNETTE.name != nullptr);
+  ASSERT_TRUE(EFFECT_VIGNETTE.apply != nullptr);
   ASSERT_TRUE(EFFECT_VIGNETTE.apply == effect_vignette_apply);
   TEST_END();
 }

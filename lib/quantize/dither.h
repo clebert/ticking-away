@@ -96,7 +96,7 @@ typedef struct {
 //   };
 //
 // Note: Cache invalidation is pointer-based. If you modify palette contents
-// in-place, set cache->last_palette = NULL to force re-initialization.
+// in-place, set cache->last_palette = nullptr to force re-initialization.
 
 typedef struct {
   // Palette cache (caller allocates, size >= palette_count)

@@ -38,7 +38,7 @@ typedef struct {
                       // e.g., 3:15 = 3*60 + 15 = 195.0
                       // Wraps at 720 (12 hours)
 
-  // Layer configurations (const pointers, may be NULL if layer not used)
+  // Layer configurations (const pointers, may be nullptr if layer not used)
   const PrismConfig *prism_config;
   const GlowConfig *glow_config;
   const RayConfig *ray_config;
