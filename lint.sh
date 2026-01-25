@@ -56,7 +56,7 @@ if [ -n "$tidy_output" ]; then
 fi
 
 echo "==> include-what-you-use (C)"
-iwyu_output=$(find lib bin tests -name '*.c' -o -name '*.h' | xargs -I {} iwyu -std=c2x -I lib {} 2>&1 \
+iwyu_output=$(find lib bin tests -name '*.c' -o -name '*.h' | xargs -I {} iwyu -Xiwyu --mapping_file=iwyu.imp -std=c2x -I lib {} 2>&1 \
     | grep -Ev "has correct #includes/fwd-decls\)|^$" \
     || true)
 if [ -n "$iwyu_output" ]; then

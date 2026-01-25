@@ -1,3 +1,6 @@
+/bin/*/*
+!/bin/*/*.c
+!/bin/*/*.h
 /dist/
 /node_modules/
 /public/*.wasm

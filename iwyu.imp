@@ -1,0 +1,3 @@
+[
+  { include: ["<bits/types/sig_atomic_t.h>", private, "<signal.h>", public] }
+]
