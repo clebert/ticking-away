@@ -67,10 +67,16 @@ export function render(): void {
 
   // Dithering
   config.dither.enabled = dither.enabled.value;
+  config.dither.type = dither.type.value;
   config.dither.mode = dither.paletteMode.value;
+  // Error diffusion params
   config.dither.strength = dither.strength.value / 100.0;
   config.dither.algorithm = dither.algorithm.value;
   config.dither.oklabError = dither.oklabError.value;
+  // Ordered params
+  config.dither.orderedMatrix = dither.orderedMatrix.value;
+  config.dither.spread = dither.spread.value / 100.0;
+  // Shared
   config.dither.chromaWeight = dither.chromaWeight.value / 100.0;
 
   wasmModule.render_watchface(pointers.floatPtr, pointers.uint8Ptr, width, height);

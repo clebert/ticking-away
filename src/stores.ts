@@ -36,10 +36,16 @@ const defaults = {
   },
   dither: {
     enabled: false,
+    type: 0, // 0 = ERROR (error diffusion), 1 = ORDERED (Bayer)
     paletteMode: 0, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
+    // Error diffusion params
     strength: 20, // 0-100, maps to 0.0-1.0
     algorithm: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
+    // Ordered params
+    orderedMatrix: 1, // 0 = BAYER_2X2, 1 = BAYER_4X4, 2 = BAYER_8X8
+    spread: 50, // 0-100, maps to 0.0-1.0
+    // Shared
     chromaWeight: 100, // 50-400, maps to 0.5-4.0 (100 = default 1.0, higher = prioritize hue for rainbows)
   },
   display: {
@@ -320,15 +326,29 @@ export const background = {
 export const dither = {
   // Signals
   enabled: signal(settings.ditherEnabled ?? defaults.dither.enabled),
+  type: signal(settings.ditherType ?? defaults.dither.type),
   paletteMode: signal(settings.ditherPaletteMode ?? defaults.dither.paletteMode),
+  // Error diffusion
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
   algorithm: signal(settings.ditherAlgorithm ?? defaults.dither.algorithm),
   oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
+  // Ordered
+  orderedMatrix: signal(settings.ditherOrderedMatrix ?? defaults.dither.orderedMatrix),
+  spread: signal(settings.ditherSpread ?? defaults.dither.spread),
+  // Shared
   chromaWeight: signal(settings.ditherChromaWeight ?? defaults.dither.chromaWeight),
+
+  // Computed for conditional UI visibility
+  isErrorDiffusion: computed((): boolean => dither.type.value === 0),
+  isOrdered: computed((): boolean => dither.type.value === 1),
 
   // Actions
   toggleEnabled(): void {
     dither.enabled.value = !dither.enabled.value;
+  },
+
+  setType(e: Event): void {
+    dither.type.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   setPaletteMode(e: Event): void {
@@ -345,6 +365,14 @@ export const dither = {
 
   toggleOklabError(): void {
     dither.oklabError.value = !dither.oklabError.value;
+  },
+
+  setOrderedMatrix(e: Event): void {
+    dither.orderedMatrix.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  },
+
+  setSpread(e: Event): void {
+    dither.spread.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setChromaWeight(e: Event): void {
@@ -414,10 +442,13 @@ export const resetAll = {
 
       // Dither
       dither.enabled.value = defaults.dither.enabled;
+      dither.type.value = defaults.dither.type;
       dither.paletteMode.value = defaults.dither.paletteMode;
       dither.strength.value = defaults.dither.strength;
       dither.algorithm.value = defaults.dither.algorithm;
       dither.oklabError.value = defaults.dither.oklabError;
+      dither.orderedMatrix.value = defaults.dither.orderedMatrix;
+      dither.spread.value = defaults.dither.spread;
       dither.chromaWeight.value = defaults.dither.chromaWeight;
 
       // Display

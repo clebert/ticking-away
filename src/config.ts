@@ -73,10 +73,16 @@ const fields = {
   // SceneDitherConfig
   dither: {
     enabled: "boolean",
+    type: "int32", // DitherType enum (0=error, 1=ordered)
     mode: "int32", // DitherPaletteMode enum
+    // Error diffusion params
     strength: "float32", // 0.0-1.0
     algorithm: "int32", // DitherAlgorithmType enum
     oklabError: "boolean",
+    // Ordered params
+    orderedMatrix: "int32", // DitherOrderedMatrixType enum (0=2x2, 1=4x4, 2=8x8)
+    spread: "float32", // 0.0-1.0
+    // Shared
     chromaWeight: "float32", // 0.5-4.0
   },
 

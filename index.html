@@ -524,14 +524,70 @@
             >
           </div>
           <div class="control-group">
-            <label>Algorithm</label>
+            <label>Type</label>
             <select
-              data-bind="value:dither.algorithm, onchange:dither.setAlgorithm, disabled:!dither.enabled"
+              data-bind="value:dither.type, onchange:dither.setType, disabled:!dither.enabled"
             >
-              <option value="0">Atkinson (75%)</option>
-              <option value="1">Floyd-Steinberg (100%)</option>
+              <option value="0">Error Diffusion</option>
+              <option value="1">Ordered</option>
             </select>
           </div>
+
+          <!-- Error Diffusion Controls -->
+          <div data-bind="hidden:dither.isOrdered">
+            <div class="control-group">
+              <label>Algorithm</label>
+              <select
+                data-bind="value:dither.algorithm, onchange:dither.setAlgorithm, disabled:!dither.enabled"
+              >
+                <option value="0">Atkinson (75%)</option>
+                <option value="1">Floyd-Steinberg (100%)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Strength: <span data-bind="textContent:dither.strength">100</span>%</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                data-bind="value:dither.strength, oninput:dither.setStrength, disabled:!dither.enabled"
+              />
+            </div>
+            <div class="control-group">
+              <label
+                ><input
+                  type="checkbox"
+                  data-bind="checked:dither.oklabError, onchange:dither.toggleOklabError, disabled:!dither.enabled"
+                />
+                OkLab Error Diffusion</label
+              >
+            </div>
+          </div>
+
+          <!-- Ordered Dithering Controls -->
+          <div data-bind="hidden:dither.isErrorDiffusion">
+            <div class="control-group">
+              <label>Matrix</label>
+              <select
+                data-bind="value:dither.orderedMatrix, onchange:dither.setOrderedMatrix, disabled:!dither.enabled"
+              >
+                <option value="0">Bayer 2×2</option>
+                <option value="1">Bayer 4×4</option>
+                <option value="2">Bayer 8×8</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Spread: <span data-bind="textContent:dither.spread">50</span>%</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                data-bind="value:dither.spread, oninput:dither.setSpread, disabled:!dither.enabled"
+              />
+            </div>
+          </div>
+
+          <!-- Shared Controls -->
           <div class="control-group">
             <label>Palette Mode</label>
             <select
@@ -541,24 +597,6 @@
               <option value="1">Spectra 6 (Pimoroni Inky)</option>
               <option value="2">Spectra 6 (EDP Optimize)</option>
             </select>
-          </div>
-          <div class="control-group">
-            <label>Strength: <span data-bind="textContent:dither.strength">100</span>%</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              data-bind="value:dither.strength, oninput:dither.setStrength, disabled:!dither.enabled"
-            />
-          </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:dither.oklabError, onchange:dither.toggleOklabError, disabled:!dither.enabled"
-              />
-              OkLab Error Diffusion</label
-            >
           </div>
           <div class="control-group">
             <label

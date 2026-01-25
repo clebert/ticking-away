@@ -18,6 +18,7 @@
 #include "quantize/direct.h"
 #include "quantize/dither.h"
 #include "quantize/dither_error.h"
+#include "quantize/dither_ordered.h"
 #include "scene.h"
 
 #define WASM_EXPORT __attribute__((visibility("default")))
@@ -65,9 +66,10 @@ static bool scene_initialized = false;
 static int last_width = 0;
 static int last_height = 0;
 
-// Dither cache (static allocation for max supported dimensions)
+// Dither caches (static allocation for max supported dimensions)
 enum { MAX_DITHER_WIDTH = 5120, MAX_DITHER_COLORS = 16 };
-DITHER_ERROR_CACHE_STATIC(dither_cache, MAX_DITHER_COLORS, MAX_DITHER_WIDTH);
+DITHER_ERROR_CACHE_STATIC(dither_error_cache, MAX_DITHER_COLORS, MAX_DITHER_WIDTH);
+DITHER_ORDERED_CACHE_STATIC(dither_ordered_cache, MAX_DITHER_COLORS);
 
 // =================================================================================================
 // WASM Exports
@@ -204,16 +206,24 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
       break;
     }
 
-    // Build dither config from scene config + palette
-    DitherErrorConfig dither_cfg = {.palette = palette,
-                                    .palette_count = palette_count,
-                                    .algorithm = (DitherErrorAlgorithm)config.dither.algorithm,
-                                    .strength = config.dither.strength,
-                                    .oklab_error = config.dither.oklab_error,
-                                    .chroma_weight = config.dither.chroma_weight};
-
-    // Apply dithering (float -> uint8)
-    dither_error_apply(float_fb, fb, width, height, &dither_cfg, &dither_cache);
+    if (config.dither.type == DITHER_TYPE_ERROR) {
+      // Error diffusion dithering
+      DitherErrorConfig dither_cfg = {.palette = palette,
+                                      .palette_count = palette_count,
+                                      .algorithm = (DitherErrorAlgorithm)config.dither.algorithm,
+                                      .strength = config.dither.strength,
+                                      .oklab_error = config.dither.oklab_error,
+                                      .chroma_weight = config.dither.chroma_weight};
+      dither_error_apply(float_fb, fb, width, height, &dither_cfg, &dither_error_cache);
+    } else {
+      // Ordered dithering (Bayer)
+      DitherOrderedConfig dither_cfg = {.palette = palette,
+                                        .palette_count = palette_count,
+                                        .matrix = (DitherOrderedMatrix)config.dither.ordered_matrix,
+                                        .spread = config.dither.spread,
+                                        .chroma_weight = config.dither.chroma_weight};
+      dither_ordered_apply(float_fb, fb, width, height, &dither_cfg, &dither_ordered_cache);
+    }
   } else {
     // Direct conversion (sRGB float -> sRGB uint8)
     quantize_direct_apply(float_fb, fb, width, height);

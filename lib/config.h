@@ -76,17 +76,34 @@ typedef enum {
 } DitherPaletteMode;
 
 typedef enum {
+  DITHER_TYPE_ERROR = 0,  // Error diffusion (Atkinson, Floyd-Steinberg)
+  DITHER_TYPE_ORDERED = 1 // Ordered dithering (Bayer matrices)
+} DitherType;
+
+typedef enum {
   DITHER_ALGORITHM_ATKINSON = 0,
   DITHER_ALGORITHM_FLOYD_STEINBERG = 1
 } DitherAlgorithmType;
 
+typedef enum {
+  DITHER_ORDERED_BAYER_2X2 = 0,
+  DITHER_ORDERED_BAYER_4X4 = 1,
+  DITHER_ORDERED_BAYER_8X8 = 2
+} DitherOrderedMatrixType;
+
 typedef struct {
-  int32_t enabled;               // Enable dithering (0 or 1)
-  DitherPaletteMode mode;        // Palette mode
+  int32_t enabled;        // Enable dithering (0 or 1)
+  DitherType type;        // Error diffusion or ordered
+  DitherPaletteMode mode; // Palette mode
+  // Error diffusion params
   float strength;                // Dither pattern intensity (0.0 - 1.0)
   DitherAlgorithmType algorithm; // Error diffusion algorithm
   int32_t oklab_error;           // Use OkLab error diffusion (0 or 1)
-  float chroma_weight;           // Weight for hue/chroma vs lightness (0.5 - 4.0)
+  // Ordered params
+  DitherOrderedMatrixType ordered_matrix; // Bayer matrix size
+  float spread;                           // Threshold spread (0.0 - 1.0)
+  // Shared
+  float chroma_weight; // Weight for hue/chroma vs lightness (0.5 - 4.0)
 } SceneDitherConfig;
 
 // -------------------------------------------------------------------------------------------------
