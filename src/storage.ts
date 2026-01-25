@@ -31,7 +31,6 @@ export interface Settings {
   markersGlowFalloff: number;
 
   displayMarkers: boolean;
-  displayPebble: boolean;
   displayHighDpi: boolean;
 
   backgroundGrainIntensity: number;
@@ -113,7 +112,6 @@ export function saveSettings({
       ditherChromaWeight: dither.chromaWeight.value,
 
       displayMarkers: display.markers.value,
-      displayPebble: display.pebble.value,
       displayHighDpi: display.highDpi.value,
     };
 

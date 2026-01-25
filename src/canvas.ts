@@ -4,33 +4,20 @@ export function getCanvas(): HTMLCanvasElement {
   return document.getElementById("canvas") as HTMLCanvasElement;
 }
 
-export function resizeCanvas(pebbleMode: boolean, highDpi: boolean): void {
+export function resizeCanvas(highDpi: boolean): void {
   const canvas = getCanvas();
   const container = canvas.parentElement as HTMLElement;
   const containerRect = container.getBoundingClientRect();
   const devicePixelRatio = highDpi ? window.devicePixelRatio || 1 : 1;
 
-  if (pebbleMode) {
-    canvas.width = 260;
-    canvas.height = 260;
-    canvas.style.width = `${Math.floor(canvas.width / devicePixelRatio)}px`;
-    canvas.style.height = `${Math.floor(canvas.height / devicePixelRatio)}px`;
-    canvas.style.position = "absolute";
-    canvas.style.top = "50%";
-    canvas.style.left = "50%";
-    canvas.style.transform = "translate(-50%, -50%)";
-  } else {
-    canvas.width = Math.max(Math.floor(containerRect.width * devicePixelRatio), 100);
-    canvas.height = Math.max(Math.floor(containerRect.height * devicePixelRatio), 100);
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    canvas.style.position = "absolute";
-    canvas.style.top = "0";
-    canvas.style.left = "0";
-    canvas.style.transform = "";
-  }
-
-  container.style.background = "#232323";
+  canvas.width = Math.max(Math.floor(containerRect.width * devicePixelRatio), 100);
+  canvas.height = Math.max(Math.floor(containerRect.height * devicePixelRatio), 100);
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.position = "absolute";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.style.transform = "";
 }
 
 export interface FramebufferPointers {

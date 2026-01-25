@@ -45,7 +45,6 @@ const defaults = {
   },
   display: {
     markers: false,
-    pebble: false,
     highDpi: false,
   },
 };
@@ -303,7 +302,7 @@ export const background = {
   ),
 
   // Computed
-  grainDisabled: computed((): boolean => display.pebble.value),
+  grainDisabled: computed((): boolean => dither.enabled.value),
 
   // Actions
   setGrainIntensity(e: Event): void {
@@ -362,16 +361,11 @@ export const dither = {
 export const display = {
   // Signals
   markers: signal(settings.displayMarkers ?? defaults.display.markers),
-  pebble: signal(settings.displayPebble ?? defaults.display.pebble),
   highDpi: signal(settings.displayHighDpi ?? defaults.display.highDpi),
 
   // Actions
   toggleMarkers(): void {
     display.markers.value = !display.markers.value;
-  },
-
-  togglePebble(): void {
-    display.pebble.value = !display.pebble.value;
   },
 
   toggleHighDpi(): void {
@@ -435,7 +429,6 @@ export const resetAll = {
 
       // Display
       display.markers.value = defaults.display.markers;
-      display.pebble.value = defaults.display.pebble;
       display.highDpi.value = defaults.display.highDpi;
     });
   },
