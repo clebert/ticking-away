@@ -20,7 +20,6 @@
 // -------------------------------------------------------------------------------------------------
 
 // Round non-negative float to uint8_t (assumes f >= 0)
-// NOLINTNEXTLINE(bugprone-incorrect-roundings)
 static inline uint8_t round_f_to_u8(float f) { return (uint8_t)(f + 0.5f); }
 
 // Convert a single RGBA pixel from float to uint8.

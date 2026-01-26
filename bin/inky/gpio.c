@@ -24,7 +24,6 @@ int gpio_init(GPIOPin *pin, int bcm_number, int direction) {
   } else {
     req.config.flags = GPIO_V2_LINE_FLAG_INPUT;
   }
-  // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
   strncpy(req.consumer, "inky", sizeof(req.consumer) - 1);
 
   if (ioctl(pin->chip_fd, GPIO_V2_GET_LINE_IOCTL, &req) < 0) {

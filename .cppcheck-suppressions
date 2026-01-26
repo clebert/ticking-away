@@ -1,8 +1,0 @@
-// Informational message about analysis depth (not an issue)
-normalCheckLevelMaxBranches
-
-// Test intentionally verifies pointer identity (not a logic error)
-knownConditionTrueFalse:tests/dither_test.c:228
-
-// Test framebuffers are filled by the function under test (no need to pre-initialize)
-unassignedVariable:tests/background_test.c

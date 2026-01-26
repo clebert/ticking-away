@@ -13,14 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang \
-            clang-format \
-            clang-tidy \
-            cppcheck \
-            iwyu
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc

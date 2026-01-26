@@ -15,10 +15,10 @@ for arg in "$@"; do
 done
 
 if [ "$skip_inky" = false ]; then
-  ./build-inky.sh
+  zig build inky -Doptimize=ReleaseFast
 fi
 
-./build_wasm.sh
+zig build wasm
 
 echo "==> Vite production build"
 npx vite build

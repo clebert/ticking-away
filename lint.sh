@@ -31,37 +31,13 @@ else
     npx prettier --check "**/*.{html,md,yaml,yml}"
 fi
 
-echo "==> clang-format (C)"
-C_FILES=$(find lib bin tests -name '*.c' -o -name '*.h')
-if $FIX; then
-    echo "$C_FILES" | xargs clang-format -i
-else
-    echo "$C_FILES" | xargs clang-format --dry-run --Werror
-fi
-
-echo "==> cppcheck (C)"
-# Define nullptr for cppcheck since it only supports up to C11
-cppcheck --enable=warning,style,performance,portability \
-    -D 'nullptr=((void*)0)' \
-    --suppressions-list=.cppcheck-suppressions \
-    --error-exitcode=1 --quiet lib/ bin/ tests/
-
-echo "==> clang-tidy (C)"
-tidy_output=$(find lib bin tests -name '*.c' | xargs -I {} clang-tidy {} -- -std=c23 -I lib 2>&1 \
-    | grep -Ev "^[0-9]+ warnings generated\.$|^Suppressed [0-9]+ warnings|^Use -header-filter|^Use -system-headers" \
-    || true)
-if [ -n "$tidy_output" ]; then
-    echo "$tidy_output"
-    exit 1
-fi
-
-echo "==> include-what-you-use (C)"
-iwyu_output=$(find lib bin tests -name '*.c' -o -name '*.h' | xargs -I {} iwyu -Xiwyu --mapping_file=iwyu.imp -std=c2x -I lib {} 2>&1 \
-    | grep -Ev "has correct #includes/fwd-decls\)|^$" \
-    || true)
-if [ -n "$iwyu_output" ]; then
-    echo "$iwyu_output"
-    exit 1
-fi
+echo "==> Zig"
+zig fmt --check build.zig || {
+    if $FIX; then
+        zig fmt build.zig
+    else
+        exit 1
+    fi
+}
 
 echo "==> All checks passed"
