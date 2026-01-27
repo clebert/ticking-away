@@ -123,3 +123,13 @@ sudo ./bin/inky/watchface
 ```
 
 Note: `sudo` is required for GPIO and SPI access.
+
+## Shutdown
+
+Before connecting or disconnecting the display, shut down the Pi safely:
+
+```sh
+sudo shutdown -h now
+```
+
+Wait for the green activity LED to stop blinking before unplugging power.
