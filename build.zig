@@ -84,6 +84,38 @@ pub fn build(b: *std.Build) void {
     wasm_step.dependOn(&wasm_install.step);
 
     // =========================================================================
+    // Zig WASM Target (alternative renderer in pure Zig)
+    // =========================================================================
+    const zig_wasm = b.addExecutable(.{
+        .name = "zig-renderer",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/wasm-zig/main.zig"),
+            .target = wasm_target,
+            .optimize = .ReleaseSmall,
+            .strip = true,
+            .imports = &.{
+                .{ .name = "watchface", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/zig/root.zig"),
+                    .target = wasm_target,
+                    .optimize = .ReleaseSmall,
+                }) },
+            },
+        }),
+    });
+
+    zig_wasm.entry = .disabled;
+    zig_wasm.rdynamic = true;
+    zig_wasm.import_memory = true;
+    zig_wasm.want_lto = true;
+
+    const zig_wasm_install = b.addInstallArtifact(zig_wasm, .{
+        .dest_dir = .{ .override = .{ .custom = "../public" } },
+    });
+
+    const zig_wasm_step = b.step("zig-wasm", "Build the Zig WASM module");
+    zig_wasm_step.dependOn(&zig_wasm_install.step);
+
+    // =========================================================================
     // Inky Target (native, links libm)
     // =========================================================================
     const inky = b.addExecutable(.{
@@ -167,6 +199,32 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Build and run all tests");
 
+    // -------------------------------------------------------------------------
+    // Zig tests (native Zig library)
+    // -------------------------------------------------------------------------
+    const zig_lib = b.createModule(.{
+        .root_source_file = b.path("lib/zig/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const band_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/band_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "watchface", .module = zig_lib },
+            },
+        }),
+    });
+
+    const run_band_test = b.addRunArtifact(band_test);
+    test_step.dependOn(&run_band_test.step);
+
+    // -------------------------------------------------------------------------
+    // C tests
+    // -------------------------------------------------------------------------
     for (tests) |t| {
         const test_exe = b.addExecutable(.{
             .name = b.fmt("{s}_test", .{t.name}),

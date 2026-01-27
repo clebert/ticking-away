@@ -19,6 +19,7 @@ if [ "$skip_inky" = false ]; then
 fi
 
 zig build wasm
+zig build zig-wasm
 
 echo "==> Vite production build"
 npx vite build

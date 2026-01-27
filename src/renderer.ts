@@ -1,9 +1,20 @@
 import { getCanvas, getFramebufferPointers } from "./canvas.ts";
 import { getConfig } from "./config.ts";
-import { background, debug, display, dither, markers, prism, rays, time } from "./stores.ts";
+import {
+  background,
+  debug,
+  display,
+  dither,
+  markers,
+  prism,
+  rays,
+  renderer,
+  time,
+} from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
+import { getZigWasmMemory, getZigWasmModule } from "./zig-wasm.ts";
 
-export function render(): void {
+function renderWithC(): void {
   const wasmModule = getWasmModule();
   const wasmMemory = getWasmMemory();
 
@@ -94,4 +105,79 @@ export function render(): void {
   const imageData = new ImageData(framebufferArray, width, height);
 
   canvas.getContext("2d")?.putImageData(imageData, 0, 0);
+}
+
+function ensureZigMemory(zigMemory: WebAssembly.Memory, neededBytes: number): boolean {
+  const currentBytes = zigMemory.buffer.byteLength;
+
+  if (neededBytes <= currentBytes) {
+    return true;
+  }
+
+  // Add margin and round up to page boundary
+  const targetBytes = neededBytes + 65536;
+  const pagesToGrow = Math.ceil((targetBytes - currentBytes) / 65536);
+  const result = zigMemory.grow(pagesToGrow);
+
+  return result !== -1;
+}
+
+function renderWithZig(): void {
+  const zigModule = getZigWasmModule();
+  const zigMemory = getZigWasmMemory();
+
+  if (!zigModule || !zigMemory) {
+    return;
+  }
+
+  const canvas = getCanvas();
+  const width = canvas.width;
+  const height = canvas.height;
+  const pixelCount = width * height;
+
+  // Zig Color buffer: 4 floats (16 bytes) per pixel (RGBA for SIMD alignment)
+  const floatsPerPixel = 4;
+  const bytesPerPixel = floatsPerPixel * 4;
+  const requiredSize = pixelCount * bytesPerPixel;
+  const heapBase = zigModule.getHeapBase();
+  const neededBytes = heapBase + requiredSize;
+
+  // Ensure memory is large enough before rendering
+  if (!ensureZigMemory(zigMemory, neededBytes)) {
+    return;
+  }
+
+  // Color buffer is always at heap base
+  const colorBufferPtr = heapBase;
+
+  // Render the test pattern
+  zigModule.renderTestPattern(colorBufferPtr, width, height);
+
+  // Convert float RGBA to uint8 RGBA (use fresh buffer reference after potential grow)
+  const floatView = new Float32Array(zigMemory.buffer, colorBufferPtr, pixelCount * floatsPerPixel);
+  const imageData = new ImageData(width, height);
+  const data = imageData.data;
+
+  for (let i = 0; i < pixelCount; i++) {
+    const srcIdx = i * floatsPerPixel;
+    const dstIdx = i * 4;
+    const r = floatView[srcIdx] ?? 0;
+    const g = floatView[srcIdx + 1] ?? 0;
+    const b = floatView[srcIdx + 2] ?? 0;
+
+    data[dstIdx] = Math.min(255, Math.max(0, Math.round(r * 255)));
+    data[dstIdx + 1] = Math.min(255, Math.max(0, Math.round(g * 255)));
+    data[dstIdx + 2] = Math.min(255, Math.max(0, Math.round(b * 255)));
+    data[dstIdx + 3] = 255;
+  }
+
+  canvas.getContext("2d")?.putImageData(imageData, 0, 0);
+}
+
+export function render(): void {
+  if (renderer.type.value === 1) {
+    renderWithZig();
+  } else {
+    renderWithC();
+  }
 }

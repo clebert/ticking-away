@@ -6,8 +6,9 @@ import { render } from "./renderer.ts";
 import { saveSettings } from "./storage.ts";
 import * as stores from "./stores.ts";
 import { initWasm } from "./wasm.ts";
+import { initZigWasm } from "./zig-wasm.ts";
 
-initWasm().then(() => {
+Promise.all([initWasm(), initZigWasm()]).then(() => {
   createBinder({ stores })(document.body);
 
   window.addEventListener("resize", () => {
