@@ -22,7 +22,7 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
     const w: usize = @intCast(width);
     const h: usize = @intCast(height);
 
-    var ctx = watchface.band.BandContext{
+    var ctx = watchface.band.Context{
         .buffer = buffer[0 .. w * h],
         .width = w,
         .height = h,
@@ -31,7 +31,7 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
     };
 
     // Clear to black
-    watchface.band.clear(&ctx);
+    ctx.clear();
 
     // Draw a diagonal glow line
     const segment = watchface.line.Segment{
@@ -45,7 +45,7 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
         .color = watchface.color.white,
     };
 
-    watchface.band.renderGlowLine(&ctx, segment, config);
+    ctx.renderGlowLine(segment, config);
 }
 
 /// Clear the buffer to black.
@@ -53,7 +53,7 @@ export fn clearBuffer(buffer: [*]watchface.color.Color, width: u32, height: u32)
     const w: usize = @intCast(width);
     const h: usize = @intCast(height);
 
-    var ctx = watchface.band.BandContext{
+    var ctx = watchface.band.Context{
         .buffer = buffer[0 .. w * h],
         .width = w,
         .height = h,
@@ -61,7 +61,7 @@ export fn clearBuffer(buffer: [*]watchface.color.Color, width: u32, height: u32)
         .total_height = h,
     };
 
-    watchface.band.clear(&ctx);
+    ctx.clear();
 }
 
 /// Render a glow line segment.
@@ -82,7 +82,7 @@ export fn renderGlowLine(
     const w: usize = @intCast(width);
     const h: usize = @intCast(height);
 
-    var ctx = watchface.band.BandContext{
+    var ctx = watchface.band.Context{
         .buffer = buffer[0 .. w * h],
         .width = w,
         .height = h,
@@ -101,5 +101,5 @@ export fn renderGlowLine(
         .color = .{ color_r, color_g, color_b, 1 },
     };
 
-    watchface.band.renderGlowLine(&ctx, segment, config);
+    ctx.renderGlowLine(segment, config);
 }
