@@ -24,7 +24,7 @@ test "render horizontal glow line" {
     const config = watchface.glow.Config{
         .width = 10,
         .falloff = .quadratic,
-        .color = .{ 1, 1, 1, 1 },
+        .color = .{ .uniform = watchface.color.rgba(1, 1, 1, 1) },
     };
 
     ctx.clear();

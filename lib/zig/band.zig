@@ -29,11 +29,16 @@ pub const Context = struct {
 
                 // Normalized distance [0, 1] for falloff
                 const distance = @sqrt(result.distance_sq);
-                const t = distance / config.width;
-                const intensity = config.falloff.apply(t);
+                const radial_t = distance / config.width;
+                const intensity = config.falloff.apply(radial_t);
+
+                const base_color = switch (config.color) {
+                    .uniform => |c| c,
+                    .gradient => |g| color.lerp(g.start, g.end, result.t),
+                };
 
                 self.pixel(@intCast(x), @intCast(local_y)).* +=
-                    @as(color.Color, @splat(intensity)) * config.color;
+                    @as(color.Color, @splat(intensity)) * base_color;
             }
         }
     }

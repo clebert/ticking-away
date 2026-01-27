@@ -42,7 +42,10 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
     const config = watchface.glow.Config{
         .width = 5,
         .falloff = .exponential,
-        .color = watchface.color.white,
+        .color = .{ .gradient = .{
+            .start = watchface.color.rgb(1, 0, 0),
+            .end = watchface.color.rgb(0, 0, 1),
+        } },
     };
 
     ctx.renderGlowLine(segment, config);
@@ -98,7 +101,7 @@ export fn renderGlowLine(
     const config = watchface.glow.Config{
         .width = glow_width,
         .falloff = @enumFromInt(falloff),
-        .color = .{ color_r, color_g, color_b, 1 },
+        .color = .{ .uniform = watchface.color.rgba(color_r, color_g, color_b, 1) },
     };
 
     ctx.renderGlowLine(segment, config);

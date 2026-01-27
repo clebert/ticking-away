@@ -26,5 +26,9 @@ pub const Falloff = enum {
 pub const Config = struct {
     width: f32,
     falloff: Falloff = .quadratic,
-    color: color.Color = color.white,
+
+    color: union(enum) {
+        uniform: color.Color,
+        gradient: struct { start: color.Color, end: color.Color },
+    } = .{ .uniform = color.white },
 };
