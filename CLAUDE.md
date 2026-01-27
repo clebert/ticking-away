@@ -34,3 +34,7 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Gui
 - **Separation of concerns**: Keep modules focused on a single responsibility
 - **No abbreviations**: Use full names (`distance`, not `dist`); only abbreviate when commonly
   accepted (`ctx`)
+- **Module-as-namespace imports**: Import modules as `const color = @import("color.zig")`, then
+  access types as `color.Color`. Don't import types directly.
+- **Free functions vs methods**: Use free functions for stateless math (`vec2.dot(a, b)`), methods
+  for stateful types (`segment.distanceSq(point)`)
