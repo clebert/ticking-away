@@ -42,15 +42,28 @@ int spi_transfer(SPIDevice *dev, const uint8_t *tx, size_t len) {
     return -1;
   }
 
-  struct spi_ioc_transfer tr = {0};
-  tr.tx_buf = (unsigned long)tx;
-  tr.rx_buf = 0;
-  tr.len = (uint32_t)len;
-  tr.speed_hz = dev->speed_hz;
-  tr.bits_per_word = 8;
+  // Chunk transfers to stay within spidev buffer limit (default 4096 bytes)
+  enum { CHUNK_SIZE = 4096 };
+  size_t offset = 0;
 
-  if (ioctl(dev->fd, SPI_IOC_MESSAGE(1), &tr) < 0) {
-    return -1;
+  while (offset < len) {
+    size_t chunk_len = len - offset;
+    if (chunk_len > CHUNK_SIZE) {
+      chunk_len = CHUNK_SIZE;
+    }
+
+    struct spi_ioc_transfer tr = {0};
+    tr.tx_buf = (unsigned long)(tx + offset);
+    tr.rx_buf = 0;
+    tr.len = (uint32_t)chunk_len;
+    tr.speed_hz = dev->speed_hz;
+    tr.bits_per_word = 8;
+
+    if (ioctl(dev->fd, SPI_IOC_MESSAGE(1), &tr) < 0) {
+      return -1;
+    }
+
+    offset += chunk_len;
   }
 
   return 0;
