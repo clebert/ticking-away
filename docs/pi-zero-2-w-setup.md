@@ -62,10 +62,16 @@ sudo sed -i 's/^#dtparam=spi=on/dtparam=spi=on/' /boot/firmware/config.txt
 sudo reboot
 ```
 
-### Install Zig
+### Install Dependencies
 
 ```sh
 sudo apt update && sudo apt upgrade -y
+sudo apt install -y git
+```
+
+### Install Zig
+
+```sh
 sudo mkdir -p /usr/local/zig
 curl -fsSL "https://ziglang.org/download/0.15.2/zig-aarch64-linux-0.15.2.tar.xz" \
   | sudo tar -xJ -C /usr/local/zig --strip-components=1
@@ -97,6 +103,23 @@ ls /dev/spidev*
 # Should show: /dev/spidev0.0  /dev/spidev0.1
 ```
 
-## Running the Watchface
+## Clone Repository
 
-TODO: Add deployment and startup instructions.
+Create a GitHub personal access token at https://github.com/settings/tokens with `repo` scope, then:
+
+```sh
+cd ~
+git clone https://<TOKEN>@github.com/clebert/ticking-away.git
+cd ticking-away
+git checkout zig
+```
+
+## Build and Run
+
+```sh
+cd ~/ticking-away
+zig build inky -Doptimize=ReleaseFast
+sudo ./bin/inky/watchface
+```
+
+Note: `sudo` is required for GPIO and SPI access.
