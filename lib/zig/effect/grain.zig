@@ -61,11 +61,7 @@ pub fn apply(
                 if (config.prism_only) {
                     if (geometry) |g| {
                         if (g.prism) |prism| {
-                            // Use SIMD containsPoint4 with single point
-                            const px_vec: @Vector(4, f32) = @splat(px);
-                            const py_vec: @Vector(4, f32) = @splat(py);
-                            const inside = prism.containsPoint4(px_vec, py_vec);
-                            if (!inside[0]) continue;
+                            if (!prism.containsPoint(px, py)) continue;
                         }
                     }
                 }
@@ -73,11 +69,11 @@ pub fn apply(
 
             // Get current sRGB values
             const r = buffer[idx][0];
-            const g = buffer[idx][1];
+            const g_val = buffer[idx][1];
             const b = buffer[idx][2];
 
             // Calculate brightness (simple average in sRGB space)
-            const brightness = (r + g + b) / 3.0;
+            const brightness = (r + g_val + b) / 3.0;
 
             // Scale grain intensity by brightness (fades to zero in dark areas)
             const brightness_factor = clamp01(brightness * brightness_scale);
@@ -95,7 +91,7 @@ pub fn apply(
 
             // Add grain to all channels (monochromatic grain)
             buffer[idx][0] = clamp01(r + grain_val);
-            buffer[idx][1] = clamp01(g + grain_val);
+            buffer[idx][1] = clamp01(g_val + grain_val);
             buffer[idx][2] = clamp01(b + grain_val);
         }
     }

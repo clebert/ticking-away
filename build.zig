@@ -209,19 +209,27 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const spectrum_test = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/spectrum_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "watchface", .module = zig_lib },
-            },
-        }),
-    });
+    const zig_tests: []const []const u8 = &.{
+        "tests/spectrum_test.zig",
+        "tests/line_test.zig",
+        "tests/triangle_test.zig",
+        "tests/band_test.zig",
+    };
 
-    const run_spectrum_test = b.addRunArtifact(spectrum_test);
-    test_step.dependOn(&run_spectrum_test.step);
+    for (zig_tests) |test_file| {
+        const zig_test = b.addTest(.{
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(test_file),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "watchface", .module = zig_lib },
+                },
+            }),
+        });
+        const run_zig_test = b.addRunArtifact(zig_test);
+        test_step.dependOn(&run_zig_test.step);
+    }
 
     // -------------------------------------------------------------------------
     // C tests

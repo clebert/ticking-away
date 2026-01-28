@@ -23,6 +23,7 @@ pub const Ray = struct {
 
     pub fn pointAt(self: Ray, t: f32) vec2.Vec2 {
         @setFloatMode(.optimized);
-        return self.origin + self.direction * @as(vec2.Vec2, @splat(t));
+        const t_vec: vec2.Vec2 = @splat(t);
+        return self.origin + self.direction * t_vec;
     }
 };

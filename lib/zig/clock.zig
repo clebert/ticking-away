@@ -21,7 +21,9 @@ pub fn hourAngle(hours: f32, minutes: f32) f32 {
 pub fn entryPoint(center: vec2.Vec2, radius: f32, minutes: f32) vec2.Vec2 {
     @setFloatMode(.optimized);
     const angle = minuteAngle(minutes);
-    return center + vec2.xy(@cos(angle), @sin(angle)) * @as(vec2.Vec2, @splat(radius));
+    const dir = vec2.xy(@cos(angle), @sin(angle));
+    const r_vec: vec2.Vec2 = @splat(radius);
+    return center + dir * r_vec;
 }
 
 pub fn bandExitAngle(base_hour_angle: f32, rainbow_spread: f32, band_index: usize) f32 {

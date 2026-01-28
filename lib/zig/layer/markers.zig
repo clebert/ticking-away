@@ -36,7 +36,7 @@ pub const Geometry = struct {
             .center_x = center_x,
             .center_y = center_y,
             .radius = radius,
-            .boundary = circle.Circle.init(.{ center_x, center_y }, radius),
+            .boundary = circle.Circle.init(vec2.xy(center_x, center_y), radius),
         };
     }
 
@@ -68,14 +68,14 @@ pub fn computeMarkers(geometry: Geometry, config: Config) [marker_count]Marker {
         const cos_a = @cos(angle);
         const sin_a = @sin(angle);
 
-        const start = vec2.Vec2{
+        const start = vec2.xy(
             geometry.center_x + cos_a * inner_r,
             geometry.center_y + sin_a * inner_r,
-        };
-        const end = vec2.Vec2{
+        );
+        const end = vec2.xy(
             geometry.center_x + cos_a * outer_r,
             geometry.center_y + sin_a * outer_r,
-        };
+        );
 
         markers[h] = .{
             .segment = line.Segment.init(start, end),

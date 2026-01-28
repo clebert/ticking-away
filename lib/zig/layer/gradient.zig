@@ -91,11 +91,14 @@ pub fn drawContinuous(
     const prism = geometry.prism;
 
     if (config.mode == .internal) {
-        // Clip to prism bounding box using edge vertices
-        const min_x = @min(@min(prism.edge_start_x[0], prism.edge_start_x[1]), prism.edge_start_x[2]);
-        const max_x = @max(@max(prism.edge_start_x[0], prism.edge_start_x[1]), prism.edge_start_x[2]);
-        const min_y = @min(@min(prism.edge_start_y[0], prism.edge_start_y[1]), prism.edge_start_y[2]);
-        const max_y = @max(@max(prism.edge_start_y[0], prism.edge_start_y[1]), prism.edge_start_y[2]);
+        // Clip to prism bounding box using vertices
+        const v0 = prism.getVertex(0);
+        const v1 = prism.getVertex(1);
+        const v2 = prism.getVertex(2);
+        const min_x = @min(@min(v0[0], v1[0]), v2[0]);
+        const max_x = @max(@max(v0[0], v1[0]), v2[0]);
+        const min_y = @min(@min(v0[1], v1[1]), v2[1]);
+        const max_y = @max(@max(v0[1], v1[1]), v2[1]);
 
         x_start = @intFromFloat(@max(min_x, 0));
         x_end = @intFromFloat(@min(max_x + 1, @as(f32, @floatFromInt(width))));
@@ -109,10 +112,8 @@ pub fn drawContinuous(
         for (x_start..x_end) |x| {
             const px = @as(f32, @floatFromInt(x)) + 0.5;
 
-            // Mode-specific containment check (use SIMD containsPoint4 with scalar splat)
-            const px_vec: @Vector(4, f32) = @splat(px);
-            const py_vec: @Vector(4, f32) = @splat(py);
-            const inside = prism.containsPoint4(px_vec, py_vec)[0];
+            // Mode-specific containment check
+            const inside = prism.containsPoint(px, py);
 
             if (config.mode == .external) {
                 const dx = px - geometry.center_x;
@@ -155,9 +156,8 @@ pub fn drawContinuous(
 
             // Additive blend
             const idx = y * width + x;
-            buffer[idx][0] += col[0] * config.intensity;
-            buffer[idx][1] += col[1] * config.intensity;
-            buffer[idx][2] += col[2] * config.intensity;
+            const intensity_vec: color.Color = @splat(config.intensity);
+            buffer[idx] = buffer[idx] + col * intensity_vec;
         }
     }
 }

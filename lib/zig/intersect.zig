@@ -46,7 +46,8 @@ pub fn raySegment(
     if (u_raw < -eps_u or u_raw > 1.0 + eps_u) return null;
 
     const u = std.math.clamp(u_raw, 0.0, 1.0);
-    const point = segment_start + edge * @as(vec2.Vec2, @splat(u));
+    const u_vec: vec2.Vec2 = @splat(u);
+    const point = segment_start + edge * u_vec;
 
     return .{
         .point = point,

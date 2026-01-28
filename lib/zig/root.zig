@@ -12,7 +12,6 @@ pub const intersect = @import("intersect.zig");
 pub const line = @import("line.zig");
 pub const oklab = @import("oklab.zig");
 pub const palette = @import("palette.zig");
-pub const quantize = @import("quantize.zig");
 pub const range = @import("range.zig");
 pub const ray = @import("ray.zig");
 pub const scene = @import("scene.zig");

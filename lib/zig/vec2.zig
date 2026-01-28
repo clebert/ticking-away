@@ -10,7 +10,6 @@ pub inline fn dot(a: Vec2, b: Vec2) f32 {
 }
 
 pub inline fn lengthSq(v: Vec2) f32 {
-    @setFloatMode(.optimized);
     return dot(v, v);
 }
 

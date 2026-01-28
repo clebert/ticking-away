@@ -16,7 +16,6 @@ pub const Context = struct {
         @memset(self.buffer, color.black);
     }
 
-    /// Initialize background: black inside circle, white outside (for e-ink displays)
     pub fn clearWithBackground(self: *Context, cx: f32, cy: f32, radius: f32) void {
         @setFloatMode(.optimized);
         const r2 = radius * radius;
@@ -37,9 +36,6 @@ pub const Context = struct {
         }
     }
 
-    /// Renders with additive blending - multiple calls accumulate light.
-    /// clip_to: only render pixels inside this region (triangle or circle)
-    /// exclude: skip pixels inside this triangle
     pub fn renderGlowLine(
         self: *Context,
         segment: line.Segment,
@@ -62,21 +58,19 @@ pub const Context = struct {
         const x_start: usize = @intCast(x_min);
         const x_end: usize = @intCast(x_max);
 
-        const band_y_min = self.y_offset;
-        const band_y_max = self.y_offset + self.height;
-        const local_y_start = if (y_min < band_y_min) 0 else @as(usize, @intCast(y_min)) - band_y_min;
-        const local_y_end = if (y_max > band_y_max) self.height else @as(usize, @intCast(y_max)) - band_y_min;
+        const band_y_min: isize = @intCast(self.y_offset);
+        const band_y_max: isize = @intCast(self.y_offset + self.height);
 
-        const glow_width_sq_vec: @Vector(4, f32) = @splat(glow_width_sq);
-        const glow_width_vec: @Vector(4, f32) = @splat(glow_width);
+        if (y_max <= band_y_min or y_min >= band_y_max) return;
+
+        const local_y_start: usize = if (y_min < band_y_min) 0 else @intCast(y_min - band_y_min);
+        const local_y_end: usize = if (y_max > band_y_max) self.height else @intCast(y_max - band_y_min);
 
         for (local_y_start..local_y_end) |local_y| {
             const global_y = self.globalY(local_y);
             const y_f: f32 = @floatFromInt(global_y);
             const y_center = y_f + 0.5;
-            const py: @Vector(4, f32) = @splat(y_center);
 
-            // Intersect x-range with clip region's scanline bounds
             var row_x_start = x_start;
             var row_x_end = x_end;
             if (clip_to) |region| {
@@ -86,70 +80,32 @@ pub const Context = struct {
                 if (row_x_start >= row_x_end) continue;
             }
 
-            var x = row_x_start;
-
-            while (x + 4 <= row_x_end) : (x += 4) {
-                const base: @Vector(4, f32) = @splat(@floatFromInt(x));
-                const px = base + @Vector(4, f32){ 0.5, 1.5, 2.5, 3.5 };
-                const result = segment.distanceSq4(px, py);
-
-                // Glow radius mask
-                var mask = result.distance_sq < glow_width_sq_vec;
-                if (!@reduce(.Or, mask)) continue;
-
-                // Exclude triangle (remove pixels inside)
-                if (exclude) |tri| {
-                    mask = mask & ~tri.containsPoint4(px, py);
-                    if (!@reduce(.Or, mask)) continue;
-                }
-
-                const distances = @sqrt(result.distance_sq);
-                const radial_t = distances / glow_width_vec;
-
-                inline for (0..4) |i| {
-                    if (mask[i]) {
-                        const radial_intensity = config.falloff.apply(radial_t[i]);
-                        const linear_intensity = switch (config.intensity) {
-                            .uniform => |v| v,
-                            .gradient => |g| g.start + (g.end - g.start) * result.t[i],
-                        };
-                        const intensity = radial_intensity * linear_intensity;
-                        const base_color = switch (config.color) {
-                            .uniform => |c| c,
-                            .gradient => |g| color.lerp(g.start, g.end, result.t[i]),
-                        };
-                        self.pixel(x + i, local_y).* += @as(color.Color, @splat(intensity)) * base_color;
-                    }
-                }
-            }
-
-            // Scalar tail
-            while (x < row_x_end) : (x += 1) {
-                const px_scalar: @Vector(4, f32) = @splat(@as(f32, @floatFromInt(x)) + 0.5);
-                const py_scalar: @Vector(4, f32) = @splat(y_center);
+            for (row_x_start..row_x_end) |x| {
+                const px = @as(f32, @floatFromInt(x)) + 0.5;
 
                 if (exclude) |tri| {
-                    if (tri.containsPoint4(px_scalar, py_scalar)[0]) continue;
+                    if (tri.containsPoint(px, y_center)) continue;
                 }
 
-                const result = segment.distanceSq4(px_scalar, py_scalar);
-                if (result.distance_sq[0] >= glow_width_sq) continue;
+                const result = segment.distanceSq(px, y_center);
+                if (result.distance_sq >= glow_width_sq) continue;
 
-                const distance = @sqrt(result.distance_sq[0]);
-                const radial_t_val = distance / glow_width;
-                const radial_intensity = config.falloff.apply(radial_t_val);
+                const distance = @sqrt(result.distance_sq);
+                const radial_t = distance / glow_width;
+                const radial_intensity = config.falloff.apply(radial_t);
                 const linear_intensity = switch (config.intensity) {
                     .uniform => |v| v,
-                    .gradient => |g| g.start + (g.end - g.start) * result.t[0],
+                    .gradient => |g| g.start + (g.end - g.start) * result.t,
                 };
                 const intensity = radial_intensity * linear_intensity;
-
                 const base_color = switch (config.color) {
                     .uniform => |c| c,
-                    .gradient => |g| color.lerp(g.start, g.end, result.t[0]),
+                    .gradient => |g| color.lerp(g.start, g.end, result.t),
                 };
 
-                self.pixel(x, local_y).* += @as(color.Color, @splat(intensity)) * base_color;
+                const p = self.pixel(x, local_y);
+                const scale_vec: color.Color = @splat(intensity);
+                p.* = p.* + base_color * scale_vec;
             }
         }
     }
@@ -162,7 +118,6 @@ pub const Context = struct {
         return self.y_offset + local_y;
     }
 
-    /// Renders glow effect inside a triangle (prism edges)
     pub fn renderPrismGlow(
         self: *Context,
         tri: triangle.Triangle,
@@ -180,72 +135,63 @@ pub const Context = struct {
         for (y_min..y_max) |global_y| {
             const local_y = global_y - self.y_offset;
             const y_f: f32 = @floatFromInt(global_y);
+            const y_center = y_f + 0.5;
 
-            const tri_range = tri.scanlineRange(y_f + 0.5) orelse continue;
+            const tri_range = tri.scanlineRange(y_center) orelse continue;
             const x_start = @max(0, @as(usize, @intFromFloat(tri_range.x_min)));
             const x_end = @min(self.width, @as(usize, @intFromFloat(tri_range.x_max)) + 1);
 
-            var x = x_start;
-            const py: @Vector(4, f32) = @splat(y_f + 0.5);
-            const glow_width_vec: @Vector(4, f32) = @splat(glow_width);
-            const smooth_k_vec: @Vector(4, f32) = @splat(smooth_k);
-
-            while (x + 4 <= x_end) : (x += 4) {
-                const base: @Vector(4, f32) = @splat(@floatFromInt(x));
-                const px = base + @Vector(4, f32){ 0.5, 1.5, 2.5, 3.5 };
-                const dist_sq = tri.edgeDistancesSq4(px, py);
-
-                const d0 = @sqrt(dist_sq[0]);
-                const d1 = @sqrt(dist_sq[1]);
-                const d2 = @sqrt(dist_sq[2]);
-
-                const dist = smoothMin4(smoothMin4(d0, d1, smooth_k_vec), d2, smooth_k_vec);
-
-                const zero: @Vector(4, f32) = @splat(0);
-                const one: @Vector(4, f32) = @splat(1);
-                const mask = dist < glow_width_vec;
-                if (!@reduce(.Or, mask)) continue;
-
-                const t = @min(@max(dist / glow_width_vec, zero), one);
-
-                inline for (0..4) |i| {
-                    if (mask[i]) {
-                        const alpha = falloff.apply(t[i]) * intensity;
-                        self.pixel(x + i, local_y).* += @as(color.Color, @splat(alpha)) * glow_color;
-                    }
-                }
-            }
-
-            // Scalar tail (reuses SIMD function with single point)
-            while (x < x_end) : (x += 1) {
-                const px_scalar: @Vector(4, f32) = @splat(@as(f32, @floatFromInt(x)) + 0.5);
-                const py_scalar: @Vector(4, f32) = @splat(y_f + 0.5);
-                const dist_sq = tri.edgeDistancesSq4(px_scalar, py_scalar);
-                const d0 = @sqrt(dist_sq[0][0]);
-                const d1 = @sqrt(dist_sq[1][0]);
-                const d2 = @sqrt(dist_sq[2][0]);
-                const dist = smoothMin(smoothMin(d0, d1, smooth_k), d2, smooth_k);
+            for (x_start..x_end) |x| {
+                const px = @as(f32, @floatFromInt(x)) + 0.5;
+                const dist = smoothMinEdgeDist(tri, px, y_center, smooth_k);
 
                 if (dist < glow_width) {
                     const t = @min(@max(dist / glow_width, 0), 1);
                     const alpha = falloff.apply(t) * intensity;
-                    self.pixel(x, local_y).* += @as(color.Color, @splat(alpha)) * glow_color;
+                    const p = self.pixel(x, local_y);
+                    const scale_vec: color.Color = @splat(alpha);
+                    p.* = p.* + glow_color * scale_vec;
                 }
             }
         }
     }
 };
 
+fn smoothMinEdgeDist(tri: triangle.Triangle, px: f32, py: f32, k: f32) f32 {
+    @setFloatMode(.optimized);
+    const d0 = @sqrt(edgeDistanceSq(tri.getVertex(0), tri.getVertex(1), px, py));
+    const d1 = @sqrt(edgeDistanceSq(tri.getVertex(1), tri.getVertex(2), px, py));
+    const d2 = @sqrt(edgeDistanceSq(tri.getVertex(2), tri.getVertex(0), px, py));
+    return smoothMin(smoothMin(d0, d1, k), d2, k);
+}
+
+fn edgeDistanceSq(start: vec2.Vec2, end: vec2.Vec2, px: f32, py: f32) f32 {
+    @setFloatMode(.optimized);
+    const dir_x = end[0] - start[0];
+    const dir_y = end[1] - start[1];
+    const len_sq = dir_x * dir_x + dir_y * dir_y;
+
+    if (len_sq < 1e-9) {
+        const dx = px - start[0];
+        const dy = py - start[1];
+        return dx * dx + dy * dy;
+    }
+
+    const to_x = px - start[0];
+    const to_y = py - start[1];
+    const dot_val = to_x * dir_x + to_y * dir_y;
+    const t = @min(@max(dot_val / len_sq, 0), 1);
+
+    const proj_x = start[0] + t * dir_x;
+    const proj_y = start[1] + t * dir_y;
+    const dx = px - proj_x;
+    const dy = py - proj_y;
+
+    return dx * dx + dy * dy;
+}
+
 fn smoothMin(a: f32, b: f32, k: f32) f32 {
     @setFloatMode(.optimized);
     const h = @max(k - @abs(a - b), 0) / k;
     return @min(a, b) - h * h * k * 0.25;
-}
-
-fn smoothMin4(a: @Vector(4, f32), b: @Vector(4, f32), k: @Vector(4, f32)) @Vector(4, f32) {
-    @setFloatMode(.optimized);
-    const zero: @Vector(4, f32) = @splat(0);
-    const quarter: @Vector(4, f32) = @splat(0.25);
-    const h = @max(k - @abs(a - b), zero) / k;
-    return @min(a, b) - h * h * k * quarter;
 }

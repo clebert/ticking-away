@@ -11,7 +11,6 @@ pub const Circle = struct {
         return .{ .center = center, .radius = radius, .radius_sq = radius * radius };
     }
 
-    /// Returns x-range where scanline y intersects circle
     pub fn scanlineRange(self: Circle, y: f32) ?range.Range {
         @setFloatMode(.optimized);
         const dy = y - self.center[1];
