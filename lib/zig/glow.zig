@@ -31,4 +31,10 @@ pub const Config = struct {
         uniform: color.Color,
         gradient: struct { start: color.Color, end: color.Color },
     } = .{ .uniform = color.white },
+
+    /// Intensity along the line (start to end). Used for fade-out effects.
+    intensity: union(enum) {
+        uniform: f32,
+        gradient: struct { start: f32, end: f32 },
+    } = .{ .uniform = 1.0 },
 };

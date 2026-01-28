@@ -41,6 +41,7 @@ pub fn build(b: *std.Build) void {
     const wasm_target = b.resolveTargetQuery(.{
         .cpu_arch = .wasm32,
         .os_tag = .freestanding,
+        .cpu_features_add = std.Target.wasm.featureSet(&.{ .bulk_memory, .simd128 }),
     });
 
     const wasm = b.addExecutable(.{
@@ -202,25 +203,25 @@ pub fn build(b: *std.Build) void {
     // -------------------------------------------------------------------------
     // Zig tests (native Zig library)
     // -------------------------------------------------------------------------
-    // const zig_lib = b.createModule(.{
-    //     .root_source_file = b.path("lib/zig/root.zig"),
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
+    const zig_lib = b.createModule(.{
+        .root_source_file = b.path("lib/zig/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
-    // const band_test = b.addTest(.{
-    //     .root_module = b.createModule(.{
-    //         .root_source_file = b.path("tests/band_test.zig"),
-    //         .target = target,
-    //         .optimize = optimize,
-    //         .imports = &.{
-    //             .{ .name = "watchface", .module = zig_lib },
-    //         },
-    //     }),
-    // });
+    const spectrum_test = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/spectrum_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "watchface", .module = zig_lib },
+            },
+        }),
+    });
 
-    // const run_band_test = b.addRunArtifact(band_test);
-    // test_step.dependOn(&run_band_test.step);
+    const run_spectrum_test = b.addRunArtifact(spectrum_test);
+    test_step.dependOn(&run_spectrum_test.step);
 
     // -------------------------------------------------------------------------
     // C tests

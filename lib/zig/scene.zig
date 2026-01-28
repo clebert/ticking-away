@@ -1,0 +1,374 @@
+const std = @import("std");
+
+const band = @import("band.zig");
+const circle = @import("circle.zig");
+const clip = @import("clip.zig");
+const clock = @import("clock.zig");
+const color = @import("color.zig");
+const glow = @import("glow.zig");
+const line = @import("line.zig");
+const palette = @import("palette.zig");
+const spectrum = @import("spectrum.zig");
+const triangle = @import("triangle.zig");
+const vec2 = @import("vec2.zig");
+
+const layer = struct {
+    const gradient = @import("layer/gradient.zig");
+    const markers = @import("layer/markers.zig");
+};
+
+pub const PrismConfig = struct {
+    size: f32 = 0.65,
+    apex_angle: f32 = 60.0,
+    rainbow_spread: f32 = 0.5,
+};
+
+pub const GlowConfig = struct {
+    color: color.Color = color.rgb(0.5, 0.5, 0.5),
+    width: f32 = 0.15,
+    intensity: f32 = 0.6,
+    falloff: glow.Falloff = .quadratic,
+};
+
+pub const RayConfig = struct {
+    glow_width: f32 = 0.025,
+    intensity: f32 = 0.8,
+    falloff: glow.Falloff = .quadratic,
+    palette_type: palette.Type = .oklch_balanced,
+    gradient_fill: bool = true,
+    reverse: bool = false,
+};
+
+pub const MarkerConfig = layer.markers.Config;
+
+pub const Scene = struct {
+    width: usize,
+    height: usize,
+    center: vec2.Vec2,
+    radius: f32,
+
+    time_minutes: f32 = 0,
+
+    prism: triangle.Triangle = undefined,
+    prism_dirty: bool = true,
+
+    prism_config: PrismConfig = .{},
+    glow_config: GlowConfig = .{},
+    ray_config: RayConfig = .{},
+    marker_config: MarkerConfig = .{},
+
+    palette_cache: palette.Cache = undefined,
+    palette_initialized: bool = false,
+
+    pub fn init(width: usize, height: usize) Scene {
+        const min_dim: f32 = @floatFromInt(@min(width, height));
+        const radius = min_dim / 2.0;
+        const center = vec2.xy(
+            @as(f32, @floatFromInt(width)) / 2.0,
+            @as(f32, @floatFromInt(height)) / 2.0,
+        );
+
+        return .{
+            .width = width,
+            .height = height,
+            .center = center,
+            .radius = radius,
+        };
+    }
+
+    pub fn setTime(self: *Scene, hour: i32, minute: f32) void {
+        var h = @mod(hour, 12);
+        if (h < 0) h += 12;
+
+        var m = minute;
+        while (m < 0) m += 60;
+        while (m >= 60) m -= 60;
+
+        self.time_minutes = @as(f32, @floatFromInt(h)) * 60.0 + m;
+    }
+
+    pub fn setTimeMinutes(self: *Scene, minutes: f32) void {
+        var m = minutes;
+        while (m < 0) m += 720;
+        while (m >= 720) m -= 720;
+        self.time_minutes = m;
+    }
+
+    pub fn setPrismConfig(self: *Scene, config: PrismConfig) void {
+        self.prism_config = config;
+        self.prism_dirty = true;
+    }
+
+    pub fn setGlowConfig(self: *Scene, config: GlowConfig) void {
+        self.glow_config = config;
+    }
+
+    pub fn setRayConfig(self: *Scene, config: RayConfig) void {
+        if (config.palette_type != self.ray_config.palette_type) {
+            self.palette_initialized = false;
+        }
+        self.ray_config = config;
+    }
+
+    pub fn setMarkerConfig(self: *Scene, config: MarkerConfig) void {
+        self.marker_config = config;
+    }
+
+    pub fn updatePrism(self: *Scene) void {
+        const prism_size = self.prism_config.size * self.radius;
+        self.prism = triangle.Triangle.isosceles(
+            self.center,
+            prism_size,
+            self.prism_config.apex_angle,
+        );
+        self.prism_dirty = false;
+    }
+
+    fn ensurePaletteCache(self: *Scene) *const palette.Cache {
+        if (!self.palette_initialized) {
+            self.palette_cache = palette.Cache.init(self.ray_config.palette_type);
+            self.palette_initialized = true;
+        }
+        return &self.palette_cache;
+    }
+
+    pub fn renderBand(self: *Scene, ctx: *band.Context) void {
+        if (self.prism_dirty) {
+            self.updatePrism();
+        }
+
+        ctx.clearWithBackground(self.center[0], self.center[1], self.radius);
+
+        const boundary = circle.Circle.init(self.center, self.radius);
+
+        const hours_f = self.time_minutes / 60.0;
+        const hours: i32 = @intFromFloat(hours_f);
+        const hour: f32 = @floatFromInt(@mod(hours, 12));
+        const minute = self.time_minutes - @as(f32, @floatFromInt(hours)) * 60.0;
+        const hour_angle = clock.hourAngle(hour, minute);
+        const entry = clock.entryPoint(self.center, self.radius, minute);
+
+        const paths = spectrum.Paths.compute(
+            entry,
+            hour_angle,
+            self.prism_config.rainbow_spread,
+            self.prism,
+            boundary,
+        );
+
+        const circle_clip = clip.Region{ .circle = &boundary };
+        const prism_tri = &self.prism;
+        const cache = self.ensurePaletteCache();
+
+        // Determine internal ray rendering mode based on gradient fill
+        const use_gradient_intensity = self.ray_config.gradient_fill;
+        const draw_internal_colored_rays = !self.ray_config.gradient_fill or self.prism_config.rainbow_spread <= 0.99;
+        const glow_width = self.ray_config.glow_width * self.radius;
+
+        for (paths.bands, 0..) |band_path, i| {
+            // Handle reverse spectrum: swap color indices if reversed
+            const color_idx = if (self.ray_config.reverse) spectrum.band_count - 1 - i else i;
+            const band_color = cache.getColor(color_idx);
+
+            // Draw entry ray for each band (white light = all wavelengths combined)
+            if (paths.entry_ray) |entry_seg| {
+                const segment = line.Segment.init(entry_seg.start, entry_seg.end);
+                ctx.renderGlowLine(segment, .{
+                    .width = glow_width,
+                    .falloff = self.ray_config.falloff,
+                    .color = .{ .uniform = color.white },
+                    .intensity = .{ .uniform = self.ray_config.intensity },
+                }, circle_clip, prism_tri);
+            }
+
+            if (paths.needs_bounce) {
+                // Entry → bounce segment: WHITE with uniform intensity
+                if (band_path.internal1) |seg| {
+                    const segment = line.Segment.init(seg.start, seg.end);
+                    ctx.renderGlowLine(segment, .{
+                        .width = glow_width,
+                        .falloff = self.ray_config.falloff,
+                        .color = .{ .uniform = color.white },
+                        .intensity = .{ .uniform = self.ray_config.intensity },
+                    }, .{ .triangle = prism_tri }, null);
+                }
+
+                // Bounce → exit segment: COLORED with gradient intensity fade
+                if (band_path.internal2) |seg| {
+                    if (draw_internal_colored_rays) {
+                        const segment = line.Segment.init(seg.start, seg.end);
+                        if (use_gradient_intensity) {
+                            ctx.renderGlowLine(segment, .{
+                                .width = glow_width,
+                                .falloff = self.ray_config.falloff,
+                                .color = .{ .uniform = band_color },
+                                .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
+                            }, .{ .triangle = prism_tri }, null);
+                        } else {
+                            ctx.renderGlowLine(segment, .{
+                                .width = glow_width,
+                                .falloff = self.ray_config.falloff,
+                                .color = .{ .uniform = band_color },
+                                .intensity = .{ .uniform = self.ray_config.intensity },
+                            }, .{ .triangle = prism_tri }, null);
+                        }
+                    }
+                }
+            } else {
+                // Direct path: entry → exit, COLORED with gradient intensity fade
+                if (band_path.internal1) |seg| {
+                    if (draw_internal_colored_rays) {
+                        const segment = line.Segment.init(seg.start, seg.end);
+                        if (use_gradient_intensity) {
+                            ctx.renderGlowLine(segment, .{
+                                .width = glow_width,
+                                .falloff = self.ray_config.falloff,
+                                .color = .{ .uniform = band_color },
+                                .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
+                            }, .{ .triangle = prism_tri }, null);
+                        } else {
+                            ctx.renderGlowLine(segment, .{
+                                .width = glow_width,
+                                .falloff = self.ray_config.falloff,
+                                .color = .{ .uniform = band_color },
+                                .intensity = .{ .uniform = self.ray_config.intensity },
+                            }, .{ .triangle = prism_tri }, null);
+                        }
+                    }
+                }
+            }
+
+            // Only draw exit rays when gradient fill is disabled
+            // (gradient fill replaces the exit rays with a smooth color fill)
+            if (!self.ray_config.gradient_fill) {
+                if (band_path.exit_ray) |seg| {
+                    const segment = line.Segment.init(seg.start, seg.end);
+                    ctx.renderGlowLine(segment, .{
+                        .width = glow_width,
+                        .falloff = self.ray_config.falloff,
+                        .color = .{ .uniform = band_color },
+                        .intensity = .{ .uniform = self.ray_config.intensity },
+                    }, circle_clip, prism_tri);
+                }
+            }
+        }
+
+        if (self.ray_config.gradient_fill) {
+            const first_band = paths.bands[0];
+            const last_band = paths.bands[spectrum.band_count - 1];
+
+            if (first_band.exit_ray != null and last_band.exit_ray != null) {
+                // Compute angles from CENTER to where boundary rays hit CIRCLE
+                const pi = std.math.pi;
+                const tau = std.math.tau;
+                const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(spectrum.band_count - 1));
+
+                const first_border = first_band.exit_ray.?.end;
+                const last_border = last_band.exit_ray.?.end;
+
+                const ext_angle_first = std.math.atan2(
+                    first_border[1] - self.center[1],
+                    first_border[0] - self.center[0],
+                );
+                const ext_angle_last = std.math.atan2(
+                    last_border[1] - self.center[1],
+                    last_border[0] - self.center[0],
+                );
+
+                var ray_span = ext_angle_last - ext_angle_first;
+                if (ray_span > pi) ray_span -= tau;
+                if (ray_span < -pi) ray_span += tau;
+                const edge_margin = ray_span * edge_margin_factor;
+
+                // External gradient (outside prism, inside circle)
+                layer.gradient.drawContinuous(
+                    ctx.buffer,
+                    ctx.width,
+                    ctx.height,
+                    .{
+                        .mode = .external,
+                        .origin_x = self.center[0],
+                        .origin_y = self.center[1],
+                        .angle_start = ext_angle_first - edge_margin,
+                        .angle_end = ext_angle_last + edge_margin,
+                        .intensity = self.ray_config.intensity,
+                        .reverse_spectrum = self.ray_config.reverse,
+                    },
+                    .{
+                        .center_x = self.center[0],
+                        .center_y = self.center[1],
+                        .radius = self.radius,
+                        .prism = self.prism,
+                    },
+                    cache,
+                );
+
+                // Internal gradient (inside prism)
+                const grad_origin = if (paths.needs_bounce) paths.bounce_point else paths.entry_point;
+
+                if (first_band.prism_exit != null and last_band.prism_exit != null) {
+                    const first_exit = first_band.prism_exit.?;
+                    const last_exit = last_band.prism_exit.?;
+
+                    const internal_angle_first = std.math.atan2(
+                        first_exit[1] - grad_origin[1],
+                        first_exit[0] - grad_origin[0],
+                    );
+                    const internal_angle_last = std.math.atan2(
+                        last_exit[1] - grad_origin[1],
+                        last_exit[0] - grad_origin[0],
+                    );
+
+                    var internal_span = internal_angle_last - internal_angle_first;
+                    if (internal_span > pi) internal_span -= tau;
+                    if (internal_span < -pi) internal_span += tau;
+                    const internal_edge_margin = internal_span * edge_margin_factor;
+
+                    layer.gradient.drawContinuous(
+                        ctx.buffer,
+                        ctx.width,
+                        ctx.height,
+                        .{
+                            .mode = .internal,
+                            .origin_x = grad_origin[0],
+                            .origin_y = grad_origin[1],
+                            .angle_start = internal_angle_first - internal_edge_margin,
+                            .angle_end = internal_angle_last + internal_edge_margin,
+                            .intensity = self.ray_config.intensity,
+                            .reverse_spectrum = self.ray_config.reverse,
+                        },
+                        .{
+                            .center_x = self.center[0],
+                            .center_y = self.center[1],
+                            .radius = self.radius,
+                            .prism = self.prism,
+                        },
+                        cache,
+                    );
+                }
+            }
+        }
+
+        ctx.renderPrismGlow(
+            self.prism,
+            self.glow_config.color,
+            self.glow_config.width * self.radius,
+            self.glow_config.intensity,
+            self.glow_config.falloff,
+        );
+
+        if (self.marker_config.visible) {
+            const marker_geometry = layer.markers.Geometry.init(
+                self.center[0],
+                self.center[1],
+                self.radius,
+            );
+            const markers = layer.markers.computeMarkers(marker_geometry, self.marker_config);
+            const marker_clip = marker_geometry.circleClip();
+
+            for (markers) |m| {
+                ctx.renderGlowLine(m.segment, m.glow_config, marker_clip, null);
+            }
+        }
+    }
+};

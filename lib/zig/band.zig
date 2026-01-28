@@ -16,6 +16,26 @@ pub const Context = struct {
         @memset(self.buffer, color.black);
     }
 
+    /// Initialize background: black inside circle, white outside (for e-ink displays)
+    pub fn clearWithBackground(self: *Context, cx: f32, cy: f32, radius: f32) void {
+        const r2 = radius * radius;
+
+        for (0..self.height) |local_y| {
+            const global_y = self.globalY(local_y);
+            const y: f32 = @floatFromInt(global_y);
+            const dy = y - cy;
+            const dy2 = dy * dy;
+
+            for (0..self.width) |x| {
+                const x_f: f32 = @floatFromInt(x);
+                const dx = x_f - cx;
+                const dist2 = dx * dx + dy2;
+
+                self.pixel(x, local_y).* = if (dist2 <= r2) color.black else color.white;
+            }
+        }
+    }
+
     /// Renders with additive blending - multiple calls accumulate light.
     /// clip_to: only render pixels inside this region (triangle or circle)
     /// exclude: skip pixels inside this triangle
@@ -86,7 +106,12 @@ pub const Context = struct {
 
                 inline for (0..4) |i| {
                     if (mask[i]) {
-                        const intensity = config.falloff.apply(radial_t[i]);
+                        const radial_intensity = config.falloff.apply(radial_t[i]);
+                        const linear_intensity = switch (config.intensity) {
+                            .uniform => |v| v,
+                            .gradient => |g| g.start + (g.end - g.start) * result.t[i],
+                        };
+                        const intensity = radial_intensity * linear_intensity;
                         const base_color = switch (config.color) {
                             .uniform => |c| c,
                             .gradient => |g| color.lerp(g.start, g.end, result.t[i]),
@@ -109,8 +134,13 @@ pub const Context = struct {
                 if (result.distance_sq[0] >= glow_width_sq) continue;
 
                 const distance = @sqrt(result.distance_sq[0]);
-                const radial_t = distance / glow_width;
-                const intensity = config.falloff.apply(radial_t);
+                const radial_t_val = distance / glow_width;
+                const radial_intensity = config.falloff.apply(radial_t_val);
+                const linear_intensity = switch (config.intensity) {
+                    .uniform => |v| v,
+                    .gradient => |g| g.start + (g.end - g.start) * result.t[0],
+                };
+                const intensity = radial_intensity * linear_intensity;
 
                 const base_color = switch (config.color) {
                     .uniform => |c| c,

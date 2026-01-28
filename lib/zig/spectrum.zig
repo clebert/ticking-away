@@ -106,12 +106,14 @@ pub const Paths = struct {
 };
 
 pub fn classifyEdgePosition(edge_index: u2, u: f32) u3 {
+    // Widen to u3 before arithmetic to avoid overflow
+    const idx: u3 = edge_index;
     if (u < vertex_threshold) {
-        return 3 + edge_index;
+        return 3 + idx;
     } else if (u > 1.0 - vertex_threshold) {
-        return 3 + (edge_index + 1) % 3;
+        return 3 + (idx + 1) % 3;
     } else {
-        return edge_index;
+        return idx;
     }
 }
 
@@ -139,7 +141,8 @@ pub fn computeBounceInfo(
         const vertex_idx: u2 = @intCast(entry_location - 3);
 
         if (vertex_idx == 0) {
-            const exit_touches_v0 = (exit_location == 3);
+            // Entry at v0: check if exit touches v0 (edge 0, edge 2, or vertex v0)
+            const exit_touches_v0 = (exit_location == 0 or exit_location == 2 or exit_location == 3);
             if (exit_touches_v0) {
                 const bounce_idx: u2 = if (dx >= 0.0) 2 else 1;
                 return .{
@@ -149,10 +152,25 @@ pub fn computeBounceInfo(
                 };
             }
         } else {
-            const opposite_face: u2 = (vertex_idx + 1) % 3;
-            const exit_touches_opposite = (exit_location == opposite_face);
+            // Entry at v1 or v2
+            // Widen to u3 to avoid overflow in arithmetic
+            const vertex_idx_wide: u3 = vertex_idx;
+            const opposite_face: u2 = @intCast((vertex_idx_wide + 1) % 3);
+
+            // Check if exit touches the opposite face (including vertices)
+            var exit_touches_opposite = false;
+            if (exit_location >= 3) {
+                const exit_vertex: u2 = @intCast(exit_location - 3);
+                const exit_vertex_wide: u3 = exit_vertex;
+                exit_touches_opposite = (exit_vertex == opposite_face) or
+                    (@as(u2, @intCast((exit_vertex_wide + 2) % 3)) == opposite_face);
+            } else {
+                exit_touches_opposite = (exit_location == opposite_face);
+            }
+
             if (!exit_touches_opposite) {
-                const bounce_idx: u2 = (exit_hit.edge_index + 2) % 3;
+                const edge_wide: u3 = exit_hit.edge_index;
+                const bounce_idx: u2 = @intCast((edge_wide + 2) % 3);
                 return .{
                     .needs_bounce = true,
                     .bounce_vertex = bounce_idx,
@@ -161,10 +179,13 @@ pub fn computeBounceInfo(
             }
         }
     } else {
+        // Entry on a face
         const entry_face: u2 = @intCast(entry_location);
-        const same_face_exit = (exit_location == entry_location);
+        const same_face_exit = (exit_location < 3) and (exit_location == entry_location);
+
         if (same_face_exit) {
-            const bounce_idx: u2 = (entry_face + 2) % 3;
+            const entry_face_wide: u3 = entry_face;
+            const bounce_idx: u2 = @intCast((entry_face_wide + 2) % 3);
             return .{
                 .needs_bounce = true,
                 .bounce_vertex = bounce_idx,
@@ -172,14 +193,17 @@ pub fn computeBounceInfo(
             };
         }
 
-        const exit_at_v0 = (exit_location == 3);
-        if (exit_at_v0) {
-            const bounce_idx: u2 = if (dx >= 0.0) 2 else 1;
-            return .{
-                .needs_bounce = true,
-                .bounce_vertex = bounce_idx,
-                .bounce_point = prism.getVertex(bounce_idx),
-            };
+        // Exit at v0: only bounce if entry edge touches v0
+        if (exit_location == 3) {
+            const entry_touches_v0 = (entry_location == 0 or entry_location == 2);
+            if (entry_touches_v0) {
+                const bounce_idx: u2 = if (dx >= 0.0) 2 else 1;
+                return .{
+                    .needs_bounce = true,
+                    .bounce_vertex = bounce_idx,
+                    .bounce_point = prism.getVertex(bounce_idx),
+                };
+            }
         }
     }
 

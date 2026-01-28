@@ -272,6 +272,58 @@ void test_ray_paths_7_14(void) {
   TEST_END();
 }
 
+void test_ray_paths_7_40_vertex_entry(void) {
+  TEST_BEGIN("ray_paths_7_40_vertex_entry");
+
+  // 7:40 - Entry ray hits exactly at vertex v2 (bottom-left)
+  // This tests the bounce logic when entry is at a vertex
+  Prism prism;
+  float cx = 200.0f, cy = 200.0f, radius = 180.0f;
+  create_test_prism(cx, cy, 100.0f, &prism);
+
+  float pi_f = 3.14159265f;
+  // 40 minutes = 2/3 of circle from 12 o'clock
+  float minute_angle = -pi_f / 2.0f + (40.0f / 60.0f) * 2.0f * pi_f;
+  float entry_x = cx + cosf(minute_angle) * radius;
+  float entry_y = cy + sinf(minute_angle) * radius;
+
+  // Hour at 7:40 (7 hours + 40 minutes interpolation)
+  float hour_angle =
+      -pi_f / 2.0f + (7.0f / 12.0f) * 2.0f * pi_f + (40.0f / 60.0f) * (2.0f * pi_f / 12.0f);
+
+  RaysPaths paths = rays_compute_paths(cx, cy, radius, entry_x, entry_y, hour_angle, 0.5f, &prism);
+
+  ASSERT_TRUE(paths.hits_prism);
+
+  // Entry should be at vertex v2 (bottom-left), which is edge 1 or 2 with u near 0 or 1
+  // The entry edge should be detected and the entry point should be at v2
+  float v2_x, v2_y;
+  prism_get_vertex(&prism, 2, &v2_x, &v2_y);
+
+  // Verify entry point is near v2
+  float entry_dist = sqrtf((paths.entry_x - v2_x) * (paths.entry_x - v2_x) +
+                           (paths.entry_y - v2_y) * (paths.entry_y - v2_y));
+  ASSERT_NEAR(entry_dist, 0.0f, 2.0f); // Allow small tolerance
+
+  // At vertex entry with exit on different face, should need bounce
+  ASSERT_TRUE(paths.needs_bounce);
+
+  // Bounce should be through v0 (apex)
+  float v0_x, v0_y;
+  prism_get_vertex(&prism, 0, &v0_x, &v0_y);
+  float bounce_dist = sqrtf((paths.bounce_x - v0_x) * (paths.bounce_x - v0_x) +
+                            (paths.bounce_y - v0_y) * (paths.bounce_y - v0_y));
+  ASSERT_NEAR(bounce_dist, 0.0f, 0.1f);
+
+  // All bands should have valid internal segments
+  for (int i = 0; i < RAYS_NUM_BANDS; i++) {
+    ASSERT_TRUE(paths.bands[i].internal_seg1.valid);
+    ASSERT_TRUE(paths.bands[i].internal_seg2.valid);
+  }
+
+  TEST_END();
+}
+
 void test_ray_paths_10_45(void) {
   TEST_BEGIN("ray_paths_10_45");
 
@@ -566,6 +618,7 @@ int main(void) {
   test_ray_paths_12_00();
   test_ray_paths_3_15();
   test_ray_paths_7_14();
+  test_ray_paths_7_40_vertex_entry();
   test_ray_paths_10_45();
   test_ray_paths_no_spread();
   test_ray_paths_max_spread();

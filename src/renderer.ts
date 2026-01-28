@@ -122,6 +122,109 @@ function ensureZigMemory(zigMemory: WebAssembly.Memory, neededBytes: number): bo
   return result !== -1;
 }
 
+// Config struct size (matches compat.WatchfaceConfig layout)
+const ZIG_CONFIG_SIZE = 156;
+
+function writeZigConfig(view: DataView, offset: number): void {
+  const littleEndian = true;
+
+  // hour: i32 (offset 0)
+  view.setInt32(offset + 0, time.hours.value, littleEndian);
+  // minute: f32 (offset 4)
+  view.setFloat32(offset + 4, time.minutes.value, littleEndian);
+
+  // prism.size: f32 (offset 8)
+  view.setFloat32(offset + 8, prism.size.value / 100.0, littleEndian);
+  // prism.rainbow_spread: f32 (offset 12)
+  view.setFloat32(offset + 12, prism.rainbowSpread.value / 100.0, littleEndian);
+
+  // glow.r: i32 (offset 16)
+  view.setInt32(offset + 16, Math.max(0, prism.gray.value - prism.blueTint.value), littleEndian);
+  // glow.g: i32 (offset 20)
+  view.setInt32(
+    offset + 20,
+    Math.max(0, prism.gray.value - Math.floor(prism.blueTint.value / 2)),
+    littleEndian,
+  );
+  // glow.b: i32 (offset 24)
+  view.setInt32(offset + 24, prism.gray.value, littleEndian);
+  // glow.width: f32 (offset 28)
+  view.setFloat32(offset + 28, prism.glowWidth.value / 100.0, littleEndian);
+  // glow.intensity: f32 (offset 32)
+  view.setFloat32(offset + 32, prism.glowIntensity.value / 100.0, littleEndian);
+  // glow.falloff: i32 (offset 36)
+  view.setInt32(offset + 36, prism.glowFalloff.value, littleEndian);
+
+  // ray.glow_width: f32 (offset 40)
+  view.setFloat32(offset + 40, rays.glowWidth.value / 100.0, littleEndian);
+  // ray.intensity: f32 (offset 44)
+  view.setFloat32(offset + 44, rays.glowIntensity.value / 100.0, littleEndian);
+  // ray.falloff: i32 (offset 48)
+  view.setInt32(offset + 48, rays.glowFalloff.value, littleEndian);
+  // ray.ray_palette: i32 (offset 52)
+  view.setInt32(offset + 52, rays.palette.value, littleEndian);
+  // ray.gradient_fill: i32 (offset 56)
+  view.setInt32(offset + 56, rays.gradientFill.value ? 1 : 0, littleEndian);
+  // ray.reverse: i32 (offset 60)
+  view.setInt32(offset + 60, rays.reverseSpectrum.value ? 1 : 0, littleEndian);
+
+  // marker.visible: i32 (offset 64)
+  view.setInt32(offset + 64, display.markers.value ? 1 : 0, littleEndian);
+  // marker.length: f32 (offset 68)
+  view.setFloat32(offset + 68, markers.length.value / 100.0, littleEndian);
+  // marker.glow_width: f32 (offset 72)
+  view.setFloat32(offset + 72, markers.glowWidth.value / 100.0, littleEndian);
+  // marker.glow_intensity: f32 (offset 76)
+  view.setFloat32(offset + 76, markers.glowIntensity.value / 100.0, littleEndian);
+  // marker.falloff: i32 (offset 80)
+  view.setInt32(offset + 80, markers.glowFalloff.value, littleEndian);
+
+  // grain.intensity: f32 (offset 84)
+  const grainIntensity = background.grainDisabled.value ? 0 : background.grainIntensity.value / 100;
+  view.setFloat32(offset + 84, grainIntensity, littleEndian);
+  // grain.scale: f32 (offset 88)
+  view.setFloat32(
+    offset + 88,
+    display.highDpi.value ? window.devicePixelRatio || 1 : 1,
+    littleEndian,
+  );
+  // grain.threshold: f32 (offset 92)
+  view.setFloat32(offset + 92, background.grainBrightnessThreshold.value / 100.0, littleEndian);
+  // grain.prism_only: i32 (offset 96)
+  view.setInt32(offset + 96, background.grainPrismOnly.value ? 1 : 0, littleEndian);
+
+  // vignette.enabled: i32 (offset 100)
+  view.setInt32(offset + 100, dither.enabled.value ? 0 : 1, littleEndian);
+  // vignette.strength: f32 (offset 104)
+  view.setFloat32(offset + 104, 0.4, littleEndian);
+  // vignette.background: f32 (offset 108)
+  view.setFloat32(offset + 108, 35.0 / 255.0, littleEndian);
+
+  // dither.enabled: i32 (offset 112)
+  view.setInt32(offset + 112, dither.enabled.value ? 1 : 0, littleEndian);
+  // dither.dither_type: i32 (offset 116)
+  view.setInt32(offset + 116, dither.type.value, littleEndian);
+  // dither.mode: i32 (offset 120)
+  view.setInt32(offset + 120, dither.paletteMode.value, littleEndian);
+  // dither.strength: f32 (offset 124)
+  view.setFloat32(offset + 124, dither.strength.value / 100.0, littleEndian);
+  // dither.algorithm: i32 (offset 128)
+  view.setInt32(offset + 128, dither.algorithm.value, littleEndian);
+  // dither.oklab_error: i32 (offset 132)
+  view.setInt32(offset + 132, dither.oklabError.value ? 1 : 0, littleEndian);
+  // dither.ordered_matrix: i32 (offset 136)
+  view.setInt32(offset + 136, dither.orderedMatrix.value, littleEndian);
+  // dither.spread: f32 (offset 140)
+  view.setFloat32(offset + 140, dither.spread.value / 100.0, littleEndian);
+  // dither.chroma_weight: f32 (offset 144)
+  view.setFloat32(offset + 144, dither.chromaWeight.value / 100.0, littleEndian);
+
+  // entry_u: f32 (offset 148) - output, leave as 0
+  view.setFloat32(offset + 148, 0, littleEndian);
+  // exit_u: f32 (offset 152) - output, leave as 0
+  view.setFloat32(offset + 152, 0, littleEndian);
+}
+
 function renderWithZig(): void {
   const zigModule = getZigWasmModule();
   const zigMemory = getZigWasmMemory();
@@ -135,43 +238,35 @@ function renderWithZig(): void {
   const height = canvas.height;
   const pixelCount = width * height;
 
-  // Zig Color buffer: 4 floats (16 bytes) per pixel (RGBA for SIMD alignment)
-  const floatsPerPixel = 4;
-  const bytesPerPixel = floatsPerPixel * 4;
-  const requiredSize = pixelCount * bytesPerPixel;
-  const heapBase = zigModule.getHeapBase();
-  const neededBytes = heapBase + requiredSize;
+  // Memory layout:
+  // - Float buffer: pixelCount * 16 bytes (4 floats per pixel)
+  // - RGBA output: pixelCount * 4 bytes
+  // - Config struct: ZIG_CONFIG_SIZE bytes
+  const floatBufferSize = pixelCount * 16;
+  const rgbaBufferSize = pixelCount * 4;
+  const totalSize = floatBufferSize + rgbaBufferSize + ZIG_CONFIG_SIZE;
 
-  // Ensure memory is large enough before rendering
+  const heapBase = zigModule.getHeapBase();
+  const neededBytes = heapBase + totalSize;
+
   if (!ensureZigMemory(zigMemory, neededBytes)) {
     return;
   }
 
-  // Color buffer is always at heap base
-  const colorBufferPtr = heapBase;
+  const floatBufferPtr = heapBase;
+  const rgbaBufferPtr = heapBase + floatBufferSize;
+  const configPtr = heapBase + floatBufferSize + rgbaBufferSize;
 
-  // Render watchface with current time
-  const hours = time.hours.value;
-  const minutes = time.minutes.value;
-  zigModule.renderWatchface(colorBufferPtr, width, height, hours, minutes);
+  // Write config to WASM memory
+  const view = new DataView(zigMemory.buffer);
+  writeZigConfig(view, configPtr);
 
-  // Convert float RGBA to uint8 RGBA (use fresh buffer reference after potential grow)
-  const floatView = new Float32Array(zigMemory.buffer, colorBufferPtr, pixelCount * floatsPerPixel);
-  const imageData = new ImageData(width, height);
-  const data = imageData.data;
+  // Render watchface with config
+  zigModule.renderWatchfaceWithConfig(floatBufferPtr, rgbaBufferPtr, width, height, configPtr);
 
-  for (let i = 0; i < pixelCount; i++) {
-    const srcIdx = i * floatsPerPixel;
-    const dstIdx = i * 4;
-    const r = floatView[srcIdx] ?? 0;
-    const g = floatView[srcIdx + 1] ?? 0;
-    const b = floatView[srcIdx + 2] ?? 0;
-
-    data[dstIdx] = Math.min(255, Math.max(0, Math.round(r * 255)));
-    data[dstIdx + 1] = Math.min(255, Math.max(0, Math.round(g * 255)));
-    data[dstIdx + 2] = Math.min(255, Math.max(0, Math.round(b * 255)));
-    data[dstIdx + 3] = 255;
-  }
+  // Create ImageData from RGBA output
+  const framebufferArray = new Uint8ClampedArray(zigMemory.buffer, rgbaBufferPtr, pixelCount * 4);
+  const imageData = new ImageData(framebufferArray, width, height);
 
   canvas.getContext("2d")?.putImageData(imageData, 0, 0);
 }

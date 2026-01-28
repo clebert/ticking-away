@@ -100,7 +100,7 @@ WASM_EXPORT void render_watchface(float *float_fb, uint8_t *fb, int width, int h
   // Calculate watch geometry for debug output
   float cx = (float)width / 2.0f;
   float cy = (float)height / 2.0f;
-  float radius = (width < height ? (float)width : (float)height) / 2.0f - 1.0f;
+  float radius = (width < height ? (float)width : (float)height) / 2.0f;
 
   // -------------------------------------------------------------------------------------------------
   // Configure Scene from WatchfaceConfig (using embedded config structs directly)

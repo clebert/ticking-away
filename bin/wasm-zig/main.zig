@@ -2,6 +2,8 @@ const std = @import("std");
 
 const watchface = @import("watchface");
 
+const compat = watchface.compat;
+
 // =============================================================================
 // WASM Memory Management
 // =============================================================================
@@ -11,6 +13,20 @@ extern var __heap_base: u8;
 export fn getHeapBase() [*]u8 {
     return @ptrCast(&__heap_base);
 }
+
+// =============================================================================
+// Static State (cached between frames)
+// =============================================================================
+
+const max_dither_width = 5120;
+const dither_buffer_size = max_dither_width * watchface.dither.error_diffusion.ErrorBuffer.rows * watchface.dither.error_diffusion.ErrorBuffer.channels;
+
+var static_scene: watchface.scene.Scene = undefined;
+var scene_initialized: bool = false;
+var last_width: usize = 0;
+var last_height: usize = 0;
+
+var dither_error_backing: [dither_buffer_size]f32 = undefined;
 
 // =============================================================================
 // Render API
@@ -260,4 +276,155 @@ export fn renderWatchface(
             ctx.renderGlowLine(segment, config, .{ .circle = &boundary }, &prism);
         }
     }
+}
+
+// =============================================================================
+// Full Watchface Rendering with Configuration
+// =============================================================================
+
+/// Render the complete watchface using configuration from JS.
+/// This matches the C renderer's full feature set.
+export fn renderWatchfaceWithConfig(
+    buffer: [*]watchface.color.Color,
+    out_rgba: [*]u8,
+    width: u32,
+    height: u32,
+    config_ptr: *compat.WatchfaceConfig,
+) void {
+    const w: usize = @intCast(width);
+    const h: usize = @intCast(height);
+
+    // Re-initialize scene if dimensions changed
+    if (!scene_initialized or w != last_width or h != last_height) {
+        static_scene = watchface.scene.Scene.init(w, h);
+        scene_initialized = true;
+        last_width = w;
+        last_height = h;
+    }
+
+    // Apply configuration
+    const scene_config = compat.toSceneConfig(config_ptr);
+    static_scene.setPrismConfig(scene_config.prism);
+    static_scene.setGlowConfig(scene_config.glow_config);
+    static_scene.setRayConfig(scene_config.ray);
+    static_scene.setMarkerConfig(scene_config.marker);
+    static_scene.setTime(config_ptr.hour, config_ptr.minute);
+
+    // Create render context
+    var ctx = watchface.band.Context{
+        .buffer = buffer[0 .. w * h],
+        .width = w,
+        .height = h,
+        .y_offset = 0,
+        .total_height = h,
+    };
+
+    // Render scene (linear RGB)
+    static_scene.renderBand(&ctx);
+
+    // Apply gamma correction (linear -> sRGB)
+    watchface.gamma.applyToBuffer(ctx.buffer);
+
+    // Geometry for effects
+    const grain_geometry = watchface.effect.grain.Geometry{
+        .center_x = static_scene.center[0],
+        .center_y = static_scene.center[1],
+        .radius = static_scene.radius,
+        .prism = static_scene.prism,
+    };
+
+    const vignette_geometry = watchface.effect.vignette.Geometry{
+        .center_x = static_scene.center[0],
+        .center_y = static_scene.center[1],
+        .radius = static_scene.radius,
+    };
+
+    // Apply grain effect (in sRGB space)
+    const grain_config = compat.toGrainConfig(&config_ptr.grain);
+    if (grain_config.intensity > 0) {
+        watchface.effect.grain.apply(ctx.buffer, w, h, grain_config, grain_geometry);
+    }
+
+    // Apply vignette effect (in sRGB space) - disabled when dithering is enabled
+    if (config_ptr.dither.enabled == 0) {
+        const vignette_config = compat.toVignetteConfig(&config_ptr.vignette);
+        watchface.effect.vignette.apply(ctx.buffer, w, h, vignette_config, vignette_geometry);
+    }
+
+    // Handle dithering or direct output
+    if (config_ptr.dither.enabled != 0) {
+        applyDithering(ctx.buffer, out_rgba, w, h, &config_ptr.dither);
+    } else {
+        // Convert float buffer to RGBA bytes
+        for (0..w * h) |i| {
+            const out_idx = i * 4;
+            out_rgba[out_idx] = floatToByte(ctx.buffer[i][0]);
+            out_rgba[out_idx + 1] = floatToByte(ctx.buffer[i][1]);
+            out_rgba[out_idx + 2] = floatToByte(ctx.buffer[i][2]);
+            out_rgba[out_idx + 3] = 255;
+        }
+    }
+}
+
+fn applyDithering(
+    buffer: []watchface.color.Color,
+    out_rgba: [*]u8,
+    width: usize,
+    height: usize,
+    dither_config: *const compat.SceneDitherConfig,
+) void {
+    const palette_type = compat.toDitherPaletteType(dither_config.mode);
+    const palette_rgb = watchface.dither.getPalette(palette_type);
+    const palette_cache = watchface.dither.PaletteCache.init(palette_rgb);
+
+    const out_slice = out_rgba[0 .. width * height * 4];
+
+    switch (dither_config.dither_type) {
+        .error_diffusion => {
+            const error_config = compat.toErrorDiffusionConfig(dither_config);
+
+            // Use static preallocated error buffer
+            if (width > max_dither_width) {
+                directOutput(buffer, out_slice);
+                return;
+            }
+            var err_buffer = watchface.dither.error_diffusion.ErrorBuffer.initStatic(&dither_error_backing, width);
+
+            watchface.dither.error_diffusion.apply(
+                buffer,
+                out_slice,
+                width,
+                height,
+                error_config,
+                &palette_cache,
+                &err_buffer,
+            );
+        },
+        .ordered => {
+            const ordered_config = compat.toOrderedDitherConfig(dither_config);
+            watchface.dither.ordered.applyRgba(
+                buffer,
+                out_slice,
+                width,
+                height,
+                ordered_config,
+                &palette_cache,
+            );
+        },
+    }
+}
+
+fn directOutput(buffer: []const watchface.color.Color, out_rgba: []u8) void {
+    for (0..buffer.len) |i| {
+        const out_idx = i * 4;
+        out_rgba[out_idx] = floatToByte(buffer[i][0]);
+        out_rgba[out_idx + 1] = floatToByte(buffer[i][1]);
+        out_rgba[out_idx + 2] = floatToByte(buffer[i][2]);
+        out_rgba[out_idx + 3] = 255;
+    }
+}
+
+inline fn floatToByte(v: f32) u8 {
+    const clamped = @min(@max(v, 0.0), 1.0);
+    return @intFromFloat(clamped * 255.0);
 }
