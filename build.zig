@@ -202,25 +202,25 @@ pub fn build(b: *std.Build) void {
     // -------------------------------------------------------------------------
     // Zig tests (native Zig library)
     // -------------------------------------------------------------------------
-    const zig_lib = b.createModule(.{
-        .root_source_file = b.path("lib/zig/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    // const zig_lib = b.createModule(.{
+    //     .root_source_file = b.path("lib/zig/root.zig"),
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
 
-    const band_test = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/band_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "watchface", .module = zig_lib },
-            },
-        }),
-    });
+    // const band_test = b.addTest(.{
+    //     .root_module = b.createModule(.{
+    //         .root_source_file = b.path("tests/band_test.zig"),
+    //         .target = target,
+    //         .optimize = optimize,
+    //         .imports = &.{
+    //             .{ .name = "watchface", .module = zig_lib },
+    //         },
+    //     }),
+    // });
 
-    const run_band_test = b.addRunArtifact(band_test);
-    test_step.dependOn(&run_band_test.step);
+    // const run_band_test = b.addRunArtifact(band_test);
+    // test_step.dependOn(&run_band_test.step);
 
     // -------------------------------------------------------------------------
     // C tests

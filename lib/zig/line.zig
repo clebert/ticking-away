@@ -33,22 +33,6 @@ pub const Segment = struct {
         };
     }
 
-    pub const DistanceResult = struct {
-        distance_sq: f32,
-        t: f32,
-    };
-
-    pub fn distanceSq(self: Segment, point: vec2.Vec2) DistanceResult {
-        const to_point = point - self.start;
-        const t = std.math.clamp(vec2.dot(to_point, self.dir) * self.inv_len_sq, 0, 1);
-        const proj = self.start + @as(vec2.Vec2, @splat(t)) * self.dir;
-
-        return .{
-            .distance_sq = vec2.lengthSq(point - proj),
-            .t = t,
-        };
-    }
-
     /// SIMD: 4 horizontal pixels at once
     pub fn distanceSq4(self: Segment, px: @Vector(4, f32), py: @Vector(4, f32)) struct {
         distance_sq: @Vector(4, f32),

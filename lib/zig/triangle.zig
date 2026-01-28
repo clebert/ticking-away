@@ -86,26 +86,6 @@ pub const Triangle = struct {
             range.Range{ .x_min = x_long, .x_max = x_short };
     }
 
-    /// SIMD: squared distance to all 3 edges
-    pub fn edgeDistancesSq(self: Triangle, point: vec2.Vec2) @Vector(3, f32) {
-        const px: @Vector(3, f32) = @splat(point[0]);
-        const py: @Vector(3, f32) = @splat(point[1]);
-        const zero: @Vector(3, f32) = @splat(0);
-        const one: @Vector(3, f32) = @splat(1);
-
-        const to_x = px - self.edge_start_x;
-        const to_y = py - self.edge_start_y;
-        const dot = to_x * self.edge_dir_x + to_y * self.edge_dir_y;
-        const t = @min(@max(dot * self.edge_inv_len_sq, zero), one);
-
-        const proj_x = self.edge_start_x + t * self.edge_dir_x;
-        const proj_y = self.edge_start_y + t * self.edge_dir_y;
-        const dx = px - proj_x;
-        const dy = py - proj_y;
-
-        return dx * dx + dy * dy;
-    }
-
     /// SIMD 4-wide: 4 horizontal pixels × 3 edges
     pub fn edgeDistancesSq4(self: Triangle, px: @Vector(4, f32), py: @Vector(4, f32)) [3]@Vector(4, f32) {
         var result: [3]@Vector(4, f32) = undefined;
@@ -156,5 +136,54 @@ pub const Triangle = struct {
             vec2.xy(center[0] + base_width / 2.0, center[1] + base_offset),
             vec2.xy(center[0] - base_width / 2.0, center[1] + base_offset),
         );
+    }
+
+    /// SIMD 4-wide: test if 4 points are inside triangle
+    pub fn containsPoint4(self: Triangle, px: @Vector(4, f32), py: @Vector(4, f32)) @Vector(4, bool) {
+        const v0 = self.top;
+        const v1 = self.mid;
+        const v2 = self.bot;
+
+        // Precompute constants (same for all 4 points)
+        const edge1 = v1 - v0;
+        const edge2 = v2 - v0;
+        const d00 = vec2.dot(edge1, edge1);
+        const d01 = vec2.dot(edge1, edge2);
+        const d11 = vec2.dot(edge2, edge2);
+        const denom = d00 * d11 - d01 * d01;
+
+        // Degenerate triangle (collinear points)
+        if (@abs(denom) < std.math.floatEps(f32)) return @splat(false);
+
+        const inv_denom = 1.0 / denom;
+
+        // Vectorized point-relative computation
+        const v0x: @Vector(4, f32) = @splat(v0[0]);
+        const v0y: @Vector(4, f32) = @splat(v0[1]);
+        const px_rel = px - v0x;
+        const py_rel = py - v0y;
+
+        // d20 = dot(p - v0, edge1) for each point
+        const e1x: @Vector(4, f32) = @splat(edge1[0]);
+        const e1y: @Vector(4, f32) = @splat(edge1[1]);
+        const d20 = px_rel * e1x + py_rel * e1y;
+
+        // d21 = dot(p - v0, edge2) for each point
+        const e2x: @Vector(4, f32) = @splat(edge2[0]);
+        const e2y: @Vector(4, f32) = @splat(edge2[1]);
+        const d21 = px_rel * e2x + py_rel * e2y;
+
+        // Barycentric coordinates
+        const d11_vec: @Vector(4, f32) = @splat(d11);
+        const d01_vec: @Vector(4, f32) = @splat(d01);
+        const d00_vec: @Vector(4, f32) = @splat(d00);
+        const inv_denom_vec: @Vector(4, f32) = @splat(inv_denom);
+
+        const u = (d11_vec * d20 - d01_vec * d21) * inv_denom_vec;
+        const v = (d00_vec * d21 - d01_vec * d20) * inv_denom_vec;
+
+        const zero: @Vector(4, f32) = @splat(0);
+        const one: @Vector(4, f32) = @splat(1);
+        return (u >= zero) & (v >= zero) & ((u + v) <= one);
     }
 };

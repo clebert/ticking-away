@@ -48,7 +48,7 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
         } },
     };
 
-    ctx.renderGlowLine(segment, config);
+    ctx.renderGlowLine(segment, config, null, null);
 }
 
 /// Clear the buffer to black.
@@ -140,5 +140,5 @@ export fn renderGlowLine(
         .color = .{ .uniform = watchface.color.rgba(color_r, color_g, color_b, 1) },
     };
 
-    ctx.renderGlowLine(segment, config);
+    ctx.renderGlowLine(segment, config, null, null);
 }

@@ -1,4 +1,6 @@
 pub const band = @import("band.zig");
+pub const circle = @import("circle.zig");
+pub const clip = @import("clip.zig");
 pub const color = @import("color.zig");
 pub const glow = @import("glow.zig");
 pub const line = @import("line.zig");
