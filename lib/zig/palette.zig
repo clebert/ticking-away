@@ -62,6 +62,7 @@ pub const Cache = struct {
     /// Interpolate color at position t (0.0 = red, 1.0 = violet).
     /// Handles extrapolation beyond visible spectrum (IR/UV edges).
     pub fn interpolate(self: *const Cache, t: f32) color.Color {
+        @setFloatMode(.optimized);
         // Handle extrapolation toward infrared (t < 0)
         if (t < 0.0) {
             const lab_infrared = oklab.srgbToOklab(140, 0, 0);

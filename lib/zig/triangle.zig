@@ -18,6 +18,7 @@ pub const Triangle = struct {
     mid_is_left: bool,
 
     pub fn init(v0: vec2.Vec2, v1: vec2.Vec2, v2: vec2.Vec2) Triangle {
+        @setFloatMode(.optimized);
         // Sort vertices by y
         var sorted = [_]vec2.Vec2{ v0, v1, v2 };
         if (sorted[0][1] > sorted[1][1]) std.mem.swap(vec2.Vec2, &sorted[0], &sorted[1]);
@@ -53,6 +54,7 @@ pub const Triangle = struct {
 
     /// Returns x-range for scanline at given y
     pub fn scanlineRange(self: Triangle, y: f32) ?range.Range {
+        @setFloatMode(.optimized);
         if (y < self.top[1] or y > self.bot[1]) return null;
 
         const eps = std.math.floatEps(f32);
@@ -88,6 +90,7 @@ pub const Triangle = struct {
 
     /// SIMD 4-wide: 4 horizontal pixels × 3 edges
     pub fn edgeDistancesSq4(self: Triangle, px: @Vector(4, f32), py: @Vector(4, f32)) [3]@Vector(4, f32) {
+        @setFloatMode(.optimized);
         var result: [3]@Vector(4, f32) = undefined;
         const zero: @Vector(4, f32) = @splat(0);
         const one: @Vector(4, f32) = @splat(1);
@@ -140,6 +143,7 @@ pub const Triangle = struct {
     }
 
     pub fn centroid(self: Triangle) vec2.Vec2 {
+        @setFloatMode(.optimized);
         const x = (self.edge_start_x[0] + self.edge_start_x[1] + self.edge_start_x[2]) / 3.0;
         const y = (self.edge_start_y[0] + self.edge_start_y[1] + self.edge_start_y[2]) / 3.0;
         return vec2.xy(x, y);
@@ -147,6 +151,7 @@ pub const Triangle = struct {
 
     /// Creates isosceles triangle (prism) centered at point
     pub fn isosceles(center: vec2.Vec2, base_width: f32, apex_angle_deg: f32) Triangle {
+        @setFloatMode(.optimized);
         const angle = std.math.clamp(apex_angle_deg, 1.0, 179.0);
         const half_rad = angle / 2.0 * std.math.pi / 180.0;
         const h = (base_width / 2.0) / @tan(half_rad);
@@ -163,6 +168,7 @@ pub const Triangle = struct {
 
     /// SIMD 4-wide: test if 4 points are inside triangle
     pub fn containsPoint4(self: Triangle, px: @Vector(4, f32), py: @Vector(4, f32)) @Vector(4, bool) {
+        @setFloatMode(.optimized);
         const v0 = self.top;
         const v1 = self.mid;
         const v2 = self.bot;

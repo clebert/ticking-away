@@ -80,6 +80,7 @@ pub const ErrorBuffer = struct {
 };
 
 inline fn clamp01(x: f32) f32 {
+    @setFloatMode(.optimized);
     return @min(@max(x, 0.0), 1.0);
 }
 
@@ -94,6 +95,7 @@ fn applyAtkinson(
     palette: *const dither.PaletteCache,
     err: *ErrorBuffer,
 ) void {
+    @setFloatMode(.optimized);
     const d: f32 = 0.125 * config.strength;
 
     err.clear();
@@ -213,6 +215,7 @@ fn applyFloydSteinberg(
     palette: *const dither.PaletteCache,
     err: *ErrorBuffer,
 ) void {
+    @setFloatMode(.optimized);
     const d7: f32 = (7.0 / 16.0) * config.strength;
     const d3: f32 = (3.0 / 16.0) * config.strength;
     const d5: f32 = (5.0 / 16.0) * config.strength;

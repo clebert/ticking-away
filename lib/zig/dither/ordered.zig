@@ -69,6 +69,7 @@ pub fn apply(
     config: Config,
     palette: *const dither.PaletteCache,
 ) void {
+    @setFloatMode(.optimized);
     const spread = @min(@max(config.spread, 0.0), 1.0);
 
     for (0..height) |y| {
@@ -97,6 +98,7 @@ pub fn applyRgba(
     config: Config,
     palette: *const dither.PaletteCache,
 ) void {
+    @setFloatMode(.optimized);
     const spread = @min(@max(config.spread, 0.0), 1.0);
 
     for (0..height) |y| {

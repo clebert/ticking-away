@@ -23,6 +23,7 @@ pub fn raySegment(
     eps_t: f32,
     eps_u: f32,
 ) ?Hit {
+    @setFloatMode(.optimized);
     const edge = segment_end - segment_start;
     const perp = vec2.xy(-r.direction[1], r.direction[0]);
     const denom = vec2.dot(edge, perp);
@@ -56,6 +57,7 @@ pub fn raySegment(
 }
 
 pub fn rayTriangleEntry(r: ray.Ray, tri: triangle.Triangle) ?Hit {
+    @setFloatMode(.optimized);
     const scale = triangleScale(tri);
     const eps_t = eps_rel * scale;
     const eps_u = eps_rel;
@@ -82,6 +84,7 @@ pub fn rayTriangleEntry(r: ray.Ray, tri: triangle.Triangle) ?Hit {
 }
 
 pub fn rayTriangleExit(origin: vec2.Vec2, angle: f32, tri: triangle.Triangle) ?Hit {
+    @setFloatMode(.optimized);
     const r = ray.Ray.fromAngle(origin, angle);
     const scale = triangleScale(tri);
     const eps_t = eps_rel * scale;
@@ -109,6 +112,7 @@ pub fn rayTriangleExit(origin: vec2.Vec2, angle: f32, tri: triangle.Triangle) ?H
 }
 
 pub fn rayCircle(r: ray.Ray, circ: circle.Circle) ?vec2.Vec2 {
+    @setFloatMode(.optimized);
     const oc = r.origin - circ.center;
     const a = vec2.dot(r.direction, r.direction);
     const b = 2.0 * vec2.dot(oc, r.direction);
@@ -128,6 +132,7 @@ pub fn rayCircle(r: ray.Ray, circ: circle.Circle) ?vec2.Vec2 {
 }
 
 fn triangleScale(tri: triangle.Triangle) f32 {
+    @setFloatMode(.optimized);
     var total: f32 = 0.0;
     inline for (0..3) |i| {
         const edge = tri.getEdge(@intCast(i));

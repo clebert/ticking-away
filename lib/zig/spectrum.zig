@@ -46,6 +46,7 @@ pub const Paths = struct {
         prism: triangle.Triangle,
         boundary: circle.Circle,
     ) Paths {
+        @setFloatMode(.optimized);
         var paths = Paths{};
 
         const prism_center = prism.centroid();
@@ -123,6 +124,7 @@ pub fn computeBounceInfo(
     hour_angle: f32,
     prism: triangle.Triangle,
 ) BounceInfo {
+    @setFloatMode(.optimized);
     const entry_location = classifyEdgePosition(entry_edge, entry_u);
     const prism_center = prism.centroid();
 

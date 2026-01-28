@@ -18,6 +18,7 @@ pub const Context = struct {
 
     /// Initialize background: black inside circle, white outside (for e-ink displays)
     pub fn clearWithBackground(self: *Context, cx: f32, cy: f32, radius: f32) void {
+        @setFloatMode(.optimized);
         const r2 = radius * radius;
 
         for (0..self.height) |local_y| {
@@ -46,6 +47,7 @@ pub const Context = struct {
         clip_to: ?clip.Region,
         exclude: ?*const triangle.Triangle,
     ) void {
+        @setFloatMode(.optimized);
         const glow_width = config.width;
         const glow_width_sq = glow_width * glow_width;
 
@@ -169,6 +171,7 @@ pub const Context = struct {
         intensity: f32,
         falloff: glow.Falloff,
     ) void {
+        @setFloatMode(.optimized);
         const smooth_k = glow_width * 0.5;
 
         const y_min = @max(self.y_offset, @as(usize, @intFromFloat(@max(0, tri.minY()))));
@@ -234,11 +237,13 @@ pub const Context = struct {
 };
 
 fn smoothMin(a: f32, b: f32, k: f32) f32 {
+    @setFloatMode(.optimized);
     const h = @max(k - @abs(a - b), 0) / k;
     return @min(a, b) - h * h * k * 0.25;
 }
 
 fn smoothMin4(a: @Vector(4, f32), b: @Vector(4, f32), k: @Vector(4, f32)) @Vector(4, f32) {
+    @setFloatMode(.optimized);
     const zero: @Vector(4, f32) = @splat(0);
     const quarter: @Vector(4, f32) = @splat(0.25);
     const h = @max(k - @abs(a - b), zero) / k;

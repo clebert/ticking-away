@@ -8,6 +8,7 @@ pub const Segment = struct {
     inv_len_sq: f32,
 
     pub fn init(start: vec2.Vec2, end: vec2.Vec2) Segment {
+        @setFloatMode(.optimized);
         const dir = end - start;
         const len_sq = vec2.lengthSq(dir);
 
@@ -24,6 +25,7 @@ pub const Segment = struct {
     };
 
     pub fn boundingBox(self: Segment, radius: f32) BoundingBox {
+        @setFloatMode(.optimized);
         const end = self.start + self.dir;
         const r: vec2.Vec2 = @splat(radius);
 
@@ -38,6 +40,7 @@ pub const Segment = struct {
         distance_sq: @Vector(4, f32),
         t: @Vector(4, f32),
     } {
+        @setFloatMode(.optimized);
         const start_x: @Vector(4, f32) = @splat(self.start[0]);
         const start_y: @Vector(4, f32) = @splat(self.start[1]);
         const dir_x: @Vector(4, f32) = @splat(self.dir[0]);

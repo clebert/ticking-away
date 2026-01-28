@@ -61,6 +61,7 @@ pub const Scene = struct {
     palette_initialized: bool = false,
 
     pub fn init(width: usize, height: usize) Scene {
+        @setFloatMode(.optimized);
         const min_dim: f32 = @floatFromInt(@min(width, height));
         const radius = min_dim / 2.0;
         const center = vec2.xy(
@@ -77,6 +78,7 @@ pub const Scene = struct {
     }
 
     pub fn setTime(self: *Scene, hour: i32, minute: f32) void {
+        @setFloatMode(.optimized);
         var h = @mod(hour, 12);
         if (h < 0) h += 12;
 
@@ -88,6 +90,7 @@ pub const Scene = struct {
     }
 
     pub fn setTimeMinutes(self: *Scene, minutes: f32) void {
+        @setFloatMode(.optimized);
         var m = minutes;
         while (m < 0) m += 720;
         while (m >= 720) m -= 720;
@@ -133,6 +136,7 @@ pub const Scene = struct {
     }
 
     pub fn renderBand(self: *Scene, ctx: *band.Context) void {
+        @setFloatMode(.optimized);
         if (self.prism_dirty) {
             self.updatePrism();
         }

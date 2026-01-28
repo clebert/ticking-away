@@ -53,6 +53,7 @@ pub const Marker = struct {
 
 /// Compute markers for all 12 hours, ready for rendering.
 pub fn computeMarkers(geometry: Geometry, config: Config) [marker_count]Marker {
+    @setFloatMode(.optimized);
     var markers: [marker_count]Marker = undefined;
     const glow_width = geometry.radius * config.glow_width;
 

@@ -9,6 +9,7 @@ pub inline fn rgba(r: f32, g: f32, b: f32, a: f32) Color {
 }
 
 pub inline fn lerp(a: Color, b: Color, t: f32) Color {
+    @setFloatMode(.optimized);
     const t_vec: Color = @splat(t);
 
     return a + (b - a) * t_vec;

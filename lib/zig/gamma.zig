@@ -5,6 +5,7 @@ const color = @import("color.zig");
 /// Convert sRGB byte (0-255) to linear float (0.0-1.0).
 /// Uses the standard sRGB transfer function.
 pub fn srgbToLinear(srgb: u8) f32 {
+    @setFloatMode(.optimized);
     const s = @as(f32, @floatFromInt(srgb)) / 255.0;
     if (s <= 0.04045) {
         return s / 12.92;
@@ -15,6 +16,7 @@ pub fn srgbToLinear(srgb: u8) f32 {
 /// Convert linear float (0.0-1.0) to sRGB float (0.0-1.0).
 /// Uses accurate x^(5/12) via cbrt * sqrt(sqrt(cbrt(x))) for dark regions.
 pub fn linearToSrgb(linear: f32) f32 {
+    @setFloatMode(.optimized);
     if (linear <= 0.0031308) {
         return linear * 12.92;
     }
@@ -23,6 +25,7 @@ pub fn linearToSrgb(linear: f32) f32 {
 
 /// SIMD 4-wide linear to sRGB conversion.
 pub fn linearToSrgb4(linear: @Vector(4, f32)) @Vector(4, f32) {
+    @setFloatMode(.optimized);
     const threshold: @Vector(4, f32) = @splat(0.0031308);
     const scale: @Vector(4, f32) = @splat(12.92);
     const low_result = linear * scale;
@@ -38,6 +41,7 @@ pub fn linearToSrgb4(linear: @Vector(4, f32)) @Vector(4, f32) {
 /// Apply gamma correction to an entire buffer in-place.
 /// Clamps values and converts from linear to sRGB space.
 pub fn applyToBuffer(buffer: []color.Color) void {
+    @setFloatMode(.optimized);
     var i: usize = 0;
 
     // Process 4 colors at a time using SIMD
@@ -98,6 +102,7 @@ pub fn applyToBuffer(buffer: []color.Color) void {
 /// Accurate x^(5/12) for sRGB gamma conversion.
 /// Uses cbrt(x) * sqrt(sqrt(cbrt(x))) = cbrt(x)^(5/4) = x^(5/12).
 fn pow512(x: f32) f32 {
+    @setFloatMode(.optimized);
     if (x <= 0.0) return 0.0;
     if (x >= 1.0) return 1.0;
 
@@ -108,6 +113,7 @@ fn pow512(x: f32) f32 {
 
 /// SIMD 4-wide x^(5/12).
 fn pow512Vec4(x: @Vector(4, f32)) @Vector(4, f32) {
+    @setFloatMode(.optimized);
     const zero: @Vector(4, f32) = @splat(0.0);
     const one: @Vector(4, f32) = @splat(1.0);
 
@@ -121,6 +127,7 @@ fn pow512Vec4(x: @Vector(4, f32)) @Vector(4, f32) {
 
 /// Fast cube root using Newton-Raphson with bit manipulation initial guess.
 fn cbrt(x: f32) f32 {
+    @setFloatMode(.optimized);
     if (x == 0.0) return 0.0;
 
     const neg = x < 0.0;
@@ -141,6 +148,7 @@ fn cbrt(x: f32) f32 {
 
 /// SIMD 4-wide cube root.
 fn cbrtVec4(x: @Vector(4, f32)) @Vector(4, f32) {
+    @setFloatMode(.optimized);
     const zero: @Vector(4, f32) = @splat(0.0);
     const neg_mask = x < zero;
     const abs_x = @abs(x);
@@ -163,6 +171,7 @@ fn cbrtVec4(x: @Vector(4, f32)) @Vector(4, f32) {
 }
 
 inline fn clamp01(x: f32) f32 {
+    @setFloatMode(.optimized);
     return @min(@max(x, 0.0), 1.0);
 }
 

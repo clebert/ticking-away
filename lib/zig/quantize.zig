@@ -4,6 +4,7 @@ const color = @import("color.zig");
 
 /// Convert a single float channel (0.0-1.0) to u8 (0-255).
 pub inline fn floatToU8(f: f32) u8 {
+    @setFloatMode(.optimized);
     const clamped = @min(@max(f, 0.0), 1.0);
     return @intFromFloat(clamped * 255.0 + 0.5);
 }
@@ -20,6 +21,7 @@ pub inline fn colorToRgba(c: color.Color) [4]u8 {
 
 /// SIMD 4-wide float to u8 conversion.
 pub inline fn float4ToU8(v: @Vector(4, f32)) @Vector(4, u8) {
+    @setFloatMode(.optimized);
     const zero: @Vector(4, f32) = @splat(0.0);
     const one: @Vector(4, f32) = @splat(1.0);
     const scale: @Vector(4, f32) = @splat(255.0);

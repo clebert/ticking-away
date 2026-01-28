@@ -21,6 +21,7 @@ pub const OkLab = struct {
     }
 
     pub fn lerp(a_lab: OkLab, b_lab: OkLab, t: f32) OkLab {
+        @setFloatMode(.optimized);
         return .{
             .l = a_lab.l + t * (b_lab.l - a_lab.l),
             .a = a_lab.a + t * (b_lab.a - a_lab.a),
@@ -30,6 +31,7 @@ pub const OkLab = struct {
 
     /// Compute chroma (saturation metric).
     pub fn chroma(self: OkLab) f32 {
+        @setFloatMode(.optimized);
         return @sqrt(self.a * self.a + self.b * self.b);
     }
 
@@ -38,6 +40,7 @@ pub const OkLab = struct {
     /// chroma_weight = 2.0: Equal L and chroma weighting (better for rainbows)
     /// chroma_weight = 4.0: Chroma weighted 2x (strongly prioritizes hue matching)
     pub fn distanceSq(self: OkLab, other: OkLab, chroma_weight: f32) f32 {
+        @setFloatMode(.optimized);
         const d_l = self.l - other.l;
         const da = self.a - other.a;
         const db = self.b - other.b;
@@ -74,6 +77,7 @@ pub fn srgbToOklab(r: u8, g: u8, b: u8) OkLab {
 
 /// Convert linear RGB to OkLab.
 fn linearRgbToOklab(r: f32, g: f32, b: f32) OkLab {
+    @setFloatMode(.optimized);
     // Linear RGB to LMS (cone responses)
     const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
     const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
@@ -94,6 +98,7 @@ fn linearRgbToOklab(r: f32, g: f32, b: f32) OkLab {
 
 /// Convert OkLab to linear RGB.
 fn oklabToLinearRgb(lab: OkLab) color.Color {
+    @setFloatMode(.optimized);
     // OkLab to LMS'
     const lp = lab.l + 0.3963377774 * lab.a + 0.2158037573 * lab.b;
     const mp = lab.l - 0.1055613458 * lab.a - 0.0638541728 * lab.b;
@@ -119,6 +124,7 @@ fn oklabToLinearRgb(lab: OkLab) color.Color {
 
 /// SIMD 4-wide linear RGB to OkLab conversion.
 fn linearRgbToOklab4(r: @Vector(4, f32), g: @Vector(4, f32), b: @Vector(4, f32)) OkLab4 {
+    @setFloatMode(.optimized);
     // Linear RGB to LMS (cone responses)
     const l = @as(@Vector(4, f32), @splat(0.4122214708)) * r +
         @as(@Vector(4, f32), @splat(0.5363325363)) * g +
@@ -151,6 +157,7 @@ fn linearRgbToOklab4(r: @Vector(4, f32), g: @Vector(4, f32), b: @Vector(4, f32))
 
 /// SIMD 4-wide OkLab to linear RGB conversion.
 fn oklabToLinearRgb4(lab: OkLab4) struct { r: @Vector(4, f32), g: @Vector(4, f32), b: @Vector(4, f32) } {
+    @setFloatMode(.optimized);
     // OkLab to LMS'
     const lp = lab.l +
         @as(@Vector(4, f32), @splat(0.3963377774)) * lab.a +
@@ -184,6 +191,7 @@ fn oklabToLinearRgb4(lab: OkLab4) struct { r: @Vector(4, f32), g: @Vector(4, f32
 
 /// Scalar cube root using Newton-Raphson.
 fn cbrt(x: f32) f32 {
+    @setFloatMode(.optimized);
     if (x == 0.0) return 0.0;
 
     const neg = x < 0.0;
@@ -204,6 +212,7 @@ fn cbrt(x: f32) f32 {
 
 /// SIMD 4-wide cube root.
 fn cbrtVec4(x: @Vector(4, f32)) @Vector(4, f32) {
+    @setFloatMode(.optimized);
     const zero: @Vector(4, f32) = @splat(0.0);
     const neg_mask = x < zero;
     const abs_x = @abs(x);

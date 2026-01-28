@@ -7,11 +7,13 @@ pub const Circle = struct {
     radius_sq: f32,
 
     pub fn init(center: vec2.Vec2, radius: f32) Circle {
+        @setFloatMode(.optimized);
         return .{ .center = center, .radius = radius, .radius_sq = radius * radius };
     }
 
     /// Returns x-range where scanline y intersects circle
     pub fn scanlineRange(self: Circle, y: f32) ?range.Range {
+        @setFloatMode(.optimized);
         const dy = y - self.center[1];
         if (@abs(dy) > self.radius) return null;
         const dx = @sqrt(self.radius_sq - dy * dy);

@@ -9,6 +9,7 @@ pub const Falloff = enum {
     exponential,
 
     pub fn apply(self: Falloff, t: f32) f32 {
+        @setFloatMode(.optimized);
         std.debug.assert(t >= 0);
         std.debug.assert(t <= 1);
 

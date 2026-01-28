@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const watchface = @import("watchface");
-
 const compat = watchface.compat;
 
 // =============================================================================
@@ -425,6 +424,7 @@ fn directOutput(buffer: []const watchface.color.Color, out_rgba: []u8) void {
 }
 
 inline fn floatToByte(v: f32) u8 {
+    @setFloatMode(.optimized);
     const clamped = @min(@max(v, 0.0), 1.0);
     return @intFromFloat(clamped * 255.0);
 }

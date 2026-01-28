@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) void {
         .name = "index",
         .root_module = b.createModule(.{
             .target = wasm_target,
-            .optimize = .ReleaseSmall,
+            .optimize = .ReleaseFast,
             .link_libc = false,
             .red_zone = false,
             .strip = true,
@@ -92,13 +92,13 @@ pub fn build(b: *std.Build) void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("bin/wasm-zig/main.zig"),
             .target = wasm_target,
-            .optimize = .ReleaseSmall,
+            .optimize = .ReleaseFast,
             .strip = true,
             .imports = &.{
                 .{ .name = "watchface", .module = b.createModule(.{
                     .root_source_file = b.path("lib/zig/root.zig"),
                     .target = wasm_target,
-                    .optimize = .ReleaseSmall,
+                    .optimize = .ReleaseFast,
                 }) },
             },
         }),

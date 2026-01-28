@@ -35,6 +35,7 @@ pub const Geometry = struct {
 };
 
 inline fn normalizeAngle(a: f32) f32 {
+    @setFloatMode(.optimized);
     var angle = a;
     while (angle < 0) angle += tau;
     while (angle >= tau) angle -= tau;
@@ -42,6 +43,7 @@ inline fn normalizeAngle(a: f32) f32 {
 }
 
 inline fn atan2Approx(y: f32, x: f32) f32 {
+    @setFloatMode(.optimized);
     return std.math.atan2(y, x);
 }
 
@@ -54,6 +56,7 @@ pub fn drawContinuous(
     geometry: Geometry,
     cache: *const palette.Cache,
 ) void {
+    @setFloatMode(.optimized);
     var a1 = normalizeAngle(config.angle_start);
     var a2 = normalizeAngle(config.angle_end);
 
