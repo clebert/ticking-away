@@ -3,14 +3,12 @@ const std = @import("std");
 const color = @import("../color.zig");
 const oklab = @import("../oklab.zig");
 const dither = @import("../dither.zig");
-const blue_noise = @import("blue_noise.zig");
 
 /// Dither matrix type.
 pub const Matrix = enum {
     bayer2x2,
     bayer4x4,
     bayer8x8,
-    blue_noise,
 };
 
 /// Ordered dithering configuration.
@@ -52,10 +50,6 @@ pub fn getThreshold(matrix: Matrix, x: usize, y: usize) f32 {
         .bayer2x2 => bayer_2x2[y & 1][x & 1],
         .bayer4x4 => bayer_4x4[y & 3][x & 3],
         .bayer8x8 => bayer_8x8[y & 7][x & 7],
-        .blue_noise => blk: {
-            const val = blue_noise.sample(x, y);
-            break :blk @as(f32, @floatFromInt(val)) / 255.0 - 0.5;
-        },
     };
 }
 
@@ -133,12 +127,10 @@ test "bayer threshold range" {
             const t2 = getThreshold(.bayer2x2, x, y);
             const t4 = getThreshold(.bayer4x4, x, y);
             const t8 = getThreshold(.bayer8x8, x, y);
-            const tb = getThreshold(.blue_noise, x, y);
 
             try std.testing.expect(t2 >= -0.5 and t2 <= 0.5);
             try std.testing.expect(t4 >= -0.5 and t4 <= 0.5);
             try std.testing.expect(t8 >= -0.5 and t8 <= 0.5);
-            try std.testing.expect(tb >= -0.5 and tb <= 0.5);
         }
     }
 }

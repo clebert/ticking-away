@@ -92,7 +92,7 @@ typedef struct {
   DitherErrorAlgorithm algorithm; // Error diffusion algorithm
   int32_t oklab_error;            // Use OkLab error diffusion (0 or 1)
   // Ordered params
-  DitherOrderedMatrix ordered_matrix; // Bayer matrix size or blue noise
+  DitherOrderedMatrix ordered_matrix; // Bayer matrix size
   float spread;                       // Threshold spread (0.0 - 1.0)
   // Shared
   float chroma_weight; // Weight for hue/chroma vs lightness (0.5 - 4.0)

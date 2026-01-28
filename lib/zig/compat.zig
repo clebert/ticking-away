@@ -107,7 +107,6 @@ pub const DitherOrderedMatrix = enum(i32) {
     bayer_2x2 = 0,
     bayer_4x4 = 1,
     bayer_8x8 = 2,
-    blue_noise_64 = 3,
 };
 
 /// Dither palette mode matching C DitherPaletteMode.
@@ -231,7 +230,6 @@ pub fn toOrderedDitherConfig(c: *const SceneDitherConfig) dither.ordered.Config 
             .bayer_2x2 => .bayer2x2,
             .bayer_4x4 => .bayer4x4,
             .bayer_8x8 => .bayer8x8,
-            .blue_noise_64 => .blue_noise,
         },
         .spread = c.spread,
         .chroma_weight = c.chroma_weight,

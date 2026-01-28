@@ -4,7 +4,6 @@ const color = @import("color.zig");
 const gamma = @import("gamma.zig");
 const oklab = @import("oklab.zig");
 
-pub const blue_noise = @import("dither/blue_noise.zig");
 pub const ordered = @import("dither/ordered.zig");
 pub const error_diffusion = @import("dither/error.zig");
 
