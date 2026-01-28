@@ -122,6 +122,29 @@ pub const Triangle = struct {
         return self.bot[1];
     }
 
+    pub fn getVertex(self: Triangle, index: u2) vec2.Vec2 {
+        return vec2.xy(self.edge_start_x[index], self.edge_start_y[index]);
+    }
+
+    pub const Edge = struct {
+        start: vec2.Vec2,
+        end: vec2.Vec2,
+    };
+
+    pub fn getEdge(self: Triangle, index: u2) Edge {
+        const next = (index + 1) % 3;
+        return .{
+            .start = vec2.xy(self.edge_start_x[index], self.edge_start_y[index]),
+            .end = vec2.xy(self.edge_start_x[next], self.edge_start_y[next]),
+        };
+    }
+
+    pub fn centroid(self: Triangle) vec2.Vec2 {
+        const x = (self.edge_start_x[0] + self.edge_start_x[1] + self.edge_start_x[2]) / 3.0;
+        const y = (self.edge_start_y[0] + self.edge_start_y[1] + self.edge_start_y[2]) / 3.0;
+        return vec2.xy(x, y);
+    }
+
     /// Creates isosceles triangle (prism) centered at point
     pub fn isosceles(center: vec2.Vec2, base_width: f32, apex_angle_deg: f32) Triangle {
         const angle = std.math.clamp(apex_angle_deg, 1.0, 179.0);

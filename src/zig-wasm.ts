@@ -24,6 +24,13 @@ export interface ZigWasmModule {
     g: number,
     b: number,
   ): void;
+  renderWatchface(
+    buffer: number,
+    width: number,
+    height: number,
+    hours: number,
+    minutes: number,
+  ): void;
 }
 
 const initialMemoryPages = 32;

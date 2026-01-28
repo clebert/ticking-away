@@ -150,9 +150,10 @@ function renderWithZig(): void {
   // Color buffer is always at heap base
   const colorBufferPtr = heapBase;
 
-  // Clear and render the prism
-  zigModule.clearBuffer(colorBufferPtr, width, height);
-  zigModule.renderPrism(colorBufferPtr, width, height, 100.0, 1.0, 3);
+  // Render watchface with current time
+  const hours = time.hours.value;
+  const minutes = time.minutes.value;
+  zigModule.renderWatchface(colorBufferPtr, width, height, hours, minutes);
 
   // Convert float RGBA to uint8 RGBA (use fresh buffer reference after potential grow)
   const floatView = new Float32Array(zigMemory.buffer, colorBufferPtr, pixelCount * floatsPerPixel);

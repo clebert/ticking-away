@@ -1,9 +1,13 @@
 pub const band = @import("band.zig");
 pub const circle = @import("circle.zig");
 pub const clip = @import("clip.zig");
+pub const clock = @import("clock.zig");
 pub const color = @import("color.zig");
 pub const glow = @import("glow.zig");
+pub const intersect = @import("intersect.zig");
 pub const line = @import("line.zig");
 pub const range = @import("range.zig");
+pub const ray = @import("ray.zig");
+pub const spectrum = @import("spectrum.zig");
 pub const triangle = @import("triangle.zig");
 pub const vec2 = @import("vec2.zig");
