@@ -34,10 +34,10 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
     ctx.clear();
 
     // Draw a diagonal glow line
-    const segment = watchface.line.Segment{
-        .start = watchface.vec2.xy(0, 0),
-        .end = watchface.vec2.xy(@floatFromInt(width), @floatFromInt(height)),
-    };
+    const segment = watchface.line.Segment.init(
+        watchface.vec2.xy(0, 0),
+        watchface.vec2.xy(@floatFromInt(width), @floatFromInt(height)),
+    );
 
     const config = watchface.glow.Config{
         .width = 5,
@@ -93,10 +93,10 @@ export fn renderGlowLine(
         .total_height = h,
     };
 
-    const segment = watchface.line.Segment{
-        .start = watchface.vec2.xy(start_x, start_y),
-        .end = watchface.vec2.xy(end_x, end_y),
-    };
+    const segment = watchface.line.Segment.init(
+        watchface.vec2.xy(start_x, start_y),
+        watchface.vec2.xy(end_x, end_y),
+    );
 
     const config = watchface.glow.Config{
         .width = glow_width,
