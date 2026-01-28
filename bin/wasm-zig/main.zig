@@ -67,6 +67,42 @@ export fn clearBuffer(buffer: [*]watchface.color.Color, width: u32, height: u32)
     ctx.clear();
 }
 
+/// Render a centered prism with glow effect.
+export fn renderPrism(
+    buffer: [*]watchface.color.Color,
+    width: u32,
+    height: u32,
+    glow_width: f32,
+    intensity: f32,
+    falloff: u8,
+) void {
+    const w: usize = @intCast(width);
+    const h: usize = @intCast(height);
+    const w_f: f32 = @floatFromInt(width);
+    const h_f: f32 = @floatFromInt(height);
+
+    var ctx = watchface.band.Context{
+        .buffer = buffer[0 .. w * h],
+        .width = w,
+        .height = h,
+        .y_offset = 0,
+        .total_height = h,
+    };
+
+    // Create centered isosceles triangle at 50% viewport size
+    const center = watchface.vec2.xy(w_f / 2, h_f / 2);
+    const base_width = @min(w_f, h_f) * 0.5;
+    const tri = watchface.triangle.Triangle.isosceles(center, base_width, 60);
+
+    ctx.renderPrismGlow(
+        tri,
+        watchface.color.rgba(1, 1, 1, 1),
+        glow_width,
+        intensity,
+        @enumFromInt(falloff),
+    );
+}
+
 /// Render a glow line segment.
 export fn renderGlowLine(
     buffer: [*]watchface.color.Color,

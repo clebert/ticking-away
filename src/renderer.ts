@@ -150,8 +150,9 @@ function renderWithZig(): void {
   // Color buffer is always at heap base
   const colorBufferPtr = heapBase;
 
-  // Render the test pattern
-  zigModule.renderTestPattern(colorBufferPtr, width, height);
+  // Clear and render the prism
+  zigModule.clearBuffer(colorBufferPtr, width, height);
+  zigModule.renderPrism(colorBufferPtr, width, height, 100.0, 1.0, 3);
 
   // Convert float RGBA to uint8 RGBA (use fresh buffer reference after potential grow)
   const floatView = new Float32Array(zigMemory.buffer, colorBufferPtr, pixelCount * floatsPerPixel);

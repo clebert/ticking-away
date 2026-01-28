@@ -2,6 +2,14 @@ export interface ZigWasmModule {
   getHeapBase(): number;
   renderTestPattern(buffer: number, width: number, height: number): void;
   clearBuffer(buffer: number, width: number, height: number): void;
+  renderPrism(
+    buffer: number,
+    width: number,
+    height: number,
+    glowWidth: number,
+    intensity: number,
+    falloff: number,
+  ): void;
   renderGlowLine(
     buffer: number,
     width: number,
