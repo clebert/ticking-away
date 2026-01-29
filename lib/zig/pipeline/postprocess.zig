@@ -1,10 +1,11 @@
-const boundary = @import("../geometry/boundary.zig");
 const color = @import("../color/color.zig");
-const dither = @import("../dither/dither.zig");
 const gamma = @import("../color/gamma.zig");
+const dither = @import("../dither/dither.zig");
+const error_diffusion = @import("../dither/error_diffusion.zig");
+const ordered = @import("../dither/ordered.zig");
 const grain = @import("../effects/grain.zig");
 const vignette = @import("../effects/vignette.zig");
-
+const boundary = @import("../geometry/boundary.zig");
 const output = @import("output.zig");
 
 /// Post-processing configuration.
@@ -36,15 +37,15 @@ pub const DitherMode = enum {
 pub const DitherConfig = struct {
     mode: DitherMode = .none,
     palette_type: dither.PaletteType = .ideal,
-    error_diffusion: ?dither.error_diffusion.Config = null,
-    ordered: ?dither.ordered.Config = null,
+    error_diffusion: ?error_diffusion.Config = null,
+    ordered: ?ordered.Config = null,
     boundary_mask: ?boundary.Boundary = null,
 };
 
 /// Dithering state for error diffusion (caller provides storage).
 pub const DitherState = struct {
     palette_cache: dither.PaletteCache,
-    error_buffer: ?*dither.error_diffusion.ErrorBuffer,
+    error_buffer: ?*error_diffusion.ErrorBuffer,
 
     pub fn init(palette_type: dither.PaletteType) DitherState {
         return .{
@@ -53,7 +54,7 @@ pub const DitherState = struct {
         };
     }
 
-    pub fn setErrorBuffer(self: *DitherState, buf: *dither.error_diffusion.ErrorBuffer) void {
+    pub fn setErrorBuffer(self: *DitherState, buf: *error_diffusion.ErrorBuffer) void {
         self.error_buffer = buf;
     }
 };
@@ -101,7 +102,7 @@ pub fn applyDither(
         .error_diffusion => {
             if (config.error_diffusion) |ed_cfg| {
                 if (state.error_buffer) |err| {
-                    dither.error_diffusion.apply(
+                    error_diffusion.apply(
                         buffer,
                         out_rgba,
                         width,
@@ -120,7 +121,7 @@ pub fn applyDither(
         },
         .ordered => {
             if (config.ordered) |ord_cfg| {
-                dither.ordered.applyRgba(
+                ordered.applyRgba(
                     buffer,
                     out_rgba,
                     width,

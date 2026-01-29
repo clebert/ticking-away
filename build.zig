@@ -216,27 +216,8 @@ pub fn build(b: *std.Build) void {
     const run_lib_inline_tests = b.addRunArtifact(lib_inline_tests);
     test_step.dependOn(&run_lib_inline_tests.step);
 
-    const zig_tests: []const []const u8 = &.{
-        "tests/spectrum_test.zig",
-        "tests/line_test.zig",
-        "tests/triangle_test.zig",
-        "tests/band_test.zig",
-    };
-
-    for (zig_tests) |test_file| {
-        const zig_test = b.addTest(.{
-            .root_module = b.createModule(.{
-                .root_source_file = b.path(test_file),
-                .target = target,
-                .optimize = optimize,
-                .imports = &.{
-                    .{ .name = "watchface", .module = zig_lib },
-                },
-            }),
-        });
-        const run_zig_test = b.addRunArtifact(zig_test);
-        test_step.dependOn(&run_zig_test.step);
-    }
+    // Standalone Zig test files were migrated to inline tests in the library
+    // Tests are now discovered automatically via refAllDecls in root.zig
 
     // -------------------------------------------------------------------------
     // C tests

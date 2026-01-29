@@ -1,6 +1,6 @@
 const boundary = @import("../geometry/boundary.zig");
-const range = @import("../math/range.zig");
 const prism = @import("../geometry/prism.zig");
+const range = @import("../math/range.zig");
 
 pub const Region = union(enum) {
     prism: *const prism.Prism,

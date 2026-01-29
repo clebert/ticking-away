@@ -10,7 +10,7 @@ export fn getHeapBase() [*]u8 {
 
 // Static state (cached between frames)
 const max_dither_width = 5120;
-const dither_buffer_size = max_dither_width * watchface.dither.error_diffusion.ErrorBuffer.rows * watchface.dither.error_diffusion.ErrorBuffer.channels;
+const dither_buffer_size = max_dither_width * watchface.error_diffusion.ErrorBuffer.rows * watchface.error_diffusion.ErrorBuffer.channels;
 
 var static_scene: watchface.scene.Scene = undefined;
 var scene_initialized: bool = false;
@@ -20,7 +20,7 @@ var last_height: usize = 0;
 var dither_error_backing: [dither_buffer_size]f32 = undefined;
 var dither_state: watchface.postprocess.DitherState = undefined;
 var dither_state_initialized: bool = false;
-var dither_error_buffer: watchface.dither.error_diffusion.ErrorBuffer = undefined;
+var dither_error_buffer: watchface.error_diffusion.ErrorBuffer = undefined;
 
 /// Render the complete watchface using configuration from JS.
 export fn renderWatchfaceWithConfig(
@@ -63,7 +63,7 @@ export fn renderWatchfaceWithConfig(
             }
 
             if (dither_cfg.mode == .error_diffusion and w <= max_dither_width) {
-                dither_error_buffer = watchface.dither.error_diffusion.ErrorBuffer.initStatic(&dither_error_backing, w);
+                dither_error_buffer = watchface.error_diffusion.ErrorBuffer.initStatic(&dither_error_backing, w);
                 dither_state.setErrorBuffer(&dither_error_buffer);
             }
 

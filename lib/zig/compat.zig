@@ -1,17 +1,20 @@
 const std = @import("std");
 
-const band = @import("rendering/band.zig");
-const boundary = @import("geometry/boundary.zig");
 const color = @import("color/color.zig");
+const gamma = @import("color/gamma.zig");
+const palette = @import("color/palette.zig");
 const dither = @import("dither/dither.zig");
+const error_diffusion = @import("dither/error_diffusion.zig");
+const ordered = @import("dither/ordered.zig");
 const effect = @import("effects/effect.zig");
 const grain_effect = @import("effects/grain.zig");
 const vignette_effect = @import("effects/vignette.zig");
-const gamma = @import("color/gamma.zig");
-const glow = @import("rendering/glow.zig");
-const palette = @import("color/palette.zig");
+const boundary = @import("geometry/boundary.zig");
+const markers = @import("rendering/markers.zig");
 const pipeline = @import("pipeline/pipeline.zig");
 const postprocess = @import("pipeline/postprocess.zig");
+const band = @import("rendering/band.zig");
+const glow = @import("rendering/glow.zig");
 const scene = @import("scene.zig");
 
 /// Falloff type matching C FalloffType enum.
@@ -159,7 +162,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
     prism: scene.PrismConfig,
     glow_config: scene.GlowConfig,
     ray: scene.RayConfig,
-    marker: scene.MarkerConfig,
+    marker: markers.Config,
 } {
     return .{
         .prism = .{
@@ -214,7 +217,7 @@ pub fn toVignetteConfig(c: *const VignetteConfig) vignette_effect.Config {
 }
 
 /// Convert C dither config to Zig error diffusion config.
-pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) dither.error_diffusion.Config {
+pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) error_diffusion.Config {
     return .{
         .algorithm = switch (c.algorithm) {
             .atkinson => .atkinson,
@@ -227,7 +230,7 @@ pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) dither.error_diffusio
 }
 
 /// Convert C dither config to Zig ordered dither config.
-pub fn toOrderedDitherConfig(c: *const SceneDitherConfig) dither.ordered.Config {
+pub fn toOrderedDitherConfig(c: *const SceneDitherConfig) ordered.Config {
     return .{
         .matrix = switch (c.ordered_matrix) {
             .bayer_2x2 => .bayer2x2,

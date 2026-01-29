@@ -1,26 +1,18 @@
-const band = @import("../rendering/band.zig");
-const boundary = @import("../geometry/boundary.zig");
 const color = @import("../color/color.zig");
 const dither = @import("../dither/dither.zig");
+const error_diffusion = @import("../dither/error_diffusion.zig");
+const ordered = @import("../dither/ordered.zig");
 const grain = @import("../effects/grain.zig");
-const scene_mod = @import("../scene.zig");
 const vignette = @import("../effects/vignette.zig");
-
+const boundary = @import("../geometry/boundary.zig");
+const band = @import("../rendering/band.zig");
+const Scene = @import("../scene.zig").Scene;
 const output = @import("output.zig");
 const postprocess = @import("postprocess.zig");
 
-pub const Scene = scene_mod.Scene;
-pub const PrismConfig = scene_mod.PrismConfig;
-pub const GlowConfig = scene_mod.GlowConfig;
-pub const RayConfig = scene_mod.RayConfig;
-pub const MarkerConfig = scene_mod.MarkerConfig;
-
-/// Output format for the final render.
-pub const OutputFormat = output.Format;
-
 /// Output configuration.
 pub const OutputConfig = struct {
-    format: OutputFormat = .rgba8,
+    format: output.Format = .rgba8,
     dither: ?postprocess.DitherConfig = null,
 };
 
@@ -188,8 +180,8 @@ pub fn buildDitherConfig(
     scene: *const Scene,
     mode: postprocess.DitherMode,
     palette_type: dither.PaletteType,
-    error_diffusion_config: ?dither.error_diffusion.Config,
-    ordered_config: ?dither.ordered.Config,
+    error_diffusion_config: ?error_diffusion.Config,
+    ordered_config: ?ordered.Config,
 ) postprocess.DitherConfig {
     return .{
         .mode = mode,

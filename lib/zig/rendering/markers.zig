@@ -1,13 +1,12 @@
 const std = @import("std");
+const pi = std.math.pi;
 
-const boundary = @import("../geometry/boundary.zig");
-const clip = @import("clip.zig");
 const color = @import("../color/color.zig");
-const glow = @import("glow.zig");
+const boundary = @import("../geometry/boundary.zig");
 const line = @import("../geometry/segment.zig");
 const vec2 = @import("../math/vec2.zig");
-
-const pi = std.math.pi;
+const clip = @import("clip.zig");
+const glow = @import("glow.zig");
 
 /// Number of hour markers on the watch face.
 pub const marker_count: usize = 12;

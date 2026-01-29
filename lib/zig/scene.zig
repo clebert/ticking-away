@@ -1,19 +1,18 @@
 const std = @import("std");
 
-const band = @import("rendering/band.zig");
-const boundary = @import("geometry/boundary.zig");
-const clip = @import("rendering/clip.zig");
 const clock = @import("clock.zig");
 const color = @import("color/color.zig");
+const palette = @import("color/palette.zig");
+const boundary = @import("geometry/boundary.zig");
+const prism = @import("geometry/prism.zig");
+const line = @import("geometry/segment.zig");
+const vec2 = @import("math/vec2.zig");
+const band = @import("rendering/band.zig");
+const clip = @import("rendering/clip.zig");
 const glow = @import("rendering/glow.zig");
 const gradient = @import("rendering/gradient.zig");
-const line = @import("geometry/segment.zig");
-const palette = @import("color/palette.zig");
-const spectrum = @import("spectrum.zig");
-const prism = @import("geometry/prism.zig");
-const vec2 = @import("math/vec2.zig");
-
 const markers = @import("rendering/markers.zig");
+const spectrum = @import("spectrum.zig");
 
 pub const PrismConfig = struct {
     size: f32 = 0.65,
@@ -36,8 +35,6 @@ pub const RayConfig = struct {
     reverse: bool = false,
 };
 
-pub const MarkerConfig = markers.Config;
-
 pub const Scene = struct {
     width: usize,
     height: usize,
@@ -52,7 +49,7 @@ pub const Scene = struct {
     prism_config: PrismConfig = .{},
     glow_config: GlowConfig = .{},
     ray_config: RayConfig = .{},
-    marker_config: MarkerConfig = .{},
+    marker_config: markers.Config = .{},
 
     palette_cache: palette.Cache = undefined,
     palette_initialized: bool = false,
@@ -110,7 +107,7 @@ pub const Scene = struct {
         self.ray_config = config;
     }
 
-    pub fn setMarkerConfig(self: *Scene, config: MarkerConfig) void {
+    pub fn setMarkerConfig(self: *Scene, config: markers.Config) void {
         self.marker_config = config;
     }
 
@@ -164,13 +161,13 @@ pub const Scene = struct {
 
         for (paths.bands, 0..) |band_path, i| {
             // Handle reverse spectrum: swap color indices if reversed
-            const color_idx = if (self.ray_config.reverse) spectrum.band_count - 1 - i else i;
+            const color_idx = if (self.ray_config.reverse) clock.band_count - 1 - i else i;
             const band_color = cache.getColor(color_idx);
 
             // Draw entry ray for each band (white light = all wavelengths combined)
             if (paths.entry_ray) |entry_seg| {
                 const segment = line.Segment.init(entry_seg.start, entry_seg.end);
-                glow.renderLine(ctx,segment, .{
+                glow.renderLine(ctx, segment, .{
                     .width = glow_width,
                     .falloff = self.ray_config.falloff,
                     .color = .{ .uniform = color.white },
@@ -182,7 +179,7 @@ pub const Scene = struct {
                 // Entry → bounce segment: WHITE with uniform intensity
                 if (band_path.internal1) |seg| {
                     const segment = line.Segment.init(seg.start, seg.end);
-                    glow.renderLine(ctx,segment, .{
+                    glow.renderLine(ctx, segment, .{
                         .width = glow_width,
                         .falloff = self.ray_config.falloff,
                         .color = .{ .uniform = color.white },
@@ -195,14 +192,14 @@ pub const Scene = struct {
                     if (draw_internal_colored_rays) {
                         const segment = line.Segment.init(seg.start, seg.end);
                         if (use_gradient_intensity) {
-                            glow.renderLine(ctx,segment, .{
+                            glow.renderLine(ctx, segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
                             }, .{ .prism = prism_tri }, null);
                         } else {
-                            glow.renderLine(ctx,segment, .{
+                            glow.renderLine(ctx, segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
@@ -217,14 +214,14 @@ pub const Scene = struct {
                     if (draw_internal_colored_rays) {
                         const segment = line.Segment.init(seg.start, seg.end);
                         if (use_gradient_intensity) {
-                            glow.renderLine(ctx,segment, .{
+                            glow.renderLine(ctx, segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
                             }, .{ .prism = prism_tri }, null);
                         } else {
-                            glow.renderLine(ctx,segment, .{
+                            glow.renderLine(ctx, segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
@@ -240,7 +237,7 @@ pub const Scene = struct {
             if (!self.ray_config.gradient_fill) {
                 if (band_path.exit_ray) |seg| {
                     const segment = line.Segment.init(seg.start, seg.end);
-                    glow.renderLine(ctx,segment, .{
+                    glow.renderLine(ctx, segment, .{
                         .width = glow_width,
                         .falloff = self.ray_config.falloff,
                         .color = .{ .uniform = band_color },
@@ -252,13 +249,13 @@ pub const Scene = struct {
 
         if (self.ray_config.gradient_fill) {
             const first_band = paths.bands[0];
-            const last_band = paths.bands[spectrum.band_count - 1];
+            const last_band = paths.bands[clock.band_count - 1];
 
             if (first_band.exit_ray != null and last_band.exit_ray != null) {
                 // Compute angles from CENTER to where boundary rays hit CIRCLE
                 const pi = std.math.pi;
                 const tau = std.math.tau;
-                const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(spectrum.band_count - 1));
+                const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(clock.band_count - 1));
 
                 const first_border = first_band.exit_ray.?.end;
                 const last_border = last_band.exit_ray.?.end;
@@ -361,7 +358,7 @@ pub const Scene = struct {
             const marker_clip = marker_geometry.circleClip();
 
             for (hour_markers) |m| {
-                glow.renderLine(ctx,m.segment, m.glow_config, marker_clip, null);
+                glow.renderLine(ctx, m.segment, m.glow_config, marker_clip, null);
             }
         }
     }

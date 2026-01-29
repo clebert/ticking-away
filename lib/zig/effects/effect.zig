@@ -1,8 +1,5 @@
 const color = @import("../color/color.zig");
 
-pub const grain = @import("grain.zig");
-pub const vignette = @import("vignette.zig");
-
 /// Effect function signature for buffer post-processing.
 pub const ApplyFn = *const fn (buffer: []color.Color, width: usize, height: usize, context: *anyopaque) void;
 
