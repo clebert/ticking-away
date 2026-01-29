@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const vec2 = @import("math/vec2.zig");
-const triangle = @import("geometry/triangle.zig");
-const circle = @import("geometry/circle.zig");
+const triangle = @import("geometry/prism.zig");
+const circle = @import("geometry/boundary.zig");
 const ray = @import("geometry/ray.zig");
 const intersect = @import("geometry/intersect.zig");
 const clock = @import("clock.zig");

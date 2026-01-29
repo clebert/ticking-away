@@ -6,9 +6,9 @@ const clip = @import("clip.zig");
 const color = @import("../color/color.zig");
 const glow = @import("glow.zig");
 const gradient = @import("gradient.zig");
-const line = @import("../geometry/line.zig");
+const line = @import("../geometry/segment.zig");
 const palette = @import("../color/palette.zig");
-const triangle = @import("../geometry/triangle.zig");
+const triangle = @import("../geometry/prism.zig");
 const vec2 = @import("../math/vec2.zig");
 
 inline fn normalizeAngle(a: f32) f32 {

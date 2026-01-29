@@ -1,6 +1,6 @@
-const circle = @import("../geometry/circle.zig");
+const circle = @import("../geometry/boundary.zig");
 const range = @import("../math/range.zig");
-const triangle = @import("../geometry/triangle.zig");
+const triangle = @import("../geometry/prism.zig");
 
 pub const Region = union(enum) {
     triangle: *const triangle.Triangle,

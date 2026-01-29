@@ -1,4 +1,4 @@
-const triangle = @import("../geometry/triangle.zig");
+const triangle = @import("../geometry/prism.zig");
 
 /// Gradient fill mode.
 pub const Mode = enum {

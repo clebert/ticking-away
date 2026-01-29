@@ -2,8 +2,8 @@ const std = @import("std");
 
 const vec2 = @import("../math/vec2.zig");
 const ray = @import("ray.zig");
-const triangle = @import("triangle.zig");
-const circle = @import("circle.zig");
+const triangle = @import("prism.zig");
+const circle = @import("boundary.zig");
 
 const eps_norm: f32 = 1e-9;
 const eps_parallel: f32 = 1e-7;

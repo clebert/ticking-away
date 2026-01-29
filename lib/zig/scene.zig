@@ -1,15 +1,15 @@
 const std = @import("std");
 
 const band = @import("rendering/band.zig");
-const circle = @import("geometry/circle.zig");
+const circle = @import("geometry/boundary.zig");
 const clip = @import("rendering/clip.zig");
 const clock = @import("clock.zig");
 const color = @import("color/color.zig");
 const glow = @import("rendering/glow.zig");
-const line = @import("geometry/line.zig");
+const line = @import("geometry/segment.zig");
 const palette = @import("color/palette.zig");
 const spectrum = @import("spectrum.zig");
-const triangle = @import("geometry/triangle.zig");
+const triangle = @import("geometry/prism.zig");
 const vec2 = @import("math/vec2.zig");
 
 const markers = @import("rendering/markers.zig");

@@ -4,7 +4,7 @@ const color = @import("../color/color.zig");
 const gamma = @import("../color/gamma.zig");
 const oklab = @import("../color/oklab.zig");
 
-pub const ordered = @import("ordered_dither.zig");
+pub const ordered = @import("ordered.zig");
 pub const error_diffusion = @import("error_diffusion.zig");
 
 /// RGB color for palette entries (sRGB, 0-255).
