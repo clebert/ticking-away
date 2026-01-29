@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const band = @import("rendering/band.zig");
+const boundary = @import("geometry/boundary.zig");
 const color = @import("color/color.zig");
 const dither = @import("dither/dither.zig");
 const effect = @import("effects/effect.zig");
@@ -9,6 +10,8 @@ const vignette_effect = @import("effects/vignette.zig");
 const gamma = @import("color/gamma.zig");
 const glow = @import("rendering/glow.zig");
 const palette = @import("color/palette.zig");
+const pipeline = @import("pipeline/pipeline.zig");
+const postprocess = @import("pipeline/postprocess.zig");
 const scene = @import("scene.zig");
 
 /// Falloff type matching C FalloffType enum.
@@ -242,5 +245,57 @@ pub fn toDitherPaletteType(mode: DitherPaletteMode) dither.PaletteType {
         .ideal => .ideal,
         .spectra6_inky => .spectra6_inky,
         .spectra6_epdopt => .spectra6_epdopt,
+    };
+}
+
+/// Convert WASM config to postprocess config using scene geometry.
+pub fn toPostprocessConfig(
+    c: *const WatchfaceConfig,
+    s: *const scene.Scene,
+) postprocess.Config {
+    const grain_cfg = toGrainConfig(&c.grain);
+    const vignette_cfg = toVignetteConfig(&c.vignette);
+
+    return .{
+        .gamma_enabled = true,
+        .grain = if (grain_cfg.intensity > 0) grain_cfg else null,
+        .grain_geometry = if (grain_cfg.intensity > 0) grain_effect.Geometry{
+            .center_x = s.center[0],
+            .center_y = s.center[1],
+            .radius = s.radius,
+            .prism = s.prism,
+        } else null,
+        .vignette = if (vignette_cfg.enabled) vignette_cfg else null,
+        .vignette_geometry = if (vignette_cfg.enabled) vignette_effect.Geometry{
+            .center_x = s.center[0],
+            .center_y = s.center[1],
+            .radius = s.radius,
+        } else null,
+    };
+}
+
+/// Convert WASM dither config to pipeline output config.
+pub fn toOutputConfig(
+    c: *const WatchfaceConfig,
+    s: *const scene.Scene,
+) pipeline.OutputConfig {
+    if (c.dither.enabled == 0) {
+        return .{ .format = .rgba8, .dither = null };
+    }
+
+    const mode: postprocess.DitherMode = switch (c.dither.dither_type) {
+        .error_diffusion => .error_diffusion,
+        .ordered => .ordered,
+    };
+
+    return .{
+        .format = .rgba8,
+        .dither = .{
+            .mode = mode,
+            .palette_type = toDitherPaletteType(c.dither.mode),
+            .error_diffusion = if (mode == .error_diffusion) toErrorDiffusionConfig(&c.dither) else null,
+            .ordered = if (mode == .ordered) toOrderedDitherConfig(&c.dither) else null,
+            .boundary_mask = boundary.Boundary.init(s.center, s.radius),
+        },
     };
 }

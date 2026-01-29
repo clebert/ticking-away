@@ -1,36 +1,5 @@
 export interface ZigWasmModule {
   getHeapBase(): number;
-  renderTestPattern(buffer: number, width: number, height: number): void;
-  clearBuffer(buffer: number, width: number, height: number): void;
-  renderPrism(
-    buffer: number,
-    width: number,
-    height: number,
-    glowWidth: number,
-    intensity: number,
-    falloff: number,
-  ): void;
-  renderGlowLine(
-    buffer: number,
-    width: number,
-    height: number,
-    startX: number,
-    startY: number,
-    endX: number,
-    endY: number,
-    glowWidth: number,
-    falloff: number,
-    r: number,
-    g: number,
-    b: number,
-  ): void;
-  renderWatchface(
-    buffer: number,
-    width: number,
-    height: number,
-    hours: number,
-    minutes: number,
-  ): void;
   renderWatchfaceWithConfig(
     buffer: number,
     outRgba: number,

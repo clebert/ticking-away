@@ -32,6 +32,11 @@ pub const dither = @import("dither/dither.zig");
 pub const error_diffusion = @import("dither/error_diffusion.zig");
 pub const ordered = @import("dither/ordered.zig");
 
+// Pipeline
+pub const pipeline = @import("pipeline/pipeline.zig");
+pub const postprocess = @import("pipeline/postprocess.zig");
+pub const output = @import("pipeline/output.zig");
+
 // Domain
 pub const clock = @import("clock.zig");
 pub const compat = @import("compat.zig");
