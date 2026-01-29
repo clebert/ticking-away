@@ -150,4 +150,3 @@ pub fn renderBand(
 
     output.write(float_buffer, out_bytes, output_config.format);
 }
-

@@ -13,8 +13,8 @@ export function getConfig(wasmModule: WasmModule, wasmMemory: WebAssembly.Memory
   return cachedConfig;
 }
 
-// Order must match C struct layout in bin/wasm/main.c
-// Nested structs match definitions in lib/config.h
+// Order must match C struct layout in bin/wasm-c/main.c
+// Nested structs match definitions in lib/c/config.h
 const fields = {
   // Time
   hour: "int32",

@@ -21,7 +21,7 @@ export async function initZigWasm(): Promise<void> {
     maximum: maximumMemoryPages,
   });
 
-  const response = await fetch("/zig-renderer.wasm");
+  const response = await fetch("/index-zig.wasm");
   const bytes = await response.arrayBuffer();
 
   const result = await WebAssembly.instantiate(bytes, {

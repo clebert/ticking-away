@@ -6,8 +6,4 @@
 /dist/
 /node_modules/
 /public/*.wasm
-/tests/*
-!/tests/*.c
-!/tests/*.h
-!/tests/*.zig
 /TODO.md

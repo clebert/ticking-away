@@ -21,7 +21,7 @@ export async function initWasm(): Promise<void> {
     maximum: maximumMemoryPages,
   });
 
-  const response = await fetch("/index.wasm");
+  const response = await fetch("/index-c.wasm");
   const bytes = await response.arrayBuffer();
 
   const result = await WebAssembly.instantiate(bytes, {

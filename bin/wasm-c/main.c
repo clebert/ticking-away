@@ -40,7 +40,7 @@ typedef struct {
   int32_t hour; // 0-11
   float minute; // 0-59.999 (fractional for smooth animation)
 
-  // Embedded config structs (from lib/config.h)
+  // Embedded config structs (from lib/c/config.h)
   PrismConfig prism;
   GlowConfig glow;
   RayConfig ray;

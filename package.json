@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "./build.sh",
+    "build": "zig build && vite build",
     "ci": "npm run build && npm run lint && npm test",
-    "lint": "./lint.sh",
-    "lint:fix": "./lint.sh --fix",
+    "lint": "tsc && biome check && prettier --check \"**/*.{html,md,yaml,yml}\" && zig fmt --check .",
+    "lint:fix": "biome check --write --unsafe && prettier --write \"**/*.{html,md,yaml,yml}\" && zig fmt .",
     "start": "vite",
-    "test": "./test.sh"
+    "test": "zig build test"
   },
   "dependencies": {
     "@preact/signals-core": "^1.12.1"
