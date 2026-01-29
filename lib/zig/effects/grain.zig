@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const color = @import("../color/color.zig");
-const triangle = @import("../geometry/prism.zig");
+const prism = @import("../geometry/prism.zig");
 
 /// Grain effect configuration.
 pub const Config = struct {
@@ -16,7 +16,7 @@ pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
     radius: f32,
-    prism: ?triangle.Triangle = null,
+    prism: ?prism.Prism = null,
 };
 
 /// Apply film grain effect to buffer (expects sRGB space).
@@ -60,8 +60,8 @@ pub fn apply(
                 // Prism-only check
                 if (config.prism_only) {
                     if (geometry) |g| {
-                        if (g.prism) |prism| {
-                            if (!prism.containsPoint(px, py)) continue;
+                        if (g.prism) |p| {
+                            if (!p.containsPoint(px, py)) continue;
                         }
                     }
                 }

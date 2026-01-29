@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const vec2 = @import("math/vec2.zig");
-const triangle = @import("geometry/prism.zig");
-const circle = @import("geometry/boundary.zig");
+const prism = @import("geometry/prism.zig");
+const boundary = @import("geometry/boundary.zig");
 const ray = @import("geometry/ray.zig");
 const intersect = @import("geometry/intersect.zig");
 const clock = @import("clock.zig");
@@ -26,7 +26,7 @@ pub const BandPath = struct {
 pub const Paths = struct {
     entry_ray: ?PathSegment = null,
     entry_point: vec2.Vec2 = vec2.xy(0, 0),
-    entry_edge: triangle.Edge = .right,
+    entry_edge: prism.Edge = .right,
     entry_u: f32 = 0,
     needs_bounce: bool = false,
     bounce_point: vec2.Vec2 = vec2.xy(0, 0),
@@ -37,17 +37,17 @@ pub const Paths = struct {
         entry: vec2.Vec2,
         hour_angle: f32,
         rainbow_spread: f32,
-        prism: triangle.Triangle,
-        boundary: circle.Circle,
+        p: prism.Prism,
+        b: boundary.Boundary,
     ) Paths {
         @setFloatMode(.optimized);
         var paths = Paths{};
 
-        const prism_center = prism.centroid();
+        const prism_center = p.centroid();
         const to_center = vec2.normalize(prism_center - entry);
         const entry_ray = ray.Ray.init(entry, to_center);
 
-        const entry_hit = intersect.rayTriangleEntry(entry_ray, prism) orelse return paths;
+        const entry_hit = intersect.rayPrismEntry(entry_ray, p) orelse return paths;
 
         paths.hits_prism = true;
         paths.entry_point = entry_hit.point;
@@ -59,17 +59,17 @@ pub const Paths = struct {
             entry_hit.edge,
             entry_hit.u,
             hour_angle,
-            prism,
+            p,
         );
         paths.needs_bounce = bounce_vertex != null;
-        const bounce_point = if (bounce_vertex) |v| prism.getVertex(v) else vec2.xy(0, 0);
+        const bounce_point = if (bounce_vertex) |v| p.getVertex(v) else vec2.xy(0, 0);
         paths.bounce_point = bounce_point;
 
         for (0..band_count) |i| {
             const exit_angle = clock.bandExitAngle(hour_angle, rainbow_spread, i);
             paths.bands[i].exit_angle = exit_angle;
 
-            const exit_hit = intersect.rayTriangleExit(prism_center, exit_angle, prism) orelse continue;
+            const exit_hit = intersect.rayPrismExit(prism_center, exit_angle, p) orelse continue;
             paths.bands[i].prism_exit = exit_hit.point;
 
             if (bounce_vertex != null) {
@@ -89,7 +89,7 @@ pub const Paths = struct {
             }
 
             const exit_ray = ray.Ray.fromAngle(exit_hit.point, exit_angle);
-            if (intersect.rayCircle(exit_ray, boundary)) |border_point| {
+            if (intersect.rayBoundary(exit_ray, b)) |border_point| {
                 paths.bands[i].exit_ray = .{
                     .start = exit_hit.point,
                     .end = border_point,
@@ -102,11 +102,11 @@ pub const Paths = struct {
 };
 
 pub const EdgePosition = union(enum) {
-    on_edge: triangle.Edge,
-    at_vertex: triangle.Vertex,
+    on_edge: prism.Edge,
+    at_vertex: prism.Vertex,
 };
 
-pub fn classifyEdgePosition(edge: triangle.Edge, u: f32) EdgePosition {
+pub fn classifyEdgePosition(edge: prism.Edge, u: f32) EdgePosition {
     if (u < vertex_threshold) {
         return .{ .at_vertex = edge.startVertex() };
     } else if (u > 1.0 - vertex_threshold) {
@@ -117,16 +117,16 @@ pub fn classifyEdgePosition(edge: triangle.Edge, u: f32) EdgePosition {
 }
 
 pub fn computeBounceVertex(
-    entry_edge: triangle.Edge,
+    entry_edge: prism.Edge,
     entry_u: f32,
     hour_angle: f32,
-    prism: triangle.Triangle,
-) ?triangle.Vertex {
+    p: prism.Prism,
+) ?prism.Vertex {
     @setFloatMode(.optimized);
     const entry_pos = classifyEdgePosition(entry_edge, entry_u);
-    const prism_center = prism.centroid();
+    const prism_center = p.centroid();
 
-    const exit_hit = intersect.rayTriangleExit(prism_center, hour_angle, prism) orelse return null;
+    const exit_hit = intersect.rayPrismExit(prism_center, hour_angle, p) orelse return null;
 
     const exit_pos = classifyEdgePosition(exit_hit.edge, exit_hit.u);
     const dx = @cos(hour_angle);

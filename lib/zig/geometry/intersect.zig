@@ -2,8 +2,8 @@ const std = @import("std");
 
 const vec2 = @import("../math/vec2.zig");
 const ray = @import("ray.zig");
-const triangle = @import("prism.zig");
-const circle = @import("boundary.zig");
+const prism = @import("prism.zig");
+const boundary = @import("boundary.zig");
 
 const eps_norm: f32 = 1e-9;
 const eps_parallel: f32 = 1e-7;
@@ -13,7 +13,7 @@ pub const Hit = struct {
     point: vec2.Vec2,
     t: f32,
     u: f32,
-    edge: triangle.Edge,
+    edge: prism.Edge,
 };
 
 pub fn raySegment(
@@ -57,16 +57,16 @@ pub fn raySegment(
     };
 }
 
-pub fn rayTriangleEntry(r: ray.Ray, tri: triangle.Triangle) ?Hit {
+pub fn rayPrismEntry(r: ray.Ray, tri: prism.Prism) ?Hit {
     @setFloatMode(.optimized);
-    const scale = triangleScale(tri);
+    const scale = prismScale(tri);
     const eps_t = eps_rel * scale;
     const eps_u = eps_rel;
 
     var best: ?Hit = null;
     var best_t: f32 = std.math.inf(f32);
 
-    inline for (std.meta.tags(triangle.Edge)) |edge| {
+    inline for (std.meta.tags(prism.Edge)) |edge| {
         const segment = tri.getEdge(edge);
         if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
             if (hit.t < best_t) {
@@ -84,17 +84,17 @@ pub fn rayTriangleEntry(r: ray.Ray, tri: triangle.Triangle) ?Hit {
     return best;
 }
 
-pub fn rayTriangleExit(origin: vec2.Vec2, angle: f32, tri: triangle.Triangle) ?Hit {
+pub fn rayPrismExit(origin: vec2.Vec2, angle: f32, tri: prism.Prism) ?Hit {
     @setFloatMode(.optimized);
     const r = ray.Ray.fromAngle(origin, angle);
-    const scale = triangleScale(tri);
+    const scale = prismScale(tri);
     const eps_t = eps_rel * scale;
     const eps_u = eps_rel;
 
     var best: ?Hit = null;
     var best_t: f32 = 0.0;
 
-    inline for (std.meta.tags(triangle.Edge)) |edge| {
+    inline for (std.meta.tags(prism.Edge)) |edge| {
         const segment = tri.getEdge(edge);
         if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
             if (hit.t > best_t) {
@@ -112,7 +112,7 @@ pub fn rayTriangleExit(origin: vec2.Vec2, angle: f32, tri: triangle.Triangle) ?H
     return best;
 }
 
-pub fn rayCircle(r: ray.Ray, circ: circle.Circle) ?vec2.Vec2 {
+pub fn rayBoundary(r: ray.Ray, circ: boundary.Boundary) ?vec2.Vec2 {
     @setFloatMode(.optimized);
     const oc = r.origin - circ.center;
     const a = vec2.dot(r.direction, r.direction);
@@ -132,10 +132,10 @@ pub fn rayCircle(r: ray.Ray, circ: circle.Circle) ?vec2.Vec2 {
     return r.pointAt(t);
 }
 
-fn triangleScale(tri: triangle.Triangle) f32 {
+fn prismScale(tri: prism.Prism) f32 {
     @setFloatMode(.optimized);
     var total: f32 = 0.0;
-    inline for (std.meta.tags(triangle.Edge)) |edge| {
+    inline for (std.meta.tags(prism.Edge)) |edge| {
         const segment = tri.getEdge(edge);
         const delta = segment.end - segment.start;
         total += vec2.length(delta);

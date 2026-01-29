@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const band = @import("rendering/band.zig");
-const circle = @import("geometry/boundary.zig");
+const boundary = @import("geometry/boundary.zig");
 const clip = @import("rendering/clip.zig");
 const clock = @import("clock.zig");
 const color = @import("color/color.zig");
@@ -9,7 +9,7 @@ const glow = @import("rendering/glow.zig");
 const line = @import("geometry/segment.zig");
 const palette = @import("color/palette.zig");
 const spectrum = @import("spectrum.zig");
-const triangle = @import("geometry/prism.zig");
+const prism = @import("geometry/prism.zig");
 const vec2 = @import("math/vec2.zig");
 
 const markers = @import("rendering/markers.zig");
@@ -45,7 +45,7 @@ pub const Scene = struct {
 
     time_minutes: f32 = 0,
 
-    prism: triangle.Triangle = undefined,
+    prism: prism.Prism = undefined,
     prism_dirty: bool = true,
 
     prism_config: PrismConfig = .{},
@@ -115,7 +115,7 @@ pub const Scene = struct {
 
     pub fn updatePrism(self: *Scene) void {
         const prism_size = self.prism_config.size * self.radius;
-        self.prism = triangle.Triangle.equilateral(self.center, prism_size);
+        self.prism = prism.Prism.equilateral(self.center, prism_size);
         self.prism_dirty = false;
     }
 
@@ -135,7 +135,7 @@ pub const Scene = struct {
 
         ctx.clearWithBackground(self.center[0], self.center[1], self.radius);
 
-        const boundary = circle.Circle.init(self.center, self.radius);
+        const bnd = boundary.Boundary.init(self.center, self.radius);
 
         const hours_f = self.time_minutes / 60.0;
         const hours: i32 = @intFromFloat(hours_f);
@@ -149,10 +149,10 @@ pub const Scene = struct {
             hour_angle,
             self.prism_config.rainbow_spread,
             self.prism,
-            boundary,
+            bnd,
         );
 
-        const circle_clip = clip.Region{ .circle = &boundary };
+        const circle_clip = clip.Region{ .boundary = &bnd };
         const prism_tri = &self.prism;
         const cache = self.ensurePaletteCache();
 
@@ -186,7 +186,7 @@ pub const Scene = struct {
                         .falloff = self.ray_config.falloff,
                         .color = .{ .uniform = color.white },
                         .intensity = .{ .uniform = self.ray_config.intensity },
-                    }, .{ .triangle = prism_tri }, null);
+                    }, .{ .prism = prism_tri }, null);
                 }
 
                 // Bounce → exit segment: COLORED with gradient intensity fade
@@ -199,14 +199,14 @@ pub const Scene = struct {
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
-                            }, .{ .triangle = prism_tri }, null);
+                            }, .{ .prism = prism_tri }, null);
                         } else {
                             ctx.renderGlowLine(segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .uniform = self.ray_config.intensity },
-                            }, .{ .triangle = prism_tri }, null);
+                            }, .{ .prism = prism_tri }, null);
                         }
                     }
                 }
@@ -221,14 +221,14 @@ pub const Scene = struct {
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
-                            }, .{ .triangle = prism_tri }, null);
+                            }, .{ .prism = prism_tri }, null);
                         } else {
                             ctx.renderGlowLine(segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .uniform = self.ray_config.intensity },
-                            }, .{ .triangle = prism_tri }, null);
+                            }, .{ .prism = prism_tri }, null);
                         }
                     }
                 }

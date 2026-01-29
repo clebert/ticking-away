@@ -2,8 +2,8 @@ const std = @import("std");
 const watchface = @import("watchface");
 
 const spectrum = watchface.spectrum;
-const triangle = watchface.triangle;
-const circle = watchface.circle;
+const prism = watchface.prism;
+const boundary = watchface.boundary;
 const clock = watchface.clock;
 const vec2 = watchface.vec2;
 const band_ctx = watchface.band;
@@ -33,8 +33,8 @@ test "07:40 vertex entry at v2" {
     const prism_size: f32 = 100.0;
 
     const center = vec2.xy(cx, cy);
-    const prism = triangle.Triangle.equilateral(center, prism_size);
-    const boundary = circle.Circle.init(center, radius);
+    const p = prism.Prism.equilateral(center, prism_size);
+    const bnd = boundary.Boundary.init(center, radius);
 
     // 40 minutes
     const minutes: f32 = 40.0;
@@ -50,16 +50,16 @@ test "07:40 vertex entry at v2" {
         entry,
         hour_angle,
         rainbow_spread,
-        prism,
-        boundary,
+        p,
+        bnd,
     );
 
     // Basic checks
     try std.testing.expect(paths.hits_prism);
 
     // Get prism vertices
-    const v0 = prism.getVertex(.apex);
-    const v2 = prism.getVertex(.bottom_left);
+    const v0 = p.getVertex(.apex);
+    const v2 = p.getVertex(.bottom_left);
 
     // Verify entry point is near v2
     const entry_dist = distance(paths.entry_point, v2);
@@ -109,10 +109,10 @@ test "bounce logic for entry at v2" {
     const prism_size: f32 = 100.0;
 
     const center = vec2.xy(cx, cy);
-    const prism = triangle.Triangle.equilateral(center, prism_size);
+    const p = prism.Prism.equilateral(center, prism_size);
 
     // Simulate entry at bottom_left (bottom edge, u=1.0)
-    const entry_edge: triangle.Edge = .bottom;
+    const entry_edge: prism.Edge = .bottom;
     const entry_u: f32 = 1.0;
 
     // Hour angle pointing toward lower-left (should exit on edge 1)
@@ -122,11 +122,11 @@ test "bounce logic for entry at v2" {
         entry_edge,
         entry_u,
         hour_angle,
-        prism,
+        p,
     );
 
     // Should need bounce at apex
-    try std.testing.expectEqual(triangle.Vertex.apex, bounce_vertex.?);
+    try std.testing.expectEqual(prism.Vertex.apex, bounce_vertex.?);
 }
 
 test "03:15 exit rays should be valid" {
@@ -136,8 +136,8 @@ test "03:15 exit rays should be valid" {
     const prism_size: f32 = 117.0; // 65% of radius
 
     const center = vec2.xy(cx, cy);
-    const prism = triangle.Triangle.equilateral(center, prism_size);
-    const boundary = circle.Circle.init(center, radius);
+    const p = prism.Prism.equilateral(center, prism_size);
+    const bnd = boundary.Boundary.init(center, radius);
 
     // 03:15 - minute at 15, hour at 3
     const minutes: f32 = 15.0;
@@ -150,8 +150,8 @@ test "03:15 exit rays should be valid" {
         entry,
         hour_angle,
         rainbow_spread,
-        prism,
-        boundary,
+        p,
+        bnd,
     );
 
     // Should hit the prism
@@ -201,8 +201,8 @@ test "03:15 external gradient renders pixels" {
     const prism_size: f32 = 117.0;
 
     const center = vec2.xy(cx, cy);
-    const prism = triangle.Triangle.equilateral(center, prism_size);
-    const boundary = circle.Circle.init(center, radius);
+    const p = prism.Prism.equilateral(center, prism_size);
+    const bnd = boundary.Boundary.init(center, radius);
 
     // 03:15
     const minutes: f32 = 15.0;
@@ -215,8 +215,8 @@ test "03:15 external gradient renders pixels" {
         entry,
         hour_angle,
         rainbow_spread,
-        prism,
-        boundary,
+        p,
+        bnd,
     );
 
     const first_band = paths.bands[0];
@@ -271,7 +271,7 @@ test "03:15 external gradient renders pixels" {
             .center_x = cx,
             .center_y = cy,
             .radius = radius,
-            .prism = prism,
+            .prism = p,
         },
         &cache,
     );

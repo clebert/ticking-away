@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const circle = @import("../geometry/boundary.zig");
+const boundary = @import("../geometry/boundary.zig");
 const clip = @import("clip.zig");
 const color = @import("../color/color.zig");
 const glow = @import("glow.zig");
@@ -29,19 +29,19 @@ pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
     radius: f32,
-    boundary: circle.Circle = undefined,
+    bnd: boundary.Boundary = undefined,
 
     pub fn init(center_x: f32, center_y: f32, radius: f32) Geometry {
         return .{
             .center_x = center_x,
             .center_y = center_y,
             .radius = radius,
-            .boundary = circle.Circle.init(vec2.xy(center_x, center_y), radius),
+            .bnd = boundary.Boundary.init(vec2.xy(center_x, center_y), radius),
         };
     }
 
     pub fn circleClip(self: *const Geometry) clip.Region {
-        return .{ .circle = &self.boundary };
+        return .{ .boundary = &self.bnd };
     }
 };
 

@@ -5,7 +5,7 @@ const band = watchface.band;
 const color = watchface.color;
 const glow = watchface.glow;
 const line = watchface.line;
-const triangle = watchface.triangle;
+const prism = watchface.prism;
 const vec2 = watchface.vec2;
 
 fn expectNear(actual: f32, expected: f32, tolerance: f32) !void {
@@ -127,9 +127,9 @@ test "renderGlowLine respects clipping" {
     };
 
     // Clip to small triangle on left side
-    const tri = triangle.Triangle.equilateral(vec2.xy(5, 16), 10);
+    const tri = prism.Prism.equilateral(vec2.xy(5, 16), 10);
 
-    ctx.renderGlowLine(seg, config, .{ .triangle = &tri }, null);
+    ctx.renderGlowLine(seg, config, .{ .prism = &tri }, null);
 
     // Check that right side is still black
     const right_idx = 16 * 32 + 28;
@@ -189,7 +189,7 @@ test "renderPrismGlow produces glow inside triangle" {
 
     ctx.clear();
 
-    const tri = triangle.Triangle.equilateral(vec2.xy(32, 36), 44);
+    const tri = prism.Prism.equilateral(vec2.xy(32, 36), 44);
 
     const glow_color = color.white;
     const glow_width: f32 = 8;
@@ -233,7 +233,7 @@ test "renderGlowLine excludes triangle" {
     };
 
     // Exclude triangle in center
-    const exclude = triangle.Triangle.equilateral(vec2.xy(16, 18), 12);
+    const exclude = prism.Prism.equilateral(vec2.xy(16, 18), 12);
 
     ctx.renderGlowLine(seg, config, null, &exclude);
 

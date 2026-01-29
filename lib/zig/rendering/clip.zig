@@ -1,15 +1,15 @@
-const circle = @import("../geometry/boundary.zig");
+const boundary = @import("../geometry/boundary.zig");
 const range = @import("../math/range.zig");
-const triangle = @import("../geometry/prism.zig");
+const prism = @import("../geometry/prism.zig");
 
 pub const Region = union(enum) {
-    triangle: *const triangle.Triangle,
-    circle: *const circle.Circle,
+    prism: *const prism.Prism,
+    boundary: *const boundary.Boundary,
 
     pub fn scanlineRange(self: Region, y: f32) ?range.Range {
         return switch (self) {
-            .triangle => |t| t.scanlineRange(y),
-            .circle => |c| c.scanlineRange(y),
+            .prism => |p| p.scanlineRange(y),
+            .boundary => |b| b.scanlineRange(y),
         };
     }
 };

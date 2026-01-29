@@ -8,7 +8,7 @@ const glow = @import("glow.zig");
 const gradient = @import("gradient.zig");
 const line = @import("../geometry/segment.zig");
 const palette = @import("../color/palette.zig");
-const triangle = @import("../geometry/prism.zig");
+const prism = @import("../geometry/prism.zig");
 const vec2 = @import("../math/vec2.zig");
 
 inline fn normalizeAngle(a: f32) f32 {
@@ -60,7 +60,7 @@ pub const Context = struct {
         segment: line.Segment,
         config: glow.Config,
         clip_to: ?clip.Region,
-        exclude: ?*const triangle.Triangle,
+        exclude: ?*const prism.Prism,
     ) void {
         @setFloatMode(.optimized);
         const glow_width = config.width;
@@ -139,7 +139,7 @@ pub const Context = struct {
 
     pub fn renderPrismGlow(
         self: *Context,
-        tri: triangle.Triangle,
+        tri: prism.Prism,
         glow_color: color.Color,
         glow_width: f32,
         intensity: f32,
@@ -220,12 +220,12 @@ pub const Context = struct {
         var y_start: usize = 0;
         var y_end: usize = self.height;
 
-        const prism = geometry.prism;
+        const geo_prism = geometry.prism;
 
         if (config.mode == .internal) {
-            const v0 = prism.getVertex(.apex);
-            const v1 = prism.getVertex(.bottom_right);
-            const v2 = prism.getVertex(.bottom_left);
+            const v0 = geo_prism.getVertex(.apex);
+            const v1 = geo_prism.getVertex(.bottom_right);
+            const v2 = geo_prism.getVertex(.bottom_left);
             const min_x = @min(@min(v0[0], v1[0]), v2[0]);
             const max_x = @max(@max(v0[0], v1[0]), v2[0]);
             const min_y = @min(@min(v0[1], v1[1]), v2[1]);
@@ -252,7 +252,7 @@ pub const Context = struct {
             for (x_start..x_end) |x| {
                 const px = @as(f32, @floatFromInt(x)) + 0.5;
 
-                const inside = prism.containsPoint(px, py);
+                const inside = geo_prism.containsPoint(px, py);
 
                 if (config.mode == .external) {
                     const dx = px - geometry.center_x;

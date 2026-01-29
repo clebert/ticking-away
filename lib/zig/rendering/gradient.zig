@@ -1,4 +1,4 @@
-const triangle = @import("../geometry/prism.zig");
+const prism = @import("../geometry/prism.zig");
 
 /// Gradient fill mode.
 pub const Mode = enum {
@@ -24,5 +24,5 @@ pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
     radius: f32,
-    prism: triangle.Triangle,
+    prism: prism.Prism,
 };

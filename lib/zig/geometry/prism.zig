@@ -35,17 +35,17 @@ pub const Edge = enum(u2) {
     }
 };
 
-pub const Triangle = struct {
+pub const Prism = struct {
     vertices_x: @Vector(3, f32),
     vertices_y: @Vector(3, f32),
 
-    pub fn getVertex(self: Triangle, vertex: Vertex) vec2.Vec2 {
+    pub fn getVertex(self: Prism, vertex: Vertex) vec2.Vec2 {
         const index = @intFromEnum(vertex);
 
         return vec2.xy(self.vertices_x[index], self.vertices_y[index]);
     }
 
-    pub fn scanlineRange(self: Triangle, y: f32) ?range.Range {
+    pub fn scanlineRange(self: Prism, y: f32) ?range.Range {
         @setFloatMode(.optimized);
 
         const t = self.getVertex(.apex);
@@ -71,7 +71,7 @@ pub const Triangle = struct {
         return .{ .x_min = x_short, .x_max = x_long };
     }
 
-    pub fn containsPoint(self: Triangle, px: f32, py: f32) bool {
+    pub fn containsPoint(self: Prism, px: f32, py: f32) bool {
         @setFloatMode(.optimized);
         // Use original vertex order (not sorted) for consistent winding
         const x0 = self.vertices_x[0];
@@ -92,15 +92,15 @@ pub const Triangle = struct {
         return (a >= 0) and (b >= 0) and ((a + b) <= 1);
     }
 
-    pub fn minY(self: Triangle) f32 {
+    pub fn minY(self: Prism) f32 {
         return self.vertices_y[0];
     }
 
-    pub fn maxY(self: Triangle) f32 {
+    pub fn maxY(self: Prism) f32 {
         return self.vertices_y[1];
     }
 
-    pub fn smoothEdgeDistance(self: Triangle, point: vec2.Vec2, k: f32) f32 {
+    pub fn smoothEdgeDistance(self: Prism, point: vec2.Vec2, k: f32) f32 {
         @setFloatMode(.optimized);
         const d0 = @sqrt(self.getEdge(.right).distanceSq(point));
         const d1 = @sqrt(self.getEdge(.bottom).distanceSq(point));
@@ -131,14 +131,14 @@ pub const Triangle = struct {
         }
     };
 
-    pub fn getEdge(self: Triangle, edge: Edge) EdgeSegment {
+    pub fn getEdge(self: Prism, edge: Edge) EdgeSegment {
         return .{
             .start = self.getVertex(edge.startVertex()),
             .end = self.getVertex(edge.endVertex()),
         };
     }
 
-    pub fn centroid(self: Triangle) vec2.Vec2 {
+    pub fn centroid(self: Prism) vec2.Vec2 {
         @setFloatMode(.optimized);
         const v0 = self.getVertex(.apex);
         const v1 = self.getVertex(.bottom_right);
@@ -148,7 +148,7 @@ pub const Triangle = struct {
             (v0[1] + v1[1] + v2[1]) / 3.0,
         );
     }
-    pub fn equilateral(center: vec2.Vec2, base_width: f32) Triangle {
+    pub fn equilateral(center: vec2.Vec2, base_width: f32) Prism {
         @setFloatMode(.optimized);
         const sqrt3 = @sqrt(3.0);
         const half_base = base_width / 2.0;

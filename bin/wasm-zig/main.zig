@@ -107,7 +107,7 @@ export fn renderPrism(
     // Create centered equilateral triangle at 50% viewport size
     const center = watchface.vec2.xy(w_f / 2, h_f / 2);
     const base_width = @min(w_f, h_f) * 0.5;
-    const tri = watchface.triangle.Triangle.equilateral(center, base_width);
+    const tri = watchface.prism.Prism.equilateral(center, base_width);
 
     ctx.renderPrismGlow(
         tri,
@@ -198,8 +198,8 @@ export fn renderWatchface(
     const radius = size * 0.45;
     const prism_base = size * 0.28;
 
-    const prism = watchface.triangle.Triangle.equilateral(center, prism_base);
-    const boundary = watchface.circle.Circle.init(center, radius);
+    const p = watchface.prism.Prism.equilateral(center, prism_base);
+    const bnd = watchface.boundary.Boundary.init(center, radius);
 
     // Compute ray paths from time
     const entry = watchface.clock.entryPoint(center, radius, minutes);
@@ -210,13 +210,13 @@ export fn renderWatchface(
         entry,
         hour_angle,
         rainbow_spread,
-        prism,
-        boundary,
+        p,
+        bnd,
     );
 
     // Render prism glow
     const prism_color = watchface.color.rgba(0.6, 0.65, 0.8, 1);
-    ctx.renderPrismGlow(prism, prism_color, 80.0, 0.8, .exponential);
+    ctx.renderPrismGlow(p, prism_color, 80.0, 0.8, .exponential);
 
     // Glow config for rays
     const ray_width: f32 = 12.0;
@@ -230,7 +230,7 @@ export fn renderWatchface(
             .falloff = falloff,
             .color = .{ .uniform = watchface.color.rgb(0.9, 0.9, 0.95) },
         };
-        ctx.renderGlowLine(entry_segment, entry_config, .{ .circle = &boundary }, &prism);
+        ctx.renderGlowLine(entry_segment, entry_config, .{ .boundary = &bnd }, &p);
     }
 
     // Render each color band
@@ -250,7 +250,7 @@ export fn renderWatchface(
                 .falloff = falloff,
                 .color = .{ .uniform = internal_color },
             };
-            ctx.renderGlowLine(segment, config, .{ .triangle = &prism }, null);
+            ctx.renderGlowLine(segment, config, .{ .prism = &p }, null);
         }
 
         // Internal segment 2 (colored, after bounce)
@@ -261,7 +261,7 @@ export fn renderWatchface(
                 .falloff = falloff,
                 .color = .{ .uniform = band_color },
             };
-            ctx.renderGlowLine(segment, config, .{ .triangle = &prism }, null);
+            ctx.renderGlowLine(segment, config, .{ .prism = &p }, null);
         }
 
         // Exit ray (colored, outside prism)
@@ -272,7 +272,7 @@ export fn renderWatchface(
                 .falloff = falloff,
                 .color = .{ .uniform = band_color },
             };
-            ctx.renderGlowLine(segment, config, .{ .circle = &boundary }, &prism);
+            ctx.renderGlowLine(segment, config, .{ .boundary = &bnd }, &p);
         }
     }
 }

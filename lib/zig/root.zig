@@ -1,5 +1,5 @@
 pub const band = @import("rendering/band.zig");
-pub const circle = @import("geometry/boundary.zig");
+pub const boundary = @import("geometry/boundary.zig");
 pub const clip = @import("rendering/clip.zig");
 pub const clock = @import("clock.zig");
 pub const color = @import("color/color.zig");
@@ -16,7 +16,7 @@ pub const range = @import("math/range.zig");
 pub const ray = @import("geometry/ray.zig");
 pub const scene = @import("scene.zig");
 pub const spectrum = @import("spectrum.zig");
-pub const triangle = @import("geometry/prism.zig");
+pub const prism = @import("geometry/prism.zig");
 pub const vec2 = @import("math/vec2.zig");
 
 pub const gradient = @import("rendering/gradient.zig");

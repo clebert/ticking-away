@@ -1,17 +1,17 @@
 const range = @import("../math/range.zig");
 const vec2 = @import("../math/vec2.zig");
 
-pub const Circle = struct {
+pub const Boundary = struct {
     center: vec2.Vec2,
     radius: f32,
     radius_sq: f32,
 
-    pub fn init(center: vec2.Vec2, radius: f32) Circle {
+    pub fn init(center: vec2.Vec2, radius: f32) Boundary {
         @setFloatMode(.optimized);
         return .{ .center = center, .radius = radius, .radius_sq = radius * radius };
     }
 
-    pub fn scanlineRange(self: Circle, y: f32) ?range.Range {
+    pub fn scanlineRange(self: Boundary, y: f32) ?range.Range {
         @setFloatMode(.optimized);
         const dy = y - self.center[1];
         if (@abs(dy) > self.radius) return null;
