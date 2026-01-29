@@ -100,14 +100,6 @@ pub const Prism = struct {
         return self.vertices_y[1];
     }
 
-    pub fn smoothEdgeDistance(self: Prism, point: vec2.Vec2, k: f32) f32 {
-        @setFloatMode(.optimized);
-        const d0 = @sqrt(self.getEdge(.right).distanceSq(point));
-        const d1 = @sqrt(self.getEdge(.bottom).distanceSq(point));
-        const d2 = @sqrt(self.getEdge(.left).distanceSq(point));
-        return smoothMin(smoothMin(d0, d1, k), d2, k);
-    }
-
     pub const EdgeSegment = struct {
         start: vec2.Vec2,
         end: vec2.Vec2,
@@ -167,9 +159,3 @@ pub const Prism = struct {
         };
     }
 };
-
-fn smoothMin(a: f32, b: f32, k: f32) f32 {
-    @setFloatMode(.optimized);
-    const h = @max(k - @abs(a - b), 0) / k;
-    return @min(a, b) - h * h * k * 0.25;
-}

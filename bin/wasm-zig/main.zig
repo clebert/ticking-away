@@ -63,7 +63,7 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
         } },
     };
 
-    ctx.renderGlowLine(segment, config, null, null);
+    watchface.glow.renderLine(&ctx,segment, config, null, null);
 }
 
 /// Clear the buffer to black.
@@ -109,7 +109,7 @@ export fn renderPrism(
     const base_width = @min(w_f, h_f) * 0.5;
     const tri = watchface.prism.Prism.init(center, base_width);
 
-    ctx.renderPrismGlow(
+    watchface.glow.renderPrismEdges(&ctx,
         tri,
         watchface.color.rgba(1, 1, 1, 1),
         glow_width,
@@ -155,7 +155,7 @@ export fn renderGlowLine(
         .color = .{ .uniform = watchface.color.rgba(color_r, color_g, color_b, 1) },
     };
 
-    ctx.renderGlowLine(segment, config, null, null);
+    watchface.glow.renderLine(&ctx,segment, config, null, null);
 }
 
 // Rainbow palette (spectral colors)
@@ -216,7 +216,7 @@ export fn renderWatchface(
 
     // Render prism glow
     const prism_color = watchface.color.rgba(0.6, 0.65, 0.8, 1);
-    ctx.renderPrismGlow(p, prism_color, 80.0, 0.8, .exponential);
+    watchface.glow.renderPrismEdges(&ctx,p, prism_color, 80.0, 0.8, .exponential);
 
     // Glow config for rays
     const ray_width: f32 = 12.0;
@@ -230,7 +230,7 @@ export fn renderWatchface(
             .falloff = falloff,
             .color = .{ .uniform = watchface.color.rgb(0.9, 0.9, 0.95) },
         };
-        ctx.renderGlowLine(entry_segment, entry_config, .{ .boundary = &bnd }, &p);
+        watchface.glow.renderLine(&ctx,entry_segment, entry_config, .{ .boundary = &bnd }, &p);
     }
 
     // Render each color band
@@ -250,7 +250,7 @@ export fn renderWatchface(
                 .falloff = falloff,
                 .color = .{ .uniform = internal_color },
             };
-            ctx.renderGlowLine(segment, config, .{ .prism = &p }, null);
+            watchface.glow.renderLine(&ctx,segment, config, .{ .prism = &p }, null);
         }
 
         // Internal segment 2 (colored, after bounce)
@@ -261,7 +261,7 @@ export fn renderWatchface(
                 .falloff = falloff,
                 .color = .{ .uniform = band_color },
             };
-            ctx.renderGlowLine(segment, config, .{ .prism = &p }, null);
+            watchface.glow.renderLine(&ctx,segment, config, .{ .prism = &p }, null);
         }
 
         // Exit ray (colored, outside prism)
@@ -272,7 +272,7 @@ export fn renderWatchface(
                 .falloff = falloff,
                 .color = .{ .uniform = band_color },
             };
-            ctx.renderGlowLine(segment, config, .{ .boundary = &bnd }, &p);
+            watchface.glow.renderLine(&ctx,segment, config, .{ .boundary = &bnd }, &p);
         }
     }
 }

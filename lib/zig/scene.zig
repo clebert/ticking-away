@@ -169,7 +169,7 @@ pub const Scene = struct {
             // Draw entry ray for each band (white light = all wavelengths combined)
             if (paths.entry_ray) |entry_seg| {
                 const segment = line.Segment.init(entry_seg.start, entry_seg.end);
-                ctx.renderGlowLine(segment, .{
+                glow.renderLine(ctx,segment, .{
                     .width = glow_width,
                     .falloff = self.ray_config.falloff,
                     .color = .{ .uniform = color.white },
@@ -181,7 +181,7 @@ pub const Scene = struct {
                 // Entry → bounce segment: WHITE with uniform intensity
                 if (band_path.internal1) |seg| {
                     const segment = line.Segment.init(seg.start, seg.end);
-                    ctx.renderGlowLine(segment, .{
+                    glow.renderLine(ctx,segment, .{
                         .width = glow_width,
                         .falloff = self.ray_config.falloff,
                         .color = .{ .uniform = color.white },
@@ -194,14 +194,14 @@ pub const Scene = struct {
                     if (draw_internal_colored_rays) {
                         const segment = line.Segment.init(seg.start, seg.end);
                         if (use_gradient_intensity) {
-                            ctx.renderGlowLine(segment, .{
+                            glow.renderLine(ctx,segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
                             }, .{ .prism = prism_tri }, null);
                         } else {
-                            ctx.renderGlowLine(segment, .{
+                            glow.renderLine(ctx,segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
@@ -216,14 +216,14 @@ pub const Scene = struct {
                     if (draw_internal_colored_rays) {
                         const segment = line.Segment.init(seg.start, seg.end);
                         if (use_gradient_intensity) {
-                            ctx.renderGlowLine(segment, .{
+                            glow.renderLine(ctx,segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
                                 .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
                             }, .{ .prism = prism_tri }, null);
                         } else {
-                            ctx.renderGlowLine(segment, .{
+                            glow.renderLine(ctx,segment, .{
                                 .width = glow_width,
                                 .falloff = self.ray_config.falloff,
                                 .color = .{ .uniform = band_color },
@@ -239,7 +239,7 @@ pub const Scene = struct {
             if (!self.ray_config.gradient_fill) {
                 if (band_path.exit_ray) |seg| {
                     const segment = line.Segment.init(seg.start, seg.end);
-                    ctx.renderGlowLine(segment, .{
+                    glow.renderLine(ctx,segment, .{
                         .width = glow_width,
                         .falloff = self.ray_config.falloff,
                         .color = .{ .uniform = band_color },
@@ -339,7 +339,8 @@ pub const Scene = struct {
             }
         }
 
-        ctx.renderPrismGlow(
+        glow.renderPrismEdges(
+            ctx,
             self.prism,
             self.glow_config.color,
             self.glow_config.width * self.radius,
@@ -357,7 +358,7 @@ pub const Scene = struct {
             const marker_clip = marker_geometry.circleClip();
 
             for (hour_markers) |m| {
-                ctx.renderGlowLine(m.segment, m.glow_config, marker_clip, null);
+                glow.renderLine(ctx,m.segment, m.glow_config, marker_clip, null);
             }
         }
     }

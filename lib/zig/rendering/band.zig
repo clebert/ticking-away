@@ -2,14 +2,9 @@ const std = @import("std");
 const tau = std.math.tau;
 const pi = std.math.pi;
 
-const clip = @import("clip.zig");
 const color = @import("../color/color.zig");
-const glow = @import("glow.zig");
 const gradient = @import("gradient.zig");
-const line = @import("../geometry/segment.zig");
 const palette = @import("../color/palette.zig");
-const prism = @import("../geometry/prism.zig");
-const vec2 = @import("../math/vec2.zig");
 
 inline fn normalizeAngle(a: f32) f32 {
     @setFloatMode(.optimized);
@@ -55,124 +50,12 @@ pub const Context = struct {
         }
     }
 
-    pub fn renderGlowLine(
-        self: *Context,
-        segment: line.Segment,
-        config: glow.Config,
-        clip_to: ?clip.Region,
-        exclude: ?*const prism.Prism,
-    ) void {
-        @setFloatMode(.optimized);
-        const glow_width = config.width;
-        const glow_width_sq = glow_width * glow_width;
-
-        const bounds = segment.boundingBox(glow_width);
-        const y_min = @max(0, @as(isize, @intFromFloat(bounds.min[1])));
-        const y_max = @min(@as(isize, @intCast(self.total_height)), @as(isize, @intFromFloat(bounds.max[1])) + 1);
-        const x_min = @max(0, @as(isize, @intFromFloat(bounds.min[0])));
-        const x_max = @min(@as(isize, @intCast(self.width)), @as(isize, @intFromFloat(bounds.max[0])) + 1);
-
-        if (y_min >= y_max or x_min >= x_max) return;
-
-        const x_start: usize = @intCast(x_min);
-        const x_end: usize = @intCast(x_max);
-
-        const band_y_min: isize = @intCast(self.y_offset);
-        const band_y_max: isize = @intCast(self.y_offset + self.height);
-
-        if (y_max <= band_y_min or y_min >= band_y_max) return;
-
-        const local_y_start: usize = if (y_min < band_y_min) 0 else @intCast(y_min - band_y_min);
-        const local_y_end: usize = if (y_max > band_y_max) self.height else @intCast(y_max - band_y_min);
-
-        for (local_y_start..local_y_end) |local_y| {
-            const global_y = self.globalY(local_y);
-            const y_f: f32 = @floatFromInt(global_y);
-            const y_center = y_f + 0.5;
-
-            var row_x_start = x_start;
-            var row_x_end = x_end;
-            if (clip_to) |region| {
-                const clip_range = region.scanlineRange(y_center) orelse continue;
-                row_x_start = @max(row_x_start, @as(usize, @intFromFloat(@max(0, clip_range.x_min))));
-                row_x_end = @min(row_x_end, @as(usize, @intFromFloat(clip_range.x_max)) + 1);
-                if (row_x_start >= row_x_end) continue;
-            }
-
-            for (row_x_start..row_x_end) |x| {
-                const px = @as(f32, @floatFromInt(x)) + 0.5;
-
-                if (exclude) |tri| {
-                    if (tri.containsPoint(px, y_center)) continue;
-                }
-
-                const result = segment.distanceSq(px, y_center);
-                if (result.distance_sq >= glow_width_sq) continue;
-
-                const distance = @sqrt(result.distance_sq);
-                const radial_t = distance / glow_width;
-                const radial_intensity = config.falloff.apply(radial_t);
-                const linear_intensity = switch (config.intensity) {
-                    .uniform => |v| v,
-                    .gradient => |g| g.start + (g.end - g.start) * result.t,
-                };
-                const intensity = radial_intensity * linear_intensity;
-                const base_color = switch (config.color) {
-                    .uniform => |c| c,
-                    .gradient => |g| color.lerp(g.start, g.end, result.t),
-                };
-
-                const p = self.pixel(x, local_y);
-                const scale_vec: color.Color = @splat(intensity);
-                p.* = p.* + base_color * scale_vec;
-            }
-        }
-    }
-
     inline fn pixel(self: *Context, x: usize, y: usize) *color.Color {
         return &self.buffer[y * self.width + x];
     }
 
     inline fn globalY(self: *const Context, local_y: usize) usize {
         return self.y_offset + local_y;
-    }
-
-    pub fn renderPrismGlow(
-        self: *Context,
-        tri: prism.Prism,
-        glow_color: color.Color,
-        glow_width: f32,
-        intensity: f32,
-        falloff: glow.Falloff,
-    ) void {
-        @setFloatMode(.optimized);
-        const smooth_k = glow_width * 0.5;
-
-        const y_min = @max(self.y_offset, @as(usize, @intFromFloat(@max(0, tri.minY()))));
-        const y_max = @min(self.y_offset + self.height, @as(usize, @intFromFloat(tri.maxY())) + 1);
-
-        for (y_min..y_max) |global_y| {
-            const local_y = global_y - self.y_offset;
-            const y_f: f32 = @floatFromInt(global_y);
-            const y_center = y_f + 0.5;
-
-            const tri_range = tri.scanlineRange(y_center) orelse continue;
-            const x_start = @max(0, @as(usize, @intFromFloat(tri_range.x_min)));
-            const x_end = @min(self.width, @as(usize, @intFromFloat(tri_range.x_max)) + 1);
-
-            for (x_start..x_end) |x| {
-                const px = @as(f32, @floatFromInt(x)) + 0.5;
-                const dist = tri.smoothEdgeDistance(vec2.xy(px, y_center), smooth_k);
-
-                if (dist < glow_width) {
-                    const t = @min(@max(dist / glow_width, 0), 1);
-                    const alpha = falloff.apply(t) * intensity;
-                    const p = self.pixel(x, local_y);
-                    const scale_vec: color.Color = @splat(alpha);
-                    p.* = p.* + glow_color * scale_vec;
-                }
-            }
-        }
     }
 
     pub fn renderGradient(

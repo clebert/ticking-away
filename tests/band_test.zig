@@ -95,7 +95,7 @@ test "renderGlowLine produces non-zero output" {
         .falloff = .linear,
     };
 
-    ctx.renderGlowLine(seg, config, null, null);
+    glow.renderLine(&ctx,seg, config, null, null);
 
     // Buffer should have non-zero values now
     const sum = sumBuffer(&buffer);
@@ -129,7 +129,7 @@ test "renderGlowLine respects clipping" {
     // Clip to small triangle on left side
     const tri = prism.Prism.init(vec2.xy(5, 16), 10);
 
-    ctx.renderGlowLine(seg, config, .{ .prism = &tri }, null);
+    glow.renderLine(&ctx,seg, config, .{ .prism = &tri }, null);
 
     // Check that right side is still black
     const right_idx = 16 * 32 + 28;
@@ -166,7 +166,7 @@ test "renderGlowLine with gradient color" {
         .falloff = .linear,
     };
 
-    ctx.renderGlowLine(seg, config, null, null);
+    glow.renderLine(&ctx,seg, config, null, null);
 
     // Left side should be more red
     const left_idx = 16 * 32 + 6;
@@ -195,7 +195,7 @@ test "renderPrismGlow produces glow inside triangle" {
     const glow_width: f32 = 8;
     const intensity: f32 = 1;
 
-    ctx.renderPrismGlow(tri, glow_color, glow_width, intensity, .linear);
+    glow.renderPrismEdges(&ctx, tri, glow_color, glow_width, intensity, .linear);
 
     // Check that some glow was rendered (glow appears along edges)
     var found_glow = false;
@@ -235,7 +235,7 @@ test "renderGlowLine excludes triangle" {
     // Exclude triangle in center
     const exclude = prism.Prism.init(vec2.xy(16, 18), 12);
 
-    ctx.renderGlowLine(seg, config, null, &exclude);
+    glow.renderLine(&ctx,seg, config, null, &exclude);
 
     // Center (inside exclude triangle) should be black
     const center_idx = 16 * 32 + 16;
@@ -270,7 +270,7 @@ test "context with y_offset renders correct region" {
         .falloff = .linear,
     };
 
-    ctx.renderGlowLine(seg, config, null, null);
+    glow.renderLine(&ctx,seg, config, null, null);
 
     // Should have non-zero output
     const sum = sumBuffer(&buffer);
@@ -302,7 +302,7 @@ test "context with y_offset ignores lines outside region" {
         .falloff = .linear,
     };
 
-    ctx.renderGlowLine(seg, config, null, null);
+    glow.renderLine(&ctx,seg, config, null, null);
 
     // Should be all black (line outside our y range)
     const sum = sumBuffer(&buffer);
