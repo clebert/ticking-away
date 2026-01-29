@@ -59,6 +59,10 @@ enum { DITHER_PALETTE_SPECTRA6_INKY_COUNT = 6 };
 extern const DitherRGB DITHER_PALETTE_SPECTRA6_EPDOPT[];
 enum { DITHER_PALETTE_SPECTRA6_EPDOPT_COUNT = 6 };
 
+// Spectra 6 palette from TRMNL firmware - 6 colors
+extern const DitherRGB DITHER_PALETTE_SPECTRA6_TRMNL[];
+enum { DITHER_PALETTE_SPECTRA6_TRMNL_COUNT = 6 };
+
 // -------------------------------------------------------------------------------------------------
 // Color Space Conversion Functions
 // -------------------------------------------------------------------------------------------------

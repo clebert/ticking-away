@@ -37,6 +37,17 @@ const DitherRGB DITHER_PALETTE_SPECTRA6_EPDOPT[DITHER_PALETTE_SPECTRA6_EPDOPT_CO
     {18, 95, 32},    // 5: Green (#125f20)
 };
 
+// Spectra 6 palette from TRMNL firmware
+// Source: https://github.com/usetrmnl/trmnl-firmware/blob/754868a57b6f47c49479167e4047e369894d2ffc/src/display.cpp#L509
+const DitherRGB DITHER_PALETTE_SPECTRA6_TRMNL[DITHER_PALETTE_SPECTRA6_TRMNL_COUNT] = {
+    {0, 0, 0},       // 0: Black
+    {192, 192, 192}, // 1: White
+    {192, 192, 0},   // 2: Yellow
+    {192, 0, 0},     // 3: Red
+    {0, 0, 192},     // 4: Blue
+    {0, 192, 0},     // 5: Green
+};
+
 // =================================================================================================
 // Constants
 // =================================================================================================

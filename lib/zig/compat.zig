@@ -120,6 +120,7 @@ pub const DitherPaletteMode = enum(i32) {
     ideal = 0,
     spectra6_inky = 1,
     spectra6_epdopt = 2,
+    spectra6_trmnl = 3,
 };
 
 /// Dither type matching C DitherType.
@@ -248,6 +249,7 @@ fn toDitherPaletteType(mode: DitherPaletteMode) dither.PaletteType {
         .ideal => .ideal,
         .spectra6_inky => .spectra6_inky,
         .spectra6_epdopt => .spectra6_epdopt,
+        .spectra6_trmnl => .spectra6_trmnl,
     };
 }
 

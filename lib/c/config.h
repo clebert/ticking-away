@@ -76,6 +76,7 @@ typedef enum {
   DITHER_MODE_IDEAL = 0,           // Ideal spectrum colors
   DITHER_MODE_SPECTRA6_INKY = 1,   // Spectra 6 from Pimoroni Inky library
   DITHER_MODE_SPECTRA6_EPDOPT = 2, // Spectra 6 from EDP Optimize (measured)
+  DITHER_MODE_SPECTRA6_TRMNL = 3,  // Spectra 6 from TRMNL firmware
 } DitherPaletteMode;
 
 typedef enum {

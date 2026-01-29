@@ -28,6 +28,7 @@ pub const PaletteType = enum {
     ideal,
     spectra6_inky,
     spectra6_epdopt,
+    spectra6_trmnl,
 };
 
 /// Standard palette color indices (consistent across all palettes).
@@ -54,6 +55,7 @@ pub const palette_ideal = Palette.init(.{
 });
 
 /// Spectra 6 palette from Pimoroni Inky library.
+/// Source: https://github.com/pimoroni/inky
 pub const palette_spectra6_inky = Palette.init(.{
     .black = .{ .r = 0, .g = 0, .b = 0 },
     .white = .{ .r = 161, .g = 164, .b = 165 }, // Device white appears grayish
@@ -64,6 +66,7 @@ pub const palette_spectra6_inky = Palette.init(.{
 });
 
 /// Spectra 6 palette from EDP Optimize (measured values).
+/// Source: https://github.com/Utzel-Butzel/epdoptimize
 pub const palette_spectra6_epdopt = Palette.init(.{
     .black = .{ .r = 25, .g = 30, .b = 33 },
     .white = .{ .r = 232, .g = 232, .b = 232 },
@@ -73,12 +76,24 @@ pub const palette_spectra6_epdopt = Palette.init(.{
     .green = .{ .r = 18, .g = 95, .b = 32 },
 });
 
+/// Spectra 6 palette from TRMNL firmware.
+/// Source: https://github.com/usetrmnl/trmnl-firmware/blob/754868a57b6f47c49479167e4047e369894d2ffc/src/display.cpp#L509
+pub const palette_spectra6_trmnl = Palette.init(.{
+    .black = .{ .r = 0, .g = 0, .b = 0 },
+    .white = .{ .r = 192, .g = 192, .b = 192 },
+    .yellow = .{ .r = 192, .g = 192, .b = 0 },
+    .red = .{ .r = 192, .g = 0, .b = 0 },
+    .blue = .{ .r = 0, .g = 0, .b = 192 },
+    .green = .{ .r = 0, .g = 192, .b = 0 },
+});
+
 /// Get palette by type.
 pub fn getPalette(palette_type: PaletteType) *const Palette {
     return switch (palette_type) {
         .ideal => &palette_ideal,
         .spectra6_inky => &palette_spectra6_inky,
         .spectra6_epdopt => &palette_spectra6_epdopt,
+        .spectra6_trmnl => &palette_spectra6_trmnl,
     };
 }
 
@@ -138,6 +153,7 @@ test "palette count" {
     try std.testing.expectEqual(6, palette_ideal.values.len);
     try std.testing.expectEqual(6, palette_spectra6_inky.values.len);
     try std.testing.expectEqual(6, palette_spectra6_epdopt.values.len);
+    try std.testing.expectEqual(6, palette_spectra6_trmnl.values.len);
 }
 
 test "find closest color" {
