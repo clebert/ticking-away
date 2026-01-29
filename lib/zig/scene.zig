@@ -83,7 +83,7 @@ pub const Scene = struct {
         self.time_minutes = @as(f32, @floatFromInt(h)) * 60.0 + m;
     }
 
-    pub fn setTimeMinutes(self: *Scene, minutes: f32) void {
+    fn setTimeMinutes(self: *Scene, minutes: f32) void {
         @setFloatMode(.optimized);
         var m = minutes;
         while (m < 0) m += 720;
@@ -111,7 +111,7 @@ pub const Scene = struct {
         self.marker_config = config;
     }
 
-    pub fn updatePrism(self: *Scene) void {
+    fn updatePrism(self: *Scene) void {
         const prism_size = self.prism_config.size * self.radius;
         self.prism = prism.Prism.init(self.center, prism_size);
         self.prism_dirty = false;

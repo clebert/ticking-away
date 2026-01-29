@@ -5,7 +5,7 @@ const oklab = @import("../color/oklab.zig");
 const dither = @import("dither.zig");
 
 /// Error diffusion algorithm type.
-pub const Algorithm = enum {
+const Algorithm = enum {
     atkinson,
     floyd_steinberg,
 };

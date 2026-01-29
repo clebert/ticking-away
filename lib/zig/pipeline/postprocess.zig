@@ -143,7 +143,7 @@ pub fn applyDither(
 }
 
 /// Fill pixels outside the circular boundary with white.
-pub fn applyBoundaryMask(
+fn applyBoundaryMask(
     out_rgba: []u8,
     width: usize,
     height: usize,

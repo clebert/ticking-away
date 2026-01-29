@@ -199,11 +199,6 @@ const palette_colors = [Palette.count][band_count]Rgb{
     },
 };
 
-/// Get the raw sRGB colors for a palette.
-pub fn getColors(pal: Palette) *const [band_count]Rgb {
-    return &palette_colors[@intFromEnum(pal)];
-}
-
 test "palette cache init" {
     const cache = Cache.init(.oklch_balanced);
 

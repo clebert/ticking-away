@@ -25,7 +25,7 @@ pub const OkLab = struct {
         };
     }
 
-    pub fn chroma(self: OkLab) f32 {
+    fn chroma(self: OkLab) f32 {
         @setFloatMode(.optimized);
         return @sqrt(self.a * self.a + self.b * self.b);
     }

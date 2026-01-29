@@ -46,7 +46,7 @@ pub const Config = struct {
     } = .{ .uniform = 1.0 },
 };
 
-pub fn smoothPrismDistance(p: *const prism.Prism, point: vec2.Vec2, k: f32) f32 {
+fn smoothPrismDistance(p: *const prism.Prism, point: vec2.Vec2, k: f32) f32 {
     @setFloatMode(.optimized);
     const d0 = @sqrt(p.getEdge(.right).distanceSq(point));
     const d1 = @sqrt(p.getEdge(.bottom).distanceSq(point));

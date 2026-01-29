@@ -9,7 +9,7 @@ const prism = @import("../geometry/prism.zig");
 const band = @import("band.zig");
 
 /// Gradient fill mode.
-pub const Mode = enum {
+const Mode = enum {
     /// Fill inside the prism triangle
     internal,
     /// Fill outside prism but inside circle

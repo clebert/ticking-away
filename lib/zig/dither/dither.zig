@@ -10,7 +10,7 @@ pub const Rgb = struct {
     g: u8,
     b: u8,
 
-    pub fn toLinear(self: Rgb) color.Color {
+    fn toLinear(self: Rgb) color.Color {
         return color.rgb(
             gamma.srgbToLinear(self.r),
             gamma.srgbToLinear(self.g),
@@ -18,7 +18,7 @@ pub const Rgb = struct {
         );
     }
 
-    pub fn toOklab(self: Rgb) oklab.OkLab {
+    fn toOklab(self: Rgb) oklab.OkLab {
         return oklab.srgbToOklab(self.r, self.g, self.b);
     }
 };
@@ -83,7 +83,7 @@ pub fn getPalette(palette_type: PaletteType) *const Palette {
 }
 
 /// Find closest palette color index using OkLab distance.
-pub fn findClosestColor(
+fn findClosestColor(
     col: oklab.OkLab,
     palette_oklab: []const oklab.OkLab,
     chroma_weight: f32,

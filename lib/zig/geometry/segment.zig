@@ -20,7 +20,7 @@ pub const Segment = struct {
         };
     }
 
-    pub const BoundingBox = struct {
+    const BoundingBox = struct {
         min: vec2.Vec2,
         max: vec2.Vec2,
     };
@@ -41,7 +41,7 @@ pub const Segment = struct {
         };
     }
 
-    pub const DistanceResult = struct {
+    const DistanceResult = struct {
         distance_sq: f32,
         t: f32,
     };

@@ -20,7 +20,7 @@ pub fn writeRgba(buffer: []const color.Color, out: []u8) void {
 
 /// Write float Color buffer to RGB565 bytes (2 bytes per pixel, big-endian).
 /// Suitable for e-ink displays and other embedded devices.
-pub fn writeRgb565(buffer: []const color.Color, out: []u8) void {
+fn writeRgb565(buffer: []const color.Color, out: []u8) void {
     @setFloatMode(.optimized);
     for (buffer, 0..) |c, i| {
         const r5: u16 = @intFromFloat(@min(@max(c[0], 0.0), 1.0) * 31.0);

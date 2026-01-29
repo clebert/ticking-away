@@ -198,7 +198,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
 }
 
 /// Convert C grain config to Zig grain config.
-pub fn toGrainConfig(c: *const GrainConfig) grain_effect.Config {
+fn toGrainConfig(c: *const GrainConfig) grain_effect.Config {
     return .{
         .intensity = c.intensity,
         .scale = c.scale,
@@ -208,7 +208,7 @@ pub fn toGrainConfig(c: *const GrainConfig) grain_effect.Config {
 }
 
 /// Convert C vignette config to Zig vignette config.
-pub fn toVignetteConfig(c: *const VignetteConfig) vignette_effect.Config {
+fn toVignetteConfig(c: *const VignetteConfig) vignette_effect.Config {
     return .{
         .enabled = c.enabled != 0,
         .strength = c.strength,
@@ -217,7 +217,7 @@ pub fn toVignetteConfig(c: *const VignetteConfig) vignette_effect.Config {
 }
 
 /// Convert C dither config to Zig error diffusion config.
-pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) error_diffusion.Config {
+fn toErrorDiffusionConfig(c: *const SceneDitherConfig) error_diffusion.Config {
     return .{
         .algorithm = switch (c.algorithm) {
             .atkinson => .atkinson,
@@ -230,7 +230,7 @@ pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) error_diffusion.Confi
 }
 
 /// Convert C dither config to Zig ordered dither config.
-pub fn toOrderedDitherConfig(c: *const SceneDitherConfig) ordered.Config {
+fn toOrderedDitherConfig(c: *const SceneDitherConfig) ordered.Config {
     return .{
         .matrix = switch (c.ordered_matrix) {
             .bayer_2x2 => .bayer2x2,
@@ -243,7 +243,7 @@ pub fn toOrderedDitherConfig(c: *const SceneDitherConfig) ordered.Config {
 }
 
 /// Convert C dither palette mode to Zig palette type.
-pub fn toDitherPaletteType(mode: DitherPaletteMode) dither.PaletteType {
+fn toDitherPaletteType(mode: DitherPaletteMode) dither.PaletteType {
     return switch (mode) {
         .ideal => .ideal,
         .spectra6_inky => .spectra6_inky,

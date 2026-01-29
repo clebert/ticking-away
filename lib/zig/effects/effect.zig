@@ -22,7 +22,7 @@ pub const Pipeline = struct {
     };
 
     /// Add an effect to the pipeline.
-    pub fn add(self: *Pipeline, effect: ApplyFn, context: *anyopaque) bool {
+    fn add(self: *Pipeline, effect: ApplyFn, context: *anyopaque) bool {
         if (self.count >= max_effects) return false;
         self.effects[self.count] = .{ .apply = effect, .context = context };
         self.count += 1;
@@ -30,7 +30,7 @@ pub const Pipeline = struct {
     }
 
     /// Execute all effects in order.
-    pub fn execute(self: *const Pipeline, buffer: []color.Color, width: usize, height: usize) void {
+    fn execute(self: *const Pipeline, buffer: []color.Color, width: usize, height: usize) void {
         for (self.effects[0..self.count]) |entry| {
             if (entry) |e| {
                 e.apply(buffer, width, height, e.context);

@@ -15,7 +15,7 @@ pub const PathSegment = struct {
     end: vec2.Vec2,
 };
 
-pub const BandPath = struct {
+const BandPath = struct {
     internal1: ?PathSegment = null,
     internal2: ?PathSegment = null,
     exit_ray: ?PathSegment = null,
