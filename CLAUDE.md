@@ -36,5 +36,8 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Gui
   accepted (`ctx`)
 - **Module-as-namespace imports**: Import modules as `const color = @import("color.zig")`, then
   access types as `color.Color`. Don't import types directly.
-- **Free functions vs methods**: Use free functions for stateless math (`vec2.dot(a, b)`), methods
-  for stateful types (`segment.distanceSq(point)`)
+- **No aliases**: Don't create aliases like `const MarkerConfig = markers.Config`. Use the qualified
+  name (`markers.Config`) directly.
+- **No re-exports**: Don't re-export imports (`pub const ordered = @import("ordered.zig")`).
+  Exception: `root.zig` may re-export for the public API.
+- **No fake `pub`**: Don't mark unused code as `pub` to suppress warnings. Remove it instead.
