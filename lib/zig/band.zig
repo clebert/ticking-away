@@ -162,7 +162,7 @@ pub const Context = struct {
 
             for (x_start..x_end) |x| {
                 const px = @as(f32, @floatFromInt(x)) + 0.5;
-                const dist = smoothMinEdgeDist(tri, px, y_center, smooth_k);
+                const dist = tri.smoothEdgeDistance(vec2.xy(px, y_center), smooth_k);
 
                 if (dist < glow_width) {
                     const t = @min(@max(dist / glow_width, 0), 1);
@@ -294,42 +294,3 @@ pub const Context = struct {
         }
     }
 };
-
-fn smoothMinEdgeDist(tri: triangle.Triangle, px: f32, py: f32, k: f32) f32 {
-    @setFloatMode(.optimized);
-    const d0 = @sqrt(edgeDistanceSq(tri.getVertex(.apex), tri.getVertex(.bottom_right), px, py));
-    const d1 = @sqrt(edgeDistanceSq(tri.getVertex(.bottom_right), tri.getVertex(.bottom_left), px, py));
-    const d2 = @sqrt(edgeDistanceSq(tri.getVertex(.bottom_left), tri.getVertex(.apex), px, py));
-    return smoothMin(smoothMin(d0, d1, k), d2, k);
-}
-
-fn edgeDistanceSq(start: vec2.Vec2, end: vec2.Vec2, px: f32, py: f32) f32 {
-    @setFloatMode(.optimized);
-    const dir_x = end[0] - start[0];
-    const dir_y = end[1] - start[1];
-    const len_sq = dir_x * dir_x + dir_y * dir_y;
-
-    if (len_sq < 1e-9) {
-        const dx = px - start[0];
-        const dy = py - start[1];
-        return dx * dx + dy * dy;
-    }
-
-    const to_x = px - start[0];
-    const to_y = py - start[1];
-    const dot_val = to_x * dir_x + to_y * dir_y;
-    const t = @min(@max(dot_val / len_sq, 0), 1);
-
-    const proj_x = start[0] + t * dir_x;
-    const proj_y = start[1] + t * dir_y;
-    const dx = px - proj_x;
-    const dy = py - proj_y;
-
-    return dx * dx + dy * dy;
-}
-
-fn smoothMin(a: f32, b: f32, k: f32) f32 {
-    @setFloatMode(.optimized);
-    const h = @max(k - @abs(a - b), 0) / k;
-    return @min(a, b) - h * h * k * 0.25;
-}

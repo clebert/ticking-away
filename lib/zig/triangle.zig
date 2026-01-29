@@ -8,7 +8,6 @@ pub const Vertex = enum(u2) {
     bottom_right = 1,
     bottom_left = 2,
 
-    /// Returns the edge opposite to this vertex (doesn't touch this vertex).
     pub fn oppositeEdge(self: Vertex) Edge {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
     }
@@ -19,22 +18,18 @@ pub const Edge = enum(u2) {
     bottom = 1, // bottom_right -> bottom_left
     left = 2, // bottom_left -> apex
 
-    /// Returns the vertex at the start of this edge.
     pub fn startVertex(self: Edge) Vertex {
         return @enumFromInt(@intFromEnum(self));
     }
 
-    /// Returns the vertex at the end of this edge.
     pub fn endVertex(self: Edge) Vertex {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
     }
 
-    /// Returns the vertex opposite to this edge (not an endpoint of this edge).
     pub fn oppositeVertex(self: Edge) Vertex {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 2) % 3);
     }
 
-    /// Returns true if the given vertex is an endpoint of this edge.
     pub fn touchesVertex(self: Edge, vertex: Vertex) bool {
         return vertex == self.startVertex() or vertex == self.endVertex();
     }
@@ -46,27 +41,16 @@ pub const Triangle = struct {
 
     pub fn getVertex(self: Triangle, vertex: Vertex) vec2.Vec2 {
         const index = @intFromEnum(vertex);
+
         return vec2.xy(self.vertices_x[index], self.vertices_y[index]);
     }
 
-    // Scanline rasterization accessors (equilateral: top=apex, mid=left, bot=right)
-    inline fn top(self: Triangle) vec2.Vec2 {
-        return self.getVertex(.apex);
-    }
-    inline fn mid(self: Triangle) vec2.Vec2 {
-        return self.getVertex(.bottom_left);
-    }
-    inline fn bot(self: Triangle) vec2.Vec2 {
-        return self.getVertex(.bottom_right);
-    }
-
-    // band.zig Context.renderPrismGlow
-    // clip.zig Region.scanlineRange
     pub fn scanlineRange(self: Triangle, y: f32) ?range.Range {
         @setFloatMode(.optimized);
-        const t = self.top();
-        const m = self.mid();
-        const b = self.bot();
+
+        const t = self.getVertex(.apex);
+        const m = self.getVertex(.bottom_left);
+        const b = self.getVertex(.bottom_right);
 
         if (y < t[1] or y > b[1]) return null;
 
@@ -121,9 +105,36 @@ pub const Triangle = struct {
         return self.vertices_y[1];
     }
 
+    // band.zig renderPrismGlow
+    pub fn smoothEdgeDistance(self: Triangle, point: vec2.Vec2, k: f32) f32 {
+        @setFloatMode(.optimized);
+        const d0 = @sqrt(self.getEdge(.right).distanceSq(point));
+        const d1 = @sqrt(self.getEdge(.bottom).distanceSq(point));
+        const d2 = @sqrt(self.getEdge(.left).distanceSq(point));
+        return smoothMin(smoothMin(d0, d1, k), d2, k);
+    }
+
     pub const EdgeSegment = struct {
         start: vec2.Vec2,
         end: vec2.Vec2,
+
+        pub fn distanceSq(self: EdgeSegment, point: vec2.Vec2) f32 {
+            @setFloatMode(.optimized);
+            const dir = self.end - self.start;
+            const len_sq = vec2.dot(dir, dir);
+
+            if (len_sq < 1e-9) {
+                const delta = point - self.start;
+                return vec2.dot(delta, delta);
+            }
+
+            const to_point = point - self.start;
+            const t = @min(@max(vec2.dot(to_point, dir) / len_sq, 0), 1);
+            const proj = self.start + @as(vec2.Vec2, @splat(t)) * dir;
+            const delta = point - proj;
+
+            return vec2.dot(delta, delta);
+        }
     };
 
     // intersect.zig rayTriangleEntry
@@ -170,3 +181,9 @@ pub const Triangle = struct {
         };
     }
 };
+
+fn smoothMin(a: f32, b: f32, k: f32) f32 {
+    @setFloatMode(.optimized);
+    const h = @max(k - @abs(a - b), 0) / k;
+    return @min(a, b) - h * h * k * 0.25;
+}
