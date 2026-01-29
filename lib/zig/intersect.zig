@@ -13,7 +13,7 @@ pub const Hit = struct {
     point: vec2.Vec2,
     t: f32,
     u: f32,
-    edge_index: u2,
+    edge: triangle.Edge,
 };
 
 pub fn raySegment(
@@ -53,7 +53,7 @@ pub fn raySegment(
         .point = point,
         .t = t,
         .u = u,
-        .edge_index = 0,
+        .edge = .right,
     };
 }
 
@@ -66,16 +66,16 @@ pub fn rayTriangleEntry(r: ray.Ray, tri: triangle.Triangle) ?Hit {
     var best: ?Hit = null;
     var best_t: f32 = std.math.inf(f32);
 
-    inline for (0..3) |i| {
-        const edge = tri.getEdge(@intCast(i));
-        if (raySegment(r, edge.start, edge.end, eps_t, eps_u)) |hit| {
+    inline for (std.meta.tags(triangle.Edge)) |edge| {
+        const segment = tri.getEdge(edge);
+        if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
             if (hit.t < best_t) {
                 best_t = hit.t;
                 best = .{
                     .point = hit.point,
                     .t = hit.t,
                     .u = hit.u,
-                    .edge_index = @intCast(i),
+                    .edge = edge,
                 };
             }
         }
@@ -94,16 +94,16 @@ pub fn rayTriangleExit(origin: vec2.Vec2, angle: f32, tri: triangle.Triangle) ?H
     var best: ?Hit = null;
     var best_t: f32 = 0.0;
 
-    inline for (0..3) |i| {
-        const edge = tri.getEdge(@intCast(i));
-        if (raySegment(r, edge.start, edge.end, eps_t, eps_u)) |hit| {
+    inline for (std.meta.tags(triangle.Edge)) |edge| {
+        const segment = tri.getEdge(edge);
+        if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
             if (hit.t > best_t) {
                 best_t = hit.t;
                 best = .{
                     .point = hit.point,
                     .t = hit.t,
                     .u = hit.u,
-                    .edge_index = @intCast(i),
+                    .edge = edge,
                 };
             }
         }
@@ -135,9 +135,9 @@ pub fn rayCircle(r: ray.Ray, circ: circle.Circle) ?vec2.Vec2 {
 fn triangleScale(tri: triangle.Triangle) f32 {
     @setFloatMode(.optimized);
     var total: f32 = 0.0;
-    inline for (0..3) |i| {
-        const edge = tri.getEdge(@intCast(i));
-        const delta = edge.end - edge.start;
+    inline for (std.meta.tags(triangle.Edge)) |edge| {
+        const segment = tri.getEdge(edge);
+        const delta = segment.end - segment.start;
         total += vec2.length(delta);
     }
     return total / 3.0;

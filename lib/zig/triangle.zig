@@ -3,26 +3,61 @@ const std = @import("std");
 const range = @import("range.zig");
 const vec2 = @import("vec2.zig");
 
+pub const Vertex = enum(u2) {
+    apex = 0,
+    bottom_right = 1,
+    bottom_left = 2,
+
+    /// Returns the edge opposite to this vertex (doesn't touch this vertex).
+    pub fn oppositeEdge(self: Vertex) Edge {
+        return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
+    }
+};
+
+pub const Edge = enum(u2) {
+    right = 0, // apex -> bottom_right
+    bottom = 1, // bottom_right -> bottom_left
+    left = 2, // bottom_left -> apex
+
+    /// Returns the vertex at the start of this edge.
+    pub fn startVertex(self: Edge) Vertex {
+        return @enumFromInt(@intFromEnum(self));
+    }
+
+    /// Returns the vertex at the end of this edge.
+    pub fn endVertex(self: Edge) Vertex {
+        return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
+    }
+
+    /// Returns the vertex opposite to this edge (not an endpoint of this edge).
+    pub fn oppositeVertex(self: Edge) Vertex {
+        return @enumFromInt((@as(u3, @intFromEnum(self)) + 2) % 3);
+    }
+
+    /// Returns true if the given vertex is an endpoint of this edge.
+    pub fn touchesVertex(self: Edge, vertex: Vertex) bool {
+        return vertex == self.startVertex() or vertex == self.endVertex();
+    }
+};
+
 pub const Triangle = struct {
     vertices_x: @Vector(3, f32),
     vertices_y: @Vector(3, f32),
 
-    // band.zig
-    // spectrum.zig
-    // triangle.zig
-    pub fn getVertex(self: Triangle, index: u2) vec2.Vec2 {
+    pub fn getVertex(self: Triangle, vertex: Vertex) vec2.Vec2 {
+        const index = @intFromEnum(vertex);
         return vec2.xy(self.vertices_x[index], self.vertices_y[index]);
     }
 
     // Scanline rasterization accessors (equilateral: top=apex, mid=left, bot=right)
     inline fn top(self: Triangle) vec2.Vec2 {
-        return self.getVertex(0);
+        return self.getVertex(.apex);
     }
     inline fn mid(self: Triangle) vec2.Vec2 {
-        return self.getVertex(2);
+        return self.getVertex(.bottom_left);
     }
     inline fn bot(self: Triangle) vec2.Vec2 {
-        return self.getVertex(1);
+        return self.getVertex(.bottom_right);
     }
 
     // band.zig Context.renderPrismGlow
@@ -86,7 +121,7 @@ pub const Triangle = struct {
         return self.vertices_y[1];
     }
 
-    pub const Edge = struct {
+    pub const EdgeSegment = struct {
         start: vec2.Vec2,
         end: vec2.Vec2,
     };
@@ -94,20 +129,19 @@ pub const Triangle = struct {
     // intersect.zig rayTriangleEntry
     // intersect.zig rayTriangleExit
     // intersect.zig triangleScale
-    pub fn getEdge(self: Triangle, index: u2) Edge {
-        const start = self.getVertex(index);
-        const next_index: u2 = @intCast((@as(u3, index) + 1) % 3);
-        const end = self.getVertex(next_index);
-        return .{ .start = start, .end = end };
+    pub fn getEdge(self: Triangle, edge: Edge) EdgeSegment {
+        return .{
+            .start = self.getVertex(edge.startVertex()),
+            .end = self.getVertex(edge.endVertex()),
+        };
     }
 
-    // spectrum.zig Paths.computeBounceInfo
     // spectrum.zig Paths.compute
     pub fn centroid(self: Triangle) vec2.Vec2 {
         @setFloatMode(.optimized);
-        const v0 = self.getVertex(0);
-        const v1 = self.getVertex(1);
-        const v2 = self.getVertex(2);
+        const v0 = self.getVertex(.apex);
+        const v1 = self.getVertex(.bottom_right);
+        const v2 = self.getVertex(.bottom_left);
         return vec2.xy(
             (v0[0] + v1[0] + v2[0]) / 3.0,
             (v0[1] + v1[1] + v2[1]) / 3.0,

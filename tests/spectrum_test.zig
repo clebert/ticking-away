@@ -58,8 +58,8 @@ test "07:40 vertex entry at v2" {
     try std.testing.expect(paths.hits_prism);
 
     // Get prism vertices
-    const v0 = prism.getVertex(0); // apex
-    const v2 = prism.getVertex(2); // bottom-left
+    const v0 = prism.getVertex(.apex);
+    const v2 = prism.getVertex(.bottom_left);
 
     // Verify entry point is near v2
     const entry_dist = distance(paths.entry_point, v2);
@@ -84,23 +84,23 @@ test "classify edge position detects vertices" {
     // Test that vertex detection works for u near 0 and 1
     const threshold = spectrum.vertex_threshold;
 
-    // u near 0 should return vertex at start of edge
-    const loc0 = spectrum.classifyEdgePosition(1, 0.0);
-    try std.testing.expectEqual(@as(u3, 4), loc0); // vertex v1 (3 + 1)
+    // u near 0 should return vertex at start of edge (bottom edge starts at bottom_right)
+    const loc0 = spectrum.classifyEdgePosition(.bottom, 0.0);
+    try std.testing.expectEqual(spectrum.EdgePosition{ .at_vertex = .bottom_right }, loc0);
 
-    const loc0_near = spectrum.classifyEdgePosition(1, threshold / 2.0);
-    try std.testing.expectEqual(@as(u3, 4), loc0_near);
+    const loc0_near = spectrum.classifyEdgePosition(.bottom, threshold / 2.0);
+    try std.testing.expectEqual(spectrum.EdgePosition{ .at_vertex = .bottom_right }, loc0_near);
 
-    // u near 1 should return vertex at end of edge
-    const loc1 = spectrum.classifyEdgePosition(1, 1.0);
-    try std.testing.expectEqual(@as(u3, 5), loc1); // vertex v2 (3 + 2)
+    // u near 1 should return vertex at end of edge (bottom edge ends at bottom_left)
+    const loc1 = spectrum.classifyEdgePosition(.bottom, 1.0);
+    try std.testing.expectEqual(spectrum.EdgePosition{ .at_vertex = .bottom_left }, loc1);
 
-    const loc1_near = spectrum.classifyEdgePosition(1, 1.0 - threshold / 2.0);
-    try std.testing.expectEqual(@as(u3, 5), loc1_near);
+    const loc1_near = spectrum.classifyEdgePosition(.bottom, 1.0 - threshold / 2.0);
+    try std.testing.expectEqual(spectrum.EdgePosition{ .at_vertex = .bottom_left }, loc1_near);
 
-    // u in middle should return edge index
-    const loc_mid = spectrum.classifyEdgePosition(1, 0.5);
-    try std.testing.expectEqual(@as(u3, 1), loc_mid);
+    // u in middle should return edge
+    const loc_mid = spectrum.classifyEdgePosition(.bottom, 0.5);
+    try std.testing.expectEqual(spectrum.EdgePosition{ .on_edge = .bottom }, loc_mid);
 }
 
 test "bounce logic for entry at v2" {
@@ -111,25 +111,22 @@ test "bounce logic for entry at v2" {
     const center = vec2.xy(cx, cy);
     const prism = triangle.Triangle.equilateral(center, prism_size);
 
-    // Simulate entry at v2 (edge 1, u=1.0)
-    const entry_edge: u2 = 1;
+    // Simulate entry at bottom_left (bottom edge, u=1.0)
+    const entry_edge: triangle.Edge = .bottom;
     const entry_u: f32 = 1.0;
 
     // Hour angle pointing toward lower-left (should exit on edge 1)
     const hour_angle: f32 = 2.44;
 
-    const bounce_info = spectrum.computeBounceInfo(
+    const bounce_vertex = spectrum.computeBounceVertex(
         entry_edge,
         entry_u,
         hour_angle,
         prism,
     );
 
-    // Should need bounce
-    try std.testing.expect(bounce_info.needs_bounce);
-
-    // Bounce should be at v0 (vertex 0)
-    try std.testing.expectEqual(@as(?u2, 0), bounce_info.bounce_vertex);
+    // Should need bounce at apex
+    try std.testing.expectEqual(triangle.Vertex.apex, bounce_vertex.?);
 }
 
 test "03:15 exit rays should be valid" {

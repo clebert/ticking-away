@@ -23,16 +23,10 @@ pub const BandPath = struct {
     prism_exit: ?vec2.Vec2 = null,
 };
 
-pub const BounceInfo = struct {
-    needs_bounce: bool,
-    bounce_vertex: ?u2,
-    bounce_point: vec2.Vec2,
-};
-
 pub const Paths = struct {
     entry_ray: ?PathSegment = null,
     entry_point: vec2.Vec2 = vec2.xy(0, 0),
-    entry_edge: u2 = 0,
+    entry_edge: triangle.Edge = .right,
     entry_u: f32 = 0,
     needs_bounce: bool = false,
     bounce_point: vec2.Vec2 = vec2.xy(0, 0),
@@ -57,18 +51,19 @@ pub const Paths = struct {
 
         paths.hits_prism = true;
         paths.entry_point = entry_hit.point;
-        paths.entry_edge = entry_hit.edge_index;
+        paths.entry_edge = entry_hit.edge;
         paths.entry_u = entry_hit.u;
         paths.entry_ray = .{ .start = entry, .end = entry_hit.point };
 
-        const bounce_info = computeBounceInfo(
-            entry_hit.edge_index,
+        const bounce_vertex = computeBounceVertex(
+            entry_hit.edge,
             entry_hit.u,
             hour_angle,
             prism,
         );
-        paths.needs_bounce = bounce_info.needs_bounce;
-        paths.bounce_point = bounce_info.bounce_point;
+        paths.needs_bounce = bounce_vertex != null;
+        const bounce_point = if (bounce_vertex) |v| prism.getVertex(v) else vec2.xy(0, 0);
+        paths.bounce_point = bounce_point;
 
         for (0..band_count) |i| {
             const exit_angle = clock.bandExitAngle(hour_angle, rainbow_spread, i);
@@ -77,13 +72,13 @@ pub const Paths = struct {
             const exit_hit = intersect.rayTriangleExit(prism_center, exit_angle, prism) orelse continue;
             paths.bands[i].prism_exit = exit_hit.point;
 
-            if (bounce_info.needs_bounce) {
+            if (bounce_vertex != null) {
                 paths.bands[i].internal1 = .{
                     .start = entry_hit.point,
-                    .end = bounce_info.bounce_point,
+                    .end = bounce_point,
                 };
                 paths.bands[i].internal2 = .{
-                    .start = bounce_info.bounce_point,
+                    .start = bounce_point,
                     .end = exit_hit.point,
                 };
             } else {
@@ -106,112 +101,86 @@ pub const Paths = struct {
     }
 };
 
-pub fn classifyEdgePosition(edge_index: u2, u: f32) u3 {
-    // Widen to u3 before arithmetic to avoid overflow
-    const idx: u3 = edge_index;
+pub const EdgePosition = union(enum) {
+    on_edge: triangle.Edge,
+    at_vertex: triangle.Vertex,
+};
+
+pub fn classifyEdgePosition(edge: triangle.Edge, u: f32) EdgePosition {
     if (u < vertex_threshold) {
-        return 3 + idx;
+        return .{ .at_vertex = edge.startVertex() };
     } else if (u > 1.0 - vertex_threshold) {
-        return 3 + (idx + 1) % 3;
+        return .{ .at_vertex = edge.endVertex() };
     } else {
-        return idx;
+        return .{ .on_edge = edge };
     }
 }
 
-pub fn computeBounceInfo(
-    entry_edge: u2,
+pub fn computeBounceVertex(
+    entry_edge: triangle.Edge,
     entry_u: f32,
     hour_angle: f32,
     prism: triangle.Triangle,
-) BounceInfo {
+) ?triangle.Vertex {
     @setFloatMode(.optimized);
-    const entry_location = classifyEdgePosition(entry_edge, entry_u);
+    const entry_pos = classifyEdgePosition(entry_edge, entry_u);
     const prism_center = prism.centroid();
 
-    const exit_hit = intersect.rayTriangleExit(prism_center, hour_angle, prism) orelse {
-        return .{
-            .needs_bounce = false,
-            .bounce_vertex = null,
-            .bounce_point = vec2.xy(0, 0),
-        };
-    };
+    const exit_hit = intersect.rayTriangleExit(prism_center, hour_angle, prism) orelse return null;
 
-    const exit_location = classifyEdgePosition(exit_hit.edge_index, exit_hit.u);
+    const exit_pos = classifyEdgePosition(exit_hit.edge, exit_hit.u);
     const dx = @cos(hour_angle);
 
-    if (entry_location >= 3) {
-        const vertex_idx: u2 = @intCast(entry_location - 3);
-
-        if (vertex_idx == 0) {
-            // Entry at v0: check if exit touches v0 (edge 0, edge 2, or vertex v0)
-            const exit_touches_v0 = (exit_location == 0 or exit_location == 2 or exit_location == 3);
-            if (exit_touches_v0) {
-                const bounce_idx: u2 = if (dx >= 0.0) 2 else 1;
-                return .{
-                    .needs_bounce = true,
-                    .bounce_vertex = bounce_idx,
-                    .bounce_point = prism.getVertex(bounce_idx),
+    switch (entry_pos) {
+        .at_vertex => |entry_vertex| {
+            if (entry_vertex == .apex) {
+                // Entry at apex: check if exit touches apex
+                const exit_touches_apex = switch (exit_pos) {
+                    .at_vertex => |v| v == .apex,
+                    .on_edge => |e| e == .right or e == .left,
                 };
-            }
-        } else {
-            // Entry at v1 or v2
-            // Widen to u3 to avoid overflow in arithmetic
-            const vertex_idx_wide: u3 = vertex_idx;
-            const opposite_face: u2 = @intCast((vertex_idx_wide + 1) % 3);
-
-            // Check if exit touches the opposite face (including vertices)
-            var exit_touches_opposite = false;
-            if (exit_location >= 3) {
-                const exit_vertex: u2 = @intCast(exit_location - 3);
-                const exit_vertex_wide: u3 = exit_vertex;
-                exit_touches_opposite = (exit_vertex == opposite_face) or
-                    (@as(u2, @intCast((exit_vertex_wide + 2) % 3)) == opposite_face);
+                if (exit_touches_apex) {
+                    return if (dx >= 0.0) .bottom_left else .bottom_right;
+                }
             } else {
-                exit_touches_opposite = (exit_location == opposite_face);
-            }
+                // Entry at bottom_right or bottom_left
+                const opposite_edge = entry_vertex.oppositeEdge();
 
-            if (!exit_touches_opposite) {
-                const edge_wide: u3 = exit_hit.edge_index;
-                const bounce_idx: u2 = @intCast((edge_wide + 2) % 3);
-                return .{
-                    .needs_bounce = true,
-                    .bounce_vertex = bounce_idx,
-                    .bounce_point = prism.getVertex(bounce_idx),
+                // Check if exit touches the opposite edge (including vertices)
+                const exit_touches_opposite = switch (exit_pos) {
+                    .at_vertex => |v| opposite_edge.touchesVertex(v),
+                    .on_edge => |e| e == opposite_edge,
                 };
-            }
-        }
-    } else {
-        // Entry on a face
-        const entry_face: u2 = @intCast(entry_location);
-        const same_face_exit = (exit_location < 3) and (exit_location == entry_location);
 
-        if (same_face_exit) {
-            const entry_face_wide: u3 = entry_face;
-            const bounce_idx: u2 = @intCast((entry_face_wide + 2) % 3);
-            return .{
-                .needs_bounce = true,
-                .bounce_vertex = bounce_idx,
-                .bounce_point = prism.getVertex(bounce_idx),
+                if (!exit_touches_opposite) {
+                    return exit_hit.edge.oppositeVertex();
+                }
+            }
+        },
+        .on_edge => |classified_entry_edge| {
+            // Entry on an edge
+            const same_edge_exit = switch (exit_pos) {
+                .on_edge => |e| e == classified_entry_edge,
+                .at_vertex => false,
             };
-        }
 
-        // Exit at v0: only bounce if entry edge touches v0
-        if (exit_location == 3) {
-            const entry_touches_v0 = (entry_location == 0 or entry_location == 2);
-            if (entry_touches_v0) {
-                const bounce_idx: u2 = if (dx >= 0.0) 2 else 1;
-                return .{
-                    .needs_bounce = true,
-                    .bounce_vertex = bounce_idx,
-                    .bounce_point = prism.getVertex(bounce_idx),
-                };
+            if (same_edge_exit) {
+                return classified_entry_edge.oppositeVertex();
             }
-        }
+
+            // Exit at apex: only bounce if entry edge touches apex
+            const exit_at_apex = switch (exit_pos) {
+                .at_vertex => |v| v == .apex,
+                .on_edge => false,
+            };
+            if (exit_at_apex) {
+                const entry_touches_apex = (classified_entry_edge == .right or classified_entry_edge == .left);
+                if (entry_touches_apex) {
+                    return if (dx >= 0.0) .bottom_left else .bottom_right;
+                }
+            }
+        },
     }
 
-    return .{
-        .needs_bounce = false,
-        .bounce_vertex = null,
-        .bounce_point = vec2.xy(0, 0),
-    };
+    return null;
 }

@@ -223,9 +223,9 @@ pub const Context = struct {
         const prism = geometry.prism;
 
         if (config.mode == .internal) {
-            const v0 = prism.getVertex(0);
-            const v1 = prism.getVertex(1);
-            const v2 = prism.getVertex(2);
+            const v0 = prism.getVertex(.apex);
+            const v1 = prism.getVertex(.bottom_right);
+            const v2 = prism.getVertex(.bottom_left);
             const min_x = @min(@min(v0[0], v1[0]), v2[0]);
             const max_x = @max(@max(v0[0], v1[0]), v2[0]);
             const min_y = @min(@min(v0[1], v1[1]), v2[1]);
@@ -297,9 +297,9 @@ pub const Context = struct {
 
 fn smoothMinEdgeDist(tri: triangle.Triangle, px: f32, py: f32, k: f32) f32 {
     @setFloatMode(.optimized);
-    const d0 = @sqrt(edgeDistanceSq(tri.getVertex(0), tri.getVertex(1), px, py));
-    const d1 = @sqrt(edgeDistanceSq(tri.getVertex(1), tri.getVertex(2), px, py));
-    const d2 = @sqrt(edgeDistanceSq(tri.getVertex(2), tri.getVertex(0), px, py));
+    const d0 = @sqrt(edgeDistanceSq(tri.getVertex(.apex), tri.getVertex(.bottom_right), px, py));
+    const d1 = @sqrt(edgeDistanceSq(tri.getVertex(.bottom_right), tri.getVertex(.bottom_left), px, py));
+    const d2 = @sqrt(edgeDistanceSq(tri.getVertex(.bottom_left), tri.getVertex(.apex), px, py));
     return smoothMin(smoothMin(d0, d1, k), d2, k);
 }
 

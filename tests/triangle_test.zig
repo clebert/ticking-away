@@ -33,9 +33,9 @@ test "containsPoint outside triangle" {
 test "containsPoint on edge" {
     const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
 
-    // Point on base edge (bottom, between v1 and v2)
-    const v1 = tri.getVertex(1);
-    const v2 = tri.getVertex(2);
+    // Point on base edge (bottom, between bottom_right and bottom_left)
+    const v1 = tri.getVertex(.bottom_right);
+    const v2 = tri.getVertex(.bottom_left);
     const mid_base_x = (v1[0] + v2[0]) / 2;
     const mid_base_y = (v1[1] + v2[1]) / 2;
     try std.testing.expect(tri.containsPoint(mid_base_x, mid_base_y));
@@ -93,9 +93,9 @@ test "equilateral creates symmetric triangle" {
     try expectNear(cent[0], 100, 1);
     try expectNear(cent[1], 100, 1);
 
-    // Check symmetry: v1 and v2 should be equidistant from center
-    const v1 = tri.getVertex(1);
-    const v2 = tri.getVertex(2);
+    // Check symmetry: bottom_right and bottom_left should be equidistant from center
+    const v1 = tri.getVertex(.bottom_right);
+    const v2 = tri.getVertex(.bottom_left);
     const d1 = @sqrt((v1[0] - center[0]) * (v1[0] - center[0]) + (v1[1] - center[1]) * (v1[1] - center[1]));
     const d2 = @sqrt((v2[0] - center[0]) * (v2[0] - center[0]) + (v2[1] - center[1]) * (v2[1] - center[1]));
     try expectNear(d1, d2, 0.1);
@@ -118,11 +118,11 @@ test "getVertex returns correct vertices" {
     const apex_offset = 60.0 * sqrt3 / 3.0;
     const base_offset = 60.0 * sqrt3 / 6.0;
 
-    const v0 = tri.getVertex(0);
-    const v1 = tri.getVertex(1);
-    const v2 = tri.getVertex(2);
+    const v0 = tri.getVertex(.apex);
+    const v1 = tri.getVertex(.bottom_right);
+    const v2 = tri.getVertex(.bottom_left);
 
-    // v0 = apex
+    // apex
     try expectNear(v0[0], 100, 1);
     try expectNear(v0[1], 100 - apex_offset, 1);
 
