@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const color = @import("../color.zig");
-const oklab = @import("../oklab.zig");
-const dither = @import("../dither.zig");
+const color = @import("color.zig");
+const oklab = @import("oklab.zig");
+const dither = @import("dither.zig");
 
 /// Error diffusion algorithm type.
 pub const Algorithm = enum {

@@ -4,8 +4,8 @@ const color = @import("color.zig");
 const gamma = @import("gamma.zig");
 const oklab = @import("oklab.zig");
 
-pub const ordered = @import("dither/ordered.zig");
-pub const error_diffusion = @import("dither/error.zig");
+pub const ordered = @import("ordered_dither.zig");
+pub const error_diffusion = @import("error_diffusion.zig");
 
 /// RGB color for palette entries (sRGB, 0-255).
 pub const Rgb = struct {

@@ -1,11 +1,11 @@
 const std = @import("std");
 
-const circle = @import("../circle.zig");
-const clip = @import("../clip.zig");
-const color = @import("../color.zig");
-const glow = @import("../glow.zig");
-const line = @import("../line.zig");
-const vec2 = @import("../vec2.zig");
+const circle = @import("circle.zig");
+const clip = @import("clip.zig");
+const color = @import("color.zig");
+const glow = @import("glow.zig");
+const line = @import("line.zig");
+const vec2 = @import("vec2.zig");
 
 const pi = std.math.pi;
 

@@ -12,10 +12,7 @@ const spectrum = @import("spectrum.zig");
 const triangle = @import("triangle.zig");
 const vec2 = @import("vec2.zig");
 
-const layer = struct {
-    const gradient = @import("layer/gradient.zig");
-    const markers = @import("layer/markers.zig");
-};
+const markers = @import("markers.zig");
 
 pub const PrismConfig = struct {
     size: f32 = 0.65,
@@ -38,7 +35,7 @@ pub const RayConfig = struct {
     reverse: bool = false,
 };
 
-pub const MarkerConfig = layer.markers.Config;
+pub const MarkerConfig = markers.Config;
 
 pub const Scene = struct {
     width: usize,
@@ -351,15 +348,15 @@ pub const Scene = struct {
         );
 
         if (self.marker_config.visible) {
-            const marker_geometry = layer.markers.Geometry.init(
+            const marker_geometry = markers.Geometry.init(
                 self.center[0],
                 self.center[1],
                 self.radius,
             );
-            const markers = layer.markers.computeMarkers(marker_geometry, self.marker_config);
+            const hour_markers = markers.computeMarkers(marker_geometry, self.marker_config);
             const marker_clip = marker_geometry.circleClip();
 
-            for (markers) |m| {
+            for (hour_markers) |m| {
                 ctx.renderGlowLine(m.segment, m.glow_config, marker_clip, null);
             }
         }
