@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const color = @import("color/color.zig");
-const gamma = @import("color/gamma.zig");
-const oklab = @import("color/oklab.zig");
+const color = @import("../color/color.zig");
+const gamma = @import("../color/gamma.zig");
+const oklab = @import("../color/oklab.zig");
 
 pub const ordered = @import("ordered_dither.zig");
 pub const error_diffusion = @import("error_diffusion.zig");

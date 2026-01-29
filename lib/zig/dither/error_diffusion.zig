@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const color = @import("color/color.zig");
-const oklab = @import("color/oklab.zig");
+const color = @import("../color/color.zig");
+const oklab = @import("../color/oklab.zig");
 const dither = @import("dither.zig");
 
 /// Error diffusion algorithm type.

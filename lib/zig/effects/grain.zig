@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const color = @import("color/color.zig");
-const triangle = @import("geometry/triangle.zig");
+const color = @import("../color/color.zig");
+const triangle = @import("../geometry/triangle.zig");
 
 /// Grain effect configuration.
 pub const Config = struct {

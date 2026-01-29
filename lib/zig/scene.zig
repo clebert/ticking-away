@@ -1,18 +1,18 @@
 const std = @import("std");
 
-const band = @import("band.zig");
+const band = @import("rendering/band.zig");
 const circle = @import("geometry/circle.zig");
-const clip = @import("clip.zig");
+const clip = @import("rendering/clip.zig");
 const clock = @import("clock.zig");
 const color = @import("color/color.zig");
-const glow = @import("glow.zig");
+const glow = @import("rendering/glow.zig");
 const line = @import("geometry/line.zig");
 const palette = @import("color/palette.zig");
 const spectrum = @import("spectrum.zig");
 const triangle = @import("geometry/triangle.zig");
 const vec2 = @import("math/vec2.zig");
 
-const markers = @import("markers.zig");
+const markers = @import("rendering/markers.zig");
 
 pub const PrismConfig = struct {
     size: f32 = 0.65,

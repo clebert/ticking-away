@@ -1,13 +1,13 @@
-pub const band = @import("band.zig");
+pub const band = @import("rendering/band.zig");
 pub const circle = @import("geometry/circle.zig");
-pub const clip = @import("clip.zig");
+pub const clip = @import("rendering/clip.zig");
 pub const clock = @import("clock.zig");
 pub const color = @import("color/color.zig");
 pub const compat = @import("compat.zig");
-pub const dither = @import("dither.zig");
-pub const effect = @import("effect.zig");
+pub const dither = @import("dither/dither.zig");
+pub const effect = @import("effects/effect.zig");
 pub const gamma = @import("color/gamma.zig");
-pub const glow = @import("glow.zig");
+pub const glow = @import("rendering/glow.zig");
 pub const intersect = @import("geometry/intersect.zig");
 pub const line = @import("geometry/line.zig");
 pub const oklab = @import("color/oklab.zig");
@@ -19,5 +19,5 @@ pub const spectrum = @import("spectrum.zig");
 pub const triangle = @import("geometry/triangle.zig");
 pub const vec2 = @import("math/vec2.zig");
 
-pub const gradient = @import("gradient.zig");
-pub const markers = @import("markers.zig");
+pub const gradient = @import("rendering/gradient.zig");
+pub const markers = @import("rendering/markers.zig");

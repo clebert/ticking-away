@@ -1,13 +1,13 @@
 const std = @import("std");
 
-const band = @import("band.zig");
+const band = @import("rendering/band.zig");
 const color = @import("color/color.zig");
-const dither = @import("dither.zig");
-const effect = @import("effect.zig");
-const grain_effect = @import("grain.zig");
-const vignette_effect = @import("vignette.zig");
+const dither = @import("dither/dither.zig");
+const effect = @import("effects/effect.zig");
+const grain_effect = @import("effects/grain.zig");
+const vignette_effect = @import("effects/vignette.zig");
 const gamma = @import("color/gamma.zig");
-const glow = @import("glow.zig");
+const glow = @import("rendering/glow.zig");
 const palette = @import("color/palette.zig");
 const scene = @import("scene.zig");
 

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const color = @import("color/color.zig");
+const color = @import("../color/color.zig");
 
 pub const Falloff = enum {
     linear,
