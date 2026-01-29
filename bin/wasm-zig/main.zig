@@ -104,10 +104,10 @@ export fn renderPrism(
         .total_height = h,
     };
 
-    // Create centered isosceles triangle at 50% viewport size
+    // Create centered equilateral triangle at 50% viewport size
     const center = watchface.vec2.xy(w_f / 2, h_f / 2);
     const base_width = @min(w_f, h_f) * 0.5;
-    const tri = watchface.triangle.Triangle.isosceles(center, base_width, 60);
+    const tri = watchface.triangle.Triangle.equilateral(center, base_width);
 
     ctx.renderPrismGlow(
         tri,
@@ -198,7 +198,7 @@ export fn renderWatchface(
     const radius = size * 0.45;
     const prism_base = size * 0.28;
 
-    const prism = watchface.triangle.Triangle.isosceles(center, prism_base, 60);
+    const prism = watchface.triangle.Triangle.equilateral(center, prism_base);
     const boundary = watchface.circle.Circle.init(center, radius);
 
     // Compute ray paths from time

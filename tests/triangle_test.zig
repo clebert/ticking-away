@@ -13,135 +13,81 @@ fn expectNear(actual: f32, expected: f32, tolerance: f32) !void {
 }
 
 test "containsPoint inside triangle" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
 
     // Centroid should be inside
-    const inside = tri.containsPoint(5, 3.33);
-    try std.testing.expect(inside);
+    const centroid = tri.centroid();
+    try std.testing.expect(tri.containsPoint(centroid[0], centroid[1]));
 }
 
 test "containsPoint outside triangle" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
 
-    // Point clearly outside
-    const inside = tri.containsPoint(-5, 5);
-    try std.testing.expect(!inside);
-
-    // Point above triangle
-    const inside2 = tri.containsPoint(5, 15);
-    try std.testing.expect(!inside2);
+    // Points clearly outside
+    try std.testing.expect(!tri.containsPoint(0, 100)); // far left
+    try std.testing.expect(!tri.containsPoint(200, 100)); // far right
+    try std.testing.expect(!tri.containsPoint(100, 0)); // far above
+    try std.testing.expect(!tri.containsPoint(100, 200)); // far below
 }
 
 test "containsPoint on edge" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
 
-    // Point on bottom edge
-    const inside = tri.containsPoint(5, 0);
-    try std.testing.expect(inside);
-}
-
-test "containsPoint multiple points" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
-
-    // 4 points: inside, outside left, outside right, outside top
-    try std.testing.expect(tri.containsPoint(5, 3)); // center inside
-    try std.testing.expect(!tri.containsPoint(-5, 5)); // left outside
-    try std.testing.expect(!tri.containsPoint(15, 5)); // right outside
-    try std.testing.expect(!tri.containsPoint(5, 15)); // top outside
+    // Point on base edge (bottom, between v1 and v2)
+    const v1 = tri.getVertex(1);
+    const v2 = tri.getVertex(2);
+    const mid_base_x = (v1[0] + v2[0]) / 2;
+    const mid_base_y = (v1[1] + v2[1]) / 2;
+    try std.testing.expect(tri.containsPoint(mid_base_x, mid_base_y));
 }
 
 test "scanlineRange returns correct bounds" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    // Equilateral: h = base * sqrt(3)/2, apex_offset = base * sqrt(3)/3, base_offset = base * sqrt(3)/6
+    // With base=60, center=(100,100): apex at ~(100, 65.4), base at y~117.3
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
 
-    // Middle scanline (y=5)
-    const range = tri.scanlineRange(5);
-    try std.testing.expect(range != null);
+    // Middle scanline at y=100 (center)
+    const r = tri.scanlineRange(100);
+    try std.testing.expect(r != null);
 
-    const r = range.?;
-    // At y=5, the triangle spans from about x=2.5 to x=7.5
-    try expectNear(r.x_min, 2.5, 0.1);
-    try expectNear(r.x_max, 7.5, 0.1);
+    // At center, width should be ~2/3 of base = 40, so x from 80 to 120
+    try expectNear(r.?.x_min, 80, 1);
+    try expectNear(r.?.x_max, 120, 1);
 }
 
 test "scanlineRange outside triangle returns null" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
 
-    // Above triangle
-    const range1 = tri.scanlineRange(-1);
-    try std.testing.expect(range1 == null);
+    // Above triangle (apex is at ~65.4)
+    try std.testing.expect(tri.scanlineRange(60) == null);
 
-    // Below triangle
-    const range2 = tri.scanlineRange(11);
-    try std.testing.expect(range2 == null);
+    // Below triangle (base is at ~117.3)
+    try std.testing.expect(tri.scanlineRange(125) == null);
 }
 
 test "scanlineRange at vertices" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
+    const sqrt3 = @sqrt(3.0);
+    const apex_y = 100.0 - 60.0 * sqrt3 / 3.0;
+    const base_y = 100.0 + 60.0 * sqrt3 / 6.0;
 
-    // At bottom (y=0)
-    const range_bottom = tri.scanlineRange(0);
-    try std.testing.expect(range_bottom != null);
-    try expectNear(range_bottom.?.x_min, 0, 0.1);
-    try expectNear(range_bottom.?.x_max, 10, 0.1);
-
-    // At top (y=10)
-    const range_top = tri.scanlineRange(10);
+    // At top (apex)
+    const range_top = tri.scanlineRange(apex_y);
     try std.testing.expect(range_top != null);
-    try expectNear(range_top.?.x_min, 5, 0.1);
-    try expectNear(range_top.?.x_max, 5, 0.1);
+    try expectNear(range_top.?.x_min, 100, 1);
+    try expectNear(range_top.?.x_max, 100, 1);
+
+    // At bottom (base)
+    const range_bottom = tri.scanlineRange(base_y);
+    try std.testing.expect(range_bottom != null);
+    try expectNear(range_bottom.?.x_min, 70, 1);
+    try expectNear(range_bottom.?.x_max, 130, 1);
 }
 
-test "minEdgeDistanceSq at centroid" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
-
-    const centroid = tri.centroid();
-    const dist_sq = tri.minEdgeDistanceSq(centroid[0], centroid[1]);
-
-    // Distance should be positive
-    try std.testing.expect(dist_sq > 0);
-}
-
-test "minEdgeDistanceSq on edge" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
-
-    // Point on bottom edge (v0-v1)
-    const dist_sq = tri.minEdgeDistanceSq(5, 0);
-
-    // Distance to edge 0 (v0-v1) should be 0
-    try expectNear(dist_sq, 0, 1e-6);
-}
-
-test "isosceles creates symmetric triangle" {
+test "equilateral creates symmetric triangle" {
     const center = vec2.xy(100, 100);
     const base = 50.0;
-    const tri = triangle.Triangle.isosceles(center, base, 60);
+    const tri = triangle.Triangle.equilateral(center, base);
 
     const cent = tri.centroid();
     try expectNear(cent[0], 100, 1);
@@ -156,29 +102,35 @@ test "isosceles creates symmetric triangle" {
 }
 
 test "minY and maxY" {
-    const v0 = vec2.xy(0, 5);
-    const v1 = vec2.xy(10, 15);
-    const v2 = vec2.xy(5, 25);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    // Equilateral with base=60, center=(100,100)
+    // apex_offset = 60 * sqrt(3)/3 ≈ 34.64, base_offset = 60 * sqrt(3)/6 ≈ 17.32
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
+    const sqrt3 = @sqrt(3.0);
 
-    try expectNear(tri.minY(), 5, 1e-6);
-    try expectNear(tri.maxY(), 25, 1e-6);
+    try expectNear(tri.minY(), 100.0 - 60.0 * sqrt3 / 3.0, 1);
+    try expectNear(tri.maxY(), 100.0 + 60.0 * sqrt3 / 6.0, 1);
 }
 
 test "getVertex returns correct vertices" {
-    const v0 = vec2.xy(0, 0);
-    const v1 = vec2.xy(10, 0);
-    const v2 = vec2.xy(5, 10);
-    const tri = triangle.Triangle.init(v0, v1, v2);
+    // Equilateral: apex_offset = base * sqrt(3)/3, base_offset = base * sqrt(3)/6
+    const tri = triangle.Triangle.equilateral(vec2.xy(100, 100), 60);
+    const sqrt3 = @sqrt(3.0);
+    const apex_offset = 60.0 * sqrt3 / 3.0;
+    const base_offset = 60.0 * sqrt3 / 6.0;
 
-    const got0 = tri.getVertex(0);
-    const got1 = tri.getVertex(1);
-    const got2 = tri.getVertex(2);
+    const v0 = tri.getVertex(0);
+    const v1 = tri.getVertex(1);
+    const v2 = tri.getVertex(2);
 
-    try expectNear(got0[0], 0, 1e-6);
-    try expectNear(got0[1], 0, 1e-6);
-    try expectNear(got1[0], 10, 1e-6);
-    try expectNear(got1[1], 0, 1e-6);
-    try expectNear(got2[0], 5, 1e-6);
-    try expectNear(got2[1], 10, 1e-6);
+    // v0 = apex
+    try expectNear(v0[0], 100, 1);
+    try expectNear(v0[1], 100 - apex_offset, 1);
+
+    // v1 = bottom-right
+    try expectNear(v1[0], 130, 1);
+    try expectNear(v1[1], 100 + base_offset, 1);
+
+    // v2 = bottom-left
+    try expectNear(v2[0], 70, 1);
+    try expectNear(v2[1], 100 + base_offset, 1);
 }

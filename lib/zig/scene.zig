@@ -19,7 +19,6 @@ const layer = struct {
 
 pub const PrismConfig = struct {
     size: f32 = 0.65,
-    apex_angle: f32 = 60.0,
     rainbow_spread: f32 = 0.5,
 };
 
@@ -119,11 +118,7 @@ pub const Scene = struct {
 
     pub fn updatePrism(self: *Scene) void {
         const prism_size = self.prism_config.size * self.radius;
-        self.prism = triangle.Triangle.isosceles(
-            self.center,
-            prism_size,
-            self.prism_config.apex_angle,
-        );
+        self.prism = triangle.Triangle.equilateral(self.center, prism_size);
         self.prism_dirty = false;
     }
 
