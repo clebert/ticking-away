@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const range = @import("math/range.zig");
-const vec2 = @import("math/vec2.zig");
+const range = @import("../math/range.zig");
+const vec2 = @import("../math/vec2.zig");
 
 pub const Vertex = enum(u2) {
     apex = 0,

@@ -1,10 +1,10 @@
 const std = @import("std");
 
 const vec2 = @import("math/vec2.zig");
-const triangle = @import("triangle.zig");
-const circle = @import("circle.zig");
-const ray = @import("ray.zig");
-const intersect = @import("intersect.zig");
+const triangle = @import("geometry/triangle.zig");
+const circle = @import("geometry/circle.zig");
+const ray = @import("geometry/ray.zig");
+const intersect = @import("geometry/intersect.zig");
 const clock = @import("clock.zig");
 
 pub const band_count: usize = clock.band_count;
