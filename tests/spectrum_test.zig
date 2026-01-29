@@ -6,6 +6,10 @@ const triangle = watchface.triangle;
 const circle = watchface.circle;
 const clock = watchface.clock;
 const vec2 = watchface.vec2;
+const band_ctx = watchface.band;
+const color = watchface.color;
+const gradient = watchface.gradient;
+const palette = watchface.palette;
 
 fn expectNear(actual: f32, expected: f32, tolerance: f32) !void {
     const diff = @abs(actual - expected);
@@ -126,4 +130,163 @@ test "bounce logic for entry at v2" {
 
     // Bounce should be at v0 (vertex 0)
     try std.testing.expectEqual(@as(?u2, 0), bounce_info.bounce_vertex);
+}
+
+test "03:15 exit rays should be valid" {
+    const cx: f32 = 200.0;
+    const cy: f32 = 200.0;
+    const radius: f32 = 180.0;
+    const prism_size: f32 = 117.0; // 65% of radius
+
+    const center = vec2.xy(cx, cy);
+    const prism = triangle.Triangle.isosceles(center, prism_size, 60);
+    const boundary = circle.Circle.init(center, radius);
+
+    // 03:15 - minute at 15, hour at 3
+    const minutes: f32 = 15.0;
+    const hour: f32 = 3.0;
+    const entry = clock.entryPoint(center, radius, minutes);
+    const hour_angle = clock.hourAngle(hour, minutes);
+    const rainbow_spread: f32 = 0.5;
+
+    const paths = spectrum.Paths.compute(
+        entry,
+        hour_angle,
+        rainbow_spread,
+        prism,
+        boundary,
+    );
+
+    // Should hit the prism
+    try std.testing.expect(paths.hits_prism);
+
+    // First and last bands must have exit_ray for gradient to render
+    const first_band = paths.bands[0];
+    const last_band = paths.bands[spectrum.band_count - 1];
+
+    try std.testing.expect(first_band.exit_ray != null);
+    try std.testing.expect(last_band.exit_ray != null);
+
+    // Compute the angles that would be used for the external gradient
+    const first_border = first_band.exit_ray.?.end;
+    const last_border = last_band.exit_ray.?.end;
+
+    const ext_angle_first = std.math.atan2(first_border[1] - cy, first_border[0] - cx);
+    const ext_angle_last = std.math.atan2(last_border[1] - cy, last_border[0] - cx);
+
+    // Compute ray_span and edge_margin like scene.zig does
+    const pi = std.math.pi;
+    const tau = std.math.tau;
+    var ray_span = ext_angle_last - ext_angle_first;
+    if (ray_span > pi) ray_span -= tau;
+    if (ray_span < -pi) ray_span += tau;
+
+    const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(spectrum.band_count - 1));
+    const edge_margin = ray_span * edge_margin_factor;
+
+    const angle_start = ext_angle_first - edge_margin;
+    const angle_end = ext_angle_last + edge_margin;
+
+    // Verify angles don't become problematically negative
+    // (A tiny negative value that normalizes to ~0 is acceptable)
+    try std.testing.expect(angle_start > -0.01);
+    try std.testing.expect(angle_end > -0.01);
+
+    // The gradient span should be meaningful
+    const span = @abs(ext_angle_first - ext_angle_last);
+    try std.testing.expect(span > 0.1); // At least ~6 degrees
+}
+
+test "03:15 external gradient renders pixels" {
+    const cx: f32 = 200.0;
+    const cy: f32 = 200.0;
+    const radius: f32 = 180.0;
+    const prism_size: f32 = 117.0;
+
+    const center = vec2.xy(cx, cy);
+    const prism = triangle.Triangle.isosceles(center, prism_size, 60);
+    const boundary = circle.Circle.init(center, radius);
+
+    // 03:15
+    const minutes: f32 = 15.0;
+    const hour: f32 = 3.0;
+    const entry = clock.entryPoint(center, radius, minutes);
+    const hour_angle = clock.hourAngle(hour, minutes);
+    const rainbow_spread: f32 = 0.5;
+
+    const paths = spectrum.Paths.compute(
+        entry,
+        hour_angle,
+        rainbow_spread,
+        prism,
+        boundary,
+    );
+
+    const first_band = paths.bands[0];
+    const last_band = paths.bands[spectrum.band_count - 1];
+
+    const first_border = first_band.exit_ray.?.end;
+    const last_border = last_band.exit_ray.?.end;
+
+    const ext_angle_first = std.math.atan2(first_border[1] - cy, first_border[0] - cx);
+    const ext_angle_last = std.math.atan2(last_border[1] - cy, last_border[0] - cx);
+
+    const pi = std.math.pi;
+    const tau = std.math.tau;
+    var ray_span = ext_angle_last - ext_angle_first;
+    if (ray_span > pi) ray_span -= tau;
+    if (ray_span < -pi) ray_span += tau;
+
+    const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(spectrum.band_count - 1));
+    const edge_margin = ray_span * edge_margin_factor;
+
+    const angle_start = ext_angle_first - edge_margin;
+    const angle_end = ext_angle_last + edge_margin;
+
+    // Create a small buffer for rendering
+    const width: usize = 400;
+    const height: usize = 400;
+    var buffer: [width * height]color.Color = undefined;
+    @memset(&buffer, color.black);
+
+    var ctx = band_ctx.Context{
+        .buffer = &buffer,
+        .width = width,
+        .height = height,
+        .y_offset = 0,
+        .total_height = height,
+    };
+
+    const cache = palette.Cache.init(.saturated);
+
+    // Render the external gradient
+    ctx.renderGradient(
+        .{
+            .mode = .external,
+            .origin_x = cx,
+            .origin_y = cy,
+            .angle_start = angle_start,
+            .angle_end = angle_end,
+            .intensity = 1.0,
+            .reverse_spectrum = false,
+        },
+        .{
+            .center_x = cx,
+            .center_y = cy,
+            .radius = radius,
+            .prism = prism,
+        },
+        &cache,
+    );
+
+    // Count non-black pixels
+    var non_black_count: usize = 0;
+    for (buffer) |pixel| {
+        if (pixel[0] > 0.001 or pixel[1] > 0.001 or pixel[2] > 0.001) {
+            non_black_count += 1;
+        }
+    }
+
+    // The gradient should have rendered some pixels
+    try std.testing.expect(non_black_count > 100);
 }

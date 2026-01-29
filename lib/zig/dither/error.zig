@@ -16,6 +16,7 @@ pub const Config = struct {
     strength: f32 = 1.0,
     chroma_weight: f32 = 2.0,
     oklab_error: bool = true,
+    clear_buffer: bool = true,
 };
 
 /// Error buffer for diffusion (3 rows × 3 channels).
@@ -91,6 +92,7 @@ fn applyAtkinson(
     out_rgba: []u8,
     width: usize,
     height: usize,
+    y_offset: usize,
     config: Config,
     palette: *const dither.PaletteCache,
     err: *ErrorBuffer,
@@ -98,15 +100,18 @@ fn applyAtkinson(
     @setFloatMode(.optimized);
     const d: f32 = 0.125 * config.strength;
 
-    err.clear();
+    if (config.clear_buffer) {
+        err.clear();
+    }
 
-    for (0..height) |y| {
-        // Serpentine scan
-        const left_to_right = (y % 2 == 0);
+    for (0..height) |local_y| {
+        // Serpentine scan using global y for consistent direction across bands
+        const global_y = local_y + y_offset;
+        const left_to_right = (global_y % 2 == 0);
 
         var x: usize = if (left_to_right) 0 else width - 1;
         while (true) {
-            const idx = y * width + x;
+            const idx = local_y * width + x;
             const out_idx = idx * 4;
 
             const px = buffer[idx];
@@ -211,6 +216,7 @@ fn applyFloydSteinberg(
     out_rgba: []u8,
     width: usize,
     height: usize,
+    y_offset: usize,
     config: Config,
     palette: *const dither.PaletteCache,
     err: *ErrorBuffer,
@@ -221,14 +227,18 @@ fn applyFloydSteinberg(
     const d5: f32 = (5.0 / 16.0) * config.strength;
     const d1: f32 = (1.0 / 16.0) * config.strength;
 
-    err.clear();
+    if (config.clear_buffer) {
+        err.clear();
+    }
 
-    for (0..height) |y| {
-        const left_to_right = (y % 2 == 0);
+    for (0..height) |local_y| {
+        // Serpentine scan using global y for consistent direction across bands
+        const global_y = local_y + y_offset;
+        const left_to_right = (global_y % 2 == 0);
 
         var x: usize = if (left_to_right) 0 else width - 1;
         while (true) {
-            const idx = y * width + x;
+            const idx = local_y * width + x;
             const out_idx = idx * 4;
 
             const px = buffer[idx];
@@ -321,13 +331,14 @@ pub fn apply(
     out_rgba: []u8,
     width: usize,
     height: usize,
+    y_offset: usize,
     config: Config,
     palette: *const dither.PaletteCache,
     err: *ErrorBuffer,
 ) void {
     switch (config.algorithm) {
-        .atkinson => applyAtkinson(buffer, out_rgba, width, height, config, palette, err),
-        .floyd_steinberg => applyFloydSteinberg(buffer, out_rgba, width, height, config, palette, err),
+        .atkinson => applyAtkinson(buffer, out_rgba, width, height, y_offset, config, palette, err),
+        .floyd_steinberg => applyFloydSteinberg(buffer, out_rgba, width, height, y_offset, config, palette, err),
     }
 }
 
@@ -366,7 +377,7 @@ test "error diffusion output" {
     defer err.deinit(allocator);
 
     const config = Config{ .algorithm = .atkinson };
-    apply(&buffer, &out_rgba, 2, 1, config, &palette, &err);
+    apply(&buffer, &out_rgba, 2, 1, 0, config, &palette, &err);
 
     // Black should output black
     try std.testing.expectEqual(@as(u8, 0), out_rgba[0]);

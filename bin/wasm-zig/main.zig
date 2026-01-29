@@ -394,6 +394,7 @@ fn applyDithering(
                 out_slice,
                 width,
                 height,
+                0,
                 error_config,
                 &palette_cache,
                 &err_buffer,
