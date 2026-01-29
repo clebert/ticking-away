@@ -115,7 +115,7 @@ fn applyAtkinson(
             const out_idx = idx * 4;
 
             const px = buffer[idx];
-            var pal_idx: usize = undefined;
+            var pal_idx: dither.PaletteIndex = undefined;
             var err_1: f32 = undefined;
             var err_2: f32 = undefined;
             var err_3: f32 = undefined;
@@ -127,7 +127,7 @@ fn applyAtkinson(
                 lab.b += err.row(0, 2)[x];
 
                 pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.lab[pal_idx];
+                const quantized = palette.lab[@intFromEnum(pal_idx)];
 
                 err_1 = (lab.l - quantized.l) * d;
                 err_2 = (lab.a - quantized.a) * d;
@@ -139,7 +139,7 @@ fn applyAtkinson(
 
                 const lab = oklab.OkLab.fromLinearRgb(color.rgb(r, g, b));
                 pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.linear[pal_idx];
+                const quantized = palette.linear[@intFromEnum(pal_idx)];
 
                 err_1 = (r - quantized[0]) * d;
                 err_2 = (g - quantized[1]) * d;
@@ -147,7 +147,7 @@ fn applyAtkinson(
             }
 
             // Write output
-            const pal_color = palette.rgb[pal_idx];
+            const pal_color = palette.getRgb(pal_idx);
             out_rgba[out_idx] = pal_color.r;
             out_rgba[out_idx + 1] = pal_color.g;
             out_rgba[out_idx + 2] = pal_color.b;
@@ -242,7 +242,7 @@ fn applyFloydSteinberg(
             const out_idx = idx * 4;
 
             const px = buffer[idx];
-            var pal_idx: usize = undefined;
+            var pal_idx: dither.PaletteIndex = undefined;
             var err_1: f32 = undefined;
             var err_2: f32 = undefined;
             var err_3: f32 = undefined;
@@ -254,7 +254,7 @@ fn applyFloydSteinberg(
                 lab.b += err.row(0, 2)[x];
 
                 pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.lab[pal_idx];
+                const quantized = palette.lab[@intFromEnum(pal_idx)];
 
                 err_1 = lab.l - quantized.l;
                 err_2 = lab.a - quantized.a;
@@ -266,7 +266,7 @@ fn applyFloydSteinberg(
 
                 const lab = oklab.OkLab.fromLinearRgb(color.rgb(r, g, b));
                 pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.linear[pal_idx];
+                const quantized = palette.linear[@intFromEnum(pal_idx)];
 
                 err_1 = r - quantized[0];
                 err_2 = g - quantized[1];
@@ -274,7 +274,7 @@ fn applyFloydSteinberg(
             }
 
             // Write output
-            const pal_color = palette.rgb[pal_idx];
+            const pal_color = palette.getRgb(pal_idx);
             out_rgba[out_idx] = pal_color.r;
             out_rgba[out_idx + 1] = pal_color.g;
             out_rgba[out_idx + 2] = pal_color.b;

@@ -352,7 +352,8 @@ export fn renderWatchfaceWithConfig(
 
     // Handle dithering or direct output
     if (config_ptr.dither.enabled != 0) {
-        applyDithering(ctx.buffer, out_rgba, w, h, &config_ptr.dither);
+        const bnd = watchface.boundary.Boundary.init(static_scene.center, static_scene.radius);
+        applyDithering(ctx.buffer, out_rgba, w, h, &config_ptr.dither, bnd);
     } else {
         // Convert float buffer to RGBA bytes
         for (0..w * h) |i| {
@@ -371,10 +372,11 @@ fn applyDithering(
     width: usize,
     height: usize,
     dither_config: *const compat.SceneDitherConfig,
+    bnd: watchface.boundary.Boundary,
 ) void {
     const palette_type = compat.toDitherPaletteType(dither_config.mode);
-    const palette_rgb = watchface.dither.getPalette(palette_type);
-    const palette_cache = watchface.dither.PaletteCache.init(palette_rgb);
+    const palette = watchface.dither.getPalette(palette_type);
+    const palette_cache = watchface.dither.PaletteCache.init(palette);
 
     const out_slice = out_rgba[0 .. width * height * 4];
 
@@ -411,6 +413,61 @@ fn applyDithering(
                 &palette_cache,
             );
         },
+    }
+
+    const white = palette.get(.white);
+    applyBoundaryMask(out_slice, width, height, bnd, white);
+}
+
+fn applyBoundaryMask(
+    out_rgba: []u8,
+    width: usize,
+    height: usize,
+    bnd: watchface.boundary.Boundary,
+    white: watchface.dither.Rgb,
+) void {
+    @setFloatMode(.optimized);
+
+    const cx = bnd.center[0];
+    const cy = bnd.center[1];
+    const r_sq = bnd.radius_sq;
+    const width_i: i32 = @intCast(width);
+
+    for (0..height) |y| {
+        const py = @as(f32, @floatFromInt(y)) + 0.5;
+        const dy = py - cy;
+        const dy_sq = dy * dy;
+
+        if (dy_sq >= r_sq) {
+            // Entire row is outside circle
+            fillRowWithWhite(out_rgba, y, 0, width, width, white);
+        } else {
+            // Calculate x intersection points with circle (using pixel centers for consistency with y)
+            const dx_max = @sqrt(r_sq - dy_sq);
+            const x_left: usize = @intCast(@max(0, @as(i32, @intFromFloat(@round(cx - dx_max)))));
+            const x_right: usize = @intCast(@min(width_i, @as(i32, @intFromFloat(@round(cx + dx_max)))));
+
+            // Fill regions outside circle on this row
+            fillRowWithWhite(out_rgba, y, 0, x_left, width, white);
+            fillRowWithWhite(out_rgba, y, x_right, width, width, white);
+        }
+    }
+}
+
+fn fillRowWithWhite(
+    out_rgba: []u8,
+    y: usize,
+    x_start: usize,
+    x_end: usize,
+    width: usize,
+    white: watchface.dither.Rgb,
+) void {
+    for (x_start..x_end) |x| {
+        const idx = (y * width + x) * 4;
+        out_rgba[idx] = white.r;
+        out_rgba[idx + 1] = white.g;
+        out_rgba[idx + 2] = white.b;
+        out_rgba[idx + 3] = 255;
     }
 }
 

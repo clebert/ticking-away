@@ -78,7 +78,7 @@ pub fn apply(
             lab.l = @min(@max(lab.l + threshold, 0.0), 1.0);
 
             // Find closest palette color
-            out_indices[idx] = @intCast(palette.findClosest(lab, config.chroma_weight));
+            out_indices[idx] = @intFromEnum(palette.findClosest(lab, config.chroma_weight));
         }
     }
 }
@@ -109,7 +109,7 @@ pub fn applyRgba(
 
             // Find closest palette color
             const pal_idx = palette.findClosest(lab, config.chroma_weight);
-            const pal_color = palette.rgb[pal_idx];
+            const pal_color = palette.getRgb(pal_idx);
 
             // Write output
             out_rgba[out_idx] = pal_color.r;
