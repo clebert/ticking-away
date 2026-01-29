@@ -8,7 +8,8 @@
       "Bash(npm test:*)",
       "Bash(zig version:*)",
       "Bash(zig build:*)",
-      "Bash(zig test:*)"
+      "Bash(zig test:*)",
+      "Bash(npx prettier --write REFACTORING.md)"
     ]
   }
 }

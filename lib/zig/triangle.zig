@@ -71,9 +71,6 @@ pub const Triangle = struct {
         return .{ .x_min = x_short, .x_max = x_long };
     }
 
-    // band.zig Context.renderGlowLine
-    // band.zig Context.renderGradient
-    // grain.zig apply
     pub fn containsPoint(self: Triangle, px: f32, py: f32) bool {
         @setFloatMode(.optimized);
         // Use original vertex order (not sorted) for consistent winding
@@ -95,17 +92,14 @@ pub const Triangle = struct {
         return (a >= 0) and (b >= 0) and ((a + b) <= 1);
     }
 
-    // band.zig renderPrismGlow
     pub fn minY(self: Triangle) f32 {
         return self.vertices_y[0];
     }
 
-    // band.zig renderPrismGlow
     pub fn maxY(self: Triangle) f32 {
         return self.vertices_y[1];
     }
 
-    // band.zig renderPrismGlow
     pub fn smoothEdgeDistance(self: Triangle, point: vec2.Vec2, k: f32) f32 {
         @setFloatMode(.optimized);
         const d0 = @sqrt(self.getEdge(.right).distanceSq(point));
@@ -137,9 +131,6 @@ pub const Triangle = struct {
         }
     };
 
-    // intersect.zig rayTriangleEntry
-    // intersect.zig rayTriangleExit
-    // intersect.zig triangleScale
     pub fn getEdge(self: Triangle, edge: Edge) EdgeSegment {
         return .{
             .start = self.getVertex(edge.startVertex()),
@@ -147,7 +138,6 @@ pub const Triangle = struct {
         };
     }
 
-    // spectrum.zig Paths.compute
     pub fn centroid(self: Triangle) vec2.Vec2 {
         @setFloatMode(.optimized);
         const v0 = self.getVertex(.apex);
@@ -158,10 +148,6 @@ pub const Triangle = struct {
             (v0[1] + v1[1] + v2[1]) / 3.0,
         );
     }
-
-    // scene.zig Scene.updatePrism
-    // Creates an equilateral triangle (60°/60°/60°) centered at the given point.
-    // For equilateral: h = base * √3/2, apex_offset = base * √3/3, base_offset = base * √3/6
     pub fn equilateral(center: vec2.Vec2, base_width: f32) Triangle {
         @setFloatMode(.optimized);
         const sqrt3 = @sqrt(3.0);
