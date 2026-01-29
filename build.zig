@@ -120,6 +120,35 @@ pub fn build(b: *std.Build) void {
     wasm_zig_step.dependOn(&wasm_zig_install.step);
 
     // =========================================================================
+    // Check step for ZLS (uses native target for analysis)
+    // =========================================================================
+
+    const wasm_zig_check = b.addExecutable(.{
+        .name = "index-zig",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/wasm-zig/main.zig"),
+            .target = wasm_target,
+            .optimize = .ReleaseFast,
+            .imports = &.{
+                .{ .name = "watchface", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/zig/root.zig"),
+                    .target = wasm_target,
+                    .optimize = .ReleaseFast,
+                }) },
+            },
+        }),
+    });
+
+    wasm_zig_check.entry = .disabled;
+    wasm_zig_check.rdynamic = true;
+    wasm_zig_check.import_memory = true;
+    wasm_zig_check.want_lto = true;
+
+    const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
+
+    check_step.dependOn(&wasm_zig_check.step);
+
+    // =========================================================================
     // Tests
     // =========================================================================
 

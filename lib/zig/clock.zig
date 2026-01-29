@@ -1,15 +1,16 @@
 const std = @import("std");
 const testing = std.testing;
+const tau = std.math.tau;
 
 const vec2 = @import("math/vec2.zig");
 
-pub const angle_0: f32 = -std.math.pi / 2.0;
-pub const hour_arc: f32 = std.math.pi / 6.0;
-pub const tau: f32 = 2.0 * std.math.pi;
-pub const max_spread_radians: f32 = std.math.pi / 6.0;
+const angle_0: f32 = -std.math.pi / 2.0;
+const hour_arc: f32 = std.math.pi / 6.0;
+const max_spread_radians: f32 = std.math.pi / 6.0;
+
 pub const band_count: usize = 7;
 
-pub fn minuteAngle(minutes: f32) f32 {
+fn minuteAngle(minutes: f32) f32 {
     @setFloatMode(.optimized);
     return angle_0 + (minutes / 60.0) * tau;
 }

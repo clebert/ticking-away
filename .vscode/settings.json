@@ -21,7 +21,6 @@
   "typescript.preferences.preferTypeOnlyAutoImports": true,
   "typescript.tsdk": "node_modules/typescript/lib/",
   "zig.zls.enabled": "on",
-  "zig.buildOnSaveProvider": "zls",
   "zig.version": "0.15.2",
   "[zig]": {
     "editor.inlayHints.enabled": "off",
