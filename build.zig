@@ -109,7 +109,7 @@ pub fn build(b: *std.Build) void {
     wasm_zig.entry = .disabled;
     wasm_zig.rdynamic = true;
     wasm_zig.import_memory = true;
-    wasm_zig.want_lto = true;
+    wasm_zig.lto = .full;
 
     const wasm_zig_install = b.addInstallArtifact(wasm_zig, .{
         .dest_dir = .{ .override = .{ .custom = "../public" } },
@@ -142,7 +142,7 @@ pub fn build(b: *std.Build) void {
     wasm_zig_check.entry = .disabled;
     wasm_zig_check.rdynamic = true;
     wasm_zig_check.import_memory = true;
-    wasm_zig_check.want_lto = true;
+    wasm_zig_check.lto = .full;
 
     const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
 
