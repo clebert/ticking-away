@@ -49,7 +49,7 @@ export fn renderTestPattern(buffer: [*]watchface.color.Color, width: u32, height
     ctx.clear();
 
     // Draw a diagonal glow line
-    const segment = watchface.line.Segment.init(
+    const segment = watchface.segment.Segment.init(
         watchface.vec2.xy(0, 0),
         watchface.vec2.xy(@floatFromInt(width), @floatFromInt(height)),
     );
@@ -144,7 +144,7 @@ export fn renderGlowLine(
         .total_height = h,
     };
 
-    const segment = watchface.line.Segment.init(
+    const segment = watchface.segment.Segment.init(
         watchface.vec2.xy(start_x, start_y),
         watchface.vec2.xy(end_x, end_y),
     );
@@ -224,7 +224,7 @@ export fn renderWatchface(
 
     // Render entry ray (white)
     if (paths.entry_ray) |seg| {
-        const entry_segment = watchface.line.Segment.init(seg.start, seg.end);
+        const entry_segment = watchface.segment.Segment.init(seg.start, seg.end);
         const entry_config = watchface.glow.Config{
             .width = ray_width,
             .falloff = falloff,
@@ -240,7 +240,7 @@ export fn renderWatchface(
 
         // Internal segment 1 (white inside prism, or colored if no bounce)
         if (band.internal1) |seg| {
-            const segment = watchface.line.Segment.init(seg.start, seg.end);
+            const segment = watchface.segment.Segment.init(seg.start, seg.end);
             const internal_color = if (paths.needs_bounce)
                 watchface.color.rgb(0.9, 0.9, 0.95)
             else
@@ -255,7 +255,7 @@ export fn renderWatchface(
 
         // Internal segment 2 (colored, after bounce)
         if (band.internal2) |seg| {
-            const segment = watchface.line.Segment.init(seg.start, seg.end);
+            const segment = watchface.segment.Segment.init(seg.start, seg.end);
             const config = watchface.glow.Config{
                 .width = ray_width * 0.8,
                 .falloff = falloff,
@@ -266,7 +266,7 @@ export fn renderWatchface(
 
         // Exit ray (colored, outside prism)
         if (band.exit_ray) |seg| {
-            const segment = watchface.line.Segment.init(seg.start, seg.end);
+            const segment = watchface.segment.Segment.init(seg.start, seg.end);
             const config = watchface.glow.Config{
                 .width = ray_width,
                 .falloff = falloff,

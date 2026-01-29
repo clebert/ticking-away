@@ -4,7 +4,7 @@ const watchface = @import("watchface");
 const band = watchface.band;
 const color = watchface.color;
 const glow = watchface.glow;
-const line = watchface.line;
+const segment = watchface.segment;
 const prism = watchface.prism;
 const vec2 = watchface.vec2;
 
@@ -86,7 +86,7 @@ test "renderGlowLine produces non-zero output" {
 
     const start = vec2.xy(5, 16);
     const end = vec2.xy(27, 16);
-    const seg = line.Segment.init(start, end);
+    const seg = segment.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color.white },
@@ -117,7 +117,7 @@ test "renderGlowLine respects clipping" {
     // Line across entire width
     const start = vec2.xy(0, 16);
     const end = vec2.xy(32, 16);
-    const seg = line.Segment.init(start, end);
+    const seg = segment.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color.white },
@@ -154,7 +154,7 @@ test "renderGlowLine with gradient color" {
 
     const start = vec2.xy(4, 16);
     const end = vec2.xy(28, 16);
-    const seg = line.Segment.init(start, end);
+    const seg = segment.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .gradient = .{
@@ -223,7 +223,7 @@ test "renderGlowLine excludes triangle" {
     // Line across middle
     const start = vec2.xy(0, 16);
     const end = vec2.xy(32, 16);
-    const seg = line.Segment.init(start, end);
+    const seg = segment.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color.white },
@@ -261,7 +261,7 @@ test "context with y_offset renders correct region" {
     // Line at y=12 (within our band)
     const start = vec2.xy(0, 12);
     const end = vec2.xy(16, 12);
-    const seg = line.Segment.init(start, end);
+    const seg = segment.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color.white },
@@ -293,7 +293,7 @@ test "context with y_offset ignores lines outside region" {
     // Note: Using y > band_y_max avoids integer underflow bug in current impl
     const start = vec2.xy(0, 20);
     const end = vec2.xy(16, 20);
-    const seg = line.Segment.init(start, end);
+    const seg = segment.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color.white },
