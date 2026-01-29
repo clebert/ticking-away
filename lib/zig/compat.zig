@@ -1,14 +1,14 @@
 const std = @import("std");
 
 const band = @import("band.zig");
-const color = @import("color.zig");
+const color = @import("color/color.zig");
 const dither = @import("dither.zig");
 const effect = @import("effect.zig");
 const grain_effect = @import("grain.zig");
 const vignette_effect = @import("vignette.zig");
-const gamma = @import("gamma.zig");
+const gamma = @import("color/gamma.zig");
 const glow = @import("glow.zig");
-const palette = @import("palette.zig");
+const palette = @import("color/palette.zig");
 const scene = @import("scene.zig");
 
 /// Falloff type matching C FalloffType enum.

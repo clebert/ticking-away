@@ -1,4 +1,4 @@
-const color = @import("color.zig");
+const color = @import("color/color.zig");
 
 pub const grain = @import("grain.zig");
 pub const vignette = @import("vignette.zig");

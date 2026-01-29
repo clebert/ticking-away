@@ -1,5 +1,5 @@
 const circle = @import("circle.zig");
-const range = @import("range.zig");
+const range = @import("math/range.zig");
 const triangle = @import("triangle.zig");
 
 pub const Region = union(enum) {

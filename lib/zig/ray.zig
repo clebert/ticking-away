@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const vec2 = @import("vec2.zig");
+const vec2 = @import("math/vec2.zig");
 
 pub const Ray = struct {
     origin: vec2.Vec2,

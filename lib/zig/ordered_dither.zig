@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const color = @import("color.zig");
-const oklab = @import("oklab.zig");
+const color = @import("color/color.zig");
+const oklab = @import("color/oklab.zig");
 const dither = @import("dither.zig");
 
 /// Dither matrix type.

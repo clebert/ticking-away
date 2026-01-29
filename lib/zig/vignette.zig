@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const color = @import("color.zig");
+const color = @import("color/color.zig");
 const grain = @import("grain.zig");
 
 /// Default background grey level: 35/255 in sRGB space

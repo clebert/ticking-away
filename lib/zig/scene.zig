@@ -4,13 +4,13 @@ const band = @import("band.zig");
 const circle = @import("circle.zig");
 const clip = @import("clip.zig");
 const clock = @import("clock.zig");
-const color = @import("color.zig");
+const color = @import("color/color.zig");
 const glow = @import("glow.zig");
 const line = @import("line.zig");
-const palette = @import("palette.zig");
+const palette = @import("color/palette.zig");
 const spectrum = @import("spectrum.zig");
 const triangle = @import("triangle.zig");
-const vec2 = @import("vec2.zig");
+const vec2 = @import("math/vec2.zig");
 
 const markers = @import("markers.zig");
 
