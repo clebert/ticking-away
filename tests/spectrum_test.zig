@@ -257,7 +257,8 @@ test "03:15 external gradient renders pixels" {
     const cache = palette.Cache.init(.saturated);
 
     // Render the external gradient
-    ctx.renderGradient(
+    gradient.render(
+        &ctx,
         .{
             .mode = .external,
             .origin_x = cx,

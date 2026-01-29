@@ -6,6 +6,7 @@ const clip = @import("rendering/clip.zig");
 const clock = @import("clock.zig");
 const color = @import("color/color.zig");
 const glow = @import("rendering/glow.zig");
+const gradient = @import("rendering/gradient.zig");
 const line = @import("geometry/segment.zig");
 const palette = @import("color/palette.zig");
 const spectrum = @import("spectrum.zig");
@@ -277,7 +278,8 @@ pub const Scene = struct {
                 const edge_margin = ray_span * edge_margin_factor;
 
                 // External gradient (outside prism, inside circle)
-                ctx.renderGradient(
+                gradient.render(
+                    ctx,
                     .{
                         .mode = .external,
                         .origin_x = self.center[0],
@@ -317,7 +319,8 @@ pub const Scene = struct {
                     if (internal_span < -pi) internal_span += tau;
                     const internal_edge_margin = internal_span * edge_margin_factor;
 
-                    ctx.renderGradient(
+                    gradient.render(
+                        ctx,
                         .{
                             .mode = .internal,
                             .origin_x = grad_origin[0],
