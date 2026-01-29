@@ -42,3 +42,7 @@ pub const clock = @import("clock.zig");
 pub const compat = @import("compat.zig");
 pub const scene = @import("scene.zig");
 pub const spectrum = @import("spectrum.zig");
+
+test {
+    @import("std").testing.refAllDecls(@This());
+}

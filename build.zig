@@ -209,6 +209,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // Run inline tests from the library itself
+    const lib_inline_tests = b.addTest(.{
+        .root_module = zig_lib,
+    });
+    const run_lib_inline_tests = b.addRunArtifact(lib_inline_tests);
+    test_step.dependOn(&run_lib_inline_tests.step);
+
     const zig_tests: []const []const u8 = &.{
         "tests/spectrum_test.zig",
         "tests/line_test.zig",
