@@ -111,15 +111,12 @@ Create a GitHub personal access token at https://github.com/settings/tokens with
 cd ~
 git clone https://<TOKEN>@github.com/clebert/ticking-away.git
 cd ticking-away
-git checkout zig
 ```
 
 ## Build and Run
 
 ```sh
-cd ~/ticking-away
-zig build inky -Doptimize=ReleaseFast
-sudo ./bin/inky/watchface
+# TODO
 ```
 
 Note: `sudo` is required for GPIO and SPI access.
