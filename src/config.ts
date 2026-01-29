@@ -1,11 +1,14 @@
 import { createStruct, type Struct } from "./struct.ts";
-import type { WasmModule } from "./wasm.ts";
+import type { WasmCModule } from "./wasm-c.ts";
 
 export type WatchfaceConfig = Struct<typeof fields>;
 
 let cachedConfig: WatchfaceConfig | undefined;
 
-export function getConfig(wasmModule: WasmModule, wasmMemory: WebAssembly.Memory): WatchfaceConfig {
+export function getConfig(
+  wasmModule: WasmCModule,
+  wasmMemory: WebAssembly.Memory,
+): WatchfaceConfig {
   if (!cachedConfig) {
     cachedConfig = createStruct(wasmMemory, wasmModule.get_config(), fields);
   }

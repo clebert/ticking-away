@@ -11,12 +11,12 @@ import {
   renderer,
   time,
 } from "./stores.ts";
-import { getWasmMemory, getWasmModule } from "./wasm.ts";
-import { getZigWasmMemory, getZigWasmModule } from "./zig-wasm.ts";
+import { getWasmCMemory, getWasmCModule } from "./wasm-c.ts";
+import { getWasmZigMemory, getWasmZigModule } from "./wasm-zig.ts";
 
 function renderWithC(): void {
-  const wasmModule = getWasmModule();
-  const wasmMemory = getWasmMemory();
+  const wasmModule = getWasmCModule();
+  const wasmMemory = getWasmCMemory();
 
   if (!wasmModule || !wasmMemory) {
     return;
@@ -106,24 +106,6 @@ function renderWithC(): void {
 
   canvas.getContext("2d")?.putImageData(imageData, 0, 0);
 }
-
-function ensureZigMemory(zigMemory: WebAssembly.Memory, neededBytes: number): boolean {
-  const currentBytes = zigMemory.buffer.byteLength;
-
-  if (neededBytes <= currentBytes) {
-    return true;
-  }
-
-  // Add margin and round up to page boundary
-  const targetBytes = neededBytes + 65536;
-  const pagesToGrow = Math.ceil((targetBytes - currentBytes) / 65536);
-  const result = zigMemory.grow(pagesToGrow);
-
-  return result !== -1;
-}
-
-// Config struct size (matches compat.WatchfaceConfig layout)
-const ZIG_CONFIG_SIZE = 156;
 
 function writeZigConfig(view: DataView, offset: number): void {
   const littleEndian = true;
@@ -226,8 +208,8 @@ function writeZigConfig(view: DataView, offset: number): void {
 }
 
 function renderWithZig(): void {
-  const zigModule = getZigWasmModule();
-  const zigMemory = getZigWasmMemory();
+  const zigModule = getWasmZigModule();
+  const zigMemory = getWasmZigMemory();
 
   if (!zigModule || !zigMemory) {
     return;
@@ -236,36 +218,22 @@ function renderWithZig(): void {
   const canvas = getCanvas();
   const width = canvas.width;
   const height = canvas.height;
-  const pixelCount = width * height;
 
-  // Memory layout:
-  // - Float buffer: pixelCount * 16 bytes (4 floats per pixel)
-  // - RGBA output: pixelCount * 4 bytes
-  // - Config struct: ZIG_CONFIG_SIZE bytes
-  const floatBufferSize = pixelCount * 16;
-  const rgbaBufferSize = pixelCount * 4;
-  const totalSize = floatBufferSize + rgbaBufferSize + ZIG_CONFIG_SIZE;
-
-  const heapBase = zigModule.getHeapBase();
-  const neededBytes = heapBase + totalSize;
-
-  if (!ensureZigMemory(zigMemory, neededBytes)) {
-    return;
-  }
-
-  const floatBufferPtr = heapBase;
-  const rgbaBufferPtr = heapBase + floatBufferSize;
-  const configPtr = heapBase + floatBufferSize + rgbaBufferSize;
-
-  // Write config to WASM memory
+  // Write config to Zig's static config buffer
+  const configPtr = zigModule.getConfigBuffer();
   const view = new DataView(zigMemory.buffer);
   writeZigConfig(view, configPtr);
 
-  // Render watchface with config
-  zigModule.renderWatchfaceWithConfig(floatBufferPtr, rgbaBufferPtr, width, height, configPtr);
+  // Render watchface (Zig allocates buffers internally)
+  const rgbaPtr = zigModule.renderWatchfaceWithConfig(width, height, configPtr);
+
+  if (rgbaPtr === 0) {
+    return;
+  }
 
   // Create ImageData from RGBA output
-  const framebufferArray = new Uint8ClampedArray(zigMemory.buffer, rgbaBufferPtr, pixelCount * 4);
+  const pixelCount = width * height;
+  const framebufferArray = new Uint8ClampedArray(zigMemory.buffer, rgbaPtr, pixelCount * 4);
   const imageData = new ImageData(framebufferArray, width, height);
 
   canvas.getContext("2d")?.putImageData(imageData, 0, 0);

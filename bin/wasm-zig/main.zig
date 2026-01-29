@@ -1,37 +1,81 @@
+const std = @import("std");
+const allocator = std.heap.wasm_allocator;
+
 const watchface = @import("watchface");
 const compat = watchface.compat;
 
-// WASM memory management
-extern var __heap_base: u8;
-
-export fn getHeapBase() [*]u8 {
-    return @ptrCast(&__heap_base);
-}
+// Allocated buffers (reallocated when dimensions change)
+var float_buffer: ?[]watchface.color.Color = null;
+var rgba_buffer: ?[]u8 = null;
+var dither_error_backing: ?[]f32 = null;
 
 // Static state (cached between frames)
-const max_dither_width = 5120;
-const dither_buffer_size = max_dither_width * watchface.error_diffusion.ErrorBuffer.rows * watchface.error_diffusion.ErrorBuffer.channels;
-
 var static_scene: watchface.scene.Scene = undefined;
 var scene_initialized: bool = false;
 var last_width: usize = 0;
 var last_height: usize = 0;
 
-var dither_error_backing: [dither_buffer_size]f32 = undefined;
 var dither_state: watchface.postprocess.DitherState = undefined;
 var dither_state_initialized: bool = false;
 var dither_error_buffer: watchface.error_diffusion.ErrorBuffer = undefined;
 
+// Static config buffer for JS to write into
+var config_buffer: compat.WatchfaceConfig = undefined;
+
+export fn getConfigBuffer() *compat.WatchfaceConfig {
+    return &config_buffer;
+}
+
+/// Reallocate buffers if dimensions changed.
+fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
+    if (w == last_width and h == last_height and
+        float_buffer != null and rgba_buffer != null and dither_error_backing != null)
+    {
+        return;
+    }
+
+    // Free old buffers
+    if (float_buffer) |buf| allocator.free(buf);
+    if (rgba_buffer) |buf| allocator.free(buf);
+    if (dither_error_backing) |buf| allocator.free(buf);
+
+    float_buffer = null;
+    rgba_buffer = null;
+    dither_error_backing = null;
+
+    // Allocate new buffers with errdefer for cleanup on failure
+    const pixel_count = w * h;
+
+    float_buffer = try allocator.alloc(watchface.color.Color, pixel_count);
+    errdefer {
+        allocator.free(float_buffer.?);
+        float_buffer = null;
+    }
+
+    rgba_buffer = try allocator.alloc(u8, pixel_count * 4);
+    errdefer {
+        allocator.free(rgba_buffer.?);
+        rgba_buffer = null;
+    }
+
+    const dither_size =
+        w * watchface.error_diffusion.ErrorBuffer.rows * watchface.error_diffusion.ErrorBuffer.channels;
+
+    dither_error_backing = try allocator.alloc(f32, dither_size);
+}
+
 /// Render the complete watchface using configuration from JS.
+/// Returns pointer to RGBA buffer, or null on allocation failure.
 export fn renderWatchfaceWithConfig(
-    buffer: [*]watchface.color.Color,
-    out_rgba: [*]u8,
     width: u32,
     height: u32,
     config_ptr: *compat.WatchfaceConfig,
-) void {
+) ?[*]u8 {
     const w: usize = @intCast(width);
     const h: usize = @intCast(height);
+
+    // Ensure buffers are allocated for current dimensions
+    ensureBuffers(w, h) catch return null;
 
     // Re-initialize scene if dimensions changed
     if (!scene_initialized or w != last_width or h != last_height) {
@@ -62,8 +106,8 @@ export fn renderWatchfaceWithConfig(
                 dither_state_initialized = true;
             }
 
-            if (dither_cfg.mode == .error_diffusion and w <= max_dither_width) {
-                dither_error_buffer = watchface.error_diffusion.ErrorBuffer.initStatic(&dither_error_backing, w);
+            if (dither_cfg.mode == .error_diffusion) {
+                dither_error_buffer = watchface.error_diffusion.ErrorBuffer.initStatic(dither_error_backing.?, w);
                 dither_state.setErrorBuffer(&dither_error_buffer);
             }
 
@@ -74,12 +118,14 @@ export fn renderWatchfaceWithConfig(
     // Render using pipeline
     watchface.pipeline.renderFrame(
         &static_scene,
-        buffer[0 .. w * h],
-        out_rgba[0 .. w * h * 4],
+        float_buffer.?,
+        rgba_buffer.?,
         w,
         h,
         postprocess_config,
         output_config,
         dither_state_ptr,
     );
+
+    return rgba_buffer.?.ptr;
 }

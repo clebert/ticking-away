@@ -1,4 +1,4 @@
-import { getHeapBase, getWasmMemory } from "./wasm.ts";
+import { getWasmCHeapBase, getWasmCMemory } from "./wasm-c.ts";
 
 export function getCanvas(): HTMLCanvasElement {
   return document.getElementById("canvas") as HTMLCanvasElement;
@@ -29,8 +29,8 @@ export function getFramebufferPointers(
   width: number,
   height: number,
 ): FramebufferPointers | undefined {
-  const wasmMemory = getWasmMemory();
-  const heapBase = getHeapBase();
+  const wasmMemory = getWasmCMemory();
+  const heapBase = getWasmCHeapBase();
 
   if (!wasmMemory || heapBase === undefined) {
     return;
