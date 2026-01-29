@@ -107,7 +107,7 @@ export fn renderPrism(
     // Create centered equilateral triangle at 50% viewport size
     const center = watchface.vec2.xy(w_f / 2, h_f / 2);
     const base_width = @min(w_f, h_f) * 0.5;
-    const tri = watchface.prism.Prism.equilateral(center, base_width);
+    const tri = watchface.prism.Prism.init(center, base_width);
 
     ctx.renderPrismGlow(
         tri,
@@ -198,7 +198,7 @@ export fn renderWatchface(
     const radius = size * 0.45;
     const prism_base = size * 0.28;
 
-    const p = watchface.prism.Prism.equilateral(center, prism_base);
+    const p = watchface.prism.Prism.init(center, prism_base);
     const bnd = watchface.boundary.Boundary.init(center, radius);
 
     // Compute ray paths from time

@@ -13,7 +13,7 @@ fn expectNear(actual: f32, expected: f32, tolerance: f32) !void {
 }
 
 test "containsPoint inside triangle" {
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
 
     // Centroid should be inside
     const centroid = tri.centroid();
@@ -21,7 +21,7 @@ test "containsPoint inside triangle" {
 }
 
 test "containsPoint outside triangle" {
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
 
     // Points clearly outside
     try std.testing.expect(!tri.containsPoint(0, 100)); // far left
@@ -31,7 +31,7 @@ test "containsPoint outside triangle" {
 }
 
 test "containsPoint on edge" {
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
 
     // Point on base edge (bottom, between bottom_right and bottom_left)
     const v1 = tri.getVertex(.bottom_right);
@@ -44,7 +44,7 @@ test "containsPoint on edge" {
 test "scanlineRange returns correct bounds" {
     // Equilateral: h = base * sqrt(3)/2, apex_offset = base * sqrt(3)/3, base_offset = base * sqrt(3)/6
     // With base=60, center=(100,100): apex at ~(100, 65.4), base at y~117.3
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
 
     // Middle scanline at y=100 (center)
     const r = tri.scanlineRange(100);
@@ -56,7 +56,7 @@ test "scanlineRange returns correct bounds" {
 }
 
 test "scanlineRange outside triangle returns null" {
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
 
     // Above triangle (apex is at ~65.4)
     try std.testing.expect(tri.scanlineRange(60) == null);
@@ -66,7 +66,7 @@ test "scanlineRange outside triangle returns null" {
 }
 
 test "scanlineRange at vertices" {
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
     const sqrt3 = @sqrt(3.0);
     const apex_y = 100.0 - 60.0 * sqrt3 / 3.0;
     const base_y = 100.0 + 60.0 * sqrt3 / 6.0;
@@ -87,7 +87,7 @@ test "scanlineRange at vertices" {
 test "equilateral creates symmetric triangle" {
     const center = vec2.xy(100, 100);
     const base = 50.0;
-    const tri = prism.Prism.equilateral(center, base);
+    const tri = prism.Prism.init(center, base);
 
     const cent = tri.centroid();
     try expectNear(cent[0], 100, 1);
@@ -104,7 +104,7 @@ test "equilateral creates symmetric triangle" {
 test "minY and maxY" {
     // Equilateral with base=60, center=(100,100)
     // apex_offset = 60 * sqrt(3)/3 ≈ 34.64, base_offset = 60 * sqrt(3)/6 ≈ 17.32
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
     const sqrt3 = @sqrt(3.0);
 
     try expectNear(tri.minY(), 100.0 - 60.0 * sqrt3 / 3.0, 1);
@@ -113,7 +113,7 @@ test "minY and maxY" {
 
 test "getVertex returns correct vertices" {
     // Equilateral: apex_offset = base * sqrt(3)/3, base_offset = base * sqrt(3)/6
-    const tri = prism.Prism.equilateral(vec2.xy(100, 100), 60);
+    const tri = prism.Prism.init(vec2.xy(100, 100), 60);
     const sqrt3 = @sqrt(3.0);
     const apex_offset = 60.0 * sqrt3 / 3.0;
     const base_offset = 60.0 * sqrt3 / 6.0;

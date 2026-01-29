@@ -33,7 +33,7 @@ test "07:40 vertex entry at v2" {
     const prism_size: f32 = 100.0;
 
     const center = vec2.xy(cx, cy);
-    const p = prism.Prism.equilateral(center, prism_size);
+    const p = prism.Prism.init(center, prism_size);
     const bnd = boundary.Boundary.init(center, radius);
 
     // 40 minutes
@@ -109,7 +109,7 @@ test "bounce logic for entry at v2" {
     const prism_size: f32 = 100.0;
 
     const center = vec2.xy(cx, cy);
-    const p = prism.Prism.equilateral(center, prism_size);
+    const p = prism.Prism.init(center, prism_size);
 
     // Simulate entry at bottom_left (bottom edge, u=1.0)
     const entry_edge: prism.Edge = .bottom;
@@ -136,7 +136,7 @@ test "03:15 exit rays should be valid" {
     const prism_size: f32 = 117.0; // 65% of radius
 
     const center = vec2.xy(cx, cy);
-    const p = prism.Prism.equilateral(center, prism_size);
+    const p = prism.Prism.init(center, prism_size);
     const bnd = boundary.Boundary.init(center, radius);
 
     // 03:15 - minute at 15, hour at 3
@@ -201,7 +201,7 @@ test "03:15 external gradient renders pixels" {
     const prism_size: f32 = 117.0;
 
     const center = vec2.xy(cx, cy);
-    const p = prism.Prism.equilateral(center, prism_size);
+    const p = prism.Prism.init(center, prism_size);
     const bnd = boundary.Boundary.init(center, radius);
 
     // 03:15

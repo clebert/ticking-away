@@ -148,7 +148,7 @@ pub const Prism = struct {
             (v0[1] + v1[1] + v2[1]) / 3.0,
         );
     }
-    pub fn equilateral(center: vec2.Vec2, base_width: f32) Prism {
+    pub fn init(center: vec2.Vec2, base_width: f32) Prism {
         @setFloatMode(.optimized);
         const sqrt3 = @sqrt(3.0);
         const half_base = base_width / 2.0;

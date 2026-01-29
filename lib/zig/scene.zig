@@ -115,7 +115,7 @@ pub const Scene = struct {
 
     pub fn updatePrism(self: *Scene) void {
         const prism_size = self.prism_config.size * self.radius;
-        self.prism = prism.Prism.equilateral(self.center, prism_size);
+        self.prism = prism.Prism.init(self.center, prism_size);
         self.prism_dirty = false;
     }
 

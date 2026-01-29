@@ -127,7 +127,7 @@ test "renderGlowLine respects clipping" {
     };
 
     // Clip to small triangle on left side
-    const tri = prism.Prism.equilateral(vec2.xy(5, 16), 10);
+    const tri = prism.Prism.init(vec2.xy(5, 16), 10);
 
     ctx.renderGlowLine(seg, config, .{ .prism = &tri }, null);
 
@@ -189,7 +189,7 @@ test "renderPrismGlow produces glow inside triangle" {
 
     ctx.clear();
 
-    const tri = prism.Prism.equilateral(vec2.xy(32, 36), 44);
+    const tri = prism.Prism.init(vec2.xy(32, 36), 44);
 
     const glow_color = color.white;
     const glow_width: f32 = 8;
@@ -233,7 +233,7 @@ test "renderGlowLine excludes triangle" {
     };
 
     // Exclude triangle in center
-    const exclude = prism.Prism.equilateral(vec2.xy(16, 18), 12);
+    const exclude = prism.Prism.init(vec2.xy(16, 18), 12);
 
     ctx.renderGlowLine(seg, config, null, &exclude);
 
