@@ -195,7 +195,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
 }
 
 /// Convert C grain config to Zig grain config.
-fn toGrainConfig(c: *const GrainConfig) lib.grain_effect.Config {
+fn toGrainConfig(c: *const GrainConfig) lib.grain.Config {
     return .{
         .intensity = c.intensity,
         .scale = c.scale,
@@ -205,7 +205,7 @@ fn toGrainConfig(c: *const GrainConfig) lib.grain_effect.Config {
 }
 
 /// Convert C vignette config to Zig vignette config.
-fn toVignetteConfig(c: *const VignetteConfig) lib.vignette_effect.Config {
+fn toVignetteConfig(c: *const VignetteConfig) lib.vignette.Config {
     return .{
         .enabled = c.enabled != 0,
         .strength = c.strength,
@@ -260,14 +260,14 @@ pub fn toPostprocessConfig(
     return .{
         .gamma_enabled = true,
         .grain = if (grain_cfg.intensity > 0) grain_cfg else null,
-        .grain_geometry = if (grain_cfg.intensity > 0) lib.grain_effect.Geometry{
+        .grain_geometry = if (grain_cfg.intensity > 0) lib.grain.Geometry{
             .center_x = s.center[0],
             .center_y = s.center[1],
             .radius = s.radius,
             .prism = s.prism,
         } else null,
         .vignette = if (vignette_cfg.enabled) vignette_cfg else null,
-        .vignette_geometry = if (vignette_cfg.enabled) lib.vignette_effect.Geometry{
+        .vignette_geometry = if (vignette_cfg.enabled) lib.vignette.Geometry{
             .center_x = s.center[0],
             .center_y = s.center[1],
             .radius = s.radius,

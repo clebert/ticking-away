@@ -1,8 +1,9 @@
 const std = @import("std");
 const allocator = std.heap.wasm_allocator;
 
-const compat = @import("compat");
 const lib = @import("lib");
+
+const compat = @import("compat.zig");
 
 // Allocated buffers (reallocated when dimensions change)
 var float_buffer: ?[]lib.color.Color = null;
