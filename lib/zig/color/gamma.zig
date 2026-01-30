@@ -19,9 +19,9 @@ pub fn linearToSrgb(linear: f32) f32 {
 
 pub fn applyToBuffer(buffer: []color.Color) void {
     for (buffer) |*c| {
-        c.*[0] = linearToSrgb(clamp01(c.*[0]));
-        c.*[1] = linearToSrgb(clamp01(c.*[1]));
-        c.*[2] = linearToSrgb(clamp01(c.*[2]));
+        c.*[0] = linearToSrgb(std.math.clamp(c.*[0], 0.0, 1.0));
+        c.*[1] = linearToSrgb(std.math.clamp(c.*[1], 0.0, 1.0));
+        c.*[2] = linearToSrgb(std.math.clamp(c.*[2], 0.0, 1.0));
     }
 }
 
@@ -34,25 +34,19 @@ fn pow512(x: f32) f32 {
     return cbrt_x * fourth_root_cbrt;
 }
 
-fn cbrt(x: f32) f32 {
+pub fn cbrt(x: f32) f32 {
     if (x == 0.0) return 0.0;
 
-    const neg = x < 0.0;
-    const abs_x = if (neg) -x else x;
+    const abs_x = @abs(x);
 
-    var v: u32 = @bitCast(abs_x);
-    v = v / 3 + 709921077;
+    const v: u32 = @as(u32, @bitCast(abs_x)) / 3 + 709921077;
     var y: f32 = @bitCast(v);
 
     y = (2.0 * y + abs_x / (y * y)) / 3.0;
     y = (2.0 * y + abs_x / (y * y)) / 3.0;
     y = (2.0 * y + abs_x / (y * y)) / 3.0;
 
-    return if (neg) -y else y;
-}
-
-inline fn clamp01(x: f32) f32 {
-    return @min(@max(x, 0.0), 1.0);
+    return std.math.copysign(y, x);
 }
 
 test "srgb round-trip" {
@@ -65,10 +59,10 @@ test "srgb round-trip" {
 }
 
 test "gamma known values" {
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), linearToSrgb(0.0), 0.001);
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), linearToSrgb(1.0), 0.001);
+    try std.testing.expectApproxEqAbs(linearToSrgb(0.0), 0.0, 0.001);
+    try std.testing.expectApproxEqAbs(linearToSrgb(1.0), 1.0, 0.001);
 
     const linear_mid = 0.214;
     const srgb_mid = linearToSrgb(linear_mid);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), srgb_mid, 0.02);
+    try std.testing.expectApproxEqAbs(srgb_mid, 0.5, 0.02);
 }

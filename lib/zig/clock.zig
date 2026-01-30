@@ -27,7 +27,9 @@ pub fn entryPoint(center: vec2.Vec2, radius: f32, minutes: f32) vec2.Vec2 {
 }
 
 pub fn bandExitAngle(base_hour_angle: f32, rainbow_spread: f32, band_index: usize) f32 {
-    const t = (@as(f32, @floatFromInt(band_index)) + 0.5) / @as(f32, @floatFromInt(band_count));
+    const index_f: f32 = @floatFromInt(band_index);
+    const count_f: f32 = @floatFromInt(band_count);
+    const t = (index_f + 0.5) / count_f;
     const spread_rad = rainbow_spread * max_spread_radians;
     const offset = (0.5 - t) * spread_rad;
     return base_hour_angle + offset;
@@ -101,5 +103,6 @@ test "band exit angle spread" {
 
     // Total spread should be approximately max_spread_radians
     const total_spread = first - last;
-    try testing.expectApproxEqAbs(total_spread, max_spread_radians * (1.0 - 1.0 / @as(f32, @floatFromInt(band_count))), 0.01);
+    const count_f: f32 = @floatFromInt(band_count);
+    try testing.expectApproxEqAbs(total_spread, max_spread_radians * (1.0 - 1.0 / count_f), 0.01);
 }

@@ -19,6 +19,14 @@ pub const Config = struct {
     clear_buffer: bool = true,
 };
 
+/// Quantization result for error diffusion.
+const QuantResult = struct {
+    pal_idx: dither.PaletteIndex,
+    err_1: f32,
+    err_2: f32,
+    err_3: f32,
+};
+
 /// Error buffer for diffusion (3 rows × 3 channels).
 pub const ErrorBuffer = struct {
     data: []f32,
@@ -30,7 +38,7 @@ pub const ErrorBuffer = struct {
     pub fn init(allocator: std.mem.Allocator, width: usize) !ErrorBuffer {
         const data = try allocator.alloc(f32, width * rows * channels);
         @memset(data, 0.0);
-        return ErrorBuffer{ .data = data, .width = width };
+        return .{ .data = data, .width = width };
     }
 
     /// Initialize from a preallocated static buffer.
@@ -39,7 +47,7 @@ pub const ErrorBuffer = struct {
         std.debug.assert(backing.len >= needed);
         const data = backing[0..needed];
         @memset(data, 0.0);
-        return ErrorBuffer{ .data = data, .width = width };
+        return .{ .data = data, .width = width };
     }
 
     pub fn deinit(self: *ErrorBuffer, allocator: std.mem.Allocator) void {
@@ -80,10 +88,6 @@ pub const ErrorBuffer = struct {
     }
 };
 
-inline fn clamp01(x: f32) f32 {
-    return @min(@max(x, 0.0), 1.0);
-}
-
 /// Apply Atkinson error diffusion.
 /// Diffuses 75% of error (1/8 to each of 6 neighbors).
 fn applyAtkinson(
@@ -107,49 +111,50 @@ fn applyAtkinson(
         const global_y = local_y + y_offset;
         const left_to_right = (global_y % 2 == 0);
 
-        var x: usize = if (left_to_right) 0 else width - 1;
-        while (true) {
+        for (0..width) |i| {
+            const x = if (left_to_right) i else width - 1 - i;
             const idx = local_y * width + x;
             const out_idx = idx * 4;
 
             const px = buffer[idx];
-            var pal_idx: dither.PaletteIndex = undefined;
-            var err_1: f32 = undefined;
-            var err_2: f32 = undefined;
-            var err_3: f32 = undefined;
-
-            if (config.oklab_error) {
+            const quant: QuantResult = if (config.oklab_error) blk: {
                 var lab = oklab.OkLab.fromLinearRgb(px);
-                lab.l = clamp01(lab.l + err.row(0, 0)[x]);
+                lab.l = std.math.clamp(lab.l + err.row(0, 0)[x], 0.0, 1.0);
                 lab.a += err.row(0, 1)[x];
                 lab.b += err.row(0, 2)[x];
 
-                pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.lab[@intFromEnum(pal_idx)];
+                const idx_found = palette.findClosest(lab, config.chroma_weight);
+                const quantized = palette.lab[@intFromEnum(idx_found)];
 
-                err_1 = (lab.l - quantized.l) * d;
-                err_2 = (lab.a - quantized.a) * d;
-                err_3 = (lab.b - quantized.b) * d;
-            } else {
-                const r = clamp01(px[0] + err.row(0, 0)[x]);
-                const g = clamp01(px[1] + err.row(0, 1)[x]);
-                const b = clamp01(px[2] + err.row(0, 2)[x]);
+                break :blk .{
+                    .pal_idx = idx_found,
+                    .err_1 = (lab.l - quantized.l) * d,
+                    .err_2 = (lab.a - quantized.a) * d,
+                    .err_3 = (lab.b - quantized.b) * d,
+                };
+            } else blk: {
+                const r = std.math.clamp(px[0] + err.row(0, 0)[x], 0.0, 1.0);
+                const g = std.math.clamp(px[1] + err.row(0, 1)[x], 0.0, 1.0);
+                const b = std.math.clamp(px[2] + err.row(0, 2)[x], 0.0, 1.0);
 
                 const lab = oklab.OkLab.fromLinearRgb(color.rgb(r, g, b));
-                pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.linear[@intFromEnum(pal_idx)];
+                const idx_found = palette.findClosest(lab, config.chroma_weight);
+                const quantized = palette.linear[@intFromEnum(idx_found)];
 
-                err_1 = (r - quantized[0]) * d;
-                err_2 = (g - quantized[1]) * d;
-                err_3 = (b - quantized[2]) * d;
-            }
+                break :blk .{
+                    .pal_idx = idx_found,
+                    .err_1 = (r - quantized[0]) * d,
+                    .err_2 = (g - quantized[1]) * d,
+                    .err_3 = (b - quantized[2]) * d,
+                };
+            };
 
             // Write output
-            const pal_color = palette.getRgb(pal_idx);
+            const pal_color = palette.getRgb(quant.pal_idx);
             out_rgba[out_idx] = pal_color.r;
             out_rgba[out_idx + 1] = pal_color.g;
             out_rgba[out_idx + 2] = pal_color.b;
-            out_rgba[out_idx + 3] = @intFromFloat(clamp01(px[3]) * 255.0);
+            out_rgba[out_idx + 3] = @intFromFloat(std.math.clamp(px[3], 0.0, 1.0) * 255.0);
 
             // Diffuse error (Atkinson pattern)
             const x_i: i32 = @intCast(x);
@@ -162,45 +167,36 @@ fn applyAtkinson(
             // Current row: fwd1, fwd2
             if (fwd1 >= 0 and fwd1 < width_i) {
                 const fx: usize = @intCast(fwd1);
-                err.row(0, 0)[fx] += err_1;
-                err.row(0, 1)[fx] += err_2;
-                err.row(0, 2)[fx] += err_3;
+                err.row(0, 0)[fx] += quant.err_1;
+                err.row(0, 1)[fx] += quant.err_2;
+                err.row(0, 2)[fx] += quant.err_3;
             }
             if (fwd2 >= 0 and fwd2 < width_i) {
                 const fx: usize = @intCast(fwd2);
-                err.row(0, 0)[fx] += err_1;
-                err.row(0, 1)[fx] += err_2;
-                err.row(0, 2)[fx] += err_3;
+                err.row(0, 0)[fx] += quant.err_1;
+                err.row(0, 1)[fx] += quant.err_2;
+                err.row(0, 2)[fx] += quant.err_3;
             }
             // Next row: back1, x, fwd1
             if (back1 >= 0 and back1 < width_i) {
                 const bx: usize = @intCast(back1);
-                err.row(1, 0)[bx] += err_1;
-                err.row(1, 1)[bx] += err_2;
-                err.row(1, 2)[bx] += err_3;
+                err.row(1, 0)[bx] += quant.err_1;
+                err.row(1, 1)[bx] += quant.err_2;
+                err.row(1, 2)[bx] += quant.err_3;
             }
-            err.row(1, 0)[x] += err_1;
-            err.row(1, 1)[x] += err_2;
-            err.row(1, 2)[x] += err_3;
+            err.row(1, 0)[x] += quant.err_1;
+            err.row(1, 1)[x] += quant.err_2;
+            err.row(1, 2)[x] += quant.err_3;
             if (fwd1 >= 0 and fwd1 < width_i) {
                 const fx: usize = @intCast(fwd1);
-                err.row(1, 0)[fx] += err_1;
-                err.row(1, 1)[fx] += err_2;
-                err.row(1, 2)[fx] += err_3;
+                err.row(1, 0)[fx] += quant.err_1;
+                err.row(1, 1)[fx] += quant.err_2;
+                err.row(1, 2)[fx] += quant.err_3;
             }
             // Row +2: x only
-            err.row(2, 0)[x] += err_1;
-            err.row(2, 1)[x] += err_2;
-            err.row(2, 2)[x] += err_3;
-
-            // Advance x
-            if (left_to_right) {
-                if (x + 1 >= width) break;
-                x += 1;
-            } else {
-                if (x == 0) break;
-                x -= 1;
-            }
+            err.row(2, 0)[x] += quant.err_1;
+            err.row(2, 1)[x] += quant.err_2;
+            err.row(2, 2)[x] += quant.err_3;
         }
 
         err.rotateRows();
@@ -233,49 +229,50 @@ fn applyFloydSteinberg(
         const global_y = local_y + y_offset;
         const left_to_right = (global_y % 2 == 0);
 
-        var x: usize = if (left_to_right) 0 else width - 1;
-        while (true) {
+        for (0..width) |i| {
+            const x = if (left_to_right) i else width - 1 - i;
             const idx = local_y * width + x;
             const out_idx = idx * 4;
 
             const px = buffer[idx];
-            var pal_idx: dither.PaletteIndex = undefined;
-            var err_1: f32 = undefined;
-            var err_2: f32 = undefined;
-            var err_3: f32 = undefined;
-
-            if (config.oklab_error) {
+            const quant: QuantResult = if (config.oklab_error) blk: {
                 var lab = oklab.OkLab.fromLinearRgb(px);
-                lab.l = clamp01(lab.l + err.row(0, 0)[x]);
+                lab.l = std.math.clamp(lab.l + err.row(0, 0)[x], 0.0, 1.0);
                 lab.a += err.row(0, 1)[x];
                 lab.b += err.row(0, 2)[x];
 
-                pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.lab[@intFromEnum(pal_idx)];
+                const idx_found = palette.findClosest(lab, config.chroma_weight);
+                const quantized = palette.lab[@intFromEnum(idx_found)];
 
-                err_1 = lab.l - quantized.l;
-                err_2 = lab.a - quantized.a;
-                err_3 = lab.b - quantized.b;
-            } else {
-                const r = clamp01(px[0] + err.row(0, 0)[x]);
-                const g = clamp01(px[1] + err.row(0, 1)[x]);
-                const b = clamp01(px[2] + err.row(0, 2)[x]);
+                break :blk .{
+                    .pal_idx = idx_found,
+                    .err_1 = lab.l - quantized.l,
+                    .err_2 = lab.a - quantized.a,
+                    .err_3 = lab.b - quantized.b,
+                };
+            } else blk: {
+                const r = std.math.clamp(px[0] + err.row(0, 0)[x], 0.0, 1.0);
+                const g = std.math.clamp(px[1] + err.row(0, 1)[x], 0.0, 1.0);
+                const b = std.math.clamp(px[2] + err.row(0, 2)[x], 0.0, 1.0);
 
                 const lab = oklab.OkLab.fromLinearRgb(color.rgb(r, g, b));
-                pal_idx = palette.findClosest(lab, config.chroma_weight);
-                const quantized = palette.linear[@intFromEnum(pal_idx)];
+                const idx_found = palette.findClosest(lab, config.chroma_weight);
+                const quantized = palette.linear[@intFromEnum(idx_found)];
 
-                err_1 = r - quantized[0];
-                err_2 = g - quantized[1];
-                err_3 = b - quantized[2];
-            }
+                break :blk .{
+                    .pal_idx = idx_found,
+                    .err_1 = r - quantized[0],
+                    .err_2 = g - quantized[1],
+                    .err_3 = b - quantized[2],
+                };
+            };
 
             // Write output
-            const pal_color = palette.getRgb(pal_idx);
+            const pal_color = palette.getRgb(quant.pal_idx);
             out_rgba[out_idx] = pal_color.r;
             out_rgba[out_idx + 1] = pal_color.g;
             out_rgba[out_idx + 2] = pal_color.b;
-            out_rgba[out_idx + 3] = @intFromFloat(clamp01(px[3]) * 255.0);
+            out_rgba[out_idx + 3] = @intFromFloat(std.math.clamp(px[3], 0.0, 1.0) * 255.0);
 
             // Diffuse error (Floyd-Steinberg pattern)
             const x_i: i32 = @intCast(x);
@@ -287,34 +284,25 @@ fn applyFloydSteinberg(
             // Current row: forward gets 7/16
             if (fwd >= 0 and fwd < width_i) {
                 const fx: usize = @intCast(fwd);
-                err.row(0, 0)[fx] += err_1 * d7;
-                err.row(0, 1)[fx] += err_2 * d7;
-                err.row(0, 2)[fx] += err_3 * d7;
+                err.row(0, 0)[fx] += quant.err_1 * d7;
+                err.row(0, 1)[fx] += quant.err_2 * d7;
+                err.row(0, 2)[fx] += quant.err_3 * d7;
             }
             // Next row: back gets 3/16, x gets 5/16, forward gets 1/16
             if (back >= 0 and back < width_i) {
                 const bx: usize = @intCast(back);
-                err.row(1, 0)[bx] += err_1 * d3;
-                err.row(1, 1)[bx] += err_2 * d3;
-                err.row(1, 2)[bx] += err_3 * d3;
+                err.row(1, 0)[bx] += quant.err_1 * d3;
+                err.row(1, 1)[bx] += quant.err_2 * d3;
+                err.row(1, 2)[bx] += quant.err_3 * d3;
             }
-            err.row(1, 0)[x] += err_1 * d5;
-            err.row(1, 1)[x] += err_2 * d5;
-            err.row(1, 2)[x] += err_3 * d5;
+            err.row(1, 0)[x] += quant.err_1 * d5;
+            err.row(1, 1)[x] += quant.err_2 * d5;
+            err.row(1, 2)[x] += quant.err_3 * d5;
             if (fwd >= 0 and fwd < width_i) {
                 const fx: usize = @intCast(fwd);
-                err.row(1, 0)[fx] += err_1 * d1;
-                err.row(1, 1)[fx] += err_2 * d1;
-                err.row(1, 2)[fx] += err_3 * d1;
-            }
-
-            // Advance x
-            if (left_to_right) {
-                if (x + 1 >= width) break;
-                x += 1;
-            } else {
-                if (x == 0) break;
-                x -= 1;
+                err.row(1, 0)[fx] += quant.err_1 * d1;
+                err.row(1, 1)[fx] += quant.err_2 * d1;
+                err.row(1, 2)[fx] += quant.err_3 * d1;
             }
         }
 

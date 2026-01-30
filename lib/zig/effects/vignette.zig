@@ -63,7 +63,7 @@ pub fn apply(
                 const dist_from_center = @sqrt(dist2);
 
                 // Normalized distance: 0.0 at circle edge, 1.0 at max distance
-                const vignette_t = clamp01((dist_from_center - radius) / (max_dist - radius));
+                const vignette_t = std.math.clamp((dist_from_center - radius) / (max_dist - radius), 0.0, 1.0);
 
                 // Smoothstep for perceptually smoother gradient
                 const smooth_t = vignette_t * vignette_t * (3.0 - 2.0 * vignette_t);
@@ -79,17 +79,13 @@ pub fn apply(
                 const dither = (@as(f32, @floatFromInt(hash & 0xFF)) / 255.0 - 0.5) * (2.0 / 255.0);
 
                 // Final grey value with vignette and dither
-                const grey = clamp01(bg_base * vignette_factor + dither);
+                const grey = std.math.clamp(bg_base * vignette_factor + dither, 0.0, 1.0);
 
                 // Set pixel to grey background with full opacity
                 buffer[idx] = color.rgba(grey, grey, grey, 1.0);
             }
         }
     }
-}
-
-inline fn clamp01(x: f32) f32 {
-    return @min(@max(x, 0.0), 1.0);
 }
 
 test "vignette apply" {

@@ -72,21 +72,13 @@ pub const Scene = struct {
     }
 
     pub fn setTime(self: *Scene, hour: i32, minute: f32) void {
-        var h = @mod(hour, 12);
-        if (h < 0) h += 12;
-
-        var m = minute;
-        while (m < 0) m += 60;
-        while (m >= 60) m -= 60;
-
+        const h = @mod(hour, 12);
+        const m = @mod(minute, 60.0);
         self.time_minutes = @as(f32, @floatFromInt(h)) * 60.0 + m;
     }
 
     fn setTimeMinutes(self: *Scene, minutes: f32) void {
-        var m = minutes;
-        while (m < 0) m += 720;
-        while (m >= 720) m -= 720;
-        self.time_minutes = m;
+        self.time_minutes = @mod(minutes, 720.0);
     }
 
     pub fn setPrismConfig(self: *Scene, config: PrismConfig) void {
@@ -244,96 +236,95 @@ pub const Scene = struct {
             }
         }
 
-        if (self.ray_config.gradient_fill) {
+        if (self.ray_config.gradient_fill) gradient_fill: {
             const first_band = paths.bands[0];
             const last_band = paths.bands[clock.band_count - 1];
 
-            if (first_band.exit_ray != null and last_band.exit_ray != null) {
-                // Compute angles from CENTER to where boundary rays hit CIRCLE
-                const pi = std.math.pi;
-                const tau = std.math.tau;
-                const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(clock.band_count - 1));
+            const first_exit_ray = first_band.exit_ray orelse break :gradient_fill;
+            const last_exit_ray = last_band.exit_ray orelse break :gradient_fill;
 
-                const first_border = first_band.exit_ray.?.end;
-                const last_border = last_band.exit_ray.?.end;
+            // Compute angles from CENTER to where boundary rays hit CIRCLE
+            const pi = std.math.pi;
+            const tau = std.math.tau;
+            const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(clock.band_count - 1));
 
-                const ext_angle_first = trig.atan2(
-                    first_border[1] - self.center[1],
-                    first_border[0] - self.center[0],
-                );
-                const ext_angle_last = trig.atan2(
-                    last_border[1] - self.center[1],
-                    last_border[0] - self.center[0],
-                );
+            const first_border = first_exit_ray.end;
+            const last_border = last_exit_ray.end;
 
-                var ray_span = ext_angle_last - ext_angle_first;
-                if (ray_span > pi) ray_span -= tau;
-                if (ray_span < -pi) ray_span += tau;
-                const edge_margin = ray_span * edge_margin_factor;
+            const ext_angle_first = trig.atan2(
+                first_border[1] - self.center[1],
+                first_border[0] - self.center[0],
+            );
+            const ext_angle_last = trig.atan2(
+                last_border[1] - self.center[1],
+                last_border[0] - self.center[0],
+            );
 
-                // External gradient (outside prism, inside circle)
-                gradient.render(
-                    ctx,
-                    .{
-                        .mode = .external,
-                        .origin_x = self.center[0],
-                        .origin_y = self.center[1],
-                        .angle_start = ext_angle_first - edge_margin,
-                        .angle_end = ext_angle_last + edge_margin,
-                        .intensity = self.ray_config.intensity,
-                        .reverse_spectrum = self.ray_config.reverse,
-                    },
-                    .{
-                        .center_x = self.center[0],
-                        .center_y = self.center[1],
-                        .radius = self.radius,
-                        .prism = self.prism,
-                    },
-                    cache,
-                );
+            var ray_span = ext_angle_last - ext_angle_first;
+            if (ray_span > pi) ray_span -= tau;
+            if (ray_span < -pi) ray_span += tau;
+            const edge_margin = ray_span * edge_margin_factor;
 
-                // Internal gradient (inside prism)
-                const grad_origin = if (paths.needs_bounce) paths.bounce_point else paths.entry_point;
+            // External gradient (outside prism, inside circle)
+            gradient.render(
+                ctx,
+                .{
+                    .mode = .external,
+                    .origin_x = self.center[0],
+                    .origin_y = self.center[1],
+                    .angle_start = ext_angle_first - edge_margin,
+                    .angle_end = ext_angle_last + edge_margin,
+                    .intensity = self.ray_config.intensity,
+                    .reverse_spectrum = self.ray_config.reverse,
+                },
+                .{
+                    .center_x = self.center[0],
+                    .center_y = self.center[1],
+                    .radius = self.radius,
+                    .prism = self.prism,
+                },
+                cache,
+            );
 
-                if (first_band.prism_exit != null and last_band.prism_exit != null) {
-                    const first_exit = first_band.prism_exit.?;
-                    const last_exit = last_band.prism_exit.?;
+            // Internal gradient (inside prism)
+            const grad_origin = if (paths.needs_bounce) paths.bounce_point else paths.entry_point;
 
-                    const internal_angle_first = trig.atan2(
-                        first_exit[1] - grad_origin[1],
-                        first_exit[0] - grad_origin[0],
-                    );
-                    const internal_angle_last = trig.atan2(
-                        last_exit[1] - grad_origin[1],
-                        last_exit[0] - grad_origin[0],
-                    );
+            const first_exit = first_band.prism_exit orelse break :gradient_fill;
+            const last_exit = last_band.prism_exit orelse break :gradient_fill;
 
-                    var internal_span = internal_angle_last - internal_angle_first;
-                    if (internal_span > pi) internal_span -= tau;
-                    if (internal_span < -pi) internal_span += tau;
-                    const internal_edge_margin = internal_span * edge_margin_factor;
+            const internal_angle_first = trig.atan2(
+                first_exit[1] - grad_origin[1],
+                first_exit[0] - grad_origin[0],
+            );
+            const internal_angle_last = trig.atan2(
+                last_exit[1] - grad_origin[1],
+                last_exit[0] - grad_origin[0],
+            );
 
-                    gradient.render(
-                        ctx,
-                        .{
-                            .mode = .internal,
-                            .origin_x = grad_origin[0],
-                            .origin_y = grad_origin[1],
-                            .angle_start = internal_angle_first - internal_edge_margin,
-                            .angle_end = internal_angle_last + internal_edge_margin,
-                            .intensity = self.ray_config.intensity,
-                            .reverse_spectrum = self.ray_config.reverse,
-                        },
-                        .{
-                            .center_x = self.center[0],
-                            .center_y = self.center[1],
-                            .radius = self.radius,
-                            .prism = self.prism,
-                        },
-                        cache,
-                    );
-                }
-            }
+            var internal_span = internal_angle_last - internal_angle_first;
+            if (internal_span > pi) internal_span -= tau;
+            if (internal_span < -pi) internal_span += tau;
+            const internal_edge_margin = internal_span * edge_margin_factor;
+
+            gradient.render(
+                ctx,
+                .{
+                    .mode = .internal,
+                    .origin_x = grad_origin[0],
+                    .origin_y = grad_origin[1],
+                    .angle_start = internal_angle_first - internal_edge_margin,
+                    .angle_end = internal_angle_last + internal_edge_margin,
+                    .intensity = self.ray_config.intensity,
+                    .reverse_spectrum = self.ray_config.reverse,
+                },
+                .{
+                    .center_x = self.center[0],
+                    .center_y = self.center[1],
+                    .radius = self.radius,
+                    .prism = self.prism,
+                },
+                cache,
+            );
         }
 
         glow.renderPrismEdges(

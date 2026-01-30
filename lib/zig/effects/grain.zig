@@ -36,62 +36,55 @@ pub fn apply(
     // Brightness scaling factor
     const brightness_scale = 1.0 / @max(config.threshold, 0.01);
 
-    // Circle bounds
-    const use_circle = geometry != null;
-    const cx = if (geometry) |g| g.center_x else 0;
-    const cy = if (geometry) |g| g.center_y else 0;
-    const r2 = if (geometry) |g| g.radius * g.radius else 0;
-
     for (0..height) |y| {
-        const py = @as(f32, @floatFromInt(y)) + 0.5;
+        const y_f: f32 = @floatFromInt(y);
+        const py = y_f + 0.5;
 
         for (0..width) |x| {
-            const px = @as(f32, @floatFromInt(x)) + 0.5;
+            const x_f: f32 = @floatFromInt(x);
+            const px = x_f + 0.5;
             const idx = y * width + x;
 
-            // Circle mask check
-            if (use_circle) {
-                const dx = px - cx;
-                const dy = py - cy;
-                const dist_sq = dx * dx + dy * dy;
-                if (dist_sq > r2) continue;
+            // Geometry masking (circle and optional prism)
+            if (geometry) |geo| {
+                const dx = px - geo.center_x;
+                const dy = py - geo.center_y;
+                if (dx * dx + dy * dy > geo.radius * geo.radius) continue;
 
-                // Prism-only check
                 if (config.prism_only) {
-                    if (geometry) |g| {
-                        if (g.prism) |p| {
-                            if (!p.containsPoint(px, py)) continue;
-                        }
+                    if (geo.prism) |p| {
+                        if (!p.containsPoint(px, py)) continue;
                     }
                 }
             }
 
             // Get current sRGB values
-            const r = buffer[idx][0];
-            const g_val = buffer[idx][1];
-            const b = buffer[idx][2];
+            const red = buffer[idx][0];
+            const green = buffer[idx][1];
+            const blue = buffer[idx][2];
 
             // Calculate brightness (simple average in sRGB space)
-            const brightness = (r + g_val + b) / 3.0;
+            const brightness = (red + green + blue) / 3.0;
 
             // Scale grain intensity by brightness (fades to zero in dark areas)
-            const brightness_factor = clamp01(brightness * brightness_scale);
+            const brightness_factor = std.math.clamp(brightness * brightness_scale, 0.0, 1.0);
 
             // Generate deterministic noise using scaled coordinates
-            const gx: i32 = @intFromFloat(@as(f32, @floatFromInt(x)) / config.scale);
-            const gy: i32 = @intFromFloat(@as(f32, @floatFromInt(y)) / config.scale);
+            const gx: i32 = @intFromFloat(x_f / config.scale);
+            const gy: i32 = @intFromFloat(y_f / config.scale);
             const hash = hashPixel(gx, gy);
 
             // Convert hash to noise value: [-grain_strength, +grain_strength]
-            const noise = (@as(f32, @floatFromInt(hash & 0xFF)) / 255.0 - 0.5) * grain_strength * 2.0;
+            const hash_f: f32 = @floatFromInt(hash & 0xFF);
+            const noise = (hash_f / 255.0 - 0.5) * grain_strength * 2.0;
 
             // Apply brightness-scaled noise
             const grain_val = noise * brightness_factor;
 
             // Add grain to all channels (monochromatic grain)
-            buffer[idx][0] = clamp01(r + grain_val);
-            buffer[idx][1] = clamp01(g_val + grain_val);
-            buffer[idx][2] = clamp01(b + grain_val);
+            buffer[idx][0] = std.math.clamp(red + grain_val, 0.0, 1.0);
+            buffer[idx][1] = std.math.clamp(green + grain_val, 0.0, 1.0);
+            buffer[idx][2] = std.math.clamp(blue + grain_val, 0.0, 1.0);
         }
     }
 }
@@ -104,10 +97,6 @@ pub fn hashPixel(x: i32, y: i32) u32 {
     var h = ux *% 374761393 +% uy *% 668265263;
     h = (h ^ (h >> 13)) *% 1274126177;
     return h ^ (h >> 16);
-}
-
-inline fn clamp01(x: f32) f32 {
-    return @min(@max(x, 0.0), 1.0);
 }
 
 test "grain hash deterministic" {

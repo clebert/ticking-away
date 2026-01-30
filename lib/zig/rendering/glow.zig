@@ -157,7 +157,7 @@ pub fn renderPrismEdges(
             const dist = smoothPrismDistance(&tri, vec2.xy(px, y_center), smooth_k);
 
             if (dist < glow_width) {
-                const t = @min(@max(dist / glow_width, 0), 1);
+                const t = std.math.clamp(dist / glow_width, 0, 1);
                 const alpha = falloff.apply(t) * intensity;
                 const p = &ctx.buffer[local_y * ctx.width + x];
                 const scale_vec: color.Color = @splat(alpha);

@@ -37,10 +37,7 @@ pub const Geometry = struct {
 };
 
 inline fn normalizeAngle(a: f32) f32 {
-    var angle = a;
-    while (angle < 0) angle += tau;
-    while (angle >= tau) angle -= tau;
-    return angle;
+    return @mod(a, tau);
 }
 
 pub fn render(
@@ -49,36 +46,31 @@ pub fn render(
     geometry: Geometry,
     cache: *const palette.Cache,
 ) void {
-    var a1 = normalizeAngle(config.angle_start);
-    var a2 = normalizeAngle(config.angle_end);
+    const a1_normalized = normalizeAngle(config.angle_start);
+    const a2_normalized = normalizeAngle(config.angle_end);
 
-    var angle_diff = a2 - a1;
-    if (angle_diff > pi) angle_diff -= tau;
-    if (angle_diff < -pi) angle_diff += tau;
+    const angle_diff = blk: {
+        var diff = a2_normalized - a1_normalized;
+        if (diff > pi) diff -= tau;
+        if (diff < -pi) diff += tau;
+        break :blk diff;
+    };
 
     const angle_span = @abs(angle_diff);
     if (angle_span < 0.001 or angle_span > pi) return;
 
     const reverse = angle_diff < 0;
-    if (reverse) {
-        const tmp = a1;
-        a1 = a2;
-        a2 = tmp;
-    }
+    const a1_sorted = if (reverse) a2_normalized else a1_normalized;
+    const a2_sorted = if (reverse) a1_normalized else a2_normalized;
 
-    const a1_orig = a1;
-    const wrap_around = a1 > a2;
+    const a1_orig = a1_sorted;
+    const wrap_around = a1_sorted > a2_sorted;
 
     // Expand angle range slightly to avoid edge artifacts.
     // For non-wrap case, clamp to avoid wrapping at 0/tau boundary.
     const eps: f32 = 0.002;
-    if (wrap_around) {
-        a1 = normalizeAngle(a1 - eps);
-        a2 = normalizeAngle(a2 + eps);
-    } else {
-        a1 = @max(a1 - eps, 0);
-        a2 = @min(a2 + eps, tau - 0.0001);
-    }
+    const a1 = if (wrap_around) normalizeAngle(a1_sorted - eps) else @max(a1_sorted - eps, 0);
+    const a2 = if (wrap_around) normalizeAngle(a2_sorted + eps) else @min(a2_sorted + eps, tau - 0.0001);
 
     var x_start: usize = 0;
     var x_end: usize = ctx.width;
@@ -89,9 +81,9 @@ pub fn render(
     const geo_prism = geometry.prism;
 
     if (config.mode == .internal) {
-        const v0 = geo_prism.getVertex(.apex);
-        const v1 = geo_prism.getVertex(.bottom_right);
-        const v2 = geo_prism.getVertex(.bottom_left);
+        const v0 = geo_prism.vertices.get(.apex);
+        const v1 = geo_prism.vertices.get(.bottom_right);
+        const v2 = geo_prism.vertices.get(.bottom_left);
         const min_x = @min(@min(v0[0], v1[0]), v2[0]);
         const max_x = @max(@max(v0[0], v1[0]), v2[0]);
         const min_y = @min(@min(v0[1], v1[1]), v2[1]);
@@ -134,23 +126,24 @@ pub fn render(
             var pixel_angle = trig.atan2(dy, dx);
             if (pixel_angle < 0) pixel_angle += tau;
 
-            var t: f32 = undefined;
-            if (wrap_around) {
-                if (pixel_angle < a1 and pixel_angle > a2) continue;
-                if (pixel_angle >= a1_orig) {
-                    t = (pixel_angle - a1_orig) / angle_span;
+            const t_raw = blk: {
+                if (wrap_around) {
+                    if (pixel_angle < a1 and pixel_angle > a2) continue;
+                    break :blk if (pixel_angle >= a1_orig)
+                        (pixel_angle - a1_orig) / angle_span
+                    else
+                        (tau - a1_orig + pixel_angle) / angle_span;
                 } else {
-                    t = (tau - a1_orig + pixel_angle) / angle_span;
+                    if (pixel_angle < a1 or pixel_angle > a2) continue;
+                    break :blk (pixel_angle - a1_orig) / angle_span;
                 }
-            } else {
-                if (pixel_angle < a1 or pixel_angle > a2) continue;
-                t = (pixel_angle - a1_orig) / angle_span;
-            }
+            };
 
-            if (reverse) t = 1.0 - t;
+            const t = if (reverse) 1.0 - t_raw else t_raw;
 
-            var t_color = (t * @as(f32, palette.band_count) - 0.5) / @as(f32, palette.band_count - 1);
-            if (config.reverse_spectrum) t_color = 1.0 - t_color;
+            const band_count_f: f32 = @floatFromInt(palette.band_count);
+            const t_color_raw = (t * band_count_f - 0.5) / (band_count_f - 1.0);
+            const t_color = if (config.reverse_spectrum) 1.0 - t_color_raw else t_color_raw;
 
             const col = cache.interpolate(t_color);
             const p = &ctx.buffer[local_y * ctx.width + x];

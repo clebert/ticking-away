@@ -8,13 +8,8 @@ pub const use_std_math = true;
 
 /// Reduces angle to [-pi, pi] range.
 inline fn reduceAngle(x: f32) f32 {
-    const inv_tau = 1.0 / tau;
-    const n = x * inv_tau;
-    var ni: i32 = @intFromFloat(n);
-    if (n < @as(f32, @floatFromInt(ni))) {
-        ni -= 1;
-    }
-    var result = x - @as(f32, @floatFromInt(ni)) * tau;
+    const n = x * (1.0 / tau);
+    var result = x - @floor(n) * tau;
     if (result > pi) {
         result -= tau;
     }
@@ -33,12 +28,8 @@ pub inline fn sin(x: f32) f32 {
         return @sin(x);
     }
     const reduced = reduceAngle(x);
-    var sign: f32 = 1.0;
-    var angle = reduced;
-    if (angle < 0.0) {
-        angle = -angle;
-        sign = -1.0;
-    }
+    const sign: f32 = if (reduced < 0.0) -1.0 else 1.0;
+    const angle = @abs(reduced);
     const pmx = pi - angle;
     const num = 16.0 * angle * pmx;
     const den = 5.0 * pi * pi - 4.0 * angle * pmx;

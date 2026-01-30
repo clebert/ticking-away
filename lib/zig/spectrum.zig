@@ -62,7 +62,7 @@ pub const Paths = struct {
             p,
         );
         paths.needs_bounce = bounce_vertex != null;
-        const bounce_point = if (bounce_vertex) |v| p.getVertex(v) else vec2.xy(0, 0);
+        const bounce_point = if (bounce_vertex) |v| p.vertices.get(v) else vec2.xy(0, 0);
         paths.bounce_point = bounce_point;
 
         for (0..clock.band_count) |i| {
@@ -72,7 +72,7 @@ pub const Paths = struct {
             const exit_hit = intersect.rayPrismExit(prism_center, exit_angle, p) orelse continue;
             paths.bands[i].prism_exit = exit_hit.point;
 
-            if (bounce_vertex != null) {
+            if (bounce_vertex) |_| {
                 paths.bands[i].internal1 = .{
                     .start = entry_hit.point,
                     .end = bounce_point,
@@ -173,7 +173,7 @@ pub fn computeBounceVertex(
                 .on_edge => false,
             };
             if (exit_at_apex) {
-                const entry_touches_apex = (classified_entry_edge == .right or classified_entry_edge == .left);
+                const entry_touches_apex = classified_entry_edge == .right or classified_entry_edge == .left;
                 if (entry_touches_apex) {
                     return if (dx >= 0.0) .bottom_left else .bottom_right;
                 }
@@ -223,8 +223,8 @@ test "07:40 vertex entry at v2" {
     try testing.expect(paths.hits_prism);
 
     // Get prism vertices
-    const v0 = p.getVertex(.apex);
-    const v2 = p.getVertex(.bottom_left);
+    const v0 = p.vertices.get(.apex);
+    const v2 = p.vertices.get(.bottom_left);
 
     // Verify entry point is near v2
     const entry_dist = distance(paths.entry_point, v2);

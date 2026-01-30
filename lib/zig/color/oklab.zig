@@ -24,10 +24,6 @@ pub const OkLab = struct {
         };
     }
 
-    fn chroma(self: OkLab) f32 {
-        return @sqrt(self.a * self.a + self.b * self.b);
-    }
-
     pub fn distanceSq(self: OkLab, other: OkLab, chroma_weight: f32) f32 {
         const d_l = self.l - other.l;
         const da = self.a - other.a;
@@ -50,9 +46,9 @@ fn linearRgbToOklab(r: f32, g: f32, b: f32) OkLab {
     const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
     const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
 
-    const lp = cbrt(l);
-    const mp = cbrt(m);
-    const sp = cbrt(s);
+    const lp = gamma.cbrt(l);
+    const mp = gamma.cbrt(m);
+    const sp = gamma.cbrt(s);
 
     return .{
         .l = 0.2104542553 * lp + 0.7936177850 * mp - 0.0040720468 * sp,
@@ -70,32 +66,11 @@ fn oklabToLinearRgb(lab: OkLab) color.Color {
     const m = mp * mp * mp;
     const s = sp * sp * sp;
 
-    var r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-    var g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-    var b = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
-
-    r = @max(r, 0.0);
-    g = @max(g, 0.0);
-    b = @max(b, 0.0);
+    const r = @max(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, 0.0);
+    const g = @max(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, 0.0);
+    const b = @max(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s, 0.0);
 
     return color.rgb(r, g, b);
-}
-
-fn cbrt(x: f32) f32 {
-    if (x == 0.0) return 0.0;
-
-    const neg = x < 0.0;
-    const abs_x = if (neg) -x else x;
-
-    var v: u32 = @bitCast(abs_x);
-    v = v / 3 + 709921077;
-    var y: f32 = @bitCast(v);
-
-    y = (2.0 * y + abs_x / (y * y)) / 3.0;
-    y = (2.0 * y + abs_x / (y * y)) / 3.0;
-    y = (2.0 * y + abs_x / (y * y)) / 3.0;
-
-    return if (neg) -y else y;
 }
 
 test "oklab round-trip" {
@@ -119,12 +94,12 @@ test "oklab round-trip" {
 
 test "oklab known values" {
     const black = OkLab.fromLinearRgb(color.rgb(0, 0, 0));
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), black.l, 0.001);
+    try std.testing.expectApproxEqAbs(black.l, 0.0, 0.001);
 
     const white = OkLab.fromLinearRgb(color.rgb(1, 1, 1));
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), white.l, 0.001);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), white.a, 0.01);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), white.b, 0.01);
+    try std.testing.expectApproxEqAbs(white.l, 1.0, 0.001);
+    try std.testing.expectApproxEqAbs(white.a, 0.0, 0.01);
+    try std.testing.expectApproxEqAbs(white.b, 0.0, 0.01);
 }
 
 test "oklab lerp" {
@@ -132,5 +107,5 @@ test "oklab lerp" {
     const white = OkLab.fromLinearRgb(color.rgb(1, 1, 1));
 
     const mid = OkLab.lerp(black, white, 0.5);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), mid.l, 0.01);
+    try std.testing.expectApproxEqAbs(mid.l, 0.5, 0.01);
 }

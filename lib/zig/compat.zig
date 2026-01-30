@@ -48,7 +48,18 @@ pub const RayPalette = enum(i32) {
     spectra6 = 9,
 
     pub fn toZig(self: RayPalette) palette.Type {
-        return @enumFromInt(@intFromEnum(self));
+        return switch (self) {
+            .oklch_balanced => .oklch_balanced,
+            .saturated => .saturated,
+            .spectral => .spectral,
+            .neon => .neon,
+            .muted => .muted,
+            .eink_pure => .eink_pure,
+            .eink_dither => .eink_dither,
+            .eink_full => .eink_full,
+            .album_cover => .album_cover,
+            .spectra6 => .spectra6,
+        };
     }
 };
 

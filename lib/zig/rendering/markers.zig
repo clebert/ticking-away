@@ -29,7 +29,7 @@ pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
     radius: f32,
-    bnd: boundary.Boundary = undefined,
+    bnd: boundary.Boundary,
 
     pub fn init(center_x: f32, center_y: f32, radius: f32) Geometry {
         return .{
@@ -94,11 +94,7 @@ pub fn computeMarkers(geometry: Geometry, config: Config) [marker_count]Marker {
 }
 
 test "marker positions" {
-    const geometry = Geometry{
-        .center_x = 100,
-        .center_y = 100,
-        .radius = 50,
-    };
+    const geometry = Geometry.init(100, 100, 50);
     const config = Config{};
     const markers = computeMarkers(geometry, config);
 

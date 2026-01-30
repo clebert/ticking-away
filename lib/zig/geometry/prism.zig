@@ -37,17 +37,12 @@ pub const Edge = enum(u2) {
 };
 
 pub const Prism = struct {
-    vertices_x: std.EnumArray(Vertex, f32),
-    vertices_y: std.EnumArray(Vertex, f32),
-
-    pub fn getVertex(self: Prism, vertex: Vertex) vec2.Vec2 {
-        return vec2.xy(self.vertices_x.get(vertex), self.vertices_y.get(vertex));
-    }
+    vertices: std.EnumArray(Vertex, vec2.Vec2),
 
     pub fn scanlineRange(self: Prism, y: f32) ?range.Range {
-        const t = self.getVertex(.apex);
-        const m = self.getVertex(.bottom_left);
-        const b = self.getVertex(.bottom_right);
+        const t = self.vertices.get(.apex);
+        const m = self.vertices.get(.bottom_left);
+        const b = self.vertices.get(.bottom_right);
 
         if (y < t[1] or y > b[1]) return null;
 
@@ -69,30 +64,27 @@ pub const Prism = struct {
     }
 
     pub fn containsPoint(self: Prism, px: f32, py: f32) bool {
-        const x0 = self.vertices_x.get(.apex);
-        const y0 = self.vertices_y.get(.apex);
-        const x1 = self.vertices_x.get(.bottom_right);
-        const y1 = self.vertices_y.get(.bottom_right);
-        const x2 = self.vertices_x.get(.bottom_left);
-        const y2 = self.vertices_y.get(.bottom_left);
+        const v0 = self.vertices.get(.apex);
+        const v1 = self.vertices.get(.bottom_right);
+        const v2 = self.vertices.get(.bottom_left);
 
-        // Simple barycentric test (matches C implementation)
-        const denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+        // Barycentric containment test
+        const denom = (v1[1] - v2[1]) * (v0[0] - v2[0]) + (v2[0] - v1[0]) * (v0[1] - v2[1]);
         if (@abs(denom) < 1e-9) return false;
 
         const inv_denom = 1.0 / denom;
-        const a = ((y1 - y2) * (px - x2) + (x2 - x1) * (py - y2)) * inv_denom;
-        const b = ((y2 - y0) * (px - x2) + (x0 - x2) * (py - y2)) * inv_denom;
+        const a = ((v1[1] - v2[1]) * (px - v2[0]) + (v2[0] - v1[0]) * (py - v2[1])) * inv_denom;
+        const b = ((v2[1] - v0[1]) * (px - v2[0]) + (v0[0] - v2[0]) * (py - v2[1])) * inv_denom;
 
-        return (a >= 0) and (b >= 0) and ((a + b) <= 1);
+        return a >= 0 and b >= 0 and (a + b) <= 1;
     }
 
     pub fn minY(self: Prism) f32 {
-        return self.vertices_y.get(.apex);
+        return self.vertices.get(.apex)[1];
     }
 
     pub fn maxY(self: Prism) f32 {
-        return self.vertices_y.get(.bottom_right);
+        return self.vertices.get(.bottom_right)[1];
     }
 
     pub const EdgeSegment = struct {
@@ -119,15 +111,15 @@ pub const Prism = struct {
 
     pub fn getEdge(self: Prism, edge: Edge) EdgeSegment {
         return .{
-            .start = self.getVertex(edge.startVertex()),
-            .end = self.getVertex(edge.endVertex()),
+            .start = self.vertices.get(edge.startVertex()),
+            .end = self.vertices.get(edge.endVertex()),
         };
     }
 
     pub fn centroid(self: Prism) vec2.Vec2 {
-        const v0 = self.getVertex(.apex);
-        const v1 = self.getVertex(.bottom_right);
-        const v2 = self.getVertex(.bottom_left);
+        const v0 = self.vertices.get(.apex);
+        const v1 = self.vertices.get(.bottom_right);
+        const v2 = self.vertices.get(.bottom_left);
         return vec2.xy(
             (v0[0] + v1[0] + v2[0]) / 3.0,
             (v0[1] + v1[1] + v2[1]) / 3.0,
@@ -146,8 +138,11 @@ pub const Prism = struct {
         const v2 = vec2.xy(center[0] - half_base, center[1] + base_offset);
 
         return .{
-            .vertices_x = std.EnumArray(Vertex, f32).init(.{ .apex = v0[0], .bottom_right = v1[0], .bottom_left = v2[0] }),
-            .vertices_y = std.EnumArray(Vertex, f32).init(.{ .apex = v0[1], .bottom_right = v1[1], .bottom_left = v2[1] }),
+            .vertices = std.EnumArray(Vertex, vec2.Vec2).init(.{
+                .apex = v0,
+                .bottom_right = v1,
+                .bottom_left = v2,
+            }),
         };
     }
 };
@@ -174,8 +169,8 @@ test "containsPoint on edge" {
     const tri = Prism.init(vec2.xy(100, 100), 60);
 
     // Point on base edge (bottom, between bottom_right and bottom_left)
-    const v1 = tri.getVertex(.bottom_right);
-    const v2 = tri.getVertex(.bottom_left);
+    const v1 = tri.vertices.get(.bottom_right);
+    const v2 = tri.vertices.get(.bottom_left);
     const mid_base_x = (v1[0] + v2[0]) / 2;
     const mid_base_y = (v1[1] + v2[1]) / 2;
     try testing.expect(tri.containsPoint(mid_base_x, mid_base_y));
@@ -234,8 +229,8 @@ test "equilateral creates symmetric triangle" {
     try testing.expectApproxEqAbs(cent[1], 100, 1);
 
     // Check symmetry: bottom_right and bottom_left should be equidistant from center
-    const v1 = tri.getVertex(.bottom_right);
-    const v2 = tri.getVertex(.bottom_left);
+    const v1 = tri.vertices.get(.bottom_right);
+    const v2 = tri.vertices.get(.bottom_left);
     const d1 = @sqrt((v1[0] - center[0]) * (v1[0] - center[0]) + (v1[1] - center[1]) * (v1[1] - center[1]));
     const d2 = @sqrt((v2[0] - center[0]) * (v2[0] - center[0]) + (v2[1] - center[1]) * (v2[1] - center[1]));
     try testing.expectApproxEqAbs(d1, d2, 0.1);
@@ -251,16 +246,16 @@ test "minY and maxY" {
     try testing.expectApproxEqAbs(tri.maxY(), 100.0 + 60.0 * sqrt3 / 6.0, 1);
 }
 
-test "getVertex returns correct vertices" {
+test "vertices returns correct values" {
     // Equilateral: apex_offset = base * sqrt(3)/3, base_offset = base * sqrt(3)/6
     const tri = Prism.init(vec2.xy(100, 100), 60);
     const sqrt3 = @sqrt(3.0);
     const apex_offset = 60.0 * sqrt3 / 3.0;
     const base_offset = 60.0 * sqrt3 / 6.0;
 
-    const v0 = tri.getVertex(.apex);
-    const v1 = tri.getVertex(.bottom_right);
-    const v2 = tri.getVertex(.bottom_left);
+    const v0 = tri.vertices.get(.apex);
+    const v1 = tri.vertices.get(.bottom_right);
+    const v2 = tri.vertices.get(.bottom_left);
 
     // apex
     try testing.expectApproxEqAbs(v0[0], 100, 1);

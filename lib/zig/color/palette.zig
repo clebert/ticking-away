@@ -18,8 +18,6 @@ pub const Palette = enum(u4) {
     eink_full = 7,
     album_cover = 8,
     spectra6 = 9,
-
-    pub const count: usize = 10;
 };
 
 /// sRGB color triplet (0-255).
@@ -37,21 +35,23 @@ pub const Cache = struct {
     lab: [band_count]oklab.OkLab,
 
     pub fn init(pal: Type) Cache {
-        var cache: Cache = undefined;
         const colors = palette_colors[@intFromEnum(pal)];
+
+        var linear: [band_count]color.Color = undefined;
+        var lab: [band_count]oklab.OkLab = undefined;
 
         for (0..band_count) |i| {
             // Convert sRGB to linear RGB
             const r = gamma.srgbToLinear(colors[i].r);
             const g = gamma.srgbToLinear(colors[i].g);
             const b = gamma.srgbToLinear(colors[i].b);
-            cache.linear[i] = color.rgb(r, g, b);
+            linear[i] = color.rgb(r, g, b);
 
             // Compute OkLab for gradient interpolation
-            cache.lab[i] = oklab.OkLab.fromLinearRgb(cache.linear[i]);
+            lab[i] = oklab.OkLab.fromLinearRgb(linear[i]);
         }
 
-        return cache;
+        return .{ .linear = linear, .lab = lab };
     }
 
     /// Get the linear color for a specific band index.
@@ -96,7 +96,7 @@ pub const Cache = struct {
 };
 
 /// Palette colors in sRGB (0-255). Indexed by Palette enum.
-const palette_colors = [Palette.count][band_count]Rgb{
+const palette_colors = [std.meta.fields(Palette).len][band_count]Rgb{
     // oklch_balanced (friendly, even OkLCH hue spacing)
     .{
         .{ .r = 255, .g = 64, .b = 64 }, // Red
