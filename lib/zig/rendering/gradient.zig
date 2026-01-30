@@ -37,7 +37,6 @@ pub const Geometry = struct {
 };
 
 inline fn normalizeAngle(a: f32) f32 {
-    @setFloatMode(.optimized);
     var angle = a;
     while (angle < 0) angle += tau;
     while (angle >= tau) angle -= tau;
@@ -50,8 +49,6 @@ pub fn render(
     geometry: Geometry,
     cache: *const palette.Cache,
 ) void {
-    @setFloatMode(.optimized);
-
     var a1 = normalizeAngle(config.angle_start);
     var a2 = normalizeAngle(config.angle_end);
 

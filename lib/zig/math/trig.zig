@@ -8,7 +8,6 @@ pub const use_std_math = true;
 
 /// Reduces angle to [-pi, pi] range.
 inline fn reduceAngle(x: f32) f32 {
-    @setFloatMode(.optimized);
     const inv_tau = 1.0 / tau;
     const n = x * inv_tau;
     var ni: i32 = @intFromFloat(n);
@@ -30,7 +29,6 @@ inline fn reduceAngle(x: f32) f32 {
 /// Works entirely in f32, no f64 promotion. Maximum error ~0.001 radians.
 /// When `use_std_math` is true, uses standard math implementation.
 pub inline fn sin(x: f32) f32 {
-    @setFloatMode(.optimized);
     if (use_std_math) {
         return @sin(x);
     }
@@ -51,7 +49,6 @@ pub inline fn sin(x: f32) f32 {
 /// When `use_std_math` is false, uses cos(x) = sin(x + pi/2).
 /// When `use_std_math` is true, uses standard math implementation.
 pub inline fn cos(x: f32) f32 {
-    @setFloatMode(.optimized);
     if (use_std_math) {
         return @cos(x);
     }
@@ -63,7 +60,6 @@ pub inline fn cos(x: f32) f32 {
 /// When `use_std_math` is false, uses polynomial approximation (max error ~0.2%).
 /// When `use_std_math` is true, uses standard math implementation.
 pub inline fn atan2(y: f32, x: f32) f32 {
-    @setFloatMode(.optimized);
     if (use_std_math) {
         return std.math.atan2(y, x);
     }

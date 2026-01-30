@@ -32,7 +32,6 @@ pub fn apply(
     config: Config,
     geometry: Geometry,
 ) void {
-    @setFloatMode(.optimized);
     if (!config.enabled) return;
 
     const strength = if (config.strength >= 0.0) config.strength else default_strength;
@@ -90,7 +89,6 @@ pub fn apply(
 }
 
 inline fn clamp01(x: f32) f32 {
-    @setFloatMode(.optimized);
     return @min(@max(x, 0.0), 1.0);
 }
 

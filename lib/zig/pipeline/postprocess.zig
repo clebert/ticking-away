@@ -150,8 +150,6 @@ fn applyBoundaryMask(
     bnd: boundary.Boundary,
     white: dither.Rgb,
 ) void {
-    @setFloatMode(.optimized);
-
     const cx = bnd.center[0];
     const cy = bnd.center[1];
     const r_sq = bnd.radius_sq;

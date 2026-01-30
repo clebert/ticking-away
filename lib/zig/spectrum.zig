@@ -41,7 +41,6 @@ pub const Paths = struct {
         p: prism.Prism,
         b: boundary.Boundary,
     ) Paths {
-        @setFloatMode(.optimized);
         var paths = Paths{};
 
         const prism_center = p.centroid();
@@ -123,7 +122,6 @@ pub fn computeBounceVertex(
     hour_angle: f32,
     p: prism.Prism,
 ) ?prism.Vertex {
-    @setFloatMode(.optimized);
     const entry_pos = classifyEdgePosition(entry_edge, entry_u);
     const prism_center = p.centroid();
 

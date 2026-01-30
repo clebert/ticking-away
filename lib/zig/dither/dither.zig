@@ -103,7 +103,6 @@ fn findClosestColor(
     palette_oklab: []const oklab.OkLab,
     chroma_weight: f32,
 ) usize {
-    @setFloatMode(.optimized);
     var best_idx: usize = 0;
     var best_dist: f32 = std.math.floatMax(f32);
 

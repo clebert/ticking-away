@@ -15,7 +15,6 @@ pub const Ray = struct {
     }
 
     pub fn fromAngle(origin: vec2.Vec2, angle: f32) Ray {
-        @setFloatMode(.optimized);
         return .{
             .origin = origin,
             .direction = vec2.xy(trig.cos(angle), trig.sin(angle)),
@@ -23,7 +22,6 @@ pub const Ray = struct {
     }
 
     pub fn pointAt(self: Ray, t: f32) vec2.Vec2 {
-        @setFloatMode(.optimized);
         const t_vec: vec2.Vec2 = @splat(t);
         return self.origin + self.direction * t_vec;
     }

@@ -2,7 +2,6 @@ const color = @import("../color/color.zig");
 
 /// Convert a single float channel [0,1] to u8 [0,255].
 pub inline fn floatToByte(v: f32) u8 {
-    @setFloatMode(.optimized);
     const clamped = @min(@max(v, 0.0), 1.0);
     return @intFromFloat(clamped * 255.0);
 }
@@ -21,7 +20,6 @@ pub fn writeRgba(buffer: []const color.Color, out: []u8) void {
 /// Write float Color buffer to RGB565 bytes (2 bytes per pixel, big-endian).
 /// Suitable for e-ink displays and other embedded devices.
 fn writeRgb565(buffer: []const color.Color, out: []u8) void {
-    @setFloatMode(.optimized);
     for (buffer, 0..) |c, i| {
         const r5: u16 = @intFromFloat(@min(@max(c[0], 0.0), 1.0) * 31.0);
         const g6: u16 = @intFromFloat(@min(@max(c[1], 0.0), 1.0) * 63.0);

@@ -3,7 +3,6 @@ const std = @import("std");
 const color = @import("color.zig");
 
 pub fn srgbToLinear(srgb: u8) f32 {
-    @setFloatMode(.optimized);
     const s = @as(f32, @floatFromInt(srgb)) / 255.0;
     if (s <= 0.04045) {
         return s / 12.92;
@@ -12,7 +11,6 @@ pub fn srgbToLinear(srgb: u8) f32 {
 }
 
 pub fn linearToSrgb(linear: f32) f32 {
-    @setFloatMode(.optimized);
     if (linear <= 0.0031308) {
         return linear * 12.92;
     }
@@ -20,7 +18,6 @@ pub fn linearToSrgb(linear: f32) f32 {
 }
 
 pub fn applyToBuffer(buffer: []color.Color) void {
-    @setFloatMode(.optimized);
     for (buffer) |*c| {
         c.*[0] = linearToSrgb(clamp01(c.*[0]));
         c.*[1] = linearToSrgb(clamp01(c.*[1]));
@@ -29,7 +26,6 @@ pub fn applyToBuffer(buffer: []color.Color) void {
 }
 
 fn pow512(x: f32) f32 {
-    @setFloatMode(.optimized);
     if (x <= 0.0) return 0.0;
     if (x >= 1.0) return 1.0;
 
@@ -39,7 +35,6 @@ fn pow512(x: f32) f32 {
 }
 
 fn cbrt(x: f32) f32 {
-    @setFloatMode(.optimized);
     if (x == 0.0) return 0.0;
 
     const neg = x < 0.0;
@@ -57,7 +52,6 @@ fn cbrt(x: f32) f32 {
 }
 
 inline fn clamp01(x: f32) f32 {
-    @setFloatMode(.optimized);
     return @min(@max(x, 0.0), 1.0);
 }
 

@@ -45,8 +45,6 @@ pub const Prism = struct {
     }
 
     pub fn scanlineRange(self: Prism, y: f32) ?range.Range {
-        @setFloatMode(.optimized);
-
         const t = self.getVertex(.apex);
         const m = self.getVertex(.bottom_left);
         const b = self.getVertex(.bottom_right);
@@ -71,7 +69,6 @@ pub const Prism = struct {
     }
 
     pub fn containsPoint(self: Prism, px: f32, py: f32) bool {
-        @setFloatMode(.optimized);
         const x0 = self.vertices_x.get(.apex);
         const y0 = self.vertices_y.get(.apex);
         const x1 = self.vertices_x.get(.bottom_right);
@@ -103,7 +100,6 @@ pub const Prism = struct {
         end: vec2.Vec2,
 
         pub fn distanceSq(self: EdgeSegment, point: vec2.Vec2) f32 {
-            @setFloatMode(.optimized);
             const dir = self.end - self.start;
             const len_sq = vec2.dot(dir, dir);
 
@@ -129,7 +125,6 @@ pub const Prism = struct {
     }
 
     pub fn centroid(self: Prism) vec2.Vec2 {
-        @setFloatMode(.optimized);
         const v0 = self.getVertex(.apex);
         const v1 = self.getVertex(.bottom_right);
         const v2 = self.getVertex(.bottom_left);
@@ -139,7 +134,6 @@ pub const Prism = struct {
         );
     }
     pub fn init(center: vec2.Vec2, base_width: f32) Prism {
-        @setFloatMode(.optimized);
         const sqrt3 = @sqrt(3.0);
         const half_base = base_width / 2.0;
 

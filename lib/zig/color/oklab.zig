@@ -17,7 +17,6 @@ pub const OkLab = struct {
     }
 
     pub fn lerp(a_lab: OkLab, b_lab: OkLab, t: f32) OkLab {
-        @setFloatMode(.optimized);
         return .{
             .l = a_lab.l + t * (b_lab.l - a_lab.l),
             .a = a_lab.a + t * (b_lab.a - a_lab.a),
@@ -26,12 +25,10 @@ pub const OkLab = struct {
     }
 
     fn chroma(self: OkLab) f32 {
-        @setFloatMode(.optimized);
         return @sqrt(self.a * self.a + self.b * self.b);
     }
 
     pub fn distanceSq(self: OkLab, other: OkLab, chroma_weight: f32) f32 {
-        @setFloatMode(.optimized);
         const d_l = self.l - other.l;
         const da = self.a - other.a;
         const db = self.b - other.b;
@@ -49,7 +46,6 @@ pub fn srgbToOklab(r: u8, g: u8, b: u8) OkLab {
 }
 
 fn linearRgbToOklab(r: f32, g: f32, b: f32) OkLab {
-    @setFloatMode(.optimized);
     const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
     const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
     const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
@@ -66,7 +62,6 @@ fn linearRgbToOklab(r: f32, g: f32, b: f32) OkLab {
 }
 
 fn oklabToLinearRgb(lab: OkLab) color.Color {
-    @setFloatMode(.optimized);
     const lp = lab.l + 0.3963377774 * lab.a + 0.2158037573 * lab.b;
     const mp = lab.l - 0.1055613458 * lab.a - 0.0638541728 * lab.b;
     const sp = lab.l - 0.0894841775 * lab.a - 1.2914855480 * lab.b;
@@ -87,7 +82,6 @@ fn oklabToLinearRgb(lab: OkLab) color.Color {
 }
 
 fn cbrt(x: f32) f32 {
-    @setFloatMode(.optimized);
     if (x == 0.0) return 0.0;
 
     const neg = x < 0.0;

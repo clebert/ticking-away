@@ -14,7 +14,6 @@ pub const Context = struct {
     }
 
     pub fn clearWithBackground(self: *Context, cx: f32, cy: f32, radius: f32) void {
-        @setFloatMode(.optimized);
         const r2 = radius * radius;
 
         for (0..self.height) |local_y| {

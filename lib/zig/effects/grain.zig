@@ -28,7 +28,6 @@ pub fn apply(
     config: Config,
     geometry: ?Geometry,
 ) void {
-    @setFloatMode(.optimized);
     if (config.intensity <= 0.0) return;
 
     // Grain strength: ±6% at full intensity (~±15/255, classic film grain)
@@ -108,7 +107,6 @@ pub fn hashPixel(x: i32, y: i32) u32 {
 }
 
 inline fn clamp01(x: f32) f32 {
-    @setFloatMode(.optimized);
     return @min(@max(x, 0.0), 1.0);
 }
 

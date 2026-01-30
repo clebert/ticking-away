@@ -24,7 +24,6 @@ pub fn raySegment(
     eps_t: f32,
     eps_u: f32,
 ) ?Hit {
-    @setFloatMode(.optimized);
     const edge = segment_end - segment_start;
     const perp = vec2.xy(-r.direction[1], r.direction[0]);
     const denom = vec2.dot(edge, perp);
@@ -59,7 +58,6 @@ pub fn raySegment(
 }
 
 pub fn rayPrismEntry(r: ray.Ray, tri: prism.Prism) ?Hit {
-    @setFloatMode(.optimized);
     const scale = prismScale(tri);
     const eps_t = eps_rel * scale;
     const eps_u = eps_rel;
@@ -86,7 +84,6 @@ pub fn rayPrismEntry(r: ray.Ray, tri: prism.Prism) ?Hit {
 }
 
 pub fn rayPrismExit(origin: vec2.Vec2, angle: f32, tri: prism.Prism) ?Hit {
-    @setFloatMode(.optimized);
     const r = ray.Ray.fromAngle(origin, angle);
     const scale = prismScale(tri);
     const eps_t = eps_rel * scale;
@@ -114,7 +111,6 @@ pub fn rayPrismExit(origin: vec2.Vec2, angle: f32, tri: prism.Prism) ?Hit {
 }
 
 pub fn rayBoundary(r: ray.Ray, circ: boundary.Boundary) ?vec2.Vec2 {
-    @setFloatMode(.optimized);
     const oc = r.origin - circ.center;
     const a = vec2.dot(r.direction, r.direction);
     const b = 2.0 * vec2.dot(oc, r.direction);
@@ -134,7 +130,6 @@ pub fn rayBoundary(r: ray.Ray, circ: boundary.Boundary) ?vec2.Vec2 {
 }
 
 fn prismScale(tri: prism.Prism) f32 {
-    @setFloatMode(.optimized);
     var total: f32 = 0.0;
     inline for (std.meta.tags(prism.Edge)) |edge| {
         const segment = tri.getEdge(edge);

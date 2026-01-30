@@ -15,7 +15,6 @@ pub const Falloff = enum {
     exponential,
 
     pub fn apply(self: Falloff, t: f32) f32 {
-        @setFloatMode(.optimized);
         std.debug.assert(t >= 0);
         std.debug.assert(t <= 1);
 
@@ -47,7 +46,6 @@ pub const Config = struct {
 };
 
 fn smoothPrismDistance(p: *const prism.Prism, point: vec2.Vec2, k: f32) f32 {
-    @setFloatMode(.optimized);
     const d0 = @sqrt(p.getEdge(.right).distanceSq(point));
     const d1 = @sqrt(p.getEdge(.bottom).distanceSq(point));
     const d2 = @sqrt(p.getEdge(.left).distanceSq(point));
@@ -55,7 +53,6 @@ fn smoothPrismDistance(p: *const prism.Prism, point: vec2.Vec2, k: f32) f32 {
 }
 
 fn smoothMin(a: f32, b: f32, k: f32) f32 {
-    @setFloatMode(.optimized);
     const h = @max(k - @abs(a - b), 0) / k;
     return @min(a, b) - h * h * k * 0.25;
 }
@@ -67,7 +64,6 @@ pub fn renderLine(
     clip_to: ?clip.Region,
     exclude: ?*const prism.Prism,
 ) void {
-    @setFloatMode(.optimized);
     const glow_width = config.width;
     const glow_width_sq = glow_width * glow_width;
 
@@ -142,7 +138,6 @@ pub fn renderPrismEdges(
     intensity: f32,
     falloff: Falloff,
 ) void {
-    @setFloatMode(.optimized);
     const smooth_k = glow_width * 0.5;
 
     const y_min = @max(ctx.y_offset, @as(usize, @intFromFloat(@max(0, tri.minY()))));
