@@ -129,12 +129,12 @@ pub fn build(b: *std.Build) void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("bin/wasm-zig/main.zig"),
             .target = wasm_target,
-            .optimize = .ReleaseFast,
+            .optimize = .ReleaseSmall,
             .imports = &.{
                 .{ .name = "lib", .module = b.createModule(.{
                     .root_source_file = b.path("lib/zig/root.zig"),
                     .target = wasm_target,
-                    .optimize = .ReleaseFast,
+                    .optimize = .ReleaseSmall,
                 }) },
             },
         }),
@@ -155,16 +155,84 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Build and run all tests");
 
-    const zig_lib = b.createModule(.{
-        .root_source_file = b.path("lib/zig/root.zig"),
-        .target = target,
-        .optimize = optimize,
+    const tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("lib/zig/root.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
-    const zig_lib_tests = b.addTest(.{ .root_module = zig_lib });
-    const run_zig_lib_tests = b.addRunArtifact(zig_lib_tests);
+    const run_tests = b.addRunArtifact(tests);
 
-    test_step.dependOn(&run_zig_lib_tests.step);
+    test_step.dependOn(&run_tests.step);
+
+    // =========================================================================
+    // Native Performance Benchmark (Zig)
+    // =========================================================================
+
+    const perf_zig = b.addExecutable(.{
+        .name = "perf-zig",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/perf-zig/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{
+                    .name = "lib",
+                    .module = b.createModule(.{
+                        .root_source_file = b.path("lib/zig/root.zig"),
+                        .target = target,
+                        .optimize = optimize,
+                    }),
+                },
+            },
+        }),
+    });
+
+    const perf_zig_install = b.addInstallArtifact(perf_zig, .{});
+    const perf_zig_step = b.step("perf-zig", "Build the Zig performance benchmark");
+
+    perf_zig_step.dependOn(&perf_zig_install.step);
+
+    const run_perf_zig = b.addRunArtifact(perf_zig);
+    const run_perf_zig_step = b.step("run-perf-zig", "Run the Zig performance benchmark");
+
+    run_perf_zig_step.dependOn(&run_perf_zig.step);
+
+    // =========================================================================
+    // Native Performance Benchmark (C)
+    // =========================================================================
+
+    const perf_c = b.addExecutable(.{
+        .name = "perf-c",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
+    });
+
+    perf_c.root_module.addCSourceFile(.{
+        .file = b.path("bin/perf-c/main.c"),
+        .flags = c_flags,
+    });
+
+    for (lib_c_sources) |src| {
+        perf_c.root_module.addCSourceFile(.{ .file = b.path(src), .flags = c_flags });
+    }
+
+    perf_c.root_module.addIncludePath(b.path("lib/c"));
+
+    const perf_c_install = b.addInstallArtifact(perf_c, .{});
+    const perf_c_step = b.step("perf-c", "Build the C performance benchmark");
+
+    perf_c_step.dependOn(&perf_c_install.step);
+
+    const run_perf_c = b.addRunArtifact(perf_c);
+    const run_perf_c_step = b.step("run-perf-c", "Run the C performance benchmark");
+
+    run_perf_c_step.dependOn(&run_perf_c.step);
 
     // =========================================================================
     // Default step builds everything
