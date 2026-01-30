@@ -6,6 +6,7 @@ const boundary = @import("geometry/boundary.zig");
 const intersect = @import("geometry/intersect.zig");
 const prism = @import("geometry/prism.zig");
 const ray = @import("geometry/ray.zig");
+const trig = @import("math/trig.zig");
 const vec2 = @import("math/vec2.zig");
 
 pub const vertex_threshold: f32 = 0.0014;
@@ -129,7 +130,7 @@ pub fn computeBounceVertex(
     const exit_hit = intersect.rayPrismExit(prism_center, hour_angle, p) orelse return null;
 
     const exit_pos = classifyEdgePosition(exit_hit.edge, exit_hit.u);
-    const dx = @cos(hour_angle);
+    const dx = trig.cos(hour_angle);
 
     switch (entry_pos) {
         .at_vertex => |entry_vertex| {
@@ -334,8 +335,8 @@ test "03:15 exit rays should be valid" {
     const first_border = first_band.exit_ray.?.end;
     const last_border = last_band.exit_ray.?.end;
 
-    const ext_angle_first = std.math.atan2(first_border[1] - cy, first_border[0] - cx);
-    const ext_angle_last = std.math.atan2(last_border[1] - cy, last_border[0] - cx);
+    const ext_angle_first = trig.atan2(first_border[1] - cy, first_border[0] - cx);
+    const ext_angle_last = trig.atan2(last_border[1] - cy, last_border[0] - cx);
 
     // Compute ray_span and edge_margin like scene.zig does
     const pi = std.math.pi;

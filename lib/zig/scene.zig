@@ -6,6 +6,7 @@ const palette = @import("color/palette.zig");
 const boundary = @import("geometry/boundary.zig");
 const prism = @import("geometry/prism.zig");
 const line = @import("geometry/segment.zig");
+const trig = @import("math/trig.zig");
 const vec2 = @import("math/vec2.zig");
 const band = @import("rendering/band.zig");
 const clip = @import("rendering/clip.zig");
@@ -260,11 +261,11 @@ pub const Scene = struct {
                 const first_border = first_band.exit_ray.?.end;
                 const last_border = last_band.exit_ray.?.end;
 
-                const ext_angle_first = std.math.atan2(
+                const ext_angle_first = trig.atan2(
                     first_border[1] - self.center[1],
                     first_border[0] - self.center[0],
                 );
-                const ext_angle_last = std.math.atan2(
+                const ext_angle_last = trig.atan2(
                     last_border[1] - self.center[1],
                     last_border[0] - self.center[0],
                 );
@@ -302,11 +303,11 @@ pub const Scene = struct {
                     const first_exit = first_band.prism_exit.?;
                     const last_exit = last_band.prism_exit.?;
 
-                    const internal_angle_first = std.math.atan2(
+                    const internal_angle_first = trig.atan2(
                         first_exit[1] - grad_origin[1],
                         first_exit[0] - grad_origin[0],
                     );
-                    const internal_angle_last = std.math.atan2(
+                    const internal_angle_last = trig.atan2(
                         last_exit[1] - grad_origin[1],
                         last_exit[0] - grad_origin[0],
                     );

@@ -94,13 +94,13 @@ pub fn build(b: *std.Build) void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("bin/wasm-zig/main.zig"),
             .target = wasm_target,
-            .optimize = .ReleaseFast,
+            .optimize = .ReleaseSmall,
             .strip = true,
             .imports = &.{
                 .{ .name = "watchface", .module = b.createModule(.{
                     .root_source_file = b.path("lib/zig/root.zig"),
                     .target = wasm_target,
-                    .optimize = .ReleaseFast,
+                    .optimize = .ReleaseSmall,
                     .strip = true,
                 }) },
             },

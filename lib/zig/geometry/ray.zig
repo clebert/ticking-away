@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const trig = @import("../math/trig.zig");
 const vec2 = @import("../math/vec2.zig");
 
 pub const Ray = struct {
@@ -17,7 +18,7 @@ pub const Ray = struct {
         @setFloatMode(.optimized);
         return .{
             .origin = origin,
-            .direction = vec2.xy(@cos(angle), @sin(angle)),
+            .direction = vec2.xy(trig.cos(angle), trig.sin(angle)),
         };
     }
 

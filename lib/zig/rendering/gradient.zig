@@ -6,6 +6,7 @@ const testing = std.testing;
 const color = @import("../color/color.zig");
 const palette = @import("../color/palette.zig");
 const prism = @import("../geometry/prism.zig");
+const trig = @import("../math/trig.zig");
 const band = @import("band.zig");
 
 /// Gradient fill mode.
@@ -41,11 +42,6 @@ inline fn normalizeAngle(a: f32) f32 {
     while (angle < 0) angle += tau;
     while (angle >= tau) angle -= tau;
     return angle;
-}
-
-inline fn atan2Approx(y: f32, x: f32) f32 {
-    @setFloatMode(.optimized);
-    return std.math.atan2(y, x);
 }
 
 pub fn render(
@@ -138,7 +134,7 @@ pub fn render(
 
             const dx = px - config.origin_x;
             const dy = py - config.origin_y;
-            var pixel_angle = atan2Approx(dy, dx);
+            var pixel_angle = trig.atan2(dy, dx);
             if (pixel_angle < 0) pixel_angle += tau;
 
             var t: f32 = undefined;
