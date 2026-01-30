@@ -37,13 +37,11 @@ pub const Edge = enum(u2) {
 };
 
 pub const Prism = struct {
-    vertices_x: @Vector(3, f32),
-    vertices_y: @Vector(3, f32),
+    vertices_x: std.EnumArray(Vertex, f32),
+    vertices_y: std.EnumArray(Vertex, f32),
 
     pub fn getVertex(self: Prism, vertex: Vertex) vec2.Vec2 {
-        const index = @intFromEnum(vertex);
-
-        return vec2.xy(self.vertices_x[index], self.vertices_y[index]);
+        return vec2.xy(self.vertices_x.get(vertex), self.vertices_y.get(vertex));
     }
 
     pub fn scanlineRange(self: Prism, y: f32) ?range.Range {
@@ -74,13 +72,12 @@ pub const Prism = struct {
 
     pub fn containsPoint(self: Prism, px: f32, py: f32) bool {
         @setFloatMode(.optimized);
-        // Use original vertex order (not sorted) for consistent winding
-        const x0 = self.vertices_x[0];
-        const y0 = self.vertices_y[0];
-        const x1 = self.vertices_x[1];
-        const y1 = self.vertices_y[1];
-        const x2 = self.vertices_x[2];
-        const y2 = self.vertices_y[2];
+        const x0 = self.vertices_x.get(.apex);
+        const y0 = self.vertices_y.get(.apex);
+        const x1 = self.vertices_x.get(.bottom_right);
+        const y1 = self.vertices_y.get(.bottom_right);
+        const x2 = self.vertices_x.get(.bottom_left);
+        const y2 = self.vertices_y.get(.bottom_left);
 
         // Simple barycentric test (matches C implementation)
         const denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
@@ -94,11 +91,11 @@ pub const Prism = struct {
     }
 
     pub fn minY(self: Prism) f32 {
-        return self.vertices_y[0];
+        return self.vertices_y.get(.apex);
     }
 
     pub fn maxY(self: Prism) f32 {
-        return self.vertices_y[1];
+        return self.vertices_y.get(.bottom_right);
     }
 
     pub const EdgeSegment = struct {
@@ -155,8 +152,8 @@ pub const Prism = struct {
         const v2 = vec2.xy(center[0] - half_base, center[1] + base_offset);
 
         return .{
-            .vertices_x = .{ v0[0], v1[0], v2[0] },
-            .vertices_y = .{ v0[1], v1[1], v2[1] },
+            .vertices_x = std.EnumArray(Vertex, f32).init(.{ .apex = v0[0], .bottom_right = v1[0], .bottom_left = v2[0] }),
+            .vertices_y = std.EnumArray(Vertex, f32).init(.{ .apex = v0[1], .bottom_right = v1[1], .bottom_left = v2[1] }),
         };
     }
 };
