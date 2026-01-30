@@ -1,23 +1,23 @@
 const std = @import("std");
 const allocator = std.heap.wasm_allocator;
 
-const watchface = @import("watchface");
-const compat = watchface.compat;
+const compat = @import("compat");
+const lib = @import("lib");
 
 // Allocated buffers (reallocated when dimensions change)
-var float_buffer: ?[]watchface.color.Color = null;
+var float_buffer: ?[]lib.color.Color = null;
 var rgba_buffer: ?[]u8 = null;
 var dither_error_backing: ?[]f32 = null;
 
 // Static state (cached between frames)
-var static_scene: watchface.scene.Scene = undefined;
+var static_scene: lib.watchface.Scene = undefined;
 var scene_initialized: bool = false;
 var last_width: usize = 0;
 var last_height: usize = 0;
 
-var dither_state: watchface.postprocess.DitherState = undefined;
+var dither_state: lib.postprocess.DitherState = undefined;
 var dither_state_initialized: bool = false;
-var dither_error_buffer: watchface.error_diffusion.ErrorBuffer = undefined;
+var dither_error_buffer: lib.error_diffusion.ErrorBuffer = undefined;
 
 // Static config buffer for JS to write into
 var config_buffer: compat.WatchfaceConfig = undefined;
@@ -46,7 +46,7 @@ fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
     // Allocate new buffers with errdefer for cleanup on failure
     const pixel_count = w * h;
 
-    float_buffer = try allocator.alloc(watchface.color.Color, pixel_count);
+    float_buffer = try allocator.alloc(lib.color.Color, pixel_count);
     errdefer {
         allocator.free(float_buffer.?);
         float_buffer = null;
@@ -59,7 +59,7 @@ fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
     }
 
     const dither_size =
-        w * watchface.error_diffusion.ErrorBuffer.rows * watchface.error_diffusion.ErrorBuffer.channels;
+        w * lib.error_diffusion.ErrorBuffer.rows * lib.error_diffusion.ErrorBuffer.channels;
 
     dither_error_backing = try allocator.alloc(f32, dither_size);
 }
@@ -79,7 +79,7 @@ export fn renderWatchfaceWithConfig(
 
     // Re-initialize scene if dimensions changed
     if (!scene_initialized or w != last_width or h != last_height) {
-        static_scene = watchface.scene.Scene.init(w, h);
+        static_scene = lib.watchface.Scene.init(w, h);
         scene_initialized = true;
         last_width = w;
         last_height = h;
@@ -98,16 +98,16 @@ export fn renderWatchfaceWithConfig(
     const output_config = compat.toOutputConfig(config_ptr, &static_scene);
 
     // Initialize dither state if needed
-    var dither_state_ptr: ?*watchface.postprocess.DitherState = null;
+    var dither_state_ptr: ?*lib.postprocess.DitherState = null;
     if (output_config.dither) |dither_cfg| {
         if (dither_cfg.mode != .none) {
-            if (!dither_state_initialized or dither_state.palette_cache.palette != watchface.dither.getPalette(dither_cfg.palette_type)) {
-                dither_state = watchface.postprocess.DitherState.init(dither_cfg.palette_type);
+            if (!dither_state_initialized or dither_state.palette_cache.palette != lib.dither.getPalette(dither_cfg.palette_type)) {
+                dither_state = lib.postprocess.DitherState.init(dither_cfg.palette_type);
                 dither_state_initialized = true;
             }
 
             if (dither_cfg.mode == .error_diffusion) {
-                dither_error_buffer = watchface.error_diffusion.ErrorBuffer.initStatic(dither_error_backing.?, w);
+                dither_error_buffer = lib.error_diffusion.ErrorBuffer.initStatic(dither_error_backing.?, w);
                 dither_state.setErrorBuffer(&dither_error_buffer);
             }
 
@@ -116,7 +116,7 @@ export fn renderWatchfaceWithConfig(
     }
 
     // Render using pipeline
-    watchface.pipeline.renderFrame(
+    lib.pipeline.renderFrame(
         &static_scene,
         float_buffer.?,
         rgba_buffer.?,

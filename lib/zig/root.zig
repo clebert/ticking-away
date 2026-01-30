@@ -4,7 +4,6 @@ pub const color = @import("color/color.zig");
 pub const gamma = @import("color/gamma.zig");
 pub const oklab = @import("color/oklab.zig");
 pub const palette = @import("color/palette.zig");
-pub const compat = @import("compat.zig");
 pub const dither = @import("dither/dither.zig");
 pub const error_diffusion = @import("dither/error_diffusion.zig");
 pub const ordered = @import("dither/ordered.zig");
@@ -25,8 +24,8 @@ pub const clip = @import("rendering/clip.zig");
 pub const glow = @import("rendering/glow.zig");
 pub const gradient = @import("rendering/gradient.zig");
 pub const markers = @import("rendering/markers.zig");
-pub const scene = @import("scene.zig");
 pub const spectrum = @import("spectrum.zig");
+pub const watchface = @import("watchface.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());

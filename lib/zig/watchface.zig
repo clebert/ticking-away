@@ -35,6 +35,14 @@ pub const RayConfig = struct {
     reverse: bool = false,
 };
 
+pub const FrameGeometry = struct {
+    boundary: boundary.Boundary,
+    paths: spectrum.Paths,
+    marker_geometry: markers.Geometry,
+    hour_markers: [markers.marker_count]markers.Marker,
+    markers_visible: bool,
+};
+
 pub const Scene = struct {
     width: usize,
     height: usize,
@@ -114,12 +122,10 @@ pub const Scene = struct {
         return &self.palette_cache;
     }
 
-    pub fn renderBand(self: *Scene, ctx: *band.Context) void {
+    pub fn prepareFrame(self: *Scene) FrameGeometry {
         if (self.prism_dirty) {
             self.updatePrism();
         }
-
-        ctx.clearWithBackground(self.center[0], self.center[1], self.radius);
 
         const bnd = boundary.Boundary.init(self.center, self.radius);
 
@@ -138,9 +144,34 @@ pub const Scene = struct {
             bnd,
         );
 
-        const circle_clip = clip.Region{ .boundary = &bnd };
+        const marker_geometry = markers.Geometry.init(
+            self.center[0],
+            self.center[1],
+            self.radius,
+        );
+        const hour_markers = markers.computeMarkers(marker_geometry, self.marker_config);
+
+        return .{
+            .boundary = bnd,
+            .paths = paths,
+            .marker_geometry = marker_geometry,
+            .hour_markers = hour_markers,
+            .markers_visible = self.marker_config.visible,
+        };
+    }
+
+    pub fn renderBand(self: *Scene, ctx: *band.Context) void {
+        const geometry = self.prepareFrame();
+        self.renderBandWithGeometry(ctx, &geometry);
+    }
+
+    pub fn renderBandWithGeometry(self: *Scene, ctx: *band.Context, geometry: *const FrameGeometry) void {
+        ctx.clearWithBackground(self.center[0], self.center[1], self.radius);
+
+        const circle_clip = clip.Region{ .boundary = &geometry.boundary };
         const prism_tri = &self.prism;
         const cache = self.ensurePaletteCache();
+        const paths = &geometry.paths;
 
         // Determine internal ray rendering mode based on gradient fill
         const use_gradient_intensity = self.ray_config.gradient_fill;
@@ -335,16 +366,10 @@ pub const Scene = struct {
             self.glow_config.falloff,
         );
 
-        if (self.marker_config.visible) {
-            const marker_geometry = markers.Geometry.init(
-                self.center[0],
-                self.center[1],
-                self.radius,
-            );
-            const hour_markers = markers.computeMarkers(marker_geometry, self.marker_config);
-            const marker_clip = marker_geometry.circleClip();
+        if (geometry.markers_visible) {
+            const marker_clip = geometry.marker_geometry.circleClip();
 
-            for (hour_markers) |m| {
+            for (geometry.hour_markers) |m| {
                 glow.renderLine(ctx, m.segment, m.glow_config, marker_clip, null);
             }
         }

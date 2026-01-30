@@ -335,7 +335,7 @@ test "03:15 exit rays should be valid" {
     const ext_angle_first = std.math.atan2(first_border[1] - cy, first_border[0] - cx);
     const ext_angle_last = std.math.atan2(last_border[1] - cy, last_border[0] - cx);
 
-    // Compute ray_span and edge_margin like scene.zig does
+    // Compute ray_span and edge_margin like watchface.zig does
     const pi = std.math.pi;
     const tau = std.math.tau;
     var ray_span = ext_angle_last - ext_angle_first;

@@ -97,7 +97,7 @@ pub fn build(b: *std.Build) void {
             .optimize = .ReleaseSmall,
             .strip = true,
             .imports = &.{
-                .{ .name = "watchface", .module = b.createModule(.{
+                .{ .name = "lib", .module = b.createModule(.{
                     .root_source_file = b.path("lib/zig/root.zig"),
                     .target = wasm_target,
                     .optimize = .ReleaseSmall,
@@ -131,7 +131,7 @@ pub fn build(b: *std.Build) void {
             .target = wasm_target,
             .optimize = .ReleaseFast,
             .imports = &.{
-                .{ .name = "watchface", .module = b.createModule(.{
+                .{ .name = "lib", .module = b.createModule(.{
                     .root_source_file = b.path("lib/zig/root.zig"),
                     .target = wasm_target,
                     .optimize = .ReleaseFast,

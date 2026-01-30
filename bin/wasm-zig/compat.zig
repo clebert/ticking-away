@@ -1,20 +1,6 @@
 const std = @import("std");
 
-const color = @import("color/color.zig");
-const gamma = @import("color/gamma.zig");
-const palette = @import("color/palette.zig");
-const dither = @import("dither/dither.zig");
-const error_diffusion = @import("dither/error_diffusion.zig");
-const ordered = @import("dither/ordered.zig");
-const grain_effect = @import("effects/grain.zig");
-const vignette_effect = @import("effects/vignette.zig");
-const boundary = @import("geometry/boundary.zig");
-const markers = @import("rendering/markers.zig");
-const pipeline = @import("pipeline/pipeline.zig");
-const postprocess = @import("pipeline/postprocess.zig");
-const band = @import("rendering/band.zig");
-const glow = @import("rendering/glow.zig");
-const scene = @import("scene.zig");
+const lib = @import("lib");
 
 /// Falloff type matching C FalloffType enum.
 pub const FalloffType = enum(i32) {
@@ -23,7 +9,7 @@ pub const FalloffType = enum(i32) {
     cubic = 2,
     exponential = 3,
 
-    pub fn toZig(self: FalloffType) glow.Falloff {
+    pub fn toZig(self: FalloffType) lib.glow.Falloff {
         return switch (self) {
             .linear => .linear,
             .quadratic => .quadratic,
@@ -46,7 +32,7 @@ pub const RayPalette = enum(i32) {
     album_cover = 8,
     spectra6 = 9,
 
-    pub fn toZig(self: RayPalette) palette.Type {
+    pub fn toZig(self: RayPalette) lib.palette.Type {
         return switch (self) {
             .oklch_balanced => .oklch_balanced,
             .saturated => .saturated,
@@ -170,10 +156,10 @@ pub const WatchfaceConfig = extern struct {
 
 /// Convert C config to Zig scene config types.
 pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
-    prism: scene.PrismConfig,
-    glow_config: scene.GlowConfig,
-    ray: scene.RayConfig,
-    marker: markers.Config,
+    prism: lib.watchface.PrismConfig,
+    glow_config: lib.watchface.GlowConfig,
+    ray: lib.watchface.RayConfig,
+    marker: lib.markers.Config,
 } {
     return .{
         .prism = .{
@@ -181,7 +167,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
             .rainbow_spread = c.prism.rainbow_spread,
         },
         .glow_config = .{
-            .color = color.rgb(
+            .color = lib.color.rgb(
                 @as(f32, @floatFromInt(c.glow_config.r)) / 255.0,
                 @as(f32, @floatFromInt(c.glow_config.g)) / 255.0,
                 @as(f32, @floatFromInt(c.glow_config.b)) / 255.0,
@@ -209,7 +195,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
 }
 
 /// Convert C grain config to Zig grain config.
-fn toGrainConfig(c: *const GrainConfig) grain_effect.Config {
+fn toGrainConfig(c: *const GrainConfig) lib.grain_effect.Config {
     return .{
         .intensity = c.intensity,
         .scale = c.scale,
@@ -219,7 +205,7 @@ fn toGrainConfig(c: *const GrainConfig) grain_effect.Config {
 }
 
 /// Convert C vignette config to Zig vignette config.
-fn toVignetteConfig(c: *const VignetteConfig) vignette_effect.Config {
+fn toVignetteConfig(c: *const VignetteConfig) lib.vignette_effect.Config {
     return .{
         .enabled = c.enabled != 0,
         .strength = c.strength,
@@ -228,7 +214,7 @@ fn toVignetteConfig(c: *const VignetteConfig) vignette_effect.Config {
 }
 
 /// Convert C dither config to Zig error diffusion config.
-fn toErrorDiffusionConfig(c: *const SceneDitherConfig) error_diffusion.Config {
+fn toErrorDiffusionConfig(c: *const SceneDitherConfig) lib.error_diffusion.Config {
     return .{
         .algorithm = switch (c.algorithm) {
             .atkinson => .atkinson,
@@ -241,7 +227,7 @@ fn toErrorDiffusionConfig(c: *const SceneDitherConfig) error_diffusion.Config {
 }
 
 /// Convert C dither config to Zig ordered dither config.
-fn toOrderedDitherConfig(c: *const SceneDitherConfig) ordered.Config {
+fn toOrderedDitherConfig(c: *const SceneDitherConfig) lib.ordered.Config {
     return .{
         .matrix = switch (c.ordered_matrix) {
             .bayer_2x2 => .bayer2x2,
@@ -254,7 +240,7 @@ fn toOrderedDitherConfig(c: *const SceneDitherConfig) ordered.Config {
 }
 
 /// Convert C dither palette mode to Zig palette type.
-fn toDitherPaletteType(mode: DitherPaletteMode) dither.PaletteType {
+fn toDitherPaletteType(mode: DitherPaletteMode) lib.dither.PaletteType {
     return switch (mode) {
         .ideal => .ideal,
         .spectra6_inky => .spectra6_inky,
@@ -266,22 +252,22 @@ fn toDitherPaletteType(mode: DitherPaletteMode) dither.PaletteType {
 /// Convert WASM config to postprocess config using scene geometry.
 pub fn toPostprocessConfig(
     c: *const WatchfaceConfig,
-    s: *const scene.Scene,
-) postprocess.Config {
+    s: *const lib.watchface.Scene,
+) lib.postprocess.Config {
     const grain_cfg = toGrainConfig(&c.grain);
     const vignette_cfg = toVignetteConfig(&c.vignette);
 
     return .{
         .gamma_enabled = true,
         .grain = if (grain_cfg.intensity > 0) grain_cfg else null,
-        .grain_geometry = if (grain_cfg.intensity > 0) grain_effect.Geometry{
+        .grain_geometry = if (grain_cfg.intensity > 0) lib.grain_effect.Geometry{
             .center_x = s.center[0],
             .center_y = s.center[1],
             .radius = s.radius,
             .prism = s.prism,
         } else null,
         .vignette = if (vignette_cfg.enabled) vignette_cfg else null,
-        .vignette_geometry = if (vignette_cfg.enabled) vignette_effect.Geometry{
+        .vignette_geometry = if (vignette_cfg.enabled) lib.vignette_effect.Geometry{
             .center_x = s.center[0],
             .center_y = s.center[1],
             .radius = s.radius,
@@ -292,13 +278,13 @@ pub fn toPostprocessConfig(
 /// Convert WASM dither config to pipeline output config.
 pub fn toOutputConfig(
     c: *const WatchfaceConfig,
-    s: *const scene.Scene,
-) pipeline.OutputConfig {
+    s: *const lib.watchface.Scene,
+) lib.pipeline.OutputConfig {
     if (c.dither.enabled == 0) {
         return .{ .format = .rgba8, .dither = null };
     }
 
-    const mode: postprocess.DitherMode = switch (c.dither.dither_type) {
+    const mode: lib.postprocess.DitherMode = switch (c.dither.dither_type) {
         .error_diffusion => .error_diffusion,
         .ordered => .ordered,
     };
@@ -310,7 +296,7 @@ pub fn toOutputConfig(
             .palette_type = toDitherPaletteType(c.dither.mode),
             .error_diffusion = if (mode == .error_diffusion) toErrorDiffusionConfig(&c.dither) else null,
             .ordered = if (mode == .ordered) toOrderedDitherConfig(&c.dither) else null,
-            .boundary_mask = boundary.Boundary.init(s.center, s.radius),
+            .boundary_mask = lib.boundary.Boundary.init(s.center, s.radius),
         },
     };
 }
