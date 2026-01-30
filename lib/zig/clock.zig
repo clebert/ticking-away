@@ -2,7 +2,6 @@ const std = @import("std");
 const testing = std.testing;
 const tau = std.math.tau;
 
-const trig = @import("math/trig.zig");
 const vec2 = @import("math/vec2.zig");
 
 const angle_0: f32 = -std.math.pi / 2.0;
@@ -21,7 +20,7 @@ pub fn hourAngle(hours: f32, minutes: f32) f32 {
 
 pub fn entryPoint(center: vec2.Vec2, radius: f32, minutes: f32) vec2.Vec2 {
     const angle = minuteAngle(minutes);
-    const dir = vec2.xy(trig.cos(angle), trig.sin(angle));
+    const dir = vec2.xy(@cos(angle), @sin(angle));
     const r_vec: vec2.Vec2 = @splat(radius);
     return center + dir * r_vec;
 }

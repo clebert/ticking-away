@@ -4,7 +4,6 @@ const pi = std.math.pi;
 const color = @import("../color/color.zig");
 const boundary = @import("../geometry/boundary.zig");
 const line = @import("../geometry/segment.zig");
-const trig = @import("../math/trig.zig");
 const vec2 = @import("../math/vec2.zig");
 const clip = @import("clip.zig");
 const glow = @import("glow.zig");
@@ -64,8 +63,8 @@ pub fn computeMarkers(geometry: Geometry, config: Config) [marker_count]Marker {
         const inner_r = geometry.radius * (1.0 - config.length);
         const outer_r = geometry.radius * outer_percent;
 
-        const cos_a = trig.cos(angle);
-        const sin_a = trig.sin(angle);
+        const cos_a = @cos(angle);
+        const sin_a = @sin(angle);
 
         const start = vec2.xy(
             geometry.center_x + cos_a * inner_r,

@@ -6,7 +6,6 @@ const testing = std.testing;
 const color = @import("../color/color.zig");
 const palette = @import("../color/palette.zig");
 const prism = @import("../geometry/prism.zig");
-const trig = @import("../math/trig.zig");
 const band = @import("band.zig");
 
 /// Gradient fill mode.
@@ -123,7 +122,7 @@ pub fn render(
 
             const dx = px - config.origin_x;
             const dy = py - config.origin_y;
-            var pixel_angle = trig.atan2(dy, dx);
+            var pixel_angle = std.math.atan2(dy, dx);
             if (pixel_angle < 0) pixel_angle += tau;
 
             const t_raw = blk: {
