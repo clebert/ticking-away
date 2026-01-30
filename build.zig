@@ -101,6 +101,7 @@ pub fn build(b: *std.Build) void {
                     .root_source_file = b.path("lib/zig/root.zig"),
                     .target = wasm_target,
                     .optimize = .ReleaseFast,
+                    .strip = true,
                 }) },
             },
         }),
