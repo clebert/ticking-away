@@ -6,7 +6,6 @@ const palette = @import("color/palette.zig");
 const dither = @import("dither/dither.zig");
 const error_diffusion = @import("dither/error_diffusion.zig");
 const ordered = @import("dither/ordered.zig");
-const effect = @import("effects/effect.zig");
 const grain_effect = @import("effects/grain.zig");
 const vignette_effect = @import("effects/vignette.zig");
 const boundary = @import("geometry/boundary.zig");

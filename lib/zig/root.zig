@@ -8,7 +8,6 @@ pub const compat = @import("compat.zig");
 pub const dither = @import("dither/dither.zig");
 pub const error_diffusion = @import("dither/error_diffusion.zig");
 pub const ordered = @import("dither/ordered.zig");
-pub const effect = @import("effects/effect.zig");
 pub const grain = @import("effects/grain.zig");
 pub const vignette = @import("effects/vignette.zig");
 pub const boundary = @import("geometry/boundary.zig");
