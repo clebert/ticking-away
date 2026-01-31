@@ -3,7 +3,7 @@ const tau = std.math.tau;
 const pi = std.math.pi;
 
 const color_space = @import("../color/color_space.zig");
-const palette = @import("../color/palette.zig");
+const rainbow = @import("../color/rainbow.zig");
 const prism = @import("../geometry/prism.zig");
 const band = @import("band.zig");
 
@@ -37,7 +37,7 @@ pub fn render(
     ctx: *band.Context,
     config: Config,
     geometry: Geometry,
-    cache: *const palette.Cache,
+    cache: *const rainbow.PaletteCache,
 ) void {
     const a1_normalized = normalizeAngle(config.angle_start);
     const a2_normalized = normalizeAngle(config.angle_end);
@@ -132,8 +132,8 @@ pub fn render(
 
             const t = if (reverse) 1.0 - t_raw else t_raw;
 
-            const band_count_f: f32 = @floatFromInt(palette.band_count);
-            const t_color_raw = (t * band_count_f - 0.5) / (band_count_f - 1.0);
+            const color_count_f: f32 = @floatFromInt(rainbow.color_count);
+            const t_color_raw = (t * color_count_f - 0.5) / (color_count_f - 1.0);
             const t_color = if (config.reverse_spectrum) 1.0 - t_color_raw else t_color_raw;
 
             const col = cache.interpolate(t_color);

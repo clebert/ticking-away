@@ -2,7 +2,7 @@ const std = @import("std");
 
 const clock = @import("clock.zig");
 const color_space = @import("color/color_space.zig");
-const palette = @import("color/palette.zig");
+const rainbow = @import("color/rainbow.zig");
 const boundary = @import("geometry/boundary.zig");
 const prism = @import("geometry/prism.zig");
 const line = @import("geometry/segment.zig");
@@ -30,7 +30,7 @@ pub const RayConfig = struct {
     glow_width: f32 = 0.025,
     intensity: f32 = 0.8,
     falloff: glow.Falloff = .quadratic,
-    palette_type: palette.Type = .oklch_balanced,
+    palette_type: rainbow.PaletteType = .oklch_balanced,
     gradient_fill: bool = true,
     reverse: bool = false,
 };
@@ -58,9 +58,6 @@ pub const Scene = struct {
     glow_config: GlowConfig = .{},
     ray_config: RayConfig = .{},
     marker_config: markers.Config = .{},
-
-    palette_cache: palette.Cache = undefined,
-    palette_initialized: bool = false,
 
     pub fn init(width: usize, height: usize) Scene {
         const min_dim: f32 = @floatFromInt(@min(width, height));
@@ -94,9 +91,6 @@ pub const Scene = struct {
     }
 
     pub fn setRayConfig(self: *Scene, config: RayConfig) void {
-        if (config.palette_type != self.ray_config.palette_type) {
-            self.palette_initialized = false;
-        }
         self.ray_config = config;
     }
 
@@ -110,12 +104,8 @@ pub const Scene = struct {
         self.prism_dirty = false;
     }
 
-    fn ensurePaletteCache(self: *Scene) *const palette.Cache {
-        if (!self.palette_initialized) {
-            self.palette_cache = palette.Cache.init(self.ray_config.palette_type);
-            self.palette_initialized = true;
-        }
-        return &self.palette_cache;
+    fn getPaletteCache(self: *const Scene) *const rainbow.PaletteCache {
+        return rainbow.getPaletteCache(self.ray_config.palette_type);
     }
 
     pub fn prepareFrame(self: *Scene) FrameGeometry {
@@ -166,7 +156,7 @@ pub const Scene = struct {
 
         const circle_clip = clip.Region{ .boundary = &geometry.boundary };
         const prism_tri = &self.prism;
-        const cache = self.ensurePaletteCache();
+        const cache = self.getPaletteCache();
         const paths = &geometry.paths;
 
         const draw_internal_colored_rays = !self.ray_config.gradient_fill or self.prism_config.rainbow_spread <= 0.99;
@@ -178,9 +168,10 @@ pub const Scene = struct {
             .intensity = .{ .uniform = self.ray_config.intensity },
         };
 
-        for (paths.bands, 0..) |band_path, i| {
-            const color_idx = if (self.ray_config.reverse) clock.band_count - 1 - i else i;
-            const band_color = cache.getColor(color_idx);
+        for (std.enums.values(rainbow.Color)) |color| {
+            const color_path = paths.colors.get(color);
+            const color_idx = if (self.ray_config.reverse) color.reverse() else color;
+            const linear_color = cache.getLinearColor(color_idx);
 
             // Entry ray (white light)
             if (paths.entry_ray) |entry_seg| {
@@ -188,16 +179,16 @@ pub const Scene = struct {
             }
 
             // Internal rays (inside prism)
-            const colored_seg = if (paths.needs_bounce) band_path.internal2 else band_path.internal1;
+            const colored_seg = if (paths.needs_bounce) color_path.internal2 else color_path.internal1;
             if (paths.needs_bounce) {
-                if (band_path.internal1) |seg| {
+                if (color_path.internal1) |seg| {
                     glow.renderLine(ctx, line.Segment.init(seg.start, seg.end), base_config, .{ .prism = prism_tri }, null);
                 }
             }
             if (draw_internal_colored_rays) {
                 if (colored_seg) |seg| {
                     var cfg = base_config;
-                    cfg.color = .{ .uniform = band_color };
+                    cfg.color = .{ .uniform = linear_color };
                     if (self.ray_config.gradient_fill) {
                         cfg.intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } };
                     }
@@ -207,25 +198,25 @@ pub const Scene = struct {
 
             // Exit ray (only when gradient fill disabled)
             if (!self.ray_config.gradient_fill) {
-                if (band_path.exit_ray) |seg| {
+                if (color_path.exit_ray) |seg| {
                     var cfg = base_config;
-                    cfg.color = .{ .uniform = band_color };
+                    cfg.color = .{ .uniform = linear_color };
                     glow.renderLine(ctx, line.Segment.init(seg.start, seg.end), cfg, circle_clip, prism_tri);
                 }
             }
         }
 
         if (self.ray_config.gradient_fill) gradient_fill: {
-            const first_band = paths.bands[0];
-            const last_band = paths.bands[clock.band_count - 1];
+            const first_color = paths.colors.get(.red);
+            const last_color = paths.colors.get(.violet);
 
-            const first_exit_ray = first_band.exit_ray orelse break :gradient_fill;
-            const last_exit_ray = last_band.exit_ray orelse break :gradient_fill;
+            const first_exit_ray = first_color.exit_ray orelse break :gradient_fill;
+            const last_exit_ray = last_color.exit_ray orelse break :gradient_fill;
 
             // Compute angles from CENTER to where boundary rays hit CIRCLE
             const pi = std.math.pi;
             const tau = std.math.tau;
-            const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(clock.band_count - 1));
+            const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(clock.color_count - 1));
 
             const first_border = first_exit_ray.end;
             const last_border = last_exit_ray.end;
@@ -268,8 +259,8 @@ pub const Scene = struct {
             // Internal gradient (inside prism)
             const grad_origin = if (paths.needs_bounce) paths.bounce_point else paths.entry_point;
 
-            const first_exit = first_band.prism_exit orelse break :gradient_fill;
-            const last_exit = last_band.prism_exit orelse break :gradient_fill;
+            const first_exit = first_color.prism_exit orelse break :gradient_fill;
+            const last_exit = last_color.prism_exit orelse break :gradient_fill;
 
             const internal_angle_first = std.math.atan2(
                 first_exit[1] - grad_origin[1],

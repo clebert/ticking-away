@@ -1,14 +1,14 @@
 const std = @import("std");
 const tau = std.math.tau;
 
-const palette = @import("color/palette.zig");
+const rainbow = @import("color/rainbow.zig");
 const vec2 = @import("math/vec2.zig");
 
 const angle_0: f32 = -std.math.pi / 2.0;
 const hour_arc: f32 = std.math.pi / 6.0;
 const max_spread_radians: f32 = std.math.pi / 6.0;
 
-pub const band_count = palette.band_count;
+pub const color_count = rainbow.color_count;
 
 fn minuteAngle(minutes: f32) f32 {
     return angle_0 + (minutes / 60.0) * tau;
@@ -25,9 +25,9 @@ pub fn entryPoint(center: vec2.Vec2, radius: f32, minutes: f32) vec2.Vec2 {
     return center + dir * r_vec;
 }
 
-pub fn bandExitAngle(base_hour_angle: f32, rainbow_spread: f32, band_index: usize) f32 {
-    const index_f: f32 = @floatFromInt(band_index);
-    const count_f: f32 = @floatFromInt(band_count);
+pub fn colorExitAngle(base_hour_angle: f32, rainbow_spread: f32, color: rainbow.Color) f32 {
+    const index_f: f32 = @floatFromInt(@intFromEnum(color));
+    const count_f: f32 = @floatFromInt(rainbow.color_count);
     const t = (index_f + 0.5) / count_f;
     const spread_rad = rainbow_spread * max_spread_radians;
     const offset = (0.5 - t) * spread_rad;

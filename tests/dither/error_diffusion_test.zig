@@ -29,7 +29,7 @@ test "error buffer init and clear" {
 }
 
 test "error diffusion output" {
-    const palette_cache = dither.PaletteCache.init(&dither.palette_ideal);
+    const palette_cache = dither.getPaletteCache(.ideal);
 
     var buffer = [_]color_space.Linear{
         color_space.Linear.init(0.0, 0.0, 0.0, 1.0),
@@ -44,7 +44,7 @@ test "error diffusion output" {
     var err = error_diffusion.ErrorBuffer.init(&backing, width);
 
     const config = error_diffusion.Config{ .algorithm = .atkinson };
-    error_diffusion.apply(&buffer, &out_rgba, width, 1, 0, config, &palette_cache, &err);
+    error_diffusion.apply(&buffer, &out_rgba, width, 1, 0, config, palette_cache, &err);
 
     // Black should output black
     try std.testing.expectEqual(@as(u8, 0), out_rgba[0]);

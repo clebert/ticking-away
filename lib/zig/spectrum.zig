@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const clock = @import("clock.zig");
+const rainbow = @import("color/rainbow.zig");
 const boundary = @import("geometry/boundary.zig");
 const intersect = @import("geometry/intersect.zig");
 const prism = @import("geometry/prism.zig");
@@ -14,7 +15,7 @@ pub const PathSegment = struct {
     end: vec2.Vec2,
 };
 
-const BandPath = struct {
+const ColorPath = struct {
     internal1: ?PathSegment = null,
     internal2: ?PathSegment = null,
     exit_ray: ?PathSegment = null,
@@ -29,7 +30,7 @@ pub const Paths = struct {
     entry_u: f32 = 0,
     needs_bounce: bool = false,
     bounce_point: vec2.Vec2 = vec2.xy(0, 0),
-    bands: [clock.band_count]BandPath = [_]BandPath{.{}} ** clock.band_count,
+    colors: std.EnumArray(rainbow.Color, ColorPath) = std.EnumArray(rainbow.Color, ColorPath).initFill(.{}),
     hits_prism: bool = false,
 
     pub fn compute(
@@ -63,24 +64,25 @@ pub const Paths = struct {
         const bounce_point = if (bounce_vertex) |v| p.vertices.get(v) else vec2.xy(0, 0);
         paths.bounce_point = bounce_point;
 
-        for (0..clock.band_count) |i| {
-            const exit_angle = clock.bandExitAngle(hour_angle, rainbow_spread, i);
-            paths.bands[i].exit_angle = exit_angle;
+        for (std.enums.values(rainbow.Color)) |color| {
+            const color_path = paths.colors.getPtr(color);
+            const exit_angle = clock.colorExitAngle(hour_angle, rainbow_spread, color);
+            color_path.exit_angle = exit_angle;
 
             const exit_hit = intersect.rayPrismExit(prism_center, exit_angle, p) orelse continue;
-            paths.bands[i].prism_exit = exit_hit.point;
+            color_path.prism_exit = exit_hit.point;
 
             if (bounce_vertex) |_| {
-                paths.bands[i].internal1 = .{
+                color_path.internal1 = .{
                     .start = entry_hit.point,
                     .end = bounce_point,
                 };
-                paths.bands[i].internal2 = .{
+                color_path.internal2 = .{
                     .start = bounce_point,
                     .end = exit_hit.point,
                 };
             } else {
-                paths.bands[i].internal1 = .{
+                color_path.internal1 = .{
                     .start = entry_hit.point,
                     .end = exit_hit.point,
                 };
@@ -88,7 +90,7 @@ pub const Paths = struct {
 
             const exit_ray = ray.Ray.fromAngle(exit_hit.point, exit_angle);
             if (intersect.rayBoundary(exit_ray, b)) |border_point| {
-                paths.bands[i].exit_ray = .{
+                color_path.exit_ray = .{
                     .start = exit_hit.point,
                     .end = border_point,
                 };

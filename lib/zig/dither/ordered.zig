@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const color_space = @import("../color/color_space.zig");
-const dither = @import("dither.zig");
+const dither = @import("../color/dither.zig");
 
 pub const Matrix = enum {
     bayer2x2,
@@ -69,17 +69,17 @@ pub fn applyRgba(
             const idx = y * width + x;
             const out_idx = idx * 4;
 
-            var lab = buffer[idx].toOklab();
+            var oklab = buffer[idx].toOklab();
 
             const threshold = getThreshold(config.matrix, x, y) * spread;
-            lab.vec[0] = std.math.clamp(lab.vec[0] + threshold, 0.0, 1.0);
+            oklab.vec[0] = std.math.clamp(oklab.vec[0] + threshold, 0.0, 1.0);
 
-            const pal_idx = palette.findClosest(lab, config.chroma_weight);
-            const pal_color = palette.getRgb(pal_idx);
+            const color = palette.findClosest(oklab, config.chroma_weight);
+            const srgb_color = palette.getSrgbColor(color);
 
-            out_rgba[out_idx] = pal_color.r;
-            out_rgba[out_idx + 1] = pal_color.g;
-            out_rgba[out_idx + 2] = pal_color.b;
+            out_rgba[out_idx] = srgb_color.r;
+            out_rgba[out_idx + 1] = srgb_color.g;
+            out_rgba[out_idx + 2] = srgb_color.b;
             out_rgba[out_idx + 3] = @intFromFloat(std.math.clamp(buffer[idx].vec[3], 0.0, 1.0) * 255.0);
         }
     }

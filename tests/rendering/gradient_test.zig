@@ -7,7 +7,7 @@ const lib = @import("lib");
 const band = lib.band;
 const color_space = lib.color_space;
 const gradient = lib.gradient;
-const palette = lib.palette;
+const rainbow = lib.rainbow;
 const prism = lib.prism;
 
 test "angle normalization edge cases" {
@@ -27,7 +27,7 @@ test "angle normalization edge cases" {
         .total_height = 100,
     };
 
-    const cache = palette.Cache.init(.saturated);
+    const cache = rainbow.getPaletteCache(.saturated);
 
     // Test with negative-ish angles that need normalization
     gradient.render(
@@ -47,7 +47,7 @@ test "angle normalization edge cases" {
             .radius = 45,
             .prism = p,
         },
-        &cache,
+        cache,
     );
 
     // Should have rendered some pixels
@@ -75,7 +75,7 @@ test "wrap around gradient at boundary" {
         .total_height = 100,
     };
 
-    const cache = palette.Cache.init(.saturated);
+    const cache = rainbow.getPaletteCache(.saturated);
 
     // Gradient that wraps around: from near-tau to past 0
     gradient.render(
@@ -95,7 +95,7 @@ test "wrap around gradient at boundary" {
             .radius = 45,
             .prism = p,
         },
-        &cache,
+        cache,
     );
 
     // Should have rendered some pixels
@@ -110,7 +110,7 @@ test "wrap around gradient at boundary" {
 
 test "internal vs external mode" {
     const p = prism.Prism.init(.{ 50, 50 }, 30);
-    const cache = palette.Cache.init(.saturated);
+    const cache = rainbow.getPaletteCache(.saturated);
 
     // External mode buffer
     var ext_buffer: [100 * 100]color_space.Linear = undefined;
@@ -141,7 +141,7 @@ test "internal vs external mode" {
             .radius = 45,
             .prism = p,
         },
-        &cache,
+        cache,
     );
 
     // Internal mode buffer
@@ -173,7 +173,7 @@ test "internal vs external mode" {
             .radius = 45,
             .prism = p,
         },
-        &cache,
+        cache,
     );
 
     // Center of prism should be colored in internal mode only

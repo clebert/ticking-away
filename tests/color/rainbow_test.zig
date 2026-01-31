@@ -1,21 +1,21 @@
 const std = @import("std");
 const lib = @import("lib");
 
-const palette = lib.palette;
+const rainbow = lib.rainbow;
 
 test "palette cache init" {
-    const cache = palette.Cache.init(.oklch_balanced);
+    const cache = rainbow.getPaletteCache(.oklch_balanced);
 
     // First band should be reddish
-    try std.testing.expect(cache.linear[0].vec[0] > 0.5); // High red
-    try std.testing.expect(cache.linear[0].vec[2] < 0.1); // Low blue
+    try std.testing.expect(cache.linear_colors[0].vec[0] > 0.5); // High red
+    try std.testing.expect(cache.linear_colors[0].vec[2] < 0.1); // Low blue
 
     // Last band should be violet
-    try std.testing.expect(cache.linear[6].vec[2] > 0.5); // High blue
+    try std.testing.expect(cache.linear_colors[6].vec[2] > 0.5); // High blue
 }
 
 test "palette interpolation" {
-    const cache = palette.Cache.init(.saturated);
+    const cache = rainbow.getPaletteCache(.saturated);
 
     // t=0 should give red
     const red = cache.interpolate(0.0);
@@ -33,7 +33,7 @@ test "palette interpolation" {
 }
 
 test "palette extrapolation" {
-    const cache = palette.Cache.init(.saturated);
+    const cache = rainbow.getPaletteCache(.saturated);
 
     // t < 0 should give darker red (infrared)
     const ir = cache.interpolate(-0.5);

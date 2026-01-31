@@ -4,6 +4,7 @@ const lib = @import("lib");
 
 const boundary = lib.boundary;
 const clock = lib.clock;
+const rainbow = lib.rainbow;
 const prism = lib.prism;
 const spectrum = lib.spectrum;
 const vec2 = lib.vec2;
@@ -61,11 +62,12 @@ test "07:40 vertex entry at v2" {
     const bounce_dist = distance(paths.bounce_point, v0);
     try testing.expectApproxEqAbs(bounce_dist, 0.0, 0.1);
 
-    // All bands should have valid internal segments
-    for (paths.bands) |band| {
+    // All colors should have valid internal segments
+    for (std.enums.values(rainbow.Color)) |color| {
+        const color_path = paths.colors.get(color);
         // Both internal segments should exist when needs_bounce is true
-        try testing.expect(band.internal1 != null);
-        try testing.expect(band.internal2 != null);
+        try testing.expect(color_path.internal1 != null);
+        try testing.expect(color_path.internal2 != null);
     }
 }
 
@@ -146,16 +148,16 @@ test "03:15 exit rays should be valid" {
     // Should hit the prism
     try testing.expect(paths.hits_prism);
 
-    // First and last bands must have exit_ray for gradient to render
-    const first_band = paths.bands[0];
-    const last_band = paths.bands[clock.band_count - 1];
+    // First and last colors must have exit_ray for gradient to render
+    const first_color = paths.colors.get(.red);
+    const last_color = paths.colors.get(.violet);
 
-    try testing.expect(first_band.exit_ray != null);
-    try testing.expect(last_band.exit_ray != null);
+    try testing.expect(first_color.exit_ray != null);
+    try testing.expect(last_color.exit_ray != null);
 
     // Compute the angles that would be used for the external gradient
-    const first_border = first_band.exit_ray.?.end;
-    const last_border = last_band.exit_ray.?.end;
+    const first_border = first_color.exit_ray.?.end;
+    const last_border = last_color.exit_ray.?.end;
 
     const ext_angle_first = std.math.atan2(first_border[1] - cy, first_border[0] - cx);
     const ext_angle_last = std.math.atan2(last_border[1] - cy, last_border[0] - cx);
@@ -167,7 +169,7 @@ test "03:15 exit rays should be valid" {
     if (ray_span > pi) ray_span -= tau;
     if (ray_span < -pi) ray_span += tau;
 
-    const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(clock.band_count - 1));
+    const edge_margin_factor = 0.5 / @as(f32, @floatFromInt(clock.color_count - 1));
     const edge_margin = ray_span * edge_margin_factor;
 
     const angle_start = ext_angle_first - edge_margin;

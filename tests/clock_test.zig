@@ -69,10 +69,10 @@ test "band exit angle spread" {
     const spread: f32 = 1.0; // Full spread
     const max_spread_radians: f32 = std.math.pi / 6.0;
 
-    // First band should be offset one way
-    const first = clock.bandExitAngle(base_angle, spread, 0);
-    // Last band should be offset the other way
-    const last = clock.bandExitAngle(base_angle, spread, clock.band_count - 1);
+    // First color should be offset one way
+    const first = clock.colorExitAngle(base_angle, spread, .red);
+    // Last color should be offset the other way
+    const last = clock.colorExitAngle(base_angle, spread, .violet);
 
     // They should be on opposite sides of the base angle
     try testing.expect(first > base_angle);
@@ -80,6 +80,6 @@ test "band exit angle spread" {
 
     // Total spread should be approximately max_spread_radians
     const total_spread = first - last;
-    const count_f: f32 = @floatFromInt(clock.band_count);
+    const count_f: f32 = @floatFromInt(clock.color_count);
     try testing.expectApproxEqAbs(total_spread, max_spread_radians * (1.0 - 1.0 / count_f), 0.01);
 }

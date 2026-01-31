@@ -1,5 +1,5 @@
 const color_space = @import("../color/color_space.zig");
-const dither = @import("../dither/dither.zig");
+const dither = @import("../color/dither.zig");
 const error_diffusion = @import("../dither/error_diffusion.zig");
 const ordered = @import("../dither/ordered.zig");
 const grain = @import("../effects/grain.zig");
@@ -30,12 +30,12 @@ pub const DitherConfig = struct {
 };
 
 pub const DitherState = struct {
-    palette_cache: dither.PaletteCache,
+    palette_cache: *const dither.PaletteCache,
     error_buffer: ?*error_diffusion.ErrorBuffer,
 
     pub fn init(palette_type: dither.PaletteType) DitherState {
         return .{
-            .palette_cache = dither.PaletteCache.init(dither.getPalette(palette_type)),
+            .palette_cache = dither.getPaletteCache(palette_type),
             .error_buffer = null,
         };
     }
@@ -80,12 +80,12 @@ pub fn applyDither(
         .error_diffusion => blk: {
             const ed_cfg = config.error_diffusion orelse break :blk false;
             const err = state.error_buffer orelse break :blk false;
-            error_diffusion.apply(buffer, out_rgba, width, height, y_offset, ed_cfg, &state.palette_cache, err);
+            error_diffusion.apply(buffer, out_rgba, width, height, y_offset, ed_cfg, state.palette_cache, err);
             break :blk true;
         },
         .ordered => blk: {
             const ord_cfg = config.ordered orelse break :blk false;
-            ordered.applyRgba(buffer, out_rgba, width, height, ord_cfg, &state.palette_cache);
+            ordered.applyRgba(buffer, out_rgba, width, height, ord_cfg, state.palette_cache);
             break :blk true;
         },
     };
@@ -93,7 +93,7 @@ pub fn applyDither(
     if (!dithered) output.writeRgba(buffer, out_rgba);
 
     if (config.boundary_mask) |bnd| {
-        const white = state.palette_cache.palette.get(.white);
+        const white = state.palette_cache.getSrgbColor(.white);
         applyBoundaryMask(out_rgba, width, height, bnd, white);
     }
 }
