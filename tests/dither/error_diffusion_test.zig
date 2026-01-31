@@ -36,7 +36,7 @@ test "error diffusion output" {
         color_space.Linear.init(1.0, 1.0, 1.0, 1.0),
     };
 
-    var srgba_colors: [8]u8 = undefined;
+    var srgba_colors: [2]color_space.Srgba = undefined;
 
     const width: usize = 2;
     const size = width * error_diffusion.ErrorBuffer.rows * error_diffusion.ErrorBuffer.channels;
@@ -47,12 +47,12 @@ test "error diffusion output" {
     error_diffusion.apply(&linear_colors, &srgba_colors, width, 1, 0, config, palette_cache, &err);
 
     // Black should output black
-    try std.testing.expectEqual(@as(u8, 0), srgba_colors[0]);
-    try std.testing.expectEqual(@as(u8, 0), srgba_colors[1]);
-    try std.testing.expectEqual(@as(u8, 0), srgba_colors[2]);
+    try std.testing.expectEqual(@as(u8, 0), srgba_colors[0].r);
+    try std.testing.expectEqual(@as(u8, 0), srgba_colors[0].g);
+    try std.testing.expectEqual(@as(u8, 0), srgba_colors[0].b);
 
     // White should output white
-    try std.testing.expectEqual(@as(u8, 255), srgba_colors[4]);
-    try std.testing.expectEqual(@as(u8, 255), srgba_colors[5]);
-    try std.testing.expectEqual(@as(u8, 255), srgba_colors[6]);
+    try std.testing.expectEqual(@as(u8, 255), srgba_colors[1].r);
+    try std.testing.expectEqual(@as(u8, 255), srgba_colors[1].g);
+    try std.testing.expectEqual(@as(u8, 255), srgba_colors[1].b);
 }

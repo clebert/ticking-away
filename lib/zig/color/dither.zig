@@ -20,7 +20,7 @@ pub const Color = enum {
 
 pub const color_count: usize = @typeInfo(Color).@"enum".fields.len;
 
-pub const Palette = std.EnumArray(Color, color_space.Srgb);
+pub const Palette = std.EnumArray(Color, color_space.Srgba);
 
 pub const palette_ideal = Palette.init(.{
     .black = .{ .r = 0, .g = 0, .b = 0 },
@@ -87,27 +87,27 @@ fn findClosestColor(
 }
 
 pub const PaletteCache = struct {
-    srgb_colors: [color_count]color_space.Srgb,
+    srgba_colors: [color_count]color_space.Srgba,
     linear_colors: [color_count]color_space.Linear,
     oklab_colors: [color_count]color_space.Oklab,
 
     pub fn init(palette_type: PaletteType) PaletteCache {
         const palette = getPalette(palette_type);
 
-        var srgb_colors: [color_count]color_space.Srgb = undefined;
+        var srgba_colors: [color_count]color_space.Srgba = undefined;
         var linear_colors: [color_count]color_space.Linear = undefined;
         var oklab_colors: [color_count]color_space.Oklab = undefined;
 
         for (0..color_count) |i| {
             const color: Color = @enumFromInt(i);
             const srgb_color = palette.get(color);
-            srgb_colors[i] = srgb_color;
+            srgba_colors[i] = srgb_color;
             linear_colors[i] = srgb_color.toLinear();
             oklab_colors[i] = srgb_color.toOklab();
         }
 
         return .{
-            .srgb_colors = srgb_colors,
+            .srgba_colors = srgba_colors,
             .linear_colors = linear_colors,
             .oklab_colors = oklab_colors,
         };
@@ -118,8 +118,8 @@ pub const PaletteCache = struct {
         return @enumFromInt(index);
     }
 
-    pub fn getSrgbColor(self: *const PaletteCache, color: Color) color_space.Srgb {
-        return self.srgb_colors[@intFromEnum(color)];
+    pub fn getSrgbaColor(self: *const PaletteCache, color: Color) color_space.Srgba {
+        return self.srgba_colors[@intFromEnum(color)];
     }
 };
 

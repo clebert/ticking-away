@@ -1,8 +1,7 @@
-// Math
 pub const clock = @import("clock.zig");
 pub const color_space = @import("color/color_space.zig");
-pub const rainbow = @import("color/rainbow.zig");
 pub const dither = @import("color/dither.zig");
+pub const rainbow = @import("color/rainbow.zig");
 pub const error_diffusion = @import("dither/error_diffusion.zig");
 pub const ordered = @import("dither/ordered.zig");
 pub const grain = @import("effects/grain.zig");
@@ -14,7 +13,6 @@ pub const ray = @import("geometry/ray.zig");
 pub const segment = @import("geometry/segment.zig");
 pub const range = @import("math/range.zig");
 pub const vec2 = @import("math/vec2.zig");
-pub const output = @import("pipeline/output.zig");
 pub const pipeline = @import("pipeline/pipeline.zig");
 pub const postprocess = @import("pipeline/postprocess.zig");
 pub const band = @import("rendering/band.zig");

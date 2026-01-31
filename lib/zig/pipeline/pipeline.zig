@@ -1,17 +1,15 @@
 const color_space = @import("../color/color_space.zig");
 const band = @import("../rendering/band.zig");
 const watchface = @import("../watchface.zig");
-const output = @import("output.zig");
 const postprocess = @import("postprocess.zig");
 
 pub const OutputConfig = struct {
-    format: output.Format = .rgba8,
     dither: ?postprocess.DitherConfig = null,
 };
 
 fn applyPostprocessAndOutput(
     linear_colors: []color_space.Linear,
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -51,13 +49,13 @@ fn applyPostprocessAndOutput(
         }
     }
 
-    output.write(linear_colors, srgba_colors, output_config.format);
+    color_space.Linear.toSrgbaSlice(linear_colors, srgba_colors);
 }
 
 pub fn renderFrame(
     scene: *watchface.Scene,
     linear_colors: []color_space.Linear,
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     postprocess_config: postprocess.Config,
@@ -78,7 +76,7 @@ pub fn renderFrame(
 pub fn renderBand(
     scene: *watchface.Scene,
     linear_colors: []color_space.Linear,
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     band_height: usize,
     y_offset: usize,
@@ -102,7 +100,7 @@ pub fn renderBandWithGeometry(
     scene: *watchface.Scene,
     geometry: *const watchface.FrameGeometry,
     linear_colors: []color_space.Linear,
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     band_height: usize,
     y_offset: usize,

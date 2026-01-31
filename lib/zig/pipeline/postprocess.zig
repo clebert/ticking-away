@@ -5,7 +5,6 @@ const ordered = @import("../dither/ordered.zig");
 const grain = @import("../effects/grain.zig");
 const vignette = @import("../effects/vignette.zig");
 const boundary = @import("../geometry/boundary.zig");
-const output = @import("output.zig");
 
 pub const Config = struct {
     gamma_enabled: bool = true,
@@ -68,7 +67,7 @@ pub fn apply(
 
 pub fn applyDither(
     linear_colors: []const color_space.Linear,
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -90,20 +89,20 @@ pub fn applyDither(
         },
     };
 
-    if (!dithered) output.writeRgba(linear_colors, srgba_colors);
+    if (!dithered) color_space.Linear.toSrgbaSlice(linear_colors, srgba_colors);
 
     if (config.boundary_mask) |bnd| {
-        const white = state.palette_cache.getSrgbColor(.white);
+        const white = state.palette_cache.getSrgbaColor(.white);
         applyBoundaryMask(srgba_colors, width, height, bnd, white);
     }
 }
 
 fn applyBoundaryMask(
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     bnd: boundary.Boundary,
-    white: color_space.Srgb,
+    white: color_space.Srgba,
 ) void {
     const cx = bnd.center[0];
     const cy = bnd.center[1];
@@ -129,18 +128,14 @@ fn applyBoundaryMask(
 }
 
 fn fillRowWithWhite(
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     y: usize,
     x_start: usize,
     x_end: usize,
     width: usize,
-    white: color_space.Srgb,
+    white: color_space.Srgba,
 ) void {
     for (x_start..x_end) |x| {
-        const idx = (y * width + x) * 4;
-        srgba_colors[idx] = white.r;
-        srgba_colors[idx + 1] = white.g;
-        srgba_colors[idx + 2] = white.b;
-        srgba_colors[idx + 3] = 255;
+        srgba_colors[y * width + x] = .{ .r = white.r, .g = white.g, .b = white.b, .a = 255 };
     }
 }

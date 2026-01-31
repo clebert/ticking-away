@@ -56,7 +56,7 @@ fn getThreshold(matrix: Matrix, x: usize, y: usize) f32 {
 
 pub fn applyRgba(
     linear_colors: []const color_space.Linear,
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     config: Config,
@@ -67,7 +67,6 @@ pub fn applyRgba(
     for (0..height) |y| {
         for (0..width) |x| {
             const idx = y * width + x;
-            const out_idx = idx * 4;
 
             var oklab = linear_colors[idx].toOklab();
 
@@ -75,12 +74,14 @@ pub fn applyRgba(
             oklab.vec[0] = std.math.clamp(oklab.vec[0] + threshold, 0.0, 1.0);
 
             const color = palette.findClosest(oklab, config.chroma_weight);
-            const srgb_color = palette.getSrgbColor(color);
+            const srgba_color = palette.getSrgbaColor(color);
 
-            srgba_colors[out_idx] = srgb_color.r;
-            srgba_colors[out_idx + 1] = srgb_color.g;
-            srgba_colors[out_idx + 2] = srgb_color.b;
-            srgba_colors[out_idx + 3] = @intFromFloat(std.math.clamp(linear_colors[idx].vec[3], 0.0, 1.0) * 255.0);
+            srgba_colors[idx] = .{
+                .r = srgba_color.r,
+                .g = srgba_color.g,
+                .b = srgba_color.b,
+                .a = @intFromFloat(std.math.clamp(linear_colors[idx].vec[3], 0.0, 1.0) * 255.0),
+            };
         }
     }
 }

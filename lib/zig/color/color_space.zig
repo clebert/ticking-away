@@ -33,13 +33,19 @@ pub const Linear = struct {
         } };
     }
 
-    pub inline fn toSrgb(self: Linear) Srgb {
+    pub inline fn toSrgba(self: Linear) Srgba {
         return .{
             .r = linearToSrgbByte(self.vec[0]),
             .g = linearToSrgbByte(self.vec[1]),
             .b = linearToSrgbByte(self.vec[2]),
             .a = @intFromFloat(std.math.clamp(self.vec[3], 0.0, 1.0) * 255.0),
         };
+    }
+
+    pub fn toSrgbaSlice(linear_colors: []const Linear, srgba_colors: []Srgba) void {
+        for (linear_colors, srgba_colors) |linear, *srgba| {
+            srgba.* = linear.toSrgba();
+        }
     }
 
     pub inline fn lerp(a: Linear, b: Linear, t: f32) Linear {
@@ -95,13 +101,13 @@ pub const Oklab = struct {
     }
 };
 
-pub const Srgb = struct {
+pub const Srgba = struct {
     r: u8,
     g: u8,
     b: u8,
     a: u8 = 255,
 
-    pub inline fn toLinear(self: Srgb) Linear {
+    pub inline fn toLinear(self: Srgba) Linear {
         return .{ .vec = .{
             srgbByteToLinear(self.r),
             srgbByteToLinear(self.g),
@@ -110,7 +116,7 @@ pub const Srgb = struct {
         } };
     }
 
-    pub inline fn toOklab(self: Srgb) Oklab {
+    pub inline fn toOklab(self: Srgba) Oklab {
         return self.toLinear().toOklab();
     }
 };

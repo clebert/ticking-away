@@ -31,7 +31,7 @@ pub const PaletteType = enum(u4) {
     spectra6 = 9,
 };
 
-pub const Palette = std.EnumArray(Color, color_space.Srgb);
+pub const Palette = std.EnumArray(Color, color_space.Srgba);
 
 pub const palette_oklch_balanced = Palette.init(.{
     .red = .{ .r = 255, .g = 64, .b = 64 },
@@ -174,14 +174,14 @@ pub const PaletteCache = struct {
 
     pub fn interpolate(self: *const PaletteCache, t: f32) color_space.Linear {
         if (t < 0.0) {
-            const oklab_infrared = (color_space.Srgb{ .r = 140, .g = 0, .b = 0 }).toOklab();
+            const oklab_infrared = (color_space.Srgba{ .r = 140, .g = 0, .b = 0 }).toOklab();
             const oklab_red = self.oklab_colors[0];
             const frac = @min(-t, 1.0);
             return color_space.Oklab.lerp(oklab_red, oklab_infrared, frac).toLinear();
         }
 
         if (t > 1.0) {
-            const oklab_ultraviolet = (color_space.Srgb{ .r = 80, .g = 0, .b = 120 }).toOklab();
+            const oklab_ultraviolet = (color_space.Srgba{ .r = 80, .g = 0, .b = 120 }).toOklab();
             const oklab_violet = self.oklab_colors[color_count - 1];
             const frac = @min(t - 1.0, 1.0);
             return color_space.Oklab.lerp(oklab_violet, oklab_ultraviolet, frac).toLinear();

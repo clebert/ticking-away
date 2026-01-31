@@ -60,7 +60,7 @@ pub const ErrorBuffer = struct {
 
 pub fn apply(
     linear_colors: []const color_space.Linear,
-    srgba_colors: []u8,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -79,7 +79,6 @@ pub fn apply(
         for (0..width) |i| {
             const x = if (left_to_right) i else width - 1 - i;
             const idx = local_y * width + x;
-            const out_idx = idx * 4;
 
             const pixel = linear_colors[idx];
             const quant: QuantResult = if (config.oklab_error) blk: {
@@ -114,11 +113,13 @@ pub fn apply(
                 };
             };
 
-            const srgb_color = palette.getSrgbColor(quant.color);
-            srgba_colors[out_idx] = srgb_color.r;
-            srgba_colors[out_idx + 1] = srgb_color.g;
-            srgba_colors[out_idx + 2] = srgb_color.b;
-            srgba_colors[out_idx + 3] = @intFromFloat(std.math.clamp(pixel.vec[3], 0.0, 1.0) * 255.0);
+            const srgba_color = palette.getSrgbaColor(quant.color);
+            srgba_colors[idx] = .{
+                .r = srgba_color.r,
+                .g = srgba_color.g,
+                .b = srgba_color.b,
+                .a = @intFromFloat(std.math.clamp(pixel.vec[3], 0.0, 1.0) * 255.0),
+            };
 
             const x_i: i32 = @intCast(x);
             const width_i: i32 = @intCast(width);

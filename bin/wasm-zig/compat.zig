@@ -282,7 +282,7 @@ pub fn toOutputConfig(
     s: *const lib.watchface.Scene,
 ) lib.pipeline.OutputConfig {
     if (c.dither.enabled == 0) {
-        return .{ .format = .rgba8, .dither = null };
+        return .{ .dither = null };
     }
 
     const mode: lib.postprocess.DitherMode = switch (c.dither.dither_type) {
@@ -291,7 +291,6 @@ pub fn toOutputConfig(
     };
 
     return .{
-        .format = .rgba8,
         .dither = .{
             .mode = mode,
             .palette_type = toDitherPaletteType(c.dither.mode),

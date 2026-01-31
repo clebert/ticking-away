@@ -7,21 +7,21 @@ test "srgb round-trip" {
     const test_values = [_]f32{ 0.0, 0.001, 0.01, 0.1, 0.5, 0.9, 1.0 };
     for (test_values) |linear| {
         const linear_color = color_space.Linear.init(linear, linear, linear, 1.0);
-        const srgb = linear_color.toSrgb();
-        const back = (color_space.Srgb{ .r = srgb.r, .g = srgb.g, .b = srgb.b }).toLinear();
+        const srgb = linear_color.toSrgba();
+        const back = (color_space.Srgba{ .r = srgb.r, .g = srgb.g, .b = srgb.b }).toLinear();
         try std.testing.expectApproxEqAbs(linear, back.vec[0], 0.01);
     }
 }
 
 test "gamma known values" {
-    const black = color_space.Linear.init(0.0, 0.0, 0.0, 1.0).toSrgb();
+    const black = color_space.Linear.init(0.0, 0.0, 0.0, 1.0).toSrgba();
     try std.testing.expectEqual(@as(u8, 0), black.r);
 
-    const white = color_space.Linear.init(1.0, 1.0, 1.0, 1.0).toSrgb();
+    const white = color_space.Linear.init(1.0, 1.0, 1.0, 1.0).toSrgba();
     try std.testing.expectEqual(@as(u8, 255), white.r);
 
     // Linear 0.214 should map to approximately sRGB 0.5 (127-128)
-    const mid = color_space.Linear.init(0.214, 0.214, 0.214, 1.0).toSrgb();
+    const mid = color_space.Linear.init(0.214, 0.214, 0.214, 1.0).toSrgba();
     try std.testing.expect(mid.r >= 125 and mid.r <= 130);
 }
 

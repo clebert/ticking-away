@@ -7,7 +7,7 @@ const compat = @import("compat.zig");
 
 // Allocated buffers (reallocated when dimensions change)
 var linear_colors: ?[]lib.color_space.Linear = null;
-var srgba_colors: ?[]u8 = null;
+var srgba_colors: ?[]lib.color_space.Srgba = null;
 var dither_error_backing: ?[]f32 = null;
 
 // Static state (cached between frames)
@@ -53,7 +53,7 @@ fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
         linear_colors = null;
     }
 
-    srgba_colors = try allocator.alloc(u8, pixel_count * 4);
+    srgba_colors = try allocator.alloc(lib.color_space.Srgba, pixel_count);
     errdefer {
         allocator.free(srgba_colors.?);
         srgba_colors = null;
@@ -128,5 +128,5 @@ export fn renderWatchfaceWithConfig(
         dither_state_ptr,
     );
 
-    return srgba_colors.?.ptr;
+    return @ptrCast(srgba_colors.?.ptr);
 }
