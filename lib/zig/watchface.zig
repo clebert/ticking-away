@@ -146,10 +146,29 @@ pub const Scene = struct {
         };
     }
 
+    fn renderBackground(self: *const Scene, band: *frame.Band) void {
+        const r2 = self.radius * self.radius;
+
+        for (0..band.height) |local_y| {
+            const global_y = band.globalY(local_y);
+            const y: f32 = @floatFromInt(global_y);
+            const dy = y - self.center[1];
+            const dy2 = dy * dy;
+
+            for (0..band.width) |x| {
+                const x_f: f32 = @floatFromInt(x);
+                const dx = x_f - self.center[0];
+                const dist2 = dx * dx + dy2;
+
+                band.linearColorAt(x, local_y).* = if (dist2 <= r2) color_space.Linear.black else color_space.Linear.white;
+            }
+        }
+    }
+
     pub fn render(self: *Scene, band: *frame.Band) void {
         const geometry = self.prepareFrame();
 
-        band.clearWithBackground(self.center[0], self.center[1], self.radius);
+        self.renderBackground(band);
 
         const circle_clip = clip.Region{ .boundary = &geometry.boundary };
         const prism_tri = &self.prism;

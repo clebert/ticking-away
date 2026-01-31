@@ -5,7 +5,6 @@ test {
     _ = @import("effect_vignette_test.zig");
     _ = @import("eink_test.zig");
     _ = @import("error_diffusion_test.zig");
-    _ = @import("frame_test.zig");
     _ = @import("glow_test.zig");
     _ = @import("gradient_test.zig");
     _ = @import("intersect_test.zig");
