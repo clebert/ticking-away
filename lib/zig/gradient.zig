@@ -3,9 +3,9 @@ const tau = std.math.tau;
 const pi = std.math.pi;
 
 const color_space = @import("color_space.zig");
+const frame = @import("frame.zig");
 const prism = @import("prism.zig");
 const rainbow = @import("rainbow.zig");
-const scanline = @import("scanline.zig");
 
 const Mode = enum {
     internal,
@@ -34,7 +34,7 @@ inline fn normalizeAngle(a: f32) f32 {
 }
 
 pub fn render(
-    ctx: *scanline.Context,
+    band: *frame.Band,
     config: Config,
     geometry: Geometry,
     cache: *const rainbow.PaletteCache,
@@ -64,10 +64,10 @@ pub fn render(
     const a2 = if (wrap_around) normalizeAngle(a2_sorted + eps) else @min(a2_sorted + eps, tau - 0.0001);
 
     var x_start: usize = 0;
-    var x_end: usize = ctx.width;
+    var x_end: usize = band.width;
 
     var y_start: usize = 0;
-    var y_end: usize = ctx.height;
+    var y_end: usize = band.height;
 
     const geo_prism = geometry.prism;
 
@@ -81,21 +81,21 @@ pub fn render(
         const max_y = @max(@max(v0[1], v1[1]), v2[1]);
 
         x_start = @intFromFloat(@max(min_x, 0));
-        x_end = @intFromFloat(@min(max_x + 1, @as(f32, @floatFromInt(ctx.width))));
+        x_end = @intFromFloat(@min(max_x + 1, @as(f32, @floatFromInt(band.width))));
 
-        const band_start_f: f32 = @floatFromInt(ctx.y_offset);
-        const band_end_f: f32 = @floatFromInt(ctx.y_offset + ctx.height);
+        const band_start_f: f32 = @floatFromInt(band.y_offset);
+        const band_end_f: f32 = @floatFromInt(band.y_offset + band.height);
 
         if (max_y < band_start_f or min_y > band_end_f) return;
 
         y_start = if (min_y <= band_start_f) 0 else @intFromFloat(min_y - band_start_f);
-        y_end = if (max_y >= band_end_f) ctx.height else @min(ctx.height, @as(usize, @intFromFloat(max_y - band_start_f)) + 1);
+        y_end = if (max_y >= band_end_f) band.height else @min(band.height, @as(usize, @intFromFloat(max_y - band_start_f)) + 1);
     }
 
     const radius_sq = geometry.radius * geometry.radius;
 
     for (y_start..y_end) |local_y| {
-        const global_y = ctx.y_offset + local_y;
+        const global_y = band.globalY(local_y);
         const py = @as(f32, @floatFromInt(global_y)) + 0.5;
 
         for (x_start..x_end) |x| {
@@ -137,7 +137,7 @@ pub fn render(
             const t_color = if (config.reverse_spectrum) 1.0 - t_color_raw else t_color_raw;
 
             const col = cache.interpolate(t_color);
-            const p = &ctx.linear_colors[local_y * ctx.width + x];
+            const p = band.linearColorAt(x, local_y);
             const intensity_vec: @Vector(4, f32) = @splat(config.intensity);
             p.vec = p.vec + col.vec * intensity_vec;
         }

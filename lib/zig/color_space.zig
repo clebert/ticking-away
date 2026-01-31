@@ -42,12 +42,6 @@ pub const Linear = struct {
         };
     }
 
-    pub fn toSrgbaSlice(linear_colors: []const Linear, srgba_colors: []Srgba) void {
-        for (linear_colors, srgba_colors) |linear, *srgba| {
-            srgba.* = linear.toSrgba();
-        }
-    }
-
     pub inline fn lerp(a: Linear, b: Linear, t: f32) Linear {
         const t_vec: Vec4 = @splat(t);
         return .{ .vec = a.vec + (b.vec - a.vec) * t_vec };

@@ -2,6 +2,7 @@ const std = @import("std");
 
 const color_space = @import("color_space.zig");
 const eink = @import("eink.zig");
+const frame = @import("frame.zig");
 
 const Algorithm = enum {
     atkinson,
@@ -59,11 +60,7 @@ pub const ErrorBuffer = struct {
 };
 
 pub fn apply(
-    linear_colors: []const color_space.Linear,
-    srgba_colors: []color_space.Srgba,
-    width: usize,
-    height: usize,
-    y_offset: usize,
+    band: *frame.Band,
     config: Config,
     palette: *const eink.PaletteCache,
     err: *ErrorBuffer,
@@ -72,15 +69,14 @@ pub fn apply(
         err.clear();
     }
 
-    for (0..height) |local_y| {
-        const global_y = local_y + y_offset;
+    for (0..band.height) |local_y| {
+        const global_y = band.globalY(local_y);
         const left_to_right = (global_y % 2 == 0);
 
-        for (0..width) |i| {
-            const x = if (left_to_right) i else width - 1 - i;
-            const idx = local_y * width + x;
+        for (0..band.width) |i| {
+            const x = if (left_to_right) i else band.width - 1 - i;
 
-            const linear_color = linear_colors[idx];
+            const linear_color = band.linearColorAt(x, local_y).*;
             const quant: QuantResult = if (config.oklab_error) blk: {
                 var oklab = linear_color.toOklab();
                 oklab.vec[0] = std.math.clamp(oklab.vec[0] + err.row(0, 0)[x], 0.0, 1.0);
@@ -114,7 +110,7 @@ pub fn apply(
             };
 
             const srgba_color = palette.getSrgbaColor(quant.color);
-            srgba_colors[idx] = .{
+            band.srgbaColorAt(x, local_y).* = .{
                 .r = srgba_color.r,
                 .g = srgba_color.g,
                 .b = srgba_color.b,
@@ -122,7 +118,7 @@ pub fn apply(
             };
 
             const x_i: i32 = @intCast(x);
-            const width_i: i32 = @intCast(width);
+            const width_i: i32 = @intCast(band.width);
             const step: i32 = if (left_to_right) 1 else -1;
             const fwd = x_i + step;
             const back = x_i - step;

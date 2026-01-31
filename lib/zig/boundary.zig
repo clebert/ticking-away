@@ -1,4 +1,4 @@
-const scanline = @import("scanline.zig");
+const frame = @import("frame.zig");
 const vec2 = @import("vec2.zig");
 
 pub const Boundary = struct {
@@ -10,11 +10,11 @@ pub const Boundary = struct {
         return .{ .center = center, .radius = radius, .radius_sq = radius * radius };
     }
 
-    pub fn scanlineRange(self: Boundary, y: f32) ?scanline.Range {
+    pub fn scanlineRange(self: Boundary, y: f32) ?frame.Range {
         const dy = y - self.center[1];
         if (@abs(dy) > self.radius) return null;
         const dx = @sqrt(self.radius_sq - dy * dy);
-        return scanline.Range{
+        return frame.Range{
             .x_min = self.center[0] - dx,
             .x_max = self.center[0] + dx,
         };

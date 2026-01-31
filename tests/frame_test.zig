@@ -2,13 +2,15 @@ const std = @import("std");
 const testing = std.testing;
 
 const lib = @import("lib");
-const scanline = lib.scanline;
+const frame = lib.frame;
 const color_space = lib.color_space;
 
 test "clearWithBackground creates circle mask" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [32 * 32]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 32,
         .height = 32,
         .y_offset = 0,
@@ -19,7 +21,7 @@ test "clearWithBackground creates circle mask" {
     const cy: f32 = 16;
     const radius: f32 = 10;
 
-    ctx.clearWithBackground(cx, cy, radius);
+    band.clearWithBackground(cx, cy, radius);
 
     // Center should be black
     const center_idx = 16 * 32 + 16;

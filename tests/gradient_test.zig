@@ -4,7 +4,7 @@ const pi = std.math.pi;
 const testing = std.testing;
 
 const lib = @import("lib");
-const scanline = lib.scanline;
+const frame = lib.frame;
 const color_space = lib.color_space;
 const gradient = lib.gradient;
 const rainbow = lib.rainbow;
@@ -17,10 +17,12 @@ test "angle normalization edge cases" {
     const p = prism.Prism.init(.{ 50, 50 }, 40);
 
     var linear_colors: [100 * 100]color_space.Linear = undefined;
+    var srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&linear_colors, color_space.Linear.black);
 
-    var ctx = scanline.Context{
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 100,
         .height = 100,
         .y_offset = 0,
@@ -31,7 +33,7 @@ test "angle normalization edge cases" {
 
     // Test with negative-ish angles that need normalization
     gradient.render(
-        &ctx,
+        &band,
         .{
             .mode = .external,
             .origin_x = 50,
@@ -65,10 +67,12 @@ test "wrap around gradient at boundary" {
     const p = prism.Prism.init(.{ 50, 50 }, 40);
 
     var linear_colors: [100 * 100]color_space.Linear = undefined;
+    var srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&linear_colors, color_space.Linear.black);
 
-    var ctx = scanline.Context{
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 100,
         .height = 100,
         .y_offset = 0,
@@ -79,7 +83,7 @@ test "wrap around gradient at boundary" {
 
     // Gradient that wraps around: from near-tau to past 0
     gradient.render(
-        &ctx,
+        &band,
         .{
             .mode = .external,
             .origin_x = 50,
@@ -114,10 +118,12 @@ test "internal vs external mode" {
 
     // External mode buffer
     var ext_linear_colors: [100 * 100]color_space.Linear = undefined;
+    var ext_srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&ext_linear_colors, color_space.Linear.black);
 
-    var ext_ctx = scanline.Context{
+    var ext_band = frame.Band{
         .linear_colors = &ext_linear_colors,
+        .srgba_colors = &ext_srgba_colors,
         .width = 100,
         .height = 100,
         .y_offset = 0,
@@ -125,7 +131,7 @@ test "internal vs external mode" {
     };
 
     gradient.render(
-        &ext_ctx,
+        &ext_band,
         .{
             .mode = .external,
             .origin_x = 50,
@@ -146,10 +152,12 @@ test "internal vs external mode" {
 
     // Internal mode buffer
     var int_linear_colors: [100 * 100]color_space.Linear = undefined;
+    var int_srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&int_linear_colors, color_space.Linear.black);
 
-    var int_ctx = scanline.Context{
+    var int_band = frame.Band{
         .linear_colors = &int_linear_colors,
+        .srgba_colors = &int_srgba_colors,
         .width = 100,
         .height = 100,
         .y_offset = 0,
@@ -157,7 +165,7 @@ test "internal vs external mode" {
     };
 
     gradient.render(
-        &int_ctx,
+        &int_band,
         .{
             .mode = .internal,
             .origin_x = 50,

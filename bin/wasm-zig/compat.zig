@@ -196,7 +196,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
 }
 
 /// Convert C grain config to Zig grain config.
-fn toGrainConfig(c: *const GrainConfig) lib.grain.Config {
+pub fn toGrainConfig(c: *const GrainConfig) lib.effect_grain.Config {
     return .{
         .intensity = c.intensity,
         .scale = c.scale,
@@ -206,11 +206,30 @@ fn toGrainConfig(c: *const GrainConfig) lib.grain.Config {
 }
 
 /// Convert C vignette config to Zig vignette config.
-fn toVignetteConfig(c: *const VignetteConfig) lib.vignette.Config {
+pub fn toVignetteConfig(c: *const VignetteConfig) lib.effect_vignette.Config {
     return .{
         .enabled = c.enabled != 0,
         .strength = c.strength,
         .background = @intFromFloat(std.math.clamp(c.background * 255.0, 0.0, 255.0)),
+    };
+}
+
+/// Build grain geometry from scene.
+pub fn toGrainGeometry(s: *const lib.watchface.Scene) lib.effect_grain.Geometry {
+    return .{
+        .center_x = s.center[0],
+        .center_y = s.center[1],
+        .radius = s.radius,
+        .prism = s.prism,
+    };
+}
+
+/// Build vignette geometry from scene.
+pub fn toVignetteGeometry(s: *const lib.watchface.Scene) lib.effect_vignette.Geometry {
+    return .{
+        .center_x = s.center[0],
+        .center_y = s.center[1],
+        .radius = s.radius,
     };
 }
 
@@ -250,52 +269,21 @@ fn toDitherPaletteType(mode: DitherPaletteMode) lib.eink.PaletteType {
     };
 }
 
-/// Convert WASM config to postprocess config using scene geometry.
-pub fn toPostprocessConfig(
+/// Build dither config from WASM config.
+pub fn toDitherConfig(
     c: *const WatchfaceConfig,
     s: *const lib.watchface.Scene,
-) lib.postprocess.Config {
-    const grain_cfg = toGrainConfig(&c.grain);
-    const vignette_cfg = toVignetteConfig(&c.vignette);
-
-    return .{
-        .grain = if (grain_cfg.intensity > 0) grain_cfg else null,
-        .grain_geometry = if (grain_cfg.intensity > 0) lib.grain.Geometry{
-            .center_x = s.center[0],
-            .center_y = s.center[1],
-            .radius = s.radius,
-            .prism = s.prism,
-        } else null,
-        .vignette = if (vignette_cfg.enabled) vignette_cfg else null,
-        .vignette_geometry = if (vignette_cfg.enabled) lib.vignette.Geometry{
-            .center_x = s.center[0],
-            .center_y = s.center[1],
-            .radius = s.radius,
-        } else null,
-    };
-}
-
-/// Convert WASM dither config to pipeline output config.
-pub fn toOutputConfig(
-    c: *const WatchfaceConfig,
-    s: *const lib.watchface.Scene,
-) lib.render.OutputConfig {
-    if (c.dither.enabled == 0) {
-        return .{ .dither = null };
-    }
-
-    const mode: lib.postprocess.DitherMode = switch (c.dither.dither_type) {
+) lib.effect_dither.Config {
+    const mode: lib.effect_dither.Mode = switch (c.dither.dither_type) {
         .error_diffusion => .error_diffusion,
         .ordered => .ordered,
     };
 
     return .{
-        .dither = .{
-            .mode = mode,
-            .palette_type = toDitherPaletteType(c.dither.mode),
-            .error_diffusion = if (mode == .error_diffusion) toErrorDiffusionConfig(&c.dither) else null,
-            .ordered = if (mode == .ordered) toOrderedDitherConfig(&c.dither) else null,
-            .boundary_mask = lib.boundary.Boundary.init(s.center, s.radius),
-        },
+        .mode = mode,
+        .palette_type = toDitherPaletteType(c.dither.mode),
+        .error_diffusion = if (mode == .error_diffusion) toErrorDiffusionConfig(&c.dither) else null,
+        .ordered = if (mode == .ordered) toOrderedDitherConfig(&c.dither) else null,
+        .boundary_mask = lib.boundary.Boundary.init(s.center, s.radius),
     };
 }

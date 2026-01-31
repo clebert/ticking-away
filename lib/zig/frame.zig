@@ -5,14 +5,15 @@ pub const Range = struct {
     x_max: f32,
 };
 
-pub const Context = struct {
+pub const Band = struct {
     linear_colors: []color_space.Linear,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     y_offset: usize,
     total_height: usize,
 
-    pub fn clearWithBackground(self: *Context, cx: f32, cy: f32, radius: f32) void {
+    pub fn clearWithBackground(self: *Band, cx: f32, cy: f32, radius: f32) void {
         const r2 = radius * radius;
 
         for (0..self.height) |local_y| {
@@ -31,11 +32,21 @@ pub const Context = struct {
         }
     }
 
-    inline fn linearColorAt(self: *Context, x: usize, y: usize) *color_space.Linear {
+    pub inline fn linearColorAt(self: *Band, x: usize, y: usize) *color_space.Linear {
         return &self.linear_colors[y * self.width + x];
     }
 
-    inline fn globalY(self: *const Context, local_y: usize) usize {
+    pub inline fn srgbaColorAt(self: *Band, x: usize, y: usize) *color_space.Srgba {
+        return &self.srgba_colors[y * self.width + x];
+    }
+
+    pub inline fn globalY(self: *const Band, local_y: usize) usize {
         return self.y_offset + local_y;
+    }
+
+    pub fn convertToSrgba(self: *const Band) void {
+        for (self.linear_colors, self.srgba_colors) |linear, *srgba| {
+            srgba.* = linear.toSrgba();
+        }
     }
 };

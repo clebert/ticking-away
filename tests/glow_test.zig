@@ -2,7 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 
 const lib = @import("lib");
-const scanline = lib.scanline;
+const frame = lib.frame;
 const color_space = lib.color_space;
 const glow = lib.glow;
 const prism = lib.prism;
@@ -19,8 +19,10 @@ fn sumLinearColors(linear_colors: []const color_space.Linear) f32 {
 
 test "renderGlowLine produces non-zero output" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [32 * 32]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 32,
         .height = 32,
         .y_offset = 0,
@@ -40,7 +42,7 @@ test "renderGlowLine produces non-zero output" {
         .falloff = .linear,
     };
 
-    glow.renderLine(&ctx, seg, config, null, null);
+    glow.renderLine(&band, seg, config, null, null);
 
     // Buffer should have non-zero values now
     const sum = sumLinearColors(&linear_colors);
@@ -49,8 +51,10 @@ test "renderGlowLine produces non-zero output" {
 
 test "renderGlowLine respects clipping" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [32 * 32]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 32,
         .height = 32,
         .y_offset = 0,
@@ -74,7 +78,7 @@ test "renderGlowLine respects clipping" {
     // Clip to small triangle on left side
     const tri = prism.Prism.init(vec2.xy(5, 16), 10);
 
-    glow.renderLine(&ctx, seg, config, .{ .prism = &tri }, null);
+    glow.renderLine(&band, seg, config, .{ .prism = &tri }, null);
 
     // Check that right side is still black
     const right_idx = 16 * 32 + 28;
@@ -87,8 +91,10 @@ test "renderGlowLine respects clipping" {
 
 test "renderGlowLine with gradient color" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [32 * 32]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 32,
         .height = 32,
         .y_offset = 0,
@@ -113,7 +119,7 @@ test "renderGlowLine with gradient color" {
         .falloff = .linear,
     };
 
-    glow.renderLine(&ctx, seg, config, null, null);
+    glow.renderLine(&band, seg, config, null, null);
 
     // Left side should be more red
     const left_idx = 16 * 32 + 6;
@@ -126,8 +132,10 @@ test "renderGlowLine with gradient color" {
 
 test "renderPrismGlow produces glow inside triangle" {
     var linear_colors: [64 * 64]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [64 * 64]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 64,
         .height = 64,
         .y_offset = 0,
@@ -142,7 +150,7 @@ test "renderPrismGlow produces glow inside triangle" {
     const glow_width: f32 = 8;
     const intensity: f32 = 1;
 
-    glow.renderPrismEdges(&ctx, tri, glow_color, glow_width, intensity, .linear);
+    glow.renderPrismEdges(&band, tri, glow_color, glow_width, intensity, .linear);
 
     // Check that some glow was rendered (glow appears along edges)
     var found_glow = false;
@@ -157,8 +165,10 @@ test "renderPrismGlow produces glow inside triangle" {
 
 test "renderGlowLine excludes triangle" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [32 * 32]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 32,
         .height = 32,
         .y_offset = 0,
@@ -182,7 +192,7 @@ test "renderGlowLine excludes triangle" {
     // Exclude triangle in center
     const exclude = prism.Prism.init(vec2.xy(16, 18), 12);
 
-    glow.renderLine(&ctx, seg, config, null, &exclude);
+    glow.renderLine(&band, seg, config, null, &exclude);
 
     // Center (inside exclude triangle) should be black
     const center_idx = 16 * 32 + 16;
@@ -193,10 +203,12 @@ test "renderGlowLine excludes triangle" {
     try testing.expect(linear_colors[left_idx].vec[0] > 0);
 }
 
-test "context with y_offset renders correct region" {
+test "band with y_offset renders correct region" {
     var linear_colors: [16 * 8]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [16 * 8]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 16,
         .height = 8,
         .y_offset = 8, // rendering rows 8-15
@@ -217,17 +229,19 @@ test "context with y_offset renders correct region" {
         .falloff = .linear,
     };
 
-    glow.renderLine(&ctx, seg, config, null, null);
+    glow.renderLine(&band, seg, config, null, null);
 
     // Should have non-zero output
     const sum = sumLinearColors(&linear_colors);
     try testing.expect(sum > 0);
 }
 
-test "context with y_offset ignores lines outside region" {
+test "band with y_offset ignores lines outside region" {
     var linear_colors: [16 * 8]color_space.Linear = undefined;
-    var ctx = scanline.Context{
+    var srgba_colors: [16 * 8]color_space.Srgba = undefined;
+    var band = frame.Band{
         .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
         .width = 16,
         .height = 8,
         .y_offset = 8, // rendering rows 8-15
@@ -248,7 +262,7 @@ test "context with y_offset ignores lines outside region" {
         .falloff = .linear,
     };
 
-    glow.renderLine(&ctx, seg, config, null, null);
+    glow.renderLine(&band, seg, config, null, null);
 
     // Should be all black (line outside our y range)
     const sum = sumLinearColors(&linear_colors);

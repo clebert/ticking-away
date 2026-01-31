@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const color_space = @import("color_space.zig");
+const frame = @import("frame.zig");
 const prism = @import("prism.zig");
 
 pub const Config = struct {
@@ -18,9 +19,7 @@ pub const Geometry = struct {
 };
 
 pub fn apply(
-    srgba_colors: []color_space.Srgba,
-    width: usize,
-    height: usize,
+    band: *frame.Band,
     config: Config,
     geometry: ?Geometry,
 ) void {
@@ -31,15 +30,15 @@ pub fn apply(
     const inv_scale = 1.0 / config.scale;
     const r2 = if (geometry) |geo| geo.radius * geo.radius else 0.0;
 
-    for (0..height) |y| {
-        const y_f: f32 = @floatFromInt(y);
+    for (0..band.height) |local_y| {
+        const global_y = band.globalY(local_y);
+        const y_f: f32 = @floatFromInt(global_y);
         const py = y_f + 0.5;
         const gy: i32 = @intFromFloat(y_f * inv_scale);
 
-        for (0..width) |x| {
+        for (0..band.width) |x| {
             const x_f: f32 = @floatFromInt(x);
             const px = x_f + 0.5;
-            const idx = y * width + x;
 
             if (geometry) |geo| {
                 const dx = px - geo.center_x;
@@ -53,9 +52,10 @@ pub fn apply(
                 }
             }
 
-            const red: f32 = @floatFromInt(srgba_colors[idx].r);
-            const green: f32 = @floatFromInt(srgba_colors[idx].g);
-            const blue: f32 = @floatFromInt(srgba_colors[idx].b);
+            const srgba = band.srgbaColorAt(x, local_y);
+            const red: f32 = @floatFromInt(srgba.r);
+            const green: f32 = @floatFromInt(srgba.g);
+            const blue: f32 = @floatFromInt(srgba.b);
 
             const brightness = (red + green + blue) / 3.0;
             const brightness_factor = std.math.clamp(brightness / @max(threshold_u8, 1.0), 0.0, 1.0);
@@ -67,9 +67,9 @@ pub fn apply(
             const noise = (hash_f / 255.0 - 0.5) * grain_strength * 2.0;
             const grain_val = noise * brightness_factor;
 
-            srgba_colors[idx].r = @intFromFloat(std.math.clamp(red + grain_val, 0.0, 255.0));
-            srgba_colors[idx].g = @intFromFloat(std.math.clamp(green + grain_val, 0.0, 255.0));
-            srgba_colors[idx].b = @intFromFloat(std.math.clamp(blue + grain_val, 0.0, 255.0));
+            srgba.r = @intFromFloat(std.math.clamp(red + grain_val, 0.0, 255.0));
+            srgba.g = @intFromFloat(std.math.clamp(green + grain_val, 0.0, 255.0));
+            srgba.b = @intFromFloat(std.math.clamp(blue + grain_val, 0.0, 255.0));
         }
     }
 }

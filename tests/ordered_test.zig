@@ -3,6 +3,7 @@ const std = @import("std");
 const lib = @import("lib");
 const color_space = lib.color_space;
 const eink = lib.eink;
+const frame = lib.frame;
 const ordered = lib.ordered;
 
 test "ordered dithering rgba output" {
@@ -16,9 +17,19 @@ test "ordered dithering rgba output" {
     };
 
     var srgba_colors: [4]color_space.Srgba = undefined;
+
+    var band = frame.Band{
+        .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
+        .width = 2,
+        .height = 2,
+        .y_offset = 0,
+        .total_height = 2,
+    };
+
     const config = ordered.Config{ .matrix = .bayer2x2, .spread = 0.5 };
 
-    ordered.applyRgba(&linear_colors, &srgba_colors, 2, 2, config, palette_cache);
+    ordered.apply(&band, config, palette_cache);
 
     // Black should output black (0, 0, 0)
     try std.testing.expectEqual(@as(u8, 0), srgba_colors[0].r);
@@ -47,9 +58,18 @@ test "ordered dithering matrix sizes" {
     var linear_colors = [_]color_space.Linear{color_space.Linear.init(0.5, 0.5, 0.5, 1.0)} ** 64;
     var srgba_colors: [64]color_space.Srgba = undefined;
 
+    var band = frame.Band{
+        .linear_colors = &linear_colors,
+        .srgba_colors = &srgba_colors,
+        .width = 8,
+        .height = 8,
+        .y_offset = 0,
+        .total_height = 8,
+    };
+
     // All matrix sizes should work without error
     inline for ([_]ordered.Matrix{ .bayer2x2, .bayer4x4, .bayer8x8 }) |matrix| {
         const config = ordered.Config{ .matrix = matrix, .spread = 0.5 };
-        ordered.applyRgba(&linear_colors, &srgba_colors, 8, 8, config, palette_cache);
+        ordered.apply(&band, config, palette_cache);
     }
 }

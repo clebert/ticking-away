@@ -16,7 +16,7 @@ var scene_initialized: bool = false;
 var last_width: usize = 0;
 var last_height: usize = 0;
 
-var dither_state: lib.postprocess.DitherState = undefined;
+var dither_state: lib.effect_dither.State = undefined;
 var dither_state_initialized: bool = false;
 var dither_error_buffer: lib.error_diffusion.ErrorBuffer = undefined;
 
@@ -94,39 +94,48 @@ export fn renderWatchfaceWithConfig(
     static_scene.setMarkerConfig(scene_config.marker);
     static_scene.setTime(config_ptr.hour, config_ptr.minute);
 
-    // Build pipeline configs
-    const postprocess_config = compat.toPostprocessConfig(config_ptr, &static_scene);
-    const output_config = compat.toOutputConfig(config_ptr, &static_scene);
+    // Render scene
+    var band = lib.frame.Band{
+        .linear_colors = linear_colors.?,
+        .srgba_colors = srgba_colors.?,
+        .width = w,
+        .height = h,
+        .y_offset = 0,
+        .total_height = h,
+    };
 
-    // Initialize dither state if needed
-    var dither_state_ptr: ?*lib.postprocess.DitherState = null;
-    if (output_config.dither) |dither_cfg| {
-        if (dither_cfg.mode != .none) {
-            if (!dither_state_initialized or dither_state.palette_cache != lib.eink.getPaletteCache(dither_cfg.palette_type)) {
-                dither_state = lib.postprocess.DitherState.init(dither_cfg.palette_type);
-                dither_state_initialized = true;
-            }
+    static_scene.render(&band);
 
-            if (dither_cfg.mode == .error_diffusion) {
-                dither_error_buffer = lib.error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
-                dither_state.setErrorBuffer(&dither_error_buffer);
-            }
+    // Apply dither effect or convert to sRGB
+    if (config_ptr.dither.enabled != 0) {
+        const dither_cfg = compat.toDitherConfig(config_ptr, &static_scene);
 
-            dither_state_ptr = &dither_state;
+        if (!dither_state_initialized or dither_state.palette_cache != lib.eink.getPaletteCache(dither_cfg.palette_type)) {
+            dither_state = lib.effect_dither.State.init(dither_cfg.palette_type);
+            dither_state_initialized = true;
         }
-    }
 
-    // Render using pipeline
-    lib.render.renderFrame(
-        &static_scene,
-        linear_colors.?,
-        srgba_colors.?,
-        w,
-        h,
-        postprocess_config,
-        output_config,
-        dither_state_ptr,
-    );
+        if (dither_cfg.mode == .error_diffusion) {
+            dither_error_buffer = lib.error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
+            dither_state.setErrorBuffer(&dither_error_buffer);
+        }
+
+        lib.effect_dither.apply(&band, dither_cfg, &dither_state);
+    } else {
+        band.convertToSrgba();
+
+        lib.effect_grain.apply(
+            &band,
+            compat.toGrainConfig(&config_ptr.grain),
+            compat.toGrainGeometry(&static_scene),
+        );
+
+        lib.effect_vignette.apply(
+            &band,
+            compat.toVignetteConfig(&config_ptr.vignette),
+            compat.toVignetteGeometry(&static_scene),
+        );
+    }
 
     return @ptrCast(srgba_colors.?.ptr);
 }

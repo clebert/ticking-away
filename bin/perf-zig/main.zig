@@ -31,30 +31,17 @@ pub fn main() !void {
     std.debug.print("Allocating buffers for {d}x{d} resolution...\n", .{ width, height });
 
     const pixel_count = width * height;
-    const float_buffer = try allocator.alloc(lib.color.Color, pixel_count);
-    defer allocator.free(float_buffer);
+    const linear_colors = try allocator.alloc(lib.color_space.Linear, pixel_count);
+    defer allocator.free(linear_colors);
 
-    const rgba_buffer = try allocator.alloc(u8, pixel_count * 4);
-    defer allocator.free(rgba_buffer);
+    const srgba_colors = try allocator.alloc(lib.color_space.Srgba, pixel_count);
+    defer allocator.free(srgba_colors);
 
     const frame_times = try allocator.alloc(u64, total_frames);
     defer allocator.free(frame_times);
 
     // Initialize scene with default config
     var scene = lib.watchface.Scene.init(width, height);
-
-    // Postprocess config: no grain, no vignette
-    const postprocess_config = lib.postprocess.Config{
-        .grain = null,
-        .grain_geometry = null,
-        .vignette = null,
-        .vignette_geometry = null,
-    };
-
-    // Output config: no dithering
-    const output_config = lib.render.OutputConfig{
-        .dither = null,
-    };
 
     // Timing
     std.debug.print("Running benchmark: {d} frames...\n", .{total_frames});
@@ -69,16 +56,15 @@ pub fn main() !void {
         const frame_start = timer.read();
 
         scene.setTime(@intCast(hour), @floatFromInt(minute));
-        lib.render.renderFrame(
-            &scene,
-            float_buffer,
-            rgba_buffer,
-            width,
-            height,
-            postprocess_config,
-            output_config,
-            null,
-        );
+        var band = lib.frame.Band{
+            .linear_colors = linear_colors,
+            .srgba_colors = srgba_colors,
+            .width = width,
+            .height = height,
+            .y_offset = 0,
+            .total_height = height,
+        };
+        scene.render(&band);
 
         frame_times[frame_idx] = timer.read() - frame_start;
     }

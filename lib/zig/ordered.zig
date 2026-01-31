@@ -2,6 +2,7 @@ const std = @import("std");
 
 const color_space = @import("color_space.zig");
 const eink = @import("eink.zig");
+const frame = @import("frame.zig");
 
 pub const Matrix = enum {
     bayer2x2,
@@ -54,33 +55,31 @@ fn getThreshold(matrix: Matrix, x: usize, y: usize) f32 {
     };
 }
 
-pub fn applyRgba(
-    linear_colors: []const color_space.Linear,
-    srgba_colors: []color_space.Srgba,
-    width: usize,
-    height: usize,
+pub fn apply(
+    band: *frame.Band,
     config: Config,
     palette: *const eink.PaletteCache,
 ) void {
     const spread = std.math.clamp(config.spread, 0.0, 1.0);
 
-    for (0..height) |y| {
-        for (0..width) |x| {
-            const idx = y * width + x;
+    for (0..band.height) |local_y| {
+        const global_y = band.globalY(local_y);
+        for (0..band.width) |x| {
+            const linear_color = band.linearColorAt(x, local_y);
 
-            var oklab = linear_colors[idx].toOklab();
+            var oklab = linear_color.toOklab();
 
-            const threshold = getThreshold(config.matrix, x, y) * spread;
+            const threshold = getThreshold(config.matrix, x, global_y) * spread;
             oklab.vec[0] = std.math.clamp(oklab.vec[0] + threshold, 0.0, 1.0);
 
             const color = palette.findClosest(oklab, config.chroma_weight);
             const srgba_color = palette.getSrgbaColor(color);
 
-            srgba_colors[idx] = .{
+            band.srgbaColorAt(x, local_y).* = .{
                 .r = srgba_color.r,
                 .g = srgba_color.g,
                 .b = srgba_color.b,
-                .a = @intFromFloat(std.math.clamp(linear_colors[idx].vec[3], 0.0, 1.0) * 255.0),
+                .a = @intFromFloat(std.math.clamp(linear_color.vec[3], 0.0, 1.0) * 255.0),
             };
         }
     }

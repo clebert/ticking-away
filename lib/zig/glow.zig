@@ -2,9 +2,9 @@ const std = @import("std");
 
 const clip = @import("clip.zig");
 const color_space = @import("color_space.zig");
+const frame = @import("frame.zig");
 const line = @import("line.zig");
 const prism = @import("prism.zig");
-const scanline = @import("scanline.zig");
 const vec2 = @import("vec2.zig");
 
 pub const Falloff = enum {
@@ -56,7 +56,7 @@ fn smoothMin(a: f32, b: f32, k: f32) f32 {
 }
 
 pub fn renderLine(
-    ctx: *scanline.Context,
+    band: *frame.Band,
     seg: line.Segment,
     config: Config,
     clip_to: ?clip.Region,
@@ -67,25 +67,25 @@ pub fn renderLine(
 
     const bounds = seg.boundingBox(glow_width);
     const y_min = @max(0, @as(isize, @intFromFloat(bounds.min[1])));
-    const y_max = @min(@as(isize, @intCast(ctx.total_height)), @as(isize, @intFromFloat(bounds.max[1])) + 1);
+    const y_max = @min(@as(isize, @intCast(band.total_height)), @as(isize, @intFromFloat(bounds.max[1])) + 1);
     const x_min = @max(0, @as(isize, @intFromFloat(bounds.min[0])));
-    const x_max = @min(@as(isize, @intCast(ctx.width)), @as(isize, @intFromFloat(bounds.max[0])) + 1);
+    const x_max = @min(@as(isize, @intCast(band.width)), @as(isize, @intFromFloat(bounds.max[0])) + 1);
 
     if (y_min >= y_max or x_min >= x_max) return;
 
     const x_start: usize = @intCast(x_min);
     const x_end: usize = @intCast(x_max);
 
-    const band_y_min: isize = @intCast(ctx.y_offset);
-    const band_y_max: isize = @intCast(ctx.y_offset + ctx.height);
+    const band_y_min: isize = @intCast(band.y_offset);
+    const band_y_max: isize = @intCast(band.y_offset + band.height);
 
     if (y_max <= band_y_min or y_min >= band_y_max) return;
 
     const local_y_start: usize = if (y_min < band_y_min) 0 else @intCast(y_min - band_y_min);
-    const local_y_end: usize = if (y_max > band_y_max) ctx.height else @intCast(y_max - band_y_min);
+    const local_y_end: usize = if (y_max > band_y_max) band.height else @intCast(y_max - band_y_min);
 
     for (local_y_start..local_y_end) |local_y| {
-        const global_y = ctx.y_offset + local_y;
+        const global_y = band.globalY(local_y);
         const y_f: f32 = @floatFromInt(global_y);
         const y_center = y_f + 0.5;
 
@@ -121,7 +121,7 @@ pub fn renderLine(
                 .gradient => |g| color_space.Linear.lerp(g.start, g.end, result.t),
             };
 
-            const p = &ctx.linear_colors[local_y * ctx.width + x];
+            const p = band.linearColorAt(x, local_y);
             const scale_vec: @Vector(4, f32) = @splat(intensity);
             p.vec = p.vec + base_color.vec * scale_vec;
         }
@@ -129,7 +129,7 @@ pub fn renderLine(
 }
 
 pub fn renderPrismEdges(
-    ctx: *scanline.Context,
+    band: *frame.Band,
     tri: prism.Prism,
     glow_color: color_space.Linear,
     glow_width: f32,
@@ -138,17 +138,17 @@ pub fn renderPrismEdges(
 ) void {
     const smooth_k = glow_width * 0.5;
 
-    const y_min = @max(ctx.y_offset, @as(usize, @intFromFloat(@max(0, tri.minY()))));
-    const y_max = @min(ctx.y_offset + ctx.height, @as(usize, @intFromFloat(tri.maxY())) + 1);
+    const y_min = @max(band.y_offset, @as(usize, @intFromFloat(@max(0, tri.minY()))));
+    const y_max = @min(band.y_offset + band.height, @as(usize, @intFromFloat(tri.maxY())) + 1);
 
     for (y_min..y_max) |global_y| {
-        const local_y = global_y - ctx.y_offset;
+        const local_y = global_y - band.y_offset;
         const y_f: f32 = @floatFromInt(global_y);
         const y_center = y_f + 0.5;
 
         const tri_range = tri.scanlineRange(y_center) orelse continue;
         const x_start = @max(0, @as(usize, @intFromFloat(tri_range.x_min)));
-        const x_end = @min(ctx.width, @as(usize, @intFromFloat(tri_range.x_max)) + 1);
+        const x_end = @min(band.width, @as(usize, @intFromFloat(tri_range.x_max)) + 1);
 
         for (x_start..x_end) |x| {
             const px = @as(f32, @floatFromInt(x)) + 0.5;
@@ -157,7 +157,7 @@ pub fn renderPrismEdges(
             if (dist < glow_width) {
                 const t = std.math.clamp(dist / glow_width, 0, 1);
                 const alpha = falloff.apply(t) * intensity;
-                const p = &ctx.linear_colors[local_y * ctx.width + x];
+                const p = band.linearColorAt(x, local_y);
                 const scale_vec: @Vector(4, f32) = @splat(alpha);
                 p.vec = p.vec + glow_color.vec * scale_vec;
             }
