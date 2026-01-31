@@ -5,9 +5,9 @@ const color_space = @import("color/color_space.zig");
 const rainbow = @import("color/rainbow.zig");
 const boundary = @import("geometry/boundary.zig");
 const prism = @import("geometry/prism.zig");
-const line = @import("geometry/segment.zig");
-const vec2 = @import("math/vec2.zig");
-const band = @import("rendering/band.zig");
+const line = @import("geometry/line.zig");
+const vec2 = @import("geometry/vec2.zig");
+const scanline = @import("rendering/scanline.zig");
 const clip = @import("rendering/clip.zig");
 const glow = @import("rendering/glow.zig");
 const gradient = @import("rendering/gradient.zig");
@@ -146,12 +146,12 @@ pub const Scene = struct {
         };
     }
 
-    pub fn renderBand(self: *Scene, ctx: *band.Context) void {
+    pub fn renderBand(self: *Scene, ctx: *scanline.Context) void {
         const geometry = self.prepareFrame();
         self.renderBandWithGeometry(ctx, &geometry);
     }
 
-    pub fn renderBandWithGeometry(self: *Scene, ctx: *band.Context, geometry: *const FrameGeometry) void {
+    pub fn renderBandWithGeometry(self: *Scene, ctx: *scanline.Context, geometry: *const FrameGeometry) void {
         ctx.clearWithBackground(self.center[0], self.center[1], self.radius);
 
         const circle_clip = clip.Region{ .boundary = &geometry.boundary };

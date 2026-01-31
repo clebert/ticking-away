@@ -1,5 +1,10 @@
 const color_space = @import("../color/color_space.zig");
 
+pub const Range = struct {
+    x_min: f32,
+    x_max: f32,
+};
+
 pub const Context = struct {
     linear_colors: []color_space.Linear,
     width: usize,

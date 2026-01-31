@@ -1,5 +1,5 @@
 const color_space = @import("../color/color_space.zig");
-const dither = @import("../color/dither.zig");
+const eink = @import("../color/eink.zig");
 const error_diffusion = @import("../dither/error_diffusion.zig");
 const ordered = @import("../dither/ordered.zig");
 const grain = @import("../effects/grain.zig");
@@ -22,19 +22,19 @@ pub const DitherMode = enum {
 
 pub const DitherConfig = struct {
     mode: DitherMode = .none,
-    palette_type: dither.PaletteType = .ideal,
+    palette_type: eink.PaletteType = .ideal,
     error_diffusion: ?error_diffusion.Config = null,
     ordered: ?ordered.Config = null,
     boundary_mask: ?boundary.Boundary = null,
 };
 
 pub const DitherState = struct {
-    palette_cache: *const dither.PaletteCache,
+    palette_cache: *const eink.PaletteCache,
     error_buffer: ?*error_diffusion.ErrorBuffer,
 
-    pub fn init(palette_type: dither.PaletteType) DitherState {
+    pub fn init(palette_type: eink.PaletteType) DitherState {
         return .{
-            .palette_cache = dither.getPaletteCache(palette_type),
+            .palette_cache = eink.getPaletteCache(palette_type),
             .error_buffer = null,
         };
     }

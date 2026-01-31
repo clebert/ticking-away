@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const color_space = @import("../color/color_space.zig");
-const dither = @import("../color/dither.zig");
+const eink = @import("../color/eink.zig");
 
 const Algorithm = enum {
     atkinson,
@@ -17,7 +17,7 @@ pub const Config = struct {
 };
 
 const QuantResult = struct {
-    color: dither.Color,
+    color: eink.Color,
     error_1: f32,
     error_2: f32,
     error_3: f32,
@@ -65,7 +65,7 @@ pub fn apply(
     height: usize,
     y_offset: usize,
     config: Config,
-    palette: *const dither.PaletteCache,
+    palette: *const eink.PaletteCache,
     err: *ErrorBuffer,
 ) void {
     if (config.clear_buffer) {

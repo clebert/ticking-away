@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const range = @import("../math/range.zig");
-const vec2 = @import("../math/vec2.zig");
+const scanline = @import("../rendering/scanline.zig");
+const vec2 = @import("vec2.zig");
 
 pub const Vertex = enum(u2) {
     apex = 0,
@@ -38,7 +38,7 @@ pub const Edge = enum(u2) {
 pub const Prism = struct {
     vertices: std.EnumArray(Vertex, vec2.Vec2),
 
-    pub fn scanlineRange(self: Prism, y: f32) ?range.Range {
+    pub fn scanlineRange(self: Prism, y: f32) ?scanline.Range {
         const t = self.vertices.get(.apex);
         const m = self.vertices.get(.bottom_left);
         const b = self.vertices.get(.bottom_right);

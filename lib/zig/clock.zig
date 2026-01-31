@@ -2,7 +2,7 @@ const std = @import("std");
 const tau = std.math.tau;
 
 const rainbow = @import("color/rainbow.zig");
-const vec2 = @import("math/vec2.zig");
+const vec2 = @import("geometry/vec2.zig");
 
 const angle_0: f32 = -std.math.pi / 2.0;
 const hour_arc: f32 = std.math.pi / 6.0;

@@ -5,7 +5,7 @@ const pi = std.math.pi;
 const color_space = @import("../color/color_space.zig");
 const rainbow = @import("../color/rainbow.zig");
 const prism = @import("../geometry/prism.zig");
-const band = @import("band.zig");
+const scanline = @import("scanline.zig");
 
 const Mode = enum {
     internal,
@@ -34,7 +34,7 @@ inline fn normalizeAngle(a: f32) f32 {
 }
 
 pub fn render(
-    ctx: *band.Context,
+    ctx: *scanline.Context,
     config: Config,
     geometry: Geometry,
     cache: *const rainbow.PaletteCache,

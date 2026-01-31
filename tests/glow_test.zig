@@ -2,11 +2,11 @@ const std = @import("std");
 const testing = std.testing;
 const lib = @import("lib");
 
-const band = lib.band;
+const scanline = lib.scanline;
 const color_space = lib.color_space;
 const glow = lib.glow;
 const prism = lib.prism;
-const segment = lib.segment;
+const line = lib.line;
 const vec2 = lib.vec2;
 
 fn sumLinearColors(linear_colors: []const color_space.Linear) f32 {
@@ -19,7 +19,7 @@ fn sumLinearColors(linear_colors: []const color_space.Linear) f32 {
 
 test "renderGlowLine produces non-zero output" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 32,
         .height = 32,
@@ -31,7 +31,7 @@ test "renderGlowLine produces non-zero output" {
 
     const start = vec2.xy(5, 16);
     const end = vec2.xy(27, 16);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
@@ -49,7 +49,7 @@ test "renderGlowLine produces non-zero output" {
 
 test "renderGlowLine respects clipping" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 32,
         .height = 32,
@@ -62,7 +62,7 @@ test "renderGlowLine respects clipping" {
     // Line across entire width
     const start = vec2.xy(0, 16);
     const end = vec2.xy(32, 16);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
@@ -87,7 +87,7 @@ test "renderGlowLine respects clipping" {
 
 test "renderGlowLine with gradient color" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 32,
         .height = 32,
@@ -99,7 +99,7 @@ test "renderGlowLine with gradient color" {
 
     const start = vec2.xy(4, 16);
     const end = vec2.xy(28, 16);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{
@@ -126,7 +126,7 @@ test "renderGlowLine with gradient color" {
 
 test "renderPrismGlow produces glow inside triangle" {
     var linear_colors: [64 * 64]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 64,
         .height = 64,
@@ -157,7 +157,7 @@ test "renderPrismGlow produces glow inside triangle" {
 
 test "renderGlowLine excludes triangle" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 32,
         .height = 32,
@@ -170,7 +170,7 @@ test "renderGlowLine excludes triangle" {
     // Line across middle
     const start = vec2.xy(0, 16);
     const end = vec2.xy(32, 16);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
@@ -195,7 +195,7 @@ test "renderGlowLine excludes triangle" {
 
 test "context with y_offset renders correct region" {
     var linear_colors: [16 * 8]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 16,
         .height = 8,
@@ -208,7 +208,7 @@ test "context with y_offset renders correct region" {
     // Line at y=12 (within our band)
     const start = vec2.xy(0, 12);
     const end = vec2.xy(16, 12);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
@@ -226,7 +226,7 @@ test "context with y_offset renders correct region" {
 
 test "context with y_offset ignores lines outside region" {
     var linear_colors: [16 * 8]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 16,
         .height = 8,
@@ -239,7 +239,7 @@ test "context with y_offset ignores lines outside region" {
     // Line at y=20 (below our band which covers y=8-15)
     const start = vec2.xy(0, 20);
     const end = vec2.xy(16, 20);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },

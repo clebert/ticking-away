@@ -2,9 +2,9 @@ const std = @import("std");
 
 const color_space = @import("../color/color_space.zig");
 const prism = @import("../geometry/prism.zig");
-const segment = @import("../geometry/segment.zig");
-const vec2 = @import("../math/vec2.zig");
-const band = @import("band.zig");
+const line = @import("../geometry/line.zig");
+const vec2 = @import("../geometry/vec2.zig");
+const scanline = @import("scanline.zig");
 const clip = @import("clip.zig");
 
 pub const Falloff = enum {
@@ -56,8 +56,8 @@ fn smoothMin(a: f32, b: f32, k: f32) f32 {
 }
 
 pub fn renderLine(
-    ctx: *band.Context,
-    seg: segment.Segment,
+    ctx: *scanline.Context,
+    seg: line.Segment,
     config: Config,
     clip_to: ?clip.Region,
     exclude: ?*const prism.Prism,
@@ -129,7 +129,7 @@ pub fn renderLine(
 }
 
 pub fn renderPrismEdges(
-    ctx: *band.Context,
+    ctx: *scanline.Context,
     tri: prism.Prism,
     glow_color: color_space.Linear,
     glow_width: f32,

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const vec2 = @import("../math/vec2.zig");
+const vec2 = @import("vec2.zig");
 const boundary = @import("boundary.zig");
 const prism = @import("prism.zig");
 const ray = @import("ray.zig");

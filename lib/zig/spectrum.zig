@@ -6,7 +6,7 @@ const boundary = @import("geometry/boundary.zig");
 const intersect = @import("geometry/intersect.zig");
 const prism = @import("geometry/prism.zig");
 const ray = @import("geometry/ray.zig");
-const vec2 = @import("math/vec2.zig");
+const vec2 = @import("geometry/vec2.zig");
 
 pub const vertex_threshold: f32 = 0.0014;
 

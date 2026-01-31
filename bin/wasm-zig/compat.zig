@@ -241,7 +241,7 @@ fn toOrderedDitherConfig(c: *const SceneDitherConfig) lib.ordered.Config {
 }
 
 /// Convert C dither palette mode to Zig palette type.
-fn toDitherPaletteType(mode: DitherPaletteMode) lib.dither.PaletteType {
+fn toDitherPaletteType(mode: DitherPaletteMode) lib.eink.PaletteType {
     return switch (mode) {
         .ideal => .ideal,
         .spectra6_inky => .spectra6_inky,
@@ -280,7 +280,7 @@ pub fn toPostprocessConfig(
 pub fn toOutputConfig(
     c: *const WatchfaceConfig,
     s: *const lib.watchface.Scene,
-) lib.pipeline.OutputConfig {
+) lib.render.OutputConfig {
     if (c.dither.enabled == 0) {
         return .{ .dither = null };
     }

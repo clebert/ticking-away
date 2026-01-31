@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const color_space = @import("../color/color_space.zig");
-const dither = @import("../color/dither.zig");
+const eink = @import("../color/eink.zig");
 
 pub const Matrix = enum {
     bayer2x2,
@@ -60,7 +60,7 @@ pub fn applyRgba(
     width: usize,
     height: usize,
     config: Config,
-    palette: *const dither.PaletteCache,
+    palette: *const eink.PaletteCache,
 ) void {
     const spread = std.math.clamp(config.spread, 0.0, 1.0);
 

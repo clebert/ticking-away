@@ -2,13 +2,13 @@ const std = @import("std");
 const testing = std.testing;
 const lib = @import("lib");
 
-const segment = lib.segment;
+const line = lib.line;
 const vec2 = lib.vec2;
 
 test "point on segment has distance zero" {
     const start = vec2.xy(0, 0);
     const end = vec2.xy(10, 0);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     // Point at start
     const r1 = seg.distanceSq(0, 0);
@@ -29,7 +29,7 @@ test "point on segment has distance zero" {
 test "perpendicular distance is correct" {
     const start = vec2.xy(0, 0);
     const end = vec2.xy(10, 0);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     // Point 5 units above middle of segment
     const result = seg.distanceSq(5, 5);
@@ -41,7 +41,7 @@ test "perpendicular distance is correct" {
 test "distance to endpoint when outside segment" {
     const start = vec2.xy(0, 0);
     const end = vec2.xy(10, 0);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     // Point before segment start
     const r1 = seg.distanceSq(-3, 4);
@@ -57,7 +57,7 @@ test "distance to endpoint when outside segment" {
 test "bounding box with radius" {
     const start = vec2.xy(5, 10);
     const end = vec2.xy(15, 20);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     const box = seg.boundingBox(2);
     try testing.expectApproxEqAbs(box.min[0], 3, 1e-6); // 5 - 2
@@ -69,7 +69,7 @@ test "bounding box with radius" {
 test "diagonal segment distance" {
     const start = vec2.xy(0, 0);
     const end = vec2.xy(10, 10);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     // Point perpendicular to midpoint
     // Midpoint is (5, 5), perpendicular direction is (-1, 1) normalized
@@ -86,7 +86,7 @@ test "diagonal segment distance" {
 test "multiple points have same behavior" {
     const start = vec2.xy(0, 0);
     const end = vec2.xy(10, 0);
-    const seg = segment.Segment.init(start, end);
+    const seg = line.Segment.init(start, end);
 
     // Test 4 different x positions, same y
     const positions = [_]struct { x: f32, expected_dist_sq: f32, expected_t: f32 }{

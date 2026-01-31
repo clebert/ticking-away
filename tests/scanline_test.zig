@@ -2,12 +2,12 @@ const std = @import("std");
 const testing = std.testing;
 const lib = @import("lib");
 
-const band = lib.band;
+const scanline = lib.scanline;
 const color_space = lib.color_space;
 
 test "clearWithBackground creates circle mask" {
     var linear_colors: [32 * 32]color_space.Linear = undefined;
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 32,
         .height = 32,

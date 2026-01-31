@@ -3,8 +3,8 @@ const pi = std.math.pi;
 
 const color_space = @import("../color/color_space.zig");
 const boundary = @import("../geometry/boundary.zig");
-const line = @import("../geometry/segment.zig");
-const vec2 = @import("../math/vec2.zig");
+const line = @import("../geometry/line.zig");
+const vec2 = @import("../geometry/vec2.zig");
 const clip = @import("clip.zig");
 const glow = @import("glow.zig");
 

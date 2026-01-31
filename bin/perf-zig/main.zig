@@ -52,7 +52,7 @@ pub fn main() !void {
     };
 
     // Output config: no dithering
-    const output_config = lib.pipeline.OutputConfig{
+    const output_config = lib.render.OutputConfig{
         .format = .rgba8,
         .dither = null,
     };
@@ -70,7 +70,7 @@ pub fn main() !void {
         const frame_start = timer.read();
 
         scene.setTime(@intCast(hour), @floatFromInt(minute));
-        lib.pipeline.renderFrame(
+        lib.render.renderFrame(
             &scene,
             float_buffer,
             rgba_buffer,

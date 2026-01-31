@@ -2,7 +2,7 @@ const std = @import("std");
 const lib = @import("lib");
 
 const color_space = lib.color_space;
-const dither = lib.dither;
+const eink = lib.eink;
 const error_diffusion = lib.error_diffusion;
 
 test "error buffer init and clear" {
@@ -29,7 +29,7 @@ test "error buffer init and clear" {
 }
 
 test "error diffusion output" {
-    const palette_cache = dither.getPaletteCache(.ideal);
+    const palette_cache = eink.getPaletteCache(.ideal);
 
     var linear_colors = [_]color_space.Linear{
         color_space.Linear.init(0.0, 0.0, 0.0, 1.0),

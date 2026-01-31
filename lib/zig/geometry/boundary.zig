@@ -1,5 +1,5 @@
-const range = @import("../math/range.zig");
-const vec2 = @import("../math/vec2.zig");
+const scanline = @import("../rendering/scanline.zig");
+const vec2 = @import("vec2.zig");
 
 pub const Boundary = struct {
     center: vec2.Vec2,
@@ -10,11 +10,11 @@ pub const Boundary = struct {
         return .{ .center = center, .radius = radius, .radius_sq = radius * radius };
     }
 
-    pub fn scanlineRange(self: Boundary, y: f32) ?range.Range {
+    pub fn scanlineRange(self: Boundary, y: f32) ?scanline.Range {
         const dy = y - self.center[1];
         if (@abs(dy) > self.radius) return null;
         const dx = @sqrt(self.radius_sq - dy * dy);
-        return range.Range{
+        return scanline.Range{
             .x_min = self.center[0] - dx,
             .x_max = self.center[0] + dx,
         };

@@ -4,7 +4,7 @@ const pi = std.math.pi;
 const testing = std.testing;
 const lib = @import("lib");
 
-const band = lib.band;
+const scanline = lib.scanline;
 const color_space = lib.color_space;
 const gradient = lib.gradient;
 const rainbow = lib.rainbow;
@@ -19,7 +19,7 @@ test "angle normalization edge cases" {
     var linear_colors: [100 * 100]color_space.Linear = undefined;
     @memset(&linear_colors, color_space.Linear.black);
 
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 100,
         .height = 100,
@@ -67,7 +67,7 @@ test "wrap around gradient at boundary" {
     var linear_colors: [100 * 100]color_space.Linear = undefined;
     @memset(&linear_colors, color_space.Linear.black);
 
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = &linear_colors,
         .width = 100,
         .height = 100,
@@ -116,7 +116,7 @@ test "internal vs external mode" {
     var ext_linear_colors: [100 * 100]color_space.Linear = undefined;
     @memset(&ext_linear_colors, color_space.Linear.black);
 
-    var ext_ctx = band.Context{
+    var ext_ctx = scanline.Context{
         .linear_colors = &ext_linear_colors,
         .width = 100,
         .height = 100,
@@ -148,7 +148,7 @@ test "internal vs external mode" {
     var int_linear_colors: [100 * 100]color_space.Linear = undefined;
     @memset(&int_linear_colors, color_space.Linear.black);
 
-    var int_ctx = band.Context{
+    var int_ctx = scanline.Context{
         .linear_colors = &int_linear_colors,
         .width = 100,
         .height = 100,

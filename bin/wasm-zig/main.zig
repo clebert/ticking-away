@@ -102,7 +102,7 @@ export fn renderWatchfaceWithConfig(
     var dither_state_ptr: ?*lib.postprocess.DitherState = null;
     if (output_config.dither) |dither_cfg| {
         if (dither_cfg.mode != .none) {
-            if (!dither_state_initialized or dither_state.palette_cache != lib.dither.getPaletteCache(dither_cfg.palette_type)) {
+            if (!dither_state_initialized or dither_state.palette_cache != lib.eink.getPaletteCache(dither_cfg.palette_type)) {
                 dither_state = lib.postprocess.DitherState.init(dither_cfg.palette_type);
                 dither_state_initialized = true;
             }
@@ -117,7 +117,7 @@ export fn renderWatchfaceWithConfig(
     }
 
     // Render using pipeline
-    lib.pipeline.renderFrame(
+    lib.render.renderFrame(
         &static_scene,
         linear_colors.?,
         srgba_colors.?,

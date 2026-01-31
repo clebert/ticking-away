@@ -1,5 +1,5 @@
 const color_space = @import("../color/color_space.zig");
-const band = @import("../rendering/band.zig");
+const scanline = @import("../rendering/scanline.zig");
 const watchface = @import("../watchface.zig");
 const postprocess = @import("postprocess.zig");
 
@@ -62,7 +62,7 @@ pub fn renderFrame(
     output_config: OutputConfig,
     dither_state: ?*postprocess.DitherState,
 ) void {
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = linear_colors,
         .width = width,
         .height = height,
@@ -85,7 +85,7 @@ pub fn renderBand(
     output_config: OutputConfig,
     dither_state: ?*postprocess.DitherState,
 ) void {
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = linear_colors,
         .width = width,
         .height = band_height,
@@ -109,7 +109,7 @@ pub fn renderBandWithGeometry(
     output_config: OutputConfig,
     dither_state: ?*postprocess.DitherState,
 ) void {
-    var ctx = band.Context{
+    var ctx = scanline.Context{
         .linear_colors = linear_colors,
         .width = width,
         .height = band_height,
