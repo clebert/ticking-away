@@ -43,3 +43,5 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Gui
 - **No fake `pub`**: Don't mark unused code as `pub` to suppress warnings. Remove it instead.
 - **No module.Type naming**: Don't name a type the same as its file (e.g., `palette.Palette`). This
   conflicts when importing the module with the same name as a variable.
+- **Const slices**: Use `[]const T` for slice parameters that are only read from; use `[]T` only for
+  output buffers that are written to.
