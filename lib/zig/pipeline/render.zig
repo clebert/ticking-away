@@ -8,7 +8,7 @@ pub const OutputConfig = struct {
 };
 
 fn applyPostprocessAndOutput(
-    linear_colors: []color_space.Linear,
+    linear_colors: []const color_space.Linear,
     srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
@@ -17,21 +17,7 @@ fn applyPostprocessAndOutput(
     output_config: OutputConfig,
     dither_state: ?*postprocess.DitherState,
 ) void {
-    const dithering_enabled = if (output_config.dither) |d| d.mode != .none else false;
-
-    const effective_postprocess = if (dithering_enabled)
-        postprocess.Config{
-            .gamma_enabled = postprocess_config.gamma_enabled,
-            .grain = postprocess_config.grain,
-            .grain_geometry = postprocess_config.grain_geometry,
-            .vignette = null,
-            .vignette_geometry = null,
-        }
-    else
-        postprocess_config;
-
-    postprocess.apply(linear_colors, width, height, effective_postprocess);
-
+    // Convert linear to sRGB (via dithering or direct conversion)
     if (output_config.dither) |dither_cfg| {
         if (dither_cfg.mode != .none) {
             if (dither_state) |state| {
@@ -44,12 +30,23 @@ fn applyPostprocessAndOutput(
                     dither_cfg,
                     state,
                 );
+                // Apply effects after conversion (skip vignette when dithering)
+                const dither_postprocess = postprocess.Config{
+                    .grain = postprocess_config.grain,
+                    .grain_geometry = postprocess_config.grain_geometry,
+                    .vignette = null,
+                    .vignette_geometry = null,
+                };
+                postprocess.apply(srgba_colors, width, height, dither_postprocess);
                 return;
             }
         }
     }
 
     color_space.Linear.toSrgbaSlice(linear_colors, srgba_colors);
+
+    // Apply effects after conversion
+    postprocess.apply(srgba_colors, width, height, postprocess_config);
 }
 
 pub fn renderFrame(

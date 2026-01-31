@@ -18,7 +18,7 @@ pub const Geometry = struct {
 };
 
 pub fn apply(
-    linear_colors: []color_space.Linear,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     config: Config,
@@ -26,8 +26,8 @@ pub fn apply(
 ) void {
     if (config.intensity <= 0.0) return;
 
-    const grain_strength = config.intensity * 0.06;
-    const brightness_scale = 1.0 / @max(config.threshold, 0.01);
+    const grain_strength = config.intensity * 0.06 * 255.0;
+    const threshold_u8: f32 = config.threshold * 255.0;
     const inv_scale = 1.0 / config.scale;
     const r2 = if (geometry) |geo| geo.radius * geo.radius else 0.0;
 
@@ -53,12 +53,12 @@ pub fn apply(
                 }
             }
 
-            const red = linear_colors[idx].vec[0];
-            const green = linear_colors[idx].vec[1];
-            const blue = linear_colors[idx].vec[2];
+            const red: f32 = @floatFromInt(srgba_colors[idx].r);
+            const green: f32 = @floatFromInt(srgba_colors[idx].g);
+            const blue: f32 = @floatFromInt(srgba_colors[idx].b);
 
             const brightness = (red + green + blue) / 3.0;
-            const brightness_factor = std.math.clamp(brightness * brightness_scale, 0.0, 1.0);
+            const brightness_factor = std.math.clamp(brightness / @max(threshold_u8, 1.0), 0.0, 1.0);
 
             const gx: i32 = @intFromFloat(x_f * inv_scale);
             const hash = hashPixel(gx, gy);
@@ -67,9 +67,9 @@ pub fn apply(
             const noise = (hash_f / 255.0 - 0.5) * grain_strength * 2.0;
             const grain_val = noise * brightness_factor;
 
-            linear_colors[idx].vec[0] = std.math.clamp(red + grain_val, 0.0, 1.0);
-            linear_colors[idx].vec[1] = std.math.clamp(green + grain_val, 0.0, 1.0);
-            linear_colors[idx].vec[2] = std.math.clamp(blue + grain_val, 0.0, 1.0);
+            srgba_colors[idx].r = @intFromFloat(std.math.clamp(red + grain_val, 0.0, 255.0));
+            srgba_colors[idx].g = @intFromFloat(std.math.clamp(green + grain_val, 0.0, 255.0));
+            srgba_colors[idx].b = @intFromFloat(std.math.clamp(blue + grain_val, 0.0, 255.0));
         }
     }
 }

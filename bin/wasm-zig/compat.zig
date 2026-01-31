@@ -210,7 +210,7 @@ fn toVignetteConfig(c: *const VignetteConfig) lib.vignette.Config {
     return .{
         .enabled = c.enabled != 0,
         .strength = c.strength,
-        .background = c.background,
+        .background = @intFromFloat(std.math.clamp(c.background * 255.0, 0.0, 255.0)),
     };
 }
 
@@ -259,7 +259,6 @@ pub fn toPostprocessConfig(
     const vignette_cfg = toVignetteConfig(&c.vignette);
 
     return .{
-        .gamma_enabled = true,
         .grain = if (grain_cfg.intensity > 0) grain_cfg else null,
         .grain_geometry = if (grain_cfg.intensity > 0) lib.grain.Geometry{
             .center_x = s.center[0],

@@ -42,9 +42,8 @@ pub fn main() !void {
     // Initialize scene with default config
     var scene = lib.watchface.Scene.init(width, height);
 
-    // Postprocess config: gamma only (no grain, no vignette)
+    // Postprocess config: no grain, no vignette
     const postprocess_config = lib.postprocess.Config{
-        .gamma_enabled = true,
         .grain = null,
         .grain_geometry = null,
         .vignette = null,
@@ -53,7 +52,6 @@ pub fn main() !void {
 
     // Output config: no dithering
     const output_config = lib.render.OutputConfig{
-        .format = .rgba8,
         .dither = null,
     };
 

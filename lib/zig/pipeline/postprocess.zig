@@ -7,7 +7,6 @@ const vignette = @import("../effects/vignette.zig");
 const boundary = @import("../geometry/boundary.zig");
 
 pub const Config = struct {
-    gamma_enabled: bool = true,
     grain: ?grain.Config = null,
     grain_geometry: ?grain.Geometry = null,
     vignette: ?vignette.Config = null,
@@ -45,22 +44,18 @@ pub const DitherState = struct {
 };
 
 pub fn apply(
-    linear_colors: []color_space.Linear,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     config: Config,
 ) void {
-    if (config.gamma_enabled) {
-        color_space.Linear.applyGammaToSlice(linear_colors);
-    }
-
     if (config.grain) |grain_cfg| {
-        grain.apply(linear_colors, width, height, grain_cfg, config.grain_geometry);
+        grain.apply(srgba_colors, width, height, grain_cfg, config.grain_geometry);
     }
 
     if (config.vignette) |vignette_cfg| {
         if (config.vignette_geometry) |geom| {
-            vignette.apply(linear_colors, width, height, vignette_cfg, geom);
+            vignette.apply(srgba_colors, width, height, vignette_cfg, geom);
         }
     }
 }
@@ -89,7 +84,9 @@ pub fn applyDither(
         },
     };
 
-    if (!dithered) color_space.Linear.toSrgbaSlice(linear_colors, srgba_colors);
+    if (!dithered) {
+        color_space.Linear.toSrgbaSlice(linear_colors, srgba_colors);
+    }
 
     if (config.boundary_mask) |bnd| {
         const white = state.palette_cache.getSrgbaColor(.white);

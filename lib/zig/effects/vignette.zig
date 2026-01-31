@@ -3,13 +3,13 @@ const std = @import("std");
 const color_space = @import("../color/color_space.zig");
 const grain = @import("grain.zig");
 
-const default_background: f32 = 0.1372549;
+const default_background: u8 = 35;
 const default_strength: f32 = 0.4;
 
 pub const Config = struct {
     enabled: bool = true,
     strength: f32 = default_strength,
-    background: f32 = default_background,
+    background: u8 = default_background,
 };
 
 pub const Geometry = struct {
@@ -19,7 +19,7 @@ pub const Geometry = struct {
 };
 
 pub fn apply(
-    linear_colors: []color_space.Linear,
+    srgba_colors: []color_space.Srgba,
     width: usize,
     height: usize,
     config: Config,
@@ -28,7 +28,7 @@ pub fn apply(
     if (!config.enabled) return;
 
     const strength = if (config.strength >= 0.0) config.strength else default_strength;
-    const bg_base = if (config.background > 0.0) config.background else default_background;
+    const bg_base: f32 = @floatFromInt(if (config.background > 0) config.background else default_background);
 
     const cx = geometry.center_x;
     const cy = geometry.center_y;
@@ -59,10 +59,10 @@ pub fn apply(
                 const xi: i32 = @intCast(x);
                 const yi: i32 = @intCast(y);
                 const hash = grain.hashPixel(xi, yi);
-                const dither = (@as(f32, @floatFromInt(hash & 0xFF)) / 255.0 - 0.5) * (2.0 / 255.0);
+                const dither = (@as(f32, @floatFromInt(hash & 0xFF)) / 255.0 - 0.5) * 2.0;
 
-                const grey = std.math.clamp(bg_base * vignette_factor + dither, 0.0, 1.0);
-                linear_colors[idx] = color_space.Linear.init(grey, grey, grey, 1.0);
+                const grey: u8 = @intFromFloat(std.math.clamp(bg_base * vignette_factor + dither, 0.0, 255.0));
+                srgba_colors[idx] = .{ .r = grey, .g = grey, .b = grey, .a = 255 };
             }
         }
     }
