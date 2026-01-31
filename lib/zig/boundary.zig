@@ -1,4 +1,4 @@
-const scanline = @import("../rendering/scanline.zig");
+const scanline = @import("scanline.zig");
 const vec2 = @import("vec2.zig");
 
 pub const Boundary = struct {

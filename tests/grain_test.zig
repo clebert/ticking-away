@@ -1,6 +1,6 @@
 const std = @import("std");
-const lib = @import("lib");
 
+const lib = @import("lib");
 const color_space = lib.color_space;
 const grain = lib.grain;
 

@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
-const lib = @import("lib");
 
+const lib = @import("lib");
 const boundary = lib.boundary;
 const intersect = lib.intersect;
 const prism = lib.prism;

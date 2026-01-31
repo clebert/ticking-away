@@ -1,7 +1,7 @@
-const color_space = @import("../color/color_space.zig");
-const scanline = @import("../rendering/scanline.zig");
-const watchface = @import("../watchface.zig");
+const color_space = @import("color_space.zig");
 const postprocess = @import("postprocess.zig");
+const scanline = @import("scanline.zig");
+const watchface = @import("watchface.zig");
 
 pub const OutputConfig = struct {
     dither: ?postprocess.DitherConfig = null,

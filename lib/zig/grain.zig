@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const color_space = @import("../color/color_space.zig");
-const prism = @import("../geometry/prism.zig");
+const color_space = @import("color_space.zig");
+const prism = @import("prism.zig");
 
 pub const Config = struct {
     intensity: f32 = 0.5,

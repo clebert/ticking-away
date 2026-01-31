@@ -1,12 +1,12 @@
 const std = @import("std");
 const pi = std.math.pi;
 
-const color_space = @import("../color/color_space.zig");
-const boundary = @import("../geometry/boundary.zig");
-const line = @import("../geometry/line.zig");
-const vec2 = @import("../geometry/vec2.zig");
+const boundary = @import("boundary.zig");
 const clip = @import("clip.zig");
+const color_space = @import("color_space.zig");
 const glow = @import("glow.zig");
+const line = @import("line.zig");
+const vec2 = @import("vec2.zig");
 
 pub const marker_count: usize = 12;
 

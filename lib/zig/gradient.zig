@@ -2,9 +2,9 @@ const std = @import("std");
 const tau = std.math.tau;
 const pi = std.math.pi;
 
-const color_space = @import("../color/color_space.zig");
-const rainbow = @import("../color/rainbow.zig");
-const prism = @import("../geometry/prism.zig");
+const color_space = @import("color_space.zig");
+const prism = @import("prism.zig");
+const rainbow = @import("rainbow.zig");
 const scanline = @import("scanline.zig");
 
 const Mode = enum {

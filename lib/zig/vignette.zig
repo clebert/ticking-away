@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const color_space = @import("../color/color_space.zig");
+const color_space = @import("color_space.zig");
 const grain = @import("grain.zig");
 
 const default_background: u8 = 35;

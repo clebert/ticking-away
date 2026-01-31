@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
-const lib = @import("lib");
 
+const lib = @import("lib");
 const scanline = lib.scanline;
 const color_space = lib.color_space;
 const glow = lib.glow;

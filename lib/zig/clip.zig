@@ -1,5 +1,5 @@
-const boundary = @import("../geometry/boundary.zig");
-const prism = @import("../geometry/prism.zig");
+const boundary = @import("boundary.zig");
+const prism = @import("prism.zig");
 const scanline = @import("scanline.zig");
 
 pub const Region = union(enum) {

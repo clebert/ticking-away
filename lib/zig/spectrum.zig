@@ -1,12 +1,12 @@
 const std = @import("std");
 
+const boundary = @import("boundary.zig");
 const clock = @import("clock.zig");
-const rainbow = @import("color/rainbow.zig");
-const boundary = @import("geometry/boundary.zig");
-const intersect = @import("geometry/intersect.zig");
-const prism = @import("geometry/prism.zig");
-const ray = @import("geometry/ray.zig");
-const vec2 = @import("geometry/vec2.zig");
+const intersect = @import("intersect.zig");
+const prism = @import("prism.zig");
+const rainbow = @import("rainbow.zig");
+const ray = @import("ray.zig");
+const vec2 = @import("vec2.zig");
 
 pub const vertex_threshold: f32 = 0.0014;
 

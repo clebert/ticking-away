@@ -1,14 +1,13 @@
 const std = @import("std");
 const tau = std.math.tau;
 
-const rainbow = @import("color/rainbow.zig");
-const vec2 = @import("geometry/vec2.zig");
+const rainbow = @import("rainbow.zig");
+pub const color_count = rainbow.color_count;
+const vec2 = @import("vec2.zig");
 
 const angle_0: f32 = -std.math.pi / 2.0;
 const hour_arc: f32 = std.math.pi / 6.0;
 const max_spread_radians: f32 = std.math.pi / 6.0;
-
-pub const color_count = rainbow.color_count;
 
 fn minuteAngle(minutes: f32) f32 {
     return angle_0 + (minutes / 60.0) * tau;

@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
-const lib = @import("lib");
 
+const lib = @import("lib");
 const prism = lib.prism;
 const vec2 = lib.vec2;
 

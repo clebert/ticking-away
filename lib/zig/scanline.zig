@@ -1,4 +1,4 @@
-const color_space = @import("../color/color_space.zig");
+const color_space = @import("color_space.zig");
 
 pub const Range = struct {
     x_min: f32,

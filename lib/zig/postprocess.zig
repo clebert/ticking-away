@@ -1,10 +1,10 @@
-const color_space = @import("../color/color_space.zig");
-const eink = @import("../color/eink.zig");
-const error_diffusion = @import("../dither/error_diffusion.zig");
-const ordered = @import("../dither/ordered.zig");
-const grain = @import("../effects/grain.zig");
-const vignette = @import("../effects/vignette.zig");
-const boundary = @import("../geometry/boundary.zig");
+const boundary = @import("boundary.zig");
+const color_space = @import("color_space.zig");
+const eink = @import("eink.zig");
+const error_diffusion = @import("error_diffusion.zig");
+const grain = @import("grain.zig");
+const ordered = @import("ordered.zig");
+const vignette = @import("vignette.zig");
 
 pub const Config = struct {
     grain: ?grain.Config = null,

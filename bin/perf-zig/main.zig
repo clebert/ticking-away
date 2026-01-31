@@ -1,4 +1,5 @@
 const std = @import("std");
+
 const lib = @import("lib");
 
 const width: usize = 5120;

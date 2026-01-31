@@ -2,8 +2,8 @@ const std = @import("std");
 const tau = std.math.tau;
 const pi = std.math.pi;
 const testing = std.testing;
-const lib = @import("lib");
 
+const lib = @import("lib");
 const scanline = lib.scanline;
 const color_space = lib.color_space;
 const gradient = lib.gradient;

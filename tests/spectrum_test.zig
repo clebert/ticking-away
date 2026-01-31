@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
-const lib = @import("lib");
 
+const lib = @import("lib");
 const boundary = lib.boundary;
 const clock = lib.clock;
 const rainbow = lib.rainbow;

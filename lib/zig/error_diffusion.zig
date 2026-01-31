@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const color_space = @import("../color/color_space.zig");
-const eink = @import("../color/eink.zig");
+const color_space = @import("color_space.zig");
+const eink = @import("eink.zig");
 
 const Algorithm = enum {
     atkinson,

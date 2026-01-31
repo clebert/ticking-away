@@ -1,18 +1,18 @@
 const std = @import("std");
 
+const boundary = @import("boundary.zig");
+const clip = @import("clip.zig");
 const clock = @import("clock.zig");
-const color_space = @import("color/color_space.zig");
-const rainbow = @import("color/rainbow.zig");
-const boundary = @import("geometry/boundary.zig");
-const prism = @import("geometry/prism.zig");
-const line = @import("geometry/line.zig");
-const vec2 = @import("geometry/vec2.zig");
-const scanline = @import("rendering/scanline.zig");
-const clip = @import("rendering/clip.zig");
-const glow = @import("rendering/glow.zig");
-const gradient = @import("rendering/gradient.zig");
-const markers = @import("rendering/markers.zig");
+const color_space = @import("color_space.zig");
+const glow = @import("glow.zig");
+const gradient = @import("gradient.zig");
+const line = @import("line.zig");
+const markers = @import("markers.zig");
+const prism = @import("prism.zig");
+const rainbow = @import("rainbow.zig");
+const scanline = @import("scanline.zig");
 const spectrum = @import("spectrum.zig");
+const vec2 = @import("vec2.zig");
 
 pub const PrismConfig = struct {
     size: f32 = 0.65,

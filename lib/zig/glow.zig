@@ -1,11 +1,11 @@
 const std = @import("std");
 
-const color_space = @import("../color/color_space.zig");
-const prism = @import("../geometry/prism.zig");
-const line = @import("../geometry/line.zig");
-const vec2 = @import("../geometry/vec2.zig");
-const scanline = @import("scanline.zig");
 const clip = @import("clip.zig");
+const color_space = @import("color_space.zig");
+const line = @import("line.zig");
+const prism = @import("prism.zig");
+const scanline = @import("scanline.zig");
+const vec2 = @import("vec2.zig");
 
 pub const Falloff = enum {
     linear,

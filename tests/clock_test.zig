@@ -1,8 +1,8 @@
 const std = @import("std");
 const testing = std.testing;
 const tau = std.math.tau;
-const lib = @import("lib");
 
+const lib = @import("lib");
 const clock = lib.clock;
 const vec2 = lib.vec2;
 
