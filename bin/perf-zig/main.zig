@@ -1,3 +1,6 @@
+// zig build perf-zig -Doptimize=ReleaseFast
+// ./zig-out/bin/perf-zig 10
+
 const std = @import("std");
 
 const lib = @import("lib");
