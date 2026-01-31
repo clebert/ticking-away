@@ -52,8 +52,8 @@ test "angle normalization edge cases" {
 
     // Should have rendered some pixels
     var non_black: usize = 0;
-    for (linear_colors) |pixel| {
-        if (pixel.vec[0] > 0.001 or pixel.vec[1] > 0.001 or pixel.vec[2] > 0.001) {
+    for (linear_colors) |linear_color| {
+        if (linear_color.vec[0] > 0.001 or linear_color.vec[1] > 0.001 or linear_color.vec[2] > 0.001) {
             non_black += 1;
         }
     }
@@ -100,8 +100,8 @@ test "wrap around gradient at boundary" {
 
     // Should have rendered some pixels
     var non_black: usize = 0;
-    for (linear_colors) |pixel| {
-        if (pixel.vec[0] > 0.001 or pixel.vec[1] > 0.001 or pixel.vec[2] > 0.001) {
+    for (linear_colors) |linear_color| {
+        if (linear_color.vec[0] > 0.001 or linear_color.vec[1] > 0.001 or linear_color.vec[2] > 0.001) {
             non_black += 1;
         }
     }
@@ -192,8 +192,8 @@ test "internal vs external mode" {
     // Internal mode fills prism interior (at least partially in the angle range)
     // The center might not be in the 0 to pi/2 angle range, so we check total pixels instead
     var int_non_black: usize = 0;
-    for (int_linear_colors) |pixel| {
-        if (pixel.vec[0] > 0.001 or pixel.vec[1] > 0.001 or pixel.vec[2] > 0.001) {
+    for (int_linear_colors) |linear_color| {
+        if (linear_color.vec[0] > 0.001 or linear_color.vec[1] > 0.001 or linear_color.vec[2] > 0.001) {
             int_non_black += 1;
         }
     }

@@ -26,12 +26,12 @@ pub const Context = struct {
                 const dx = x_f - cx;
                 const dist2 = dx * dx + dy2;
 
-                self.pixel(x, local_y).* = if (dist2 <= r2) color_space.Linear.black else color_space.Linear.white;
+                self.linearColorAt(x, local_y).* = if (dist2 <= r2) color_space.Linear.black else color_space.Linear.white;
             }
         }
     }
 
-    inline fn pixel(self: *Context, x: usize, y: usize) *color_space.Linear {
+    inline fn linearColorAt(self: *Context, x: usize, y: usize) *color_space.Linear {
         return &self.linear_colors[y * self.width + x];
     }
 

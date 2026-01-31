@@ -80,9 +80,9 @@ pub fn apply(
             const x = if (left_to_right) i else width - 1 - i;
             const idx = local_y * width + x;
 
-            const pixel = linear_colors[idx];
+            const linear_color = linear_colors[idx];
             const quant: QuantResult = if (config.oklab_error) blk: {
-                var oklab = pixel.toOklab();
+                var oklab = linear_color.toOklab();
                 oklab.vec[0] = std.math.clamp(oklab.vec[0] + err.row(0, 0)[x], 0.0, 1.0);
                 oklab.vec[1] += err.row(0, 1)[x];
                 oklab.vec[2] += err.row(0, 2)[x];
@@ -97,11 +97,11 @@ pub fn apply(
                     .error_3 = oklab.vec[2] - quantized.vec[2],
                 };
             } else blk: {
-                const r = std.math.clamp(pixel.vec[0] + err.row(0, 0)[x], 0.0, 1.0);
-                const g = std.math.clamp(pixel.vec[1] + err.row(0, 1)[x], 0.0, 1.0);
-                const b = std.math.clamp(pixel.vec[2] + err.row(0, 2)[x], 0.0, 1.0);
+                const r = std.math.clamp(linear_color.vec[0] + err.row(0, 0)[x], 0.0, 1.0);
+                const g = std.math.clamp(linear_color.vec[1] + err.row(0, 1)[x], 0.0, 1.0);
+                const b = std.math.clamp(linear_color.vec[2] + err.row(0, 2)[x], 0.0, 1.0);
 
-                const oklab = color_space.Linear.init(r, g, b, pixel.vec[3]).toOklab();
+                const oklab = color_space.Linear.init(r, g, b, linear_color.vec[3]).toOklab();
                 const color_found = palette.findClosest(oklab, config.chroma_weight);
                 const quantized = palette.linear_colors[@intFromEnum(color_found)];
 
@@ -118,7 +118,7 @@ pub fn apply(
                 .r = srgba_color.r,
                 .g = srgba_color.g,
                 .b = srgba_color.b,
-                .a = @intFromFloat(std.math.clamp(pixel.vec[3], 0.0, 1.0) * 255.0),
+                .a = @intFromFloat(std.math.clamp(linear_color.vec[3], 0.0, 1.0) * 255.0),
             };
 
             const x_i: i32 = @intCast(x);
