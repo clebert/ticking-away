@@ -5,25 +5,25 @@ inline fn floatToByte(v: f32) u8 {
     return @intFromFloat(clamped * 255.0);
 }
 
-pub fn writeRgba(buffer: []const color_space.Linear, out: []u8) void {
-    for (buffer, 0..) |c, i| {
+pub fn writeRgba(linear_colors: []const color_space.Linear, srgba_colors: []u8) void {
+    for (linear_colors, 0..) |c, i| {
         const idx = i * 4;
-        out[idx] = floatToByte(c.vec[0]);
-        out[idx + 1] = floatToByte(c.vec[1]);
-        out[idx + 2] = floatToByte(c.vec[2]);
-        out[idx + 3] = floatToByte(c.vec[3]);
+        srgba_colors[idx] = floatToByte(c.vec[0]);
+        srgba_colors[idx + 1] = floatToByte(c.vec[1]);
+        srgba_colors[idx + 2] = floatToByte(c.vec[2]);
+        srgba_colors[idx + 3] = floatToByte(c.vec[3]);
     }
 }
 
-fn writeRgb565(buffer: []const color_space.Linear, out: []u8) void {
-    for (buffer, 0..) |c, i| {
+fn writeRgb565(linear_colors: []const color_space.Linear, rgb565_colors: []u8) void {
+    for (linear_colors, 0..) |c, i| {
         const r5: u16 = @intFromFloat(@min(@max(c.vec[0], 0.0), 1.0) * 31.0);
         const g6: u16 = @intFromFloat(@min(@max(c.vec[1], 0.0), 1.0) * 63.0);
         const b5: u16 = @intFromFloat(@min(@max(c.vec[2], 0.0), 1.0) * 31.0);
         const rgb565 = (r5 << 11) | (g6 << 5) | b5;
         const idx = i * 2;
-        out[idx] = @truncate(rgb565 >> 8);
-        out[idx + 1] = @truncate(rgb565);
+        rgb565_colors[idx] = @truncate(rgb565 >> 8);
+        rgb565_colors[idx + 1] = @truncate(rgb565);
     }
 }
 
@@ -32,9 +32,9 @@ pub const Format = enum {
     rgb565,
 };
 
-pub fn write(buffer: []const color_space.Linear, out: []u8, format: Format) void {
+pub fn write(linear_colors: []const color_space.Linear, output_colors: []u8, format: Format) void {
     switch (format) {
-        .rgba8 => writeRgba(buffer, out),
-        .rgb565 => writeRgb565(buffer, out),
+        .rgba8 => writeRgba(linear_colors, output_colors),
+        .rgb565 => writeRgb565(linear_colors, output_colors),
     }
 }

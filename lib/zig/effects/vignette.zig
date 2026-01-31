@@ -19,7 +19,7 @@ pub const Geometry = struct {
 };
 
 pub fn apply(
-    buffer: []color_space.Linear,
+    linear_colors: []color_space.Linear,
     width: usize,
     height: usize,
     config: Config,
@@ -62,7 +62,7 @@ pub fn apply(
                 const dither = (@as(f32, @floatFromInt(hash & 0xFF)) / 255.0 - 0.5) * (2.0 / 255.0);
 
                 const grey = std.math.clamp(bg_base * vignette_factor + dither, 0.0, 1.0);
-                buffer[idx] = color_space.Linear.init(grey, grey, grey, 1.0);
+                linear_colors[idx] = color_space.Linear.init(grey, grey, grey, 1.0);
             }
         }
     }

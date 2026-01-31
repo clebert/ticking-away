@@ -1,7 +1,7 @@
 const color_space = @import("../color/color_space.zig");
 
 pub const Context = struct {
-    buffer: []color_space.Linear,
+    linear_colors: []color_space.Linear,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -27,7 +27,7 @@ pub const Context = struct {
     }
 
     inline fn pixel(self: *Context, x: usize, y: usize) *color_space.Linear {
-        return &self.buffer[y * self.width + x];
+        return &self.linear_colors[y * self.width + x];
     }
 
     inline fn globalY(self: *const Context, local_y: usize) usize {

@@ -47,8 +47,8 @@ pub const Linear = struct {
         return .{ .vec = a.vec + (b.vec - a.vec) * t_vec };
     }
 
-    pub fn applyGammaToSlice(buffer: []Linear) void {
-        for (buffer) |*linear| {
+    pub fn applyGammaToSlice(linear_colors: []Linear) void {
+        for (linear_colors) |*linear| {
             linear.vec[0] = linearToSrgbComponent(std.math.clamp(linear.vec[0], 0.0, 1.0));
             linear.vec[1] = linearToSrgbComponent(std.math.clamp(linear.vec[1], 0.0, 1.0));
             linear.vec[2] = linearToSrgbComponent(std.math.clamp(linear.vec[2], 0.0, 1.0));

@@ -1,4 +1,4 @@
-const cs = @import("../color/color_space.zig");
+const color_space = @import("../color/color_space.zig");
 const band = @import("../rendering/band.zig");
 const watchface = @import("../watchface.zig");
 const output = @import("output.zig");
@@ -10,8 +10,8 @@ pub const OutputConfig = struct {
 };
 
 fn applyPostprocessAndOutput(
-    float_buffer: []cs.Linear,
-    out_bytes: []u8,
+    linear_colors: []color_space.Linear,
+    srgba_colors: []u8,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -32,14 +32,14 @@ fn applyPostprocessAndOutput(
     else
         postprocess_config;
 
-    postprocess.apply(float_buffer, width, height, effective_postprocess);
+    postprocess.apply(linear_colors, width, height, effective_postprocess);
 
     if (output_config.dither) |dither_cfg| {
         if (dither_cfg.mode != .none) {
             if (dither_state) |state| {
                 postprocess.applyDither(
-                    float_buffer,
-                    out_bytes,
+                    linear_colors,
+                    srgba_colors,
                     width,
                     height,
                     y_offset,
@@ -51,13 +51,13 @@ fn applyPostprocessAndOutput(
         }
     }
 
-    output.write(float_buffer, out_bytes, output_config.format);
+    output.write(linear_colors, srgba_colors, output_config.format);
 }
 
 pub fn renderFrame(
     scene: *watchface.Scene,
-    float_buffer: []cs.Linear,
-    out_bytes: []u8,
+    linear_colors: []color_space.Linear,
+    srgba_colors: []u8,
     width: usize,
     height: usize,
     postprocess_config: postprocess.Config,
@@ -65,20 +65,20 @@ pub fn renderFrame(
     dither_state: ?*postprocess.DitherState,
 ) void {
     var ctx = band.Context{
-        .buffer = float_buffer,
+        .linear_colors = linear_colors,
         .width = width,
         .height = height,
         .y_offset = 0,
         .total_height = height,
     };
     scene.renderBand(&ctx);
-    applyPostprocessAndOutput(float_buffer, out_bytes, width, height, 0, postprocess_config, output_config, dither_state);
+    applyPostprocessAndOutput(linear_colors, srgba_colors, width, height, 0, postprocess_config, output_config, dither_state);
 }
 
 pub fn renderBand(
     scene: *watchface.Scene,
-    float_buffer: []cs.Linear,
-    out_bytes: []u8,
+    linear_colors: []color_space.Linear,
+    srgba_colors: []u8,
     width: usize,
     band_height: usize,
     y_offset: usize,
@@ -88,21 +88,21 @@ pub fn renderBand(
     dither_state: ?*postprocess.DitherState,
 ) void {
     var ctx = band.Context{
-        .buffer = float_buffer,
+        .linear_colors = linear_colors,
         .width = width,
         .height = band_height,
         .y_offset = y_offset,
         .total_height = total_height,
     };
     scene.renderBand(&ctx);
-    applyPostprocessAndOutput(float_buffer, out_bytes, width, band_height, y_offset, postprocess_config, output_config, dither_state);
+    applyPostprocessAndOutput(linear_colors, srgba_colors, width, band_height, y_offset, postprocess_config, output_config, dither_state);
 }
 
 pub fn renderBandWithGeometry(
     scene: *watchface.Scene,
     geometry: *const watchface.FrameGeometry,
-    float_buffer: []cs.Linear,
-    out_bytes: []u8,
+    linear_colors: []color_space.Linear,
+    srgba_colors: []u8,
     width: usize,
     band_height: usize,
     y_offset: usize,
@@ -112,12 +112,12 @@ pub fn renderBandWithGeometry(
     dither_state: ?*postprocess.DitherState,
 ) void {
     var ctx = band.Context{
-        .buffer = float_buffer,
+        .linear_colors = linear_colors,
         .width = width,
         .height = band_height,
         .y_offset = y_offset,
         .total_height = total_height,
     };
     scene.renderBandWithGeometry(&ctx, geometry);
-    applyPostprocessAndOutput(float_buffer, out_bytes, width, band_height, y_offset, postprocess_config, output_config, dither_state);
+    applyPostprocessAndOutput(linear_colors, srgba_colors, width, band_height, y_offset, postprocess_config, output_config, dither_state);
 }

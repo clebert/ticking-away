@@ -18,7 +18,7 @@ pub const Geometry = struct {
 };
 
 pub fn apply(
-    buffer: []color_space.Linear,
+    linear_colors: []color_space.Linear,
     width: usize,
     height: usize,
     config: Config,
@@ -53,9 +53,9 @@ pub fn apply(
                 }
             }
 
-            const red = buffer[idx].vec[0];
-            const green = buffer[idx].vec[1];
-            const blue = buffer[idx].vec[2];
+            const red = linear_colors[idx].vec[0];
+            const green = linear_colors[idx].vec[1];
+            const blue = linear_colors[idx].vec[2];
 
             const brightness = (red + green + blue) / 3.0;
             const brightness_factor = std.math.clamp(brightness * brightness_scale, 0.0, 1.0);
@@ -67,9 +67,9 @@ pub fn apply(
             const noise = (hash_f / 255.0 - 0.5) * grain_strength * 2.0;
             const grain_val = noise * brightness_factor;
 
-            buffer[idx].vec[0] = std.math.clamp(red + grain_val, 0.0, 1.0);
-            buffer[idx].vec[1] = std.math.clamp(green + grain_val, 0.0, 1.0);
-            buffer[idx].vec[2] = std.math.clamp(blue + grain_val, 0.0, 1.0);
+            linear_colors[idx].vec[0] = std.math.clamp(red + grain_val, 0.0, 1.0);
+            linear_colors[idx].vec[1] = std.math.clamp(green + grain_val, 0.0, 1.0);
+            linear_colors[idx].vec[2] = std.math.clamp(blue + grain_val, 0.0, 1.0);
         }
     }
 }

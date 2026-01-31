@@ -137,7 +137,7 @@ pub fn render(
             const t_color = if (config.reverse_spectrum) 1.0 - t_color_raw else t_color_raw;
 
             const col = cache.interpolate(t_color);
-            const p = &ctx.buffer[local_y * ctx.width + x];
+            const p = &ctx.linear_colors[local_y * ctx.width + x];
             const intensity_vec: @Vector(4, f32) = @splat(config.intensity);
             p.vec = p.vec + col.vec * intensity_vec;
         }

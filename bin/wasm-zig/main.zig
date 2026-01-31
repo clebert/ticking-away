@@ -6,8 +6,8 @@ const lib = @import("lib");
 const compat = @import("compat.zig");
 
 // Allocated buffers (reallocated when dimensions change)
-var float_buffer: ?[]lib.color_space.Linear = null;
-var rgba_buffer: ?[]u8 = null;
+var linear_colors: ?[]lib.color_space.Linear = null;
+var srgba_colors: ?[]u8 = null;
 var dither_error_backing: ?[]f32 = null;
 
 // Static state (cached between frames)
@@ -30,33 +30,33 @@ export fn getConfigBuffer() *compat.WatchfaceConfig {
 /// Reallocate buffers if dimensions changed.
 fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
     if (w == last_width and h == last_height and
-        float_buffer != null and rgba_buffer != null and dither_error_backing != null)
+        linear_colors != null and srgba_colors != null and dither_error_backing != null)
     {
         return;
     }
 
     // Free old buffers
-    if (float_buffer) |buf| allocator.free(buf);
-    if (rgba_buffer) |buf| allocator.free(buf);
+    if (linear_colors) |buf| allocator.free(buf);
+    if (srgba_colors) |buf| allocator.free(buf);
     if (dither_error_backing) |buf| allocator.free(buf);
 
-    float_buffer = null;
-    rgba_buffer = null;
+    linear_colors = null;
+    srgba_colors = null;
     dither_error_backing = null;
 
     // Allocate new buffers with errdefer for cleanup on failure
     const pixel_count = w * h;
 
-    float_buffer = try allocator.alloc(lib.color_space.Linear, pixel_count);
+    linear_colors = try allocator.alloc(lib.color_space.Linear, pixel_count);
     errdefer {
-        allocator.free(float_buffer.?);
-        float_buffer = null;
+        allocator.free(linear_colors.?);
+        linear_colors = null;
     }
 
-    rgba_buffer = try allocator.alloc(u8, pixel_count * 4);
+    srgba_colors = try allocator.alloc(u8, pixel_count * 4);
     errdefer {
-        allocator.free(rgba_buffer.?);
-        rgba_buffer = null;
+        allocator.free(srgba_colors.?);
+        srgba_colors = null;
     }
 
     const dither_size =
@@ -119,8 +119,8 @@ export fn renderWatchfaceWithConfig(
     // Render using pipeline
     lib.pipeline.renderFrame(
         &static_scene,
-        float_buffer.?,
-        rgba_buffer.?,
+        linear_colors.?,
+        srgba_colors.?,
         w,
         h,
         postprocess_config,
@@ -128,5 +128,5 @@ export fn renderWatchfaceWithConfig(
         dither_state_ptr,
     );
 
-    return rgba_buffer.?.ptr;
+    return srgba_colors.?.ptr;
 }

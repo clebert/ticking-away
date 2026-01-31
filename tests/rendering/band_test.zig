@@ -6,9 +6,9 @@ const band = lib.band;
 const color_space = lib.color_space;
 
 test "clearWithBackground creates circle mask" {
-    var buffer: [32 * 32]color_space.Linear = undefined;
+    var linear_colors: [32 * 32]color_space.Linear = undefined;
     var ctx = band.Context{
-        .buffer = &buffer,
+        .linear_colors = &linear_colors,
         .width = 32,
         .height = 32,
         .y_offset = 0,
@@ -23,9 +23,9 @@ test "clearWithBackground creates circle mask" {
 
     // Center should be black
     const center_idx = 16 * 32 + 16;
-    try testing.expectApproxEqAbs(buffer[center_idx].vec[0], 0, 1e-6);
+    try testing.expectApproxEqAbs(linear_colors[center_idx].vec[0], 0, 1e-6);
 
     // Corner should be white (outside circle)
     const corner_idx = 0;
-    try testing.expectApproxEqAbs(buffer[corner_idx].vec[0], 1, 1e-6);
+    try testing.expectApproxEqAbs(linear_colors[corner_idx].vec[0], 1, 1e-6);
 }

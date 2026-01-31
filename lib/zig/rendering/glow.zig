@@ -121,7 +121,7 @@ pub fn renderLine(
                 .gradient => |g| color_space.Linear.lerp(g.start, g.end, result.t),
             };
 
-            const p = &ctx.buffer[local_y * ctx.width + x];
+            const p = &ctx.linear_colors[local_y * ctx.width + x];
             const scale_vec: @Vector(4, f32) = @splat(intensity);
             p.vec = p.vec + base_color.vec * scale_vec;
         }
@@ -157,7 +157,7 @@ pub fn renderPrismEdges(
             if (dist < glow_width) {
                 const t = std.math.clamp(dist / glow_width, 0, 1);
                 const alpha = falloff.apply(t) * intensity;
-                const p = &ctx.buffer[local_y * ctx.width + x];
+                const p = &ctx.linear_colors[local_y * ctx.width + x];
                 const scale_vec: @Vector(4, f32) = @splat(alpha);
                 p.vec = p.vec + glow_color.vec * scale_vec;
             }

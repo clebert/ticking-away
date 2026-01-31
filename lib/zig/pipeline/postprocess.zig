@@ -46,29 +46,29 @@ pub const DitherState = struct {
 };
 
 pub fn apply(
-    buffer: []color_space.Linear,
+    linear_colors: []color_space.Linear,
     width: usize,
     height: usize,
     config: Config,
 ) void {
     if (config.gamma_enabled) {
-        color_space.Linear.applyGammaToSlice(buffer);
+        color_space.Linear.applyGammaToSlice(linear_colors);
     }
 
     if (config.grain) |grain_cfg| {
-        grain.apply(buffer, width, height, grain_cfg, config.grain_geometry);
+        grain.apply(linear_colors, width, height, grain_cfg, config.grain_geometry);
     }
 
     if (config.vignette) |vignette_cfg| {
         if (config.vignette_geometry) |geom| {
-            vignette.apply(buffer, width, height, vignette_cfg, geom);
+            vignette.apply(linear_colors, width, height, vignette_cfg, geom);
         }
     }
 }
 
 pub fn applyDither(
-    buffer: []const color_space.Linear,
-    out_rgba: []u8,
+    linear_colors: []const color_space.Linear,
+    srgba_colors: []u8,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -80,26 +80,26 @@ pub fn applyDither(
         .error_diffusion => blk: {
             const ed_cfg = config.error_diffusion orelse break :blk false;
             const err = state.error_buffer orelse break :blk false;
-            error_diffusion.apply(buffer, out_rgba, width, height, y_offset, ed_cfg, state.palette_cache, err);
+            error_diffusion.apply(linear_colors, srgba_colors, width, height, y_offset, ed_cfg, state.palette_cache, err);
             break :blk true;
         },
         .ordered => blk: {
             const ord_cfg = config.ordered orelse break :blk false;
-            ordered.applyRgba(buffer, out_rgba, width, height, ord_cfg, state.palette_cache);
+            ordered.applyRgba(linear_colors, srgba_colors, width, height, ord_cfg, state.palette_cache);
             break :blk true;
         },
     };
 
-    if (!dithered) output.writeRgba(buffer, out_rgba);
+    if (!dithered) output.writeRgba(linear_colors, srgba_colors);
 
     if (config.boundary_mask) |bnd| {
         const white = state.palette_cache.getSrgbColor(.white);
-        applyBoundaryMask(out_rgba, width, height, bnd, white);
+        applyBoundaryMask(srgba_colors, width, height, bnd, white);
     }
 }
 
 fn applyBoundaryMask(
-    out_rgba: []u8,
+    srgba_colors: []u8,
     width: usize,
     height: usize,
     bnd: boundary.Boundary,
@@ -116,20 +116,20 @@ fn applyBoundaryMask(
         const dy_sq = dy * dy;
 
         if (dy_sq >= r_sq) {
-            fillRowWithWhite(out_rgba, y, 0, width, width, white);
+            fillRowWithWhite(srgba_colors, y, 0, width, width, white);
         } else {
             const dx_max = @sqrt(r_sq - dy_sq);
             const x_left: usize = @intCast(@max(0, @as(i32, @intFromFloat(@round(cx - dx_max)))));
             const x_right: usize = @intCast(@min(width_i, @as(i32, @intFromFloat(@round(cx + dx_max)))));
 
-            fillRowWithWhite(out_rgba, y, 0, x_left, width, white);
-            fillRowWithWhite(out_rgba, y, x_right, width, width, white);
+            fillRowWithWhite(srgba_colors, y, 0, x_left, width, white);
+            fillRowWithWhite(srgba_colors, y, x_right, width, width, white);
         }
     }
 }
 
 fn fillRowWithWhite(
-    out_rgba: []u8,
+    srgba_colors: []u8,
     y: usize,
     x_start: usize,
     x_end: usize,
@@ -138,9 +138,9 @@ fn fillRowWithWhite(
 ) void {
     for (x_start..x_end) |x| {
         const idx = (y * width + x) * 4;
-        out_rgba[idx] = white.r;
-        out_rgba[idx + 1] = white.g;
-        out_rgba[idx + 2] = white.b;
-        out_rgba[idx + 3] = 255;
+        srgba_colors[idx] = white.r;
+        srgba_colors[idx + 1] = white.g;
+        srgba_colors[idx + 2] = white.b;
+        srgba_colors[idx + 3] = 255;
     }
 }

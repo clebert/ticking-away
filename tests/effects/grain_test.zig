@@ -16,7 +16,7 @@ test "grain hash deterministic" {
 }
 
 test "grain apply" {
-    var buffer = [_]color_space.Linear{
+    var linear_colors = [_]color_space.Linear{
         color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
         color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
         color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
@@ -24,10 +24,10 @@ test "grain apply" {
     };
 
     const config = grain.Config{ .intensity = 1.0, .scale = 1.0, .threshold = 0.1 };
-    grain.apply(&buffer, 2, 2, config, null);
+    grain.apply(&linear_colors, 2, 2, config, null);
 
     // Values should have changed but still be valid
-    for (buffer) |c| {
+    for (linear_colors) |c| {
         try std.testing.expect(c.vec[0] >= 0.0 and c.vec[0] <= 1.0);
         try std.testing.expect(c.vec[1] >= 0.0 and c.vec[1] <= 1.0);
         try std.testing.expect(c.vec[2] >= 0.0 and c.vec[2] <= 1.0);
