@@ -5,29 +5,6 @@ const lib = @import("lib");
 const band = lib.band;
 const color = lib.color;
 
-test "clear sets all pixels to black" {
-    var buffer: [16 * 16]color.Color = undefined;
-    var ctx = band.Context{
-        .buffer = &buffer,
-        .width = 16,
-        .height = 16,
-        .y_offset = 0,
-        .total_height = 16,
-    };
-
-    // Fill with white first
-    @memset(&buffer, color.white);
-
-    ctx.clear();
-
-    // All should be black now
-    for (buffer) |c| {
-        try testing.expectApproxEqAbs(c[0], 0, 1e-6);
-        try testing.expectApproxEqAbs(c[1], 0, 1e-6);
-        try testing.expectApproxEqAbs(c[2], 0, 1e-6);
-    }
-}
-
 test "clearWithBackground creates circle mask" {
     var buffer: [32 * 32]color.Color = undefined;
     var ctx = band.Context{

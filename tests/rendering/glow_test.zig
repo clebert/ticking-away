@@ -27,7 +27,7 @@ test "renderGlowLine produces non-zero output" {
         .total_height = 32,
     };
 
-    ctx.clear();
+    @memset(&buffer, color.black);
 
     const start = vec2.xy(5, 16);
     const end = vec2.xy(27, 16);
@@ -57,7 +57,7 @@ test "renderGlowLine respects clipping" {
         .total_height = 32,
     };
 
-    ctx.clear();
+    @memset(&buffer, color.black);
 
     // Line across entire width
     const start = vec2.xy(0, 16);
@@ -95,7 +95,7 @@ test "renderGlowLine with gradient color" {
         .total_height = 32,
     };
 
-    ctx.clear();
+    @memset(&buffer, color.black);
 
     const start = vec2.xy(4, 16);
     const end = vec2.xy(28, 16);
@@ -134,7 +134,7 @@ test "renderPrismGlow produces glow inside triangle" {
         .total_height = 64,
     };
 
-    ctx.clear();
+    @memset(&buffer, color.black);
 
     const tri = prism.Prism.init(vec2.xy(32, 36), 44);
 
@@ -165,7 +165,7 @@ test "renderGlowLine excludes triangle" {
         .total_height = 32,
     };
 
-    ctx.clear();
+    @memset(&buffer, color.black);
 
     // Line across middle
     const start = vec2.xy(0, 16);
@@ -203,7 +203,7 @@ test "context with y_offset renders correct region" {
         .total_height = 16,
     };
 
-    ctx.clear();
+    @memset(&buffer, color.black);
 
     // Line at y=12 (within our band)
     const start = vec2.xy(0, 12);
@@ -234,7 +234,7 @@ test "context with y_offset ignores lines outside region" {
         .total_height = 16,
     };
 
-    ctx.clear();
+    @memset(&buffer, color.black);
 
     // Line at y=20 (below our band which covers y=8-15)
     const start = vec2.xy(0, 20);

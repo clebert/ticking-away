@@ -41,13 +41,8 @@ fn bayerValue(comptime N: comptime_int, x: usize, y: usize) f32 {
     return @as(f32, @floatFromInt(result)) / n_squared - 0.5;
 }
 
-/// Generate an NxN Bayer matrix at comptime.
-fn BayerMatrix(comptime N: comptime_int) type {
-    return [N][N]f32;
-}
-
-fn generateBayerMatrix(comptime N: comptime_int) BayerMatrix(N) {
-    var matrix: BayerMatrix(N) = undefined;
+fn generateBayerMatrix(comptime N: comptime_int) [N][N]f32 {
+    var matrix: [N][N]f32 = undefined;
     for (0..N) |y| {
         for (0..N) |x| {
             matrix[y][x] = bayerValue(N, x, y);
@@ -60,42 +55,12 @@ const bayer_2x2 = generateBayerMatrix(2);
 const bayer_4x4 = generateBayerMatrix(4);
 const bayer_8x8 = generateBayerMatrix(8);
 
-/// Get threshold value for a pixel coordinate.
-pub fn getThreshold(matrix: Matrix, x: usize, y: usize) f32 {
+fn getThreshold(matrix: Matrix, x: usize, y: usize) f32 {
     return switch (matrix) {
         .bayer2x2 => bayer_2x2[y & 1][x & 1],
         .bayer4x4 => bayer_4x4[y & 3][x & 3],
         .bayer8x8 => bayer_8x8[y & 7][x & 7],
     };
-}
-
-/// Apply ordered dithering to a linear RGB buffer.
-/// Output is written as palette indices to out_indices.
-pub fn apply(
-    buffer: []const color.Color,
-    out_indices: []u8,
-    width: usize,
-    height: usize,
-    config: Config,
-    palette: *const dither.PaletteCache,
-) void {
-    const spread = @min(@max(config.spread, 0.0), 1.0);
-
-    for (0..height) |y| {
-        for (0..width) |x| {
-            const idx = y * width + x;
-
-            // Convert to OkLab
-            var lab = oklab.OkLab.fromLinearRgb(buffer[idx]);
-
-            // Apply threshold to lightness
-            const threshold = getThreshold(config.matrix, x, y) * spread;
-            lab.l = @min(@max(lab.l + threshold, 0.0), 1.0);
-
-            // Find closest palette color
-            out_indices[idx] = @intFromEnum(palette.findClosest(lab, config.chroma_weight));
-        }
-    }
 }
 
 /// Apply ordered dithering and write RGBA output.

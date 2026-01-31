@@ -6,9 +6,11 @@ const dither = lib.dither;
 const error_diffusion = lib.error_diffusion;
 
 test "error buffer init and clear" {
-    const allocator = std.testing.allocator;
-    var buf = try error_diffusion.ErrorBuffer.init(allocator, 10);
-    defer buf.deinit(allocator);
+    const width: usize = 10;
+    const size = width * error_diffusion.ErrorBuffer.rows * error_diffusion.ErrorBuffer.channels;
+    var backing: [size]f32 = undefined;
+
+    var buf = error_diffusion.ErrorBuffer.init(&backing, width);
 
     // Should start cleared
     for (buf.data) |v| {
@@ -27,7 +29,6 @@ test "error buffer init and clear" {
 }
 
 test "error diffusion output" {
-    const allocator = std.testing.allocator;
     const palette = dither.PaletteCache.init(&dither.palette_ideal);
 
     var buffer = [_]color.Color{
@@ -36,11 +37,14 @@ test "error diffusion output" {
     };
 
     var out_rgba: [8]u8 = undefined;
-    var err = try error_diffusion.ErrorBuffer.init(allocator, 2);
-    defer err.deinit(allocator);
+
+    const width: usize = 2;
+    const size = width * error_diffusion.ErrorBuffer.rows * error_diffusion.ErrorBuffer.channels;
+    var backing: [size]f32 = undefined;
+    var err = error_diffusion.ErrorBuffer.init(&backing, width);
 
     const config = error_diffusion.Config{ .algorithm = .atkinson };
-    error_diffusion.apply(&buffer, &out_rgba, 2, 1, 0, config, &palette, &err);
+    error_diffusion.apply(&buffer, &out_rgba, width, 1, 0, config, &palette, &err);
 
     // Black should output black
     try std.testing.expectEqual(@as(u8, 0), out_rgba[0]);

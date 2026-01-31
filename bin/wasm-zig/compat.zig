@@ -32,7 +32,7 @@ pub const RayPalette = enum(i32) {
     album_cover = 8,
     spectra6 = 9,
 
-    pub fn toZig(self: RayPalette) lib.palette.Type {
+    pub fn toZig(self: RayPalette) lib.palette.Palette {
         return switch (self) {
             .oklch_balanced => .oklch_balanced,
             .saturated => .saturated,

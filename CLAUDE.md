@@ -41,3 +41,5 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Gui
 - **No re-exports**: Don't re-export imports (`pub const ordered = @import("ordered.zig")`).
   Exception: `root.zig` may re-export for the public API.
 - **No fake `pub`**: Don't mark unused code as `pub` to suppress warnings. Remove it instead.
+- **No module.Type naming**: Don't name a type the same as its file (e.g., `palette.Palette`). This
+  conflicts when importing the module with the same name as a variable.

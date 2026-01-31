@@ -12,7 +12,7 @@ const glow = @import("glow.zig");
 pub const marker_count: usize = 12;
 
 /// Markers end at 98% of radius.
-pub const outer_percent: f32 = 0.98;
+const outer_percent: f32 = 0.98;
 
 /// Marker configuration.
 pub const Config = struct {

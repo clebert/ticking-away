@@ -3,11 +3,8 @@ const std = @import("std");
 const color = @import("../color/color.zig");
 const grain = @import("grain.zig");
 
-/// Default background grey level: 35/255 in sRGB space
-pub const default_background: f32 = 0.1372549;
-
-/// Default vignette strength: 40% max darkening at corners
-pub const default_strength: f32 = 0.4;
+const default_background: f32 = 0.1372549; // 35/255 in sRGB
+const default_strength: f32 = 0.4; // 40% max darkening at corners
 
 /// Vignette effect configuration.
 pub const Config = struct {
@@ -46,6 +43,7 @@ pub fn apply(
     const width_f: f32 = @floatFromInt(width);
     const height_f: f32 = @floatFromInt(height);
     const max_dist = @sqrt(width_f * width_f + height_f * height_f) * 0.5;
+    const inv_dist_range = 1.0 / (max_dist - radius);
 
     for (0..height) |y| {
         const dy = @as(f32, @floatFromInt(y)) - cy;
@@ -63,7 +61,7 @@ pub fn apply(
                 const dist_from_center = @sqrt(dist2);
 
                 // Normalized distance: 0.0 at circle edge, 1.0 at max distance
-                const vignette_t = std.math.clamp((dist_from_center - radius) / (max_dist - radius), 0.0, 1.0);
+                const vignette_t = std.math.clamp((dist_from_center - radius) * inv_dist_range, 0.0, 1.0);
 
                 // Smoothstep for perceptually smoother gradient
                 const smooth_t = vignette_t * vignette_t * (3.0 - 2.0 * vignette_t);

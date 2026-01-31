@@ -1,7 +1,7 @@
 const color = @import("../color/color.zig");
 
 /// Convert a single float channel [0,1] to u8 [0,255].
-pub inline fn floatToByte(v: f32) u8 {
+inline fn floatToByte(v: f32) u8 {
     const clamped = @min(@max(v, 0.0), 1.0);
     return @intFromFloat(clamped * 255.0);
 }

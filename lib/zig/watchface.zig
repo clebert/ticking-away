@@ -84,10 +84,6 @@ pub const Scene = struct {
         self.time_minutes = @as(f32, @floatFromInt(h)) * 60.0 + m;
     }
 
-    fn setTimeMinutes(self: *Scene, minutes: f32) void {
-        self.time_minutes = @mod(minutes, 720.0);
-    }
-
     pub fn setPrismConfig(self: *Scene, config: PrismConfig) void {
         self.prism_config = config;
         self.prism_dirty = true;
@@ -173,95 +169,48 @@ pub const Scene = struct {
         const cache = self.ensurePaletteCache();
         const paths = &geometry.paths;
 
-        // Determine internal ray rendering mode based on gradient fill
-        const use_gradient_intensity = self.ray_config.gradient_fill;
         const draw_internal_colored_rays = !self.ray_config.gradient_fill or self.prism_config.rainbow_spread <= 0.99;
         const glow_width = self.ray_config.glow_width * self.radius;
+        const base_config = glow.Config{
+            .width = glow_width,
+            .falloff = self.ray_config.falloff,
+            .color = .{ .uniform = color.white },
+            .intensity = .{ .uniform = self.ray_config.intensity },
+        };
 
         for (paths.bands, 0..) |band_path, i| {
-            // Handle reverse spectrum: swap color indices if reversed
             const color_idx = if (self.ray_config.reverse) clock.band_count - 1 - i else i;
             const band_color = cache.getColor(color_idx);
 
-            // Draw entry ray for each band (white light = all wavelengths combined)
+            // Entry ray (white light)
             if (paths.entry_ray) |entry_seg| {
-                const segment = line.Segment.init(entry_seg.start, entry_seg.end);
-                glow.renderLine(ctx, segment, .{
-                    .width = glow_width,
-                    .falloff = self.ray_config.falloff,
-                    .color = .{ .uniform = color.white },
-                    .intensity = .{ .uniform = self.ray_config.intensity },
-                }, circle_clip, prism_tri);
+                glow.renderLine(ctx, line.Segment.init(entry_seg.start, entry_seg.end), base_config, circle_clip, prism_tri);
             }
 
+            // Internal rays (inside prism)
+            const colored_seg = if (paths.needs_bounce) band_path.internal2 else band_path.internal1;
             if (paths.needs_bounce) {
-                // Entry → bounce segment: WHITE with uniform intensity
                 if (band_path.internal1) |seg| {
-                    const segment = line.Segment.init(seg.start, seg.end);
-                    glow.renderLine(ctx, segment, .{
-                        .width = glow_width,
-                        .falloff = self.ray_config.falloff,
-                        .color = .{ .uniform = color.white },
-                        .intensity = .{ .uniform = self.ray_config.intensity },
-                    }, .{ .prism = prism_tri }, null);
+                    glow.renderLine(ctx, line.Segment.init(seg.start, seg.end), base_config, .{ .prism = prism_tri }, null);
                 }
-
-                // Bounce → exit segment: COLORED with gradient intensity fade
-                if (band_path.internal2) |seg| {
-                    if (draw_internal_colored_rays) {
-                        const segment = line.Segment.init(seg.start, seg.end);
-                        if (use_gradient_intensity) {
-                            glow.renderLine(ctx, segment, .{
-                                .width = glow_width,
-                                .falloff = self.ray_config.falloff,
-                                .color = .{ .uniform = band_color },
-                                .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
-                            }, .{ .prism = prism_tri }, null);
-                        } else {
-                            glow.renderLine(ctx, segment, .{
-                                .width = glow_width,
-                                .falloff = self.ray_config.falloff,
-                                .color = .{ .uniform = band_color },
-                                .intensity = .{ .uniform = self.ray_config.intensity },
-                            }, .{ .prism = prism_tri }, null);
-                        }
+            }
+            if (draw_internal_colored_rays) {
+                if (colored_seg) |seg| {
+                    var cfg = base_config;
+                    cfg.color = .{ .uniform = band_color };
+                    if (self.ray_config.gradient_fill) {
+                        cfg.intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } };
                     }
-                }
-            } else {
-                // Direct path: entry → exit, COLORED with gradient intensity fade
-                if (band_path.internal1) |seg| {
-                    if (draw_internal_colored_rays) {
-                        const segment = line.Segment.init(seg.start, seg.end);
-                        if (use_gradient_intensity) {
-                            glow.renderLine(ctx, segment, .{
-                                .width = glow_width,
-                                .falloff = self.ray_config.falloff,
-                                .color = .{ .uniform = band_color },
-                                .intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } },
-                            }, .{ .prism = prism_tri }, null);
-                        } else {
-                            glow.renderLine(ctx, segment, .{
-                                .width = glow_width,
-                                .falloff = self.ray_config.falloff,
-                                .color = .{ .uniform = band_color },
-                                .intensity = .{ .uniform = self.ray_config.intensity },
-                            }, .{ .prism = prism_tri }, null);
-                        }
-                    }
+                    glow.renderLine(ctx, line.Segment.init(seg.start, seg.end), cfg, .{ .prism = prism_tri }, null);
                 }
             }
 
-            // Only draw exit rays when gradient fill is disabled
-            // (gradient fill replaces the exit rays with a smooth color fill)
+            // Exit ray (only when gradient fill disabled)
             if (!self.ray_config.gradient_fill) {
                 if (band_path.exit_ray) |seg| {
-                    const segment = line.Segment.init(seg.start, seg.end);
-                    glow.renderLine(ctx, segment, .{
-                        .width = glow_width,
-                        .falloff = self.ray_config.falloff,
-                        .color = .{ .uniform = band_color },
-                        .intensity = .{ .uniform = self.ray_config.intensity },
-                    }, circle_clip, prism_tri);
+                    var cfg = base_config;
+                    cfg.color = .{ .uniform = band_color };
+                    glow.renderLine(ctx, line.Segment.init(seg.start, seg.end), cfg, circle_clip, prism_tri);
                 }
             }
         }

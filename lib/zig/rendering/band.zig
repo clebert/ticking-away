@@ -7,10 +7,6 @@ pub const Context = struct {
     y_offset: usize,
     total_height: usize,
 
-    pub fn clear(self: *Context) void {
-        @memset(self.buffer, color.black);
-    }
-
     pub fn clearWithBackground(self: *Context, cx: f32, cy: f32, radius: f32) void {
         const r2 = radius * radius;
 

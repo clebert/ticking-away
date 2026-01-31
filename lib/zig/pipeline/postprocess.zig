@@ -95,47 +95,23 @@ pub fn applyDither(
     config: DitherConfig,
     state: *DitherState,
 ) void {
-    switch (config.mode) {
-        .none => {
-            output.writeRgba(buffer, out_rgba);
+    const dithered = switch (config.mode) {
+        .none => false,
+        .error_diffusion => blk: {
+            const ed_cfg = config.error_diffusion orelse break :blk false;
+            const err = state.error_buffer orelse break :blk false;
+            error_diffusion.apply(buffer, out_rgba, width, height, y_offset, ed_cfg, &state.palette_cache, err);
+            break :blk true;
         },
-        .error_diffusion => {
-            if (config.error_diffusion) |ed_cfg| {
-                if (state.error_buffer) |err| {
-                    error_diffusion.apply(
-                        buffer,
-                        out_rgba,
-                        width,
-                        height,
-                        y_offset,
-                        ed_cfg,
-                        &state.palette_cache,
-                        err,
-                    );
-                } else {
-                    output.writeRgba(buffer, out_rgba);
-                }
-            } else {
-                output.writeRgba(buffer, out_rgba);
-            }
+        .ordered => blk: {
+            const ord_cfg = config.ordered orelse break :blk false;
+            ordered.applyRgba(buffer, out_rgba, width, height, ord_cfg, &state.palette_cache);
+            break :blk true;
         },
-        .ordered => {
-            if (config.ordered) |ord_cfg| {
-                ordered.applyRgba(
-                    buffer,
-                    out_rgba,
-                    width,
-                    height,
-                    ord_cfg,
-                    &state.palette_cache,
-                );
-            } else {
-                output.writeRgba(buffer, out_rgba);
-            }
-        },
-    }
+    };
 
-    // Apply boundary mask if configured
+    if (!dithered) output.writeRgba(buffer, out_rgba);
+
     if (config.boundary_mask) |bnd| {
         const white = state.palette_cache.palette.get(.white);
         applyBoundaryMask(out_rgba, width, height, bnd, white);

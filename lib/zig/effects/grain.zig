@@ -36,9 +36,16 @@ pub fn apply(
     // Brightness scaling factor
     const brightness_scale = 1.0 / @max(config.threshold, 0.01);
 
+    // Pre-compute inverse scale for coordinate scaling
+    const inv_scale = 1.0 / config.scale;
+
+    // Pre-compute geometry radius squared if available
+    const r2 = if (geometry) |geo| geo.radius * geo.radius else 0.0;
+
     for (0..height) |y| {
         const y_f: f32 = @floatFromInt(y);
         const py = y_f + 0.5;
+        const gy: i32 = @intFromFloat(y_f * inv_scale);
 
         for (0..width) |x| {
             const x_f: f32 = @floatFromInt(x);
@@ -49,7 +56,7 @@ pub fn apply(
             if (geometry) |geo| {
                 const dx = px - geo.center_x;
                 const dy = py - geo.center_y;
-                if (dx * dx + dy * dy > geo.radius * geo.radius) continue;
+                if (dx * dx + dy * dy > r2) continue;
 
                 if (config.prism_only) {
                     if (geo.prism) |p| {
@@ -70,8 +77,7 @@ pub fn apply(
             const brightness_factor = std.math.clamp(brightness * brightness_scale, 0.0, 1.0);
 
             // Generate deterministic noise using scaled coordinates
-            const gx: i32 = @intFromFloat(x_f / config.scale);
-            const gy: i32 = @intFromFloat(y_f / config.scale);
+            const gx: i32 = @intFromFloat(x_f * inv_scale);
             const hash = hashPixel(gx, gy);
 
             // Convert hash to noise value: [-grain_strength, +grain_strength]

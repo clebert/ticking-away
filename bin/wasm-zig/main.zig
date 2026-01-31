@@ -108,7 +108,7 @@ export fn renderWatchfaceWithConfig(
             }
 
             if (dither_cfg.mode == .error_diffusion) {
-                dither_error_buffer = lib.error_diffusion.ErrorBuffer.initStatic(dither_error_backing.?, w);
+                dither_error_buffer = lib.error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
                 dither_state.setErrorBuffer(&dither_error_buffer);
             }
 
