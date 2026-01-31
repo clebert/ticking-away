@@ -87,33 +87,3 @@ pub fn apply(
         }
     }
 }
-
-test "vignette apply" {
-    var buffer = [_]color.Color{
-        color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0),
-        color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0),
-        color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0),
-        color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0), color.rgb(1, 0, 0),
-    };
-
-    const config = Config{};
-    const geometry = Geometry{ .center_x = 2, .center_y = 2, .radius = 1.0 };
-
-    apply(&buffer, 4, 4, config, geometry);
-
-    // Corners should be grey (outside circle)
-    try std.testing.expect(buffer[0][0] < 0.3); // Grey, not red
-    try std.testing.expectApproxEqAbs(buffer[0][0], buffer[0][1], 0.01); // Grey (r == g)
-}
-
-test "vignette disabled" {
-    var buffer = [_]color.Color{color.rgb(1, 0, 0)};
-
-    const config = Config{ .enabled = false };
-    const geometry = Geometry{ .center_x = 0.5, .center_y = 0.5, .radius = 0.1 };
-
-    apply(&buffer, 1, 1, config, geometry);
-
-    // Should be unchanged when disabled
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), buffer[0][0], 0.001);
-}

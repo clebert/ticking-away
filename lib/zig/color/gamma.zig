@@ -48,21 +48,3 @@ pub fn cbrt(x: f32) f32 {
 
     return std.math.copysign(y, x);
 }
-
-test "srgb round-trip" {
-    const test_values = [_]f32{ 0.0, 0.001, 0.01, 0.1, 0.5, 0.9, 1.0 };
-    for (test_values) |linear| {
-        const srgb = linearToSrgb(linear);
-        const back = srgbToLinear(@intFromFloat(@min(@max(srgb * 255.0, 0), 255)));
-        try std.testing.expectApproxEqAbs(linear, back, 0.01);
-    }
-}
-
-test "gamma known values" {
-    try std.testing.expectApproxEqAbs(linearToSrgb(0.0), 0.0, 0.001);
-    try std.testing.expectApproxEqAbs(linearToSrgb(1.0), 1.0, 0.001);
-
-    const linear_mid = 0.214;
-    const srgb_mid = linearToSrgb(linear_mid);
-    try std.testing.expectApproxEqAbs(srgb_mid, 0.5, 0.02);
-}

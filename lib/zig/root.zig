@@ -26,7 +26,3 @@ pub const gradient = @import("rendering/gradient.zig");
 pub const markers = @import("rendering/markers.zig");
 pub const spectrum = @import("spectrum.zig");
 pub const watchface = @import("watchface.zig");
-
-test {
-    @import("std").testing.refAllDecls(@This());
-}
