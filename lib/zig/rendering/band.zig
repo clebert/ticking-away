@@ -1,7 +1,7 @@
-const color = @import("../color/color.zig");
+const color_space = @import("../color/color_space.zig");
 
 pub const Context = struct {
-    buffer: []color.Color,
+    buffer: []color_space.Linear,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -21,12 +21,12 @@ pub const Context = struct {
                 const dx = x_f - cx;
                 const dist2 = dx * dx + dy2;
 
-                self.pixel(x, local_y).* = if (dist2 <= r2) color.black else color.white;
+                self.pixel(x, local_y).* = if (dist2 <= r2) color_space.Linear.black else color_space.Linear.white;
             }
         }
     }
 
-    inline fn pixel(self: *Context, x: usize, y: usize) *color.Color {
+    inline fn pixel(self: *Context, x: usize, y: usize) *color_space.Linear {
         return &self.buffer[y * self.width + x];
     }
 

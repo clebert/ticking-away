@@ -5,7 +5,7 @@ const testing = std.testing;
 const lib = @import("lib");
 
 const band = lib.band;
-const color = lib.color;
+const color_space = lib.color_space;
 const gradient = lib.gradient;
 const palette = lib.palette;
 const prism = lib.prism;
@@ -16,8 +16,8 @@ test "angle normalization edge cases" {
     // but we can verify the gradient handles wrap-around correctly
     const p = prism.Prism.init(.{ 50, 50 }, 40);
 
-    var buffer: [100 * 100]color.Color = undefined;
-    @memset(&buffer, color.black);
+    var buffer: [100 * 100]color_space.Linear = undefined;
+    @memset(&buffer, color_space.Linear.black);
 
     var ctx = band.Context{
         .buffer = &buffer,
@@ -53,7 +53,7 @@ test "angle normalization edge cases" {
     // Should have rendered some pixels
     var non_black: usize = 0;
     for (buffer) |pixel| {
-        if (pixel[0] > 0.001 or pixel[1] > 0.001 or pixel[2] > 0.001) {
+        if (pixel.vec[0] > 0.001 or pixel.vec[1] > 0.001 or pixel.vec[2] > 0.001) {
             non_black += 1;
         }
     }
@@ -64,8 +64,8 @@ test "wrap around gradient at boundary" {
     // Test that a gradient spanning across 0/tau boundary works
     const p = prism.Prism.init(.{ 50, 50 }, 40);
 
-    var buffer: [100 * 100]color.Color = undefined;
-    @memset(&buffer, color.black);
+    var buffer: [100 * 100]color_space.Linear = undefined;
+    @memset(&buffer, color_space.Linear.black);
 
     var ctx = band.Context{
         .buffer = &buffer,
@@ -101,7 +101,7 @@ test "wrap around gradient at boundary" {
     // Should have rendered some pixels
     var non_black: usize = 0;
     for (buffer) |pixel| {
-        if (pixel[0] > 0.001 or pixel[1] > 0.001 or pixel[2] > 0.001) {
+        if (pixel.vec[0] > 0.001 or pixel.vec[1] > 0.001 or pixel.vec[2] > 0.001) {
             non_black += 1;
         }
     }
@@ -113,8 +113,8 @@ test "internal vs external mode" {
     const cache = palette.Cache.init(.saturated);
 
     // External mode buffer
-    var ext_buffer: [100 * 100]color.Color = undefined;
-    @memset(&ext_buffer, color.black);
+    var ext_buffer: [100 * 100]color_space.Linear = undefined;
+    @memset(&ext_buffer, color_space.Linear.black);
 
     var ext_ctx = band.Context{
         .buffer = &ext_buffer,
@@ -145,8 +145,8 @@ test "internal vs external mode" {
     );
 
     // Internal mode buffer
-    var int_buffer: [100 * 100]color.Color = undefined;
-    @memset(&int_buffer, color.black);
+    var int_buffer: [100 * 100]color_space.Linear = undefined;
+    @memset(&int_buffer, color_space.Linear.black);
 
     var int_ctx = band.Context{
         .buffer = &int_buffer,
@@ -184,7 +184,7 @@ test "internal vs external mode" {
 
     // External should have black at prism center (inside prism is excluded)
     const ext_center = ext_buffer[center_idx];
-    const ext_sum = ext_center[0] + ext_center[1] + ext_center[2];
+    const ext_sum = ext_center.vec[0] + ext_center.vec[1] + ext_center.vec[2];
 
     // External mode excludes prism interior
     try testing.expectApproxEqAbs(ext_sum, 0, 0.01);
@@ -193,7 +193,7 @@ test "internal vs external mode" {
     // The center might not be in the 0 to pi/2 angle range, so we check total pixels instead
     var int_non_black: usize = 0;
     for (int_buffer) |pixel| {
-        if (pixel[0] > 0.001 or pixel[1] > 0.001 or pixel[2] > 0.001) {
+        if (pixel.vec[0] > 0.001 or pixel.vec[1] > 0.001 or pixel.vec[2] > 0.001) {
             int_non_black += 1;
         }
     }

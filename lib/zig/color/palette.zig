@@ -1,12 +1,9 @@
 const std = @import("std");
 
-const color = @import("color.zig");
-const gamma = @import("gamma.zig");
-const oklab = @import("oklab.zig");
+const color_space = @import("color_space.zig");
 
 pub const band_count: usize = 7;
 
-/// Color palette identifiers for ray and gradient rendering.
 pub const Palette = enum(u4) {
     oklch_balanced = 0,
     saturated = 1,
@@ -20,92 +17,64 @@ pub const Palette = enum(u4) {
     spectra6 = 9,
 };
 
-/// sRGB color triplet (0-255).
-pub const Rgb = struct {
-    r: u8,
-    g: u8,
-    b: u8,
-};
-
 pub const Type = Palette;
 
-/// Precomputed palette values for efficient interpolation.
 pub const Cache = struct {
-    linear: [band_count]color.Color,
-    lab: [band_count]oklab.OkLab,
+    linear: [band_count]color_space.Linear,
+    lab: [band_count]color_space.Oklab,
 
     pub fn init(pal: Type) Cache {
         const colors = palette_colors[@intFromEnum(pal)];
 
-        var linear: [band_count]color.Color = undefined;
-        var lab: [band_count]oklab.OkLab = undefined;
+        var linear: [band_count]color_space.Linear = undefined;
+        var lab: [band_count]color_space.Oklab = undefined;
 
         for (0..band_count) |i| {
-            // Convert sRGB to linear RGB
-            const r = gamma.srgbToLinear(colors[i].r);
-            const g = gamma.srgbToLinear(colors[i].g);
-            const b = gamma.srgbToLinear(colors[i].b);
-            linear[i] = color.rgb(r, g, b);
-
-            // Compute OkLab for gradient interpolation
-            lab[i] = oklab.OkLab.fromLinearRgb(linear[i]);
+            linear[i] = colors[i].toLinear();
+            lab[i] = colors[i].toOklab();
         }
 
         return .{ .linear = linear, .lab = lab };
     }
 
-    /// Get the linear color for a specific band index.
-    pub fn getColor(self: *const Cache, index: usize) color.Color {
+    pub fn getColor(self: *const Cache, index: usize) color_space.Linear {
         return self.linear[index];
     }
 
-    /// Interpolate color at position t (0.0 = red, 1.0 = violet).
-    /// Handles extrapolation beyond visible spectrum (IR/UV edges).
-    pub fn interpolate(self: *const Cache, t: f32) color.Color {
-
-        // Handle extrapolation toward infrared (t < 0)
+    pub fn interpolate(self: *const Cache, t: f32) color_space.Linear {
         if (t < 0.0) {
-            const lab_infrared = oklab.srgbToOklab(140, 0, 0);
-            const lab_red = self.lab[0];
+            const oklab_infrared = (color_space.Srgb{ .r = 140, .g = 0, .b = 0 }).toOklab();
+            const oklab_red = self.lab[0];
             const frac = @min(-t, 1.0);
-            const lab_interp = oklab.OkLab.lerp(lab_red, lab_infrared, frac);
-            return lab_interp.toLinearRgb();
+            return color_space.Oklab.lerp(oklab_red, oklab_infrared, frac).toLinear();
         }
 
-        // Handle extrapolation toward ultraviolet (t > 1)
         if (t > 1.0) {
-            const lab_ultraviolet = oklab.srgbToOklab(80, 0, 120);
-            const lab_violet = self.lab[band_count - 1];
+            const oklab_ultraviolet = (color_space.Srgb{ .r = 80, .g = 0, .b = 120 }).toOklab();
+            const oklab_violet = self.lab[band_count - 1];
             const frac = @min(t - 1.0, 1.0);
-            const lab_interp = oklab.OkLab.lerp(lab_violet, lab_ultraviolet, frac);
-            return lab_interp.toLinearRgb();
+            return color_space.Oklab.lerp(oklab_violet, oklab_ultraviolet, frac).toLinear();
         }
 
-        // Map t to band index: t=0 -> band 0 (red), t=1 -> band 6 (violet)
         const scaled = t * @as(f32, @floatFromInt(band_count - 1));
         const band_lo: usize = @intFromFloat(scaled);
         const band_hi: usize = @min(band_lo + 1, band_count - 1);
-
-        // Interpolation factor within the band
         const frac = scaled - @as(f32, @floatFromInt(band_lo));
 
-        // Interpolate in OkLab space
-        const lab_interp = oklab.OkLab.lerp(self.lab[band_lo], self.lab[band_hi], frac);
-        return lab_interp.toLinearRgb();
+        return color_space.Oklab.lerp(self.lab[band_lo], self.lab[band_hi], frac).toLinear();
     }
 };
 
-/// Palette colors in sRGB (0-255). Indexed by Palette enum.
-const palette_colors = [std.meta.fields(Palette).len][band_count]Rgb{
-    // oklch_balanced (friendly, even OkLCH hue spacing)
+const palette_colors = [std.meta.fields(Palette).len][band_count]color_space.Srgb{
+    // oklch_balanced
     .{
-        .{ .r = 255, .g = 64, .b = 64 }, // Red
-        .{ .r = 255, .g = 160, .b = 0 }, // Orange
-        .{ .r = 220, .g = 220, .b = 0 }, // Yellow
-        .{ .r = 0, .g = 200, .b = 80 }, // Green
-        .{ .r = 0, .g = 180, .b = 220 }, // Cyan
-        .{ .r = 80, .g = 100, .b = 255 }, // Blue
-        .{ .r = 180, .g = 80, .b = 255 }, // Violet
+        .{ .r = 255, .g = 64, .b = 64 },
+        .{ .r = 255, .g = 160, .b = 0 },
+        .{ .r = 220, .g = 220, .b = 0 },
+        .{ .r = 0, .g = 200, .b = 80 },
+        .{ .r = 0, .g = 180, .b = 220 },
+        .{ .r = 80, .g = 100, .b = 255 },
+        .{ .r = 180, .g = 80, .b = 255 },
     },
     // saturated
     .{

@@ -1,8 +1,8 @@
 const std = @import("std");
 const lib = @import("lib");
 
+const color_space = lib.color_space;
 const dither = lib.dither;
-const oklab = lib.oklab;
 
 test "palette count" {
     try std.testing.expectEqual(6, dither.PaletteCache.palette_size);
@@ -16,12 +16,12 @@ test "find closest color" {
     const cache = dither.PaletteCache.init(&dither.palette_ideal);
 
     // Pure red should match red
-    const red = oklab.srgbToOklab(255, 0, 0);
+    const red = (color_space.Srgb{ .r = 255, .g = 0, .b = 0 }).toOklab();
     const red_idx = cache.findClosest(red, 2.0);
     try std.testing.expectEqual(dither.PaletteIndex.red, red_idx);
 
     // Pure black should match black
-    const black = oklab.srgbToOklab(0, 0, 0);
+    const black = (color_space.Srgb{ .r = 0, .g = 0, .b = 0 }).toOklab();
     const black_idx = cache.findClosest(black, 2.0);
     try std.testing.expectEqual(dither.PaletteIndex.black, black_idx);
 }

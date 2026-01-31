@@ -1,29 +1,7 @@
 const std = @import("std");
 
-const color = @import("../color/color.zig");
-const gamma = @import("../color/gamma.zig");
-const oklab = @import("../color/oklab.zig");
+const color_space = @import("../color/color_space.zig");
 
-/// RGB color for palette entries (sRGB, 0-255).
-pub const Rgb = struct {
-    r: u8,
-    g: u8,
-    b: u8,
-
-    fn toLinear(self: Rgb) color.Color {
-        return color.rgb(
-            gamma.srgbToLinear(self.r),
-            gamma.srgbToLinear(self.g),
-            gamma.srgbToLinear(self.b),
-        );
-    }
-
-    fn toOklab(self: Rgb) oklab.OkLab {
-        return oklab.srgbToOklab(self.r, self.g, self.b);
-    }
-};
-
-/// Palette type for quantization.
 pub const PaletteType = enum {
     ideal,
     spectra6_inky,
@@ -31,7 +9,6 @@ pub const PaletteType = enum {
     spectra6_trmnl,
 };
 
-/// Standard palette color indices (consistent across all palettes).
 pub const PaletteIndex = enum {
     black,
     white,
@@ -41,10 +18,8 @@ pub const PaletteIndex = enum {
     green,
 };
 
-/// Palette type indexed by PaletteIndex, ensuring compile-time correctness.
-pub const Palette = std.EnumArray(PaletteIndex, Rgb);
+pub const Palette = std.EnumArray(PaletteIndex, color_space.Srgb);
 
-/// Pure RGB palette for dithering (ideal target colors).
 pub const palette_ideal = Palette.init(.{
     .black = .{ .r = 0, .g = 0, .b = 0 },
     .white = .{ .r = 255, .g = 255, .b = 255 },
@@ -54,19 +29,15 @@ pub const palette_ideal = Palette.init(.{
     .green = .{ .r = 0, .g = 255, .b = 0 },
 });
 
-/// Spectra 6 palette from Pimoroni Inky library.
-/// Source: https://github.com/pimoroni/inky
 pub const palette_spectra6_inky = Palette.init(.{
     .black = .{ .r = 0, .g = 0, .b = 0 },
-    .white = .{ .r = 161, .g = 164, .b = 165 }, // Device white appears grayish
-    .yellow = .{ .r = 208, .g = 190, .b = 71 }, // Gold
-    .red = .{ .r = 156, .g = 72, .b = 75 }, // Burgundy
-    .blue = .{ .r = 61, .g = 59, .b = 94 }, // Dark blue
-    .green = .{ .r = 58, .g = 91, .b = 70 }, // Forest green
+    .white = .{ .r = 161, .g = 164, .b = 165 },
+    .yellow = .{ .r = 208, .g = 190, .b = 71 },
+    .red = .{ .r = 156, .g = 72, .b = 75 },
+    .blue = .{ .r = 61, .g = 59, .b = 94 },
+    .green = .{ .r = 58, .g = 91, .b = 70 },
 });
 
-/// Spectra 6 palette from EDP Optimize (measured values).
-/// Source: https://github.com/Utzel-Butzel/epdoptimize
 pub const palette_spectra6_epdopt = Palette.init(.{
     .black = .{ .r = 25, .g = 30, .b = 33 },
     .white = .{ .r = 232, .g = 232, .b = 232 },
@@ -76,8 +47,6 @@ pub const palette_spectra6_epdopt = Palette.init(.{
     .green = .{ .r = 18, .g = 95, .b = 32 },
 });
 
-/// Spectra 6 palette from TRMNL firmware.
-/// Source: https://github.com/usetrmnl/trmnl-firmware/blob/754868a57b6f47c49479167e4047e369894d2ffc/src/display.cpp#L509
 pub const palette_spectra6_trmnl = Palette.init(.{
     .black = .{ .r = 0, .g = 0, .b = 0 },
     .white = .{ .r = 192, .g = 192, .b = 192 },
@@ -87,7 +56,6 @@ pub const palette_spectra6_trmnl = Palette.init(.{
     .green = .{ .r = 0, .g = 192, .b = 0 },
 });
 
-/// Get palette by type.
 pub fn getPalette(palette_type: PaletteType) *const Palette {
     return switch (palette_type) {
         .ideal => &palette_ideal,
@@ -97,10 +65,9 @@ pub fn getPalette(palette_type: PaletteType) *const Palette {
     };
 }
 
-/// Find closest palette color index using OkLab distance.
 fn findClosestColor(
-    col: oklab.OkLab,
-    palette_oklab: []const oklab.OkLab,
+    col: color_space.Oklab,
+    palette_oklab: []const color_space.Oklab,
     chroma_weight: f32,
 ) usize {
     var best_idx: usize = 0;
@@ -117,11 +84,10 @@ fn findClosestColor(
     return best_idx;
 }
 
-/// Precomputed palette cache for efficient dithering.
 pub const PaletteCache = struct {
     palette: *const Palette,
-    linear: [palette_size]color.Color,
-    lab: [palette_size]oklab.OkLab,
+    linear: [palette_size]color_space.Linear,
+    lab: [palette_size]color_space.Oklab,
 
     pub const palette_size: usize = @typeInfo(PaletteIndex).@"enum".fields.len;
 
@@ -137,12 +103,12 @@ pub const PaletteCache = struct {
         return cache;
     }
 
-    pub fn findClosest(self: *const PaletteCache, col: oklab.OkLab, chroma_weight: f32) PaletteIndex {
+    pub fn findClosest(self: *const PaletteCache, col: color_space.Oklab, chroma_weight: f32) PaletteIndex {
         const idx = findClosestColor(col, &self.lab, chroma_weight);
         return @enumFromInt(idx);
     }
 
-    pub fn getRgb(self: *const PaletteCache, idx: PaletteIndex) Rgb {
+    pub fn getRgb(self: *const PaletteCache, idx: PaletteIndex) color_space.Srgb {
         return self.palette.get(idx);
     }
 };

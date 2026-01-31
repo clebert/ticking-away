@@ -1,16 +1,13 @@
 const std = @import("std");
 
-const color = @import("../color/color.zig");
-const oklab = @import("../color/oklab.zig");
+const color_space = @import("../color/color_space.zig");
 const dither = @import("dither.zig");
 
-/// Error diffusion algorithm type.
 const Algorithm = enum {
     atkinson,
     floyd_steinberg,
 };
 
-/// Error diffusion configuration.
 pub const Config = struct {
     algorithm: Algorithm = .atkinson,
     strength: f32 = 1.0,
@@ -19,7 +16,6 @@ pub const Config = struct {
     clear_buffer: bool = true,
 };
 
-/// Quantization result for error diffusion.
 const QuantResult = struct {
     pal_idx: dither.PaletteIndex,
     err_1: f32,
@@ -27,7 +23,6 @@ const QuantResult = struct {
     err_3: f32,
 };
 
-/// Error buffer for diffusion (3 rows × 3 channels).
 pub const ErrorBuffer = struct {
     data: []f32,
     width: usize,
@@ -35,7 +30,6 @@ pub const ErrorBuffer = struct {
     pub const rows: usize = 3;
     pub const channels: usize = 3;
 
-    /// Initialize from a preallocated buffer.
     pub fn init(backing: []f32, width: usize) ErrorBuffer {
         const needed = width * rows * channels;
         std.debug.assert(backing.len >= needed);
@@ -64,9 +58,8 @@ pub const ErrorBuffer = struct {
     }
 };
 
-/// Apply error diffusion dithering.
 pub fn apply(
-    buffer: []const color.Color,
+    buffer: []const color_space.Linear,
     out_rgba: []u8,
     width: usize,
     height: usize,
@@ -90,34 +83,34 @@ pub fn apply(
 
             const px = buffer[idx];
             const quant: QuantResult = if (config.oklab_error) blk: {
-                var lab = oklab.OkLab.fromLinearRgb(px);
-                lab.l = std.math.clamp(lab.l + err.row(0, 0)[x], 0.0, 1.0);
-                lab.a += err.row(0, 1)[x];
-                lab.b += err.row(0, 2)[x];
+                var lab = px.toOklab();
+                lab.vec[0] = std.math.clamp(lab.vec[0] + err.row(0, 0)[x], 0.0, 1.0);
+                lab.vec[1] += err.row(0, 1)[x];
+                lab.vec[2] += err.row(0, 2)[x];
 
                 const idx_found = palette.findClosest(lab, config.chroma_weight);
                 const quantized = palette.lab[@intFromEnum(idx_found)];
 
                 break :blk .{
                     .pal_idx = idx_found,
-                    .err_1 = lab.l - quantized.l,
-                    .err_2 = lab.a - quantized.a,
-                    .err_3 = lab.b - quantized.b,
+                    .err_1 = lab.vec[0] - quantized.vec[0],
+                    .err_2 = lab.vec[1] - quantized.vec[1],
+                    .err_3 = lab.vec[2] - quantized.vec[2],
                 };
             } else blk: {
-                const r = std.math.clamp(px[0] + err.row(0, 0)[x], 0.0, 1.0);
-                const g = std.math.clamp(px[1] + err.row(0, 1)[x], 0.0, 1.0);
-                const b = std.math.clamp(px[2] + err.row(0, 2)[x], 0.0, 1.0);
+                const r = std.math.clamp(px.vec[0] + err.row(0, 0)[x], 0.0, 1.0);
+                const g = std.math.clamp(px.vec[1] + err.row(0, 1)[x], 0.0, 1.0);
+                const b = std.math.clamp(px.vec[2] + err.row(0, 2)[x], 0.0, 1.0);
 
-                const lab = oklab.OkLab.fromLinearRgb(color.rgb(r, g, b));
+                const lab = color_space.Linear.init(r, g, b, px.vec[3]).toOklab();
                 const idx_found = palette.findClosest(lab, config.chroma_weight);
                 const quantized = palette.linear[@intFromEnum(idx_found)];
 
                 break :blk .{
                     .pal_idx = idx_found,
-                    .err_1 = r - quantized[0],
-                    .err_2 = g - quantized[1],
-                    .err_3 = b - quantized[2],
+                    .err_1 = r - quantized.vec[0],
+                    .err_2 = g - quantized.vec[1],
+                    .err_3 = b - quantized.vec[2],
                 };
             };
 
@@ -125,7 +118,7 @@ pub fn apply(
             out_rgba[out_idx] = pal_color.r;
             out_rgba[out_idx + 1] = pal_color.g;
             out_rgba[out_idx + 2] = pal_color.b;
-            out_rgba[out_idx + 3] = @intFromFloat(std.math.clamp(px[3], 0.0, 1.0) * 255.0);
+            out_rgba[out_idx + 3] = @intFromFloat(std.math.clamp(px.vec[3], 0.0, 1.0) * 255.0);
 
             const x_i: i32 = @intCast(x);
             const width_i: i32 = @intCast(width);

@@ -1,32 +1,24 @@
 const std = @import("std");
 
-const color = @import("../color/color.zig");
-const oklab = @import("../color/oklab.zig");
+const color_space = @import("../color/color_space.zig");
 const dither = @import("dither.zig");
 
-/// Dither matrix type.
 pub const Matrix = enum {
     bayer2x2,
     bayer4x4,
     bayer8x8,
 };
 
-/// Ordered dithering configuration.
 pub const Config = struct {
     matrix: Matrix = .bayer4x4,
     spread: f32 = 0.5,
     chroma_weight: f32 = 2.0,
 };
 
-/// Compute Bayer matrix value at (x, y) for size N.
-/// Uses bit-interleaving: interleave bits of (x XOR y) and y in reverse order,
-/// then normalize to [-0.5, 0.5].
 fn bayerValue(comptime N: comptime_int, x: usize, y: usize) f32 {
-    const bits = @ctz(@as(usize, N)); // log2(N)
+    const bits = @ctz(@as(usize, N));
     const xor = x ^ y;
 
-    // Interleave bits in reverse order: high-order bits of (x,y) determine coarse position,
-    // low-order bits determine fine position within quadrants.
     var result: usize = 0;
     for (0..bits) |i| {
         const j = bits - 1 - i;
@@ -36,7 +28,6 @@ fn bayerValue(comptime N: comptime_int, x: usize, y: usize) f32 {
         result |= y_bit << @intCast(2 * j);
     }
 
-    // Normalize from [0, N²-1] to [-0.5, 0.5]
     const n_squared: f32 = @floatFromInt(N * N);
     return @as(f32, @floatFromInt(result)) / n_squared - 0.5;
 }
@@ -63,38 +54,33 @@ fn getThreshold(matrix: Matrix, x: usize, y: usize) f32 {
     };
 }
 
-/// Apply ordered dithering and write RGBA output.
 pub fn applyRgba(
-    buffer: []const color.Color,
+    buffer: []const color_space.Linear,
     out_rgba: []u8,
     width: usize,
     height: usize,
     config: Config,
     palette: *const dither.PaletteCache,
 ) void {
-    const spread = @min(@max(config.spread, 0.0), 1.0);
+    const spread = std.math.clamp(config.spread, 0.0, 1.0);
 
     for (0..height) |y| {
         for (0..width) |x| {
             const idx = y * width + x;
             const out_idx = idx * 4;
 
-            // Convert to OkLab
-            var lab = oklab.OkLab.fromLinearRgb(buffer[idx]);
+            var lab = buffer[idx].toOklab();
 
-            // Apply threshold to lightness
             const threshold = getThreshold(config.matrix, x, y) * spread;
-            lab.l = @min(@max(lab.l + threshold, 0.0), 1.0);
+            lab.vec[0] = std.math.clamp(lab.vec[0] + threshold, 0.0, 1.0);
 
-            // Find closest palette color
             const pal_idx = palette.findClosest(lab, config.chroma_weight);
             const pal_color = palette.getRgb(pal_idx);
 
-            // Write output
             out_rgba[out_idx] = pal_color.r;
             out_rgba[out_idx + 1] = pal_color.g;
             out_rgba[out_idx + 2] = pal_color.b;
-            out_rgba[out_idx + 3] = @intFromFloat(@min(@max(buffer[idx][3], 0.0), 1.0) * 255.0);
+            out_rgba[out_idx + 3] = @intFromFloat(std.math.clamp(buffer[idx].vec[3], 0.0, 1.0) * 255.0);
         }
     }
 }

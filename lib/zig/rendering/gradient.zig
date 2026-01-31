@@ -2,20 +2,16 @@ const std = @import("std");
 const tau = std.math.tau;
 const pi = std.math.pi;
 
-const color = @import("../color/color.zig");
+const color_space = @import("../color/color_space.zig");
 const palette = @import("../color/palette.zig");
 const prism = @import("../geometry/prism.zig");
 const band = @import("band.zig");
 
-/// Gradient fill mode.
 const Mode = enum {
-    /// Fill inside the prism triangle
     internal,
-    /// Fill outside prism but inside circle
     external,
 };
 
-/// Gradient fill configuration.
 pub const Config = struct {
     mode: Mode = .external,
     origin_x: f32 = 0,
@@ -26,7 +22,6 @@ pub const Config = struct {
     reverse_spectrum: bool = false,
 };
 
-/// Geometry context for gradient fill.
 pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
@@ -64,8 +59,6 @@ pub fn render(
     const a1_orig = a1_sorted;
     const wrap_around = a1_sorted > a2_sorted;
 
-    // Expand angle range slightly to avoid edge artifacts.
-    // For non-wrap case, clamp to avoid wrapping at 0/tau boundary.
     const eps: f32 = 0.002;
     const a1 = if (wrap_around) normalizeAngle(a1_sorted - eps) else @max(a1_sorted - eps, 0);
     const a2 = if (wrap_around) normalizeAngle(a2_sorted + eps) else @min(a2_sorted + eps, tau - 0.0001);
@@ -145,8 +138,8 @@ pub fn render(
 
             const col = cache.interpolate(t_color);
             const p = &ctx.buffer[local_y * ctx.width + x];
-            const intensity_vec: color.Color = @splat(config.intensity);
-            p.* = p.* + col * intensity_vec;
+            const intensity_vec: @Vector(4, f32) = @splat(config.intensity);
+            p.vec = p.vec + col.vec * intensity_vec;
         }
     }
 }

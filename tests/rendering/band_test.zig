@@ -3,10 +3,10 @@ const testing = std.testing;
 const lib = @import("lib");
 
 const band = lib.band;
-const color = lib.color;
+const color_space = lib.color_space;
 
 test "clearWithBackground creates circle mask" {
-    var buffer: [32 * 32]color.Color = undefined;
+    var buffer: [32 * 32]color_space.Linear = undefined;
     var ctx = band.Context{
         .buffer = &buffer,
         .width = 32,
@@ -23,9 +23,9 @@ test "clearWithBackground creates circle mask" {
 
     // Center should be black
     const center_idx = 16 * 32 + 16;
-    try testing.expectApproxEqAbs(buffer[center_idx][0], 0, 1e-6);
+    try testing.expectApproxEqAbs(buffer[center_idx].vec[0], 0, 1e-6);
 
     // Corner should be white (outside circle)
     const corner_idx = 0;
-    try testing.expectApproxEqAbs(buffer[corner_idx][0], 1, 1e-6);
+    try testing.expectApproxEqAbs(buffer[corner_idx].vec[0], 1, 1e-6);
 }

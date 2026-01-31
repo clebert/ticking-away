@@ -1,7 +1,7 @@
 const std = @import("std");
 const lib = @import("lib");
 
-const color = lib.color;
+const color_space = lib.color_space;
 const grain = lib.grain;
 
 test "grain hash deterministic" {
@@ -16,11 +16,11 @@ test "grain hash deterministic" {
 }
 
 test "grain apply" {
-    var buffer = [_]color.Color{
-        color.rgb(0.5, 0.5, 0.5),
-        color.rgb(0.5, 0.5, 0.5),
-        color.rgb(0.5, 0.5, 0.5),
-        color.rgb(0.5, 0.5, 0.5),
+    var buffer = [_]color_space.Linear{
+        color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
+        color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
+        color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
+        color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
     };
 
     const config = grain.Config{ .intensity = 1.0, .scale = 1.0, .threshold = 0.1 };
@@ -28,8 +28,8 @@ test "grain apply" {
 
     // Values should have changed but still be valid
     for (buffer) |c| {
-        try std.testing.expect(c[0] >= 0.0 and c[0] <= 1.0);
-        try std.testing.expect(c[1] >= 0.0 and c[1] <= 1.0);
-        try std.testing.expect(c[2] >= 0.0 and c[2] <= 1.0);
+        try std.testing.expect(c.vec[0] >= 0.0 and c.vec[0] <= 1.0);
+        try std.testing.expect(c.vec[1] >= 0.0 and c.vec[1] <= 1.0);
+        try std.testing.expect(c.vec[2] >= 0.0 and c.vec[2] <= 1.0);
     }
 }

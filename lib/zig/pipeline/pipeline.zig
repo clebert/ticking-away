@@ -1,17 +1,16 @@
-const color = @import("../color/color.zig");
+const cs = @import("../color/color_space.zig");
 const band = @import("../rendering/band.zig");
 const watchface = @import("../watchface.zig");
 const output = @import("output.zig");
 const postprocess = @import("postprocess.zig");
 
-/// Output configuration.
 pub const OutputConfig = struct {
     format: output.Format = .rgba8,
     dither: ?postprocess.DitherConfig = null,
 };
 
 fn applyPostprocessAndOutput(
-    float_buffer: []color.Color,
+    float_buffer: []cs.Linear,
     out_bytes: []u8,
     width: usize,
     height: usize,
@@ -55,18 +54,9 @@ fn applyPostprocessAndOutput(
     output.write(float_buffer, out_bytes, output_config.format);
 }
 
-/// Render a complete frame to the output buffer.
-///
-/// Pipeline stages:
-/// 1. Scene.renderBand() → linear RGB
-/// 2. Gamma correction → sRGB
-/// 3. Grain effect (optional)
-/// 4. Vignette effect (optional, skipped when dithering)
-/// 5. Dithering or direct output
-/// 6. Boundary masking (for dithered output)
 pub fn renderFrame(
     scene: *watchface.Scene,
-    float_buffer: []color.Color,
+    float_buffer: []cs.Linear,
     out_bytes: []u8,
     width: usize,
     height: usize,
@@ -85,16 +75,9 @@ pub fn renderFrame(
     applyPostprocessAndOutput(float_buffer, out_bytes, width, height, 0, postprocess_config, output_config, dither_state);
 }
 
-/// Render a single band (for memory-constrained devices).
-///
-/// Band rendering allows processing one horizontal strip at a time,
-/// using only `width × band_height` float buffer instead of full frame.
-///
-/// For correct error diffusion across bands, the same DitherState must be
-/// passed for all bands, and bands must be rendered in order from top to bottom.
 pub fn renderBand(
     scene: *watchface.Scene,
-    float_buffer: []color.Color,
+    float_buffer: []cs.Linear,
     out_bytes: []u8,
     width: usize,
     band_height: usize,
@@ -115,15 +98,10 @@ pub fn renderBand(
     applyPostprocessAndOutput(float_buffer, out_bytes, width, band_height, y_offset, postprocess_config, output_config, dither_state);
 }
 
-/// Render a single band using pre-computed frame geometry.
-///
-/// For optimized band rendering, call Scene.prepareFrame() once before the band loop,
-/// then pass the geometry to each renderBandWithGeometry() call. This avoids
-/// redundant geometry computation (spectrum paths, markers) for each band.
 pub fn renderBandWithGeometry(
     scene: *watchface.Scene,
     geometry: *const watchface.FrameGeometry,
-    float_buffer: []color.Color,
+    float_buffer: []cs.Linear,
     out_bytes: []u8,
     width: usize,
     band_height: usize,

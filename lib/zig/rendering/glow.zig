@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const color = @import("../color/color.zig");
+const color_space = @import("../color/color_space.zig");
 const prism = @import("../geometry/prism.zig");
 const segment = @import("../geometry/segment.zig");
 const vec2 = @import("../math/vec2.zig");
@@ -33,11 +33,10 @@ pub const Config = struct {
     falloff: Falloff = .quadratic,
 
     color: union(enum) {
-        uniform: color.Color,
-        gradient: struct { start: color.Color, end: color.Color },
-    } = .{ .uniform = color.white },
+        uniform: color_space.Linear,
+        gradient: struct { start: color_space.Linear, end: color_space.Linear },
+    } = .{ .uniform = color_space.Linear.white },
 
-    /// Intensity along the line (start to end). Used for fade-out effects.
     intensity: union(enum) {
         uniform: f32,
         gradient: struct { start: f32, end: f32 },
@@ -119,12 +118,12 @@ pub fn renderLine(
             const intensity = radial_intensity * linear_intensity;
             const base_color = switch (config.color) {
                 .uniform => |c| c,
-                .gradient => |g| color.lerp(g.start, g.end, result.t),
+                .gradient => |g| color_space.Linear.lerp(g.start, g.end, result.t),
             };
 
             const p = &ctx.buffer[local_y * ctx.width + x];
-            const scale_vec: color.Color = @splat(intensity);
-            p.* = p.* + base_color * scale_vec;
+            const scale_vec: @Vector(4, f32) = @splat(intensity);
+            p.vec = p.vec + base_color.vec * scale_vec;
         }
     }
 }
@@ -132,7 +131,7 @@ pub fn renderLine(
 pub fn renderPrismEdges(
     ctx: *band.Context,
     tri: prism.Prism,
-    glow_color: color.Color,
+    glow_color: color_space.Linear,
     glow_width: f32,
     intensity: f32,
     falloff: Falloff,
@@ -159,8 +158,8 @@ pub fn renderPrismEdges(
                 const t = std.math.clamp(dist / glow_width, 0, 1);
                 const alpha = falloff.apply(t) * intensity;
                 const p = &ctx.buffer[local_y * ctx.width + x];
-                const scale_vec: color.Color = @splat(alpha);
-                p.* = p.* + glow_color * scale_vec;
+                const scale_vec: @Vector(4, f32) = @splat(alpha);
+                p.vec = p.vec + glow_color.vec * scale_vec;
             }
         }
     }

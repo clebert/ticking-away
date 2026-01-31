@@ -1,8 +1,6 @@
 // Math
 pub const clock = @import("clock.zig");
-pub const color = @import("color/color.zig");
-pub const gamma = @import("color/gamma.zig");
-pub const oklab = @import("color/oklab.zig");
+pub const color_space = @import("color/color_space.zig");
 pub const palette = @import("color/palette.zig");
 pub const dither = @import("dither/dither.zig");
 pub const error_diffusion = @import("dither/error_diffusion.zig");

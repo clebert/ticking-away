@@ -1,7 +1,7 @@
 const std = @import("std");
 const lib = @import("lib");
 
-const color = lib.color;
+const color_space = lib.color_space;
 const dither = lib.dither;
 const error_diffusion = lib.error_diffusion;
 
@@ -29,11 +29,11 @@ test "error buffer init and clear" {
 }
 
 test "error diffusion output" {
-    const palette = dither.PaletteCache.init(&dither.palette_ideal);
+    const palette_cache = dither.PaletteCache.init(&dither.palette_ideal);
 
-    var buffer = [_]color.Color{
-        color.rgb(0.0, 0.0, 0.0),
-        color.rgb(1.0, 1.0, 1.0),
+    var buffer = [_]color_space.Linear{
+        color_space.Linear.init(0.0, 0.0, 0.0, 1.0),
+        color_space.Linear.init(1.0, 1.0, 1.0, 1.0),
     };
 
     var out_rgba: [8]u8 = undefined;
@@ -44,7 +44,7 @@ test "error diffusion output" {
     var err = error_diffusion.ErrorBuffer.init(&backing, width);
 
     const config = error_diffusion.Config{ .algorithm = .atkinson };
-    error_diffusion.apply(&buffer, &out_rgba, width, 1, 0, config, &palette, &err);
+    error_diffusion.apply(&buffer, &out_rgba, width, 1, 0, config, &palette_cache, &err);
 
     // Black should output black
     try std.testing.expectEqual(@as(u8, 0), out_rgba[0]);

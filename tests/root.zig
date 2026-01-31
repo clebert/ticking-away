@@ -4,8 +4,7 @@ test {
     _ = @import("spectrum_test.zig");
 
     // Color modules
-    _ = @import("color/gamma_test.zig");
-    _ = @import("color/oklab_test.zig");
+    _ = @import("color/color_space_test.zig");
     _ = @import("color/palette_test.zig");
 
     // Dither modules

@@ -167,10 +167,11 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
             .rainbow_spread = c.prism.rainbow_spread,
         },
         .glow_config = .{
-            .color = lib.color.rgb(
+            .color = lib.color_space.Linear.init(
                 @as(f32, @floatFromInt(c.glow_config.r)) / 255.0,
                 @as(f32, @floatFromInt(c.glow_config.g)) / 255.0,
                 @as(f32, @floatFromInt(c.glow_config.b)) / 255.0,
+                1.0,
             ),
             .width = c.glow_config.width,
             .intensity = c.glow_config.intensity,

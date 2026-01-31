@@ -6,7 +6,7 @@ const lib = @import("lib");
 const compat = @import("compat.zig");
 
 // Allocated buffers (reallocated when dimensions change)
-var float_buffer: ?[]lib.color.Color = null;
+var float_buffer: ?[]lib.color_space.Linear = null;
 var rgba_buffer: ?[]u8 = null;
 var dither_error_backing: ?[]f32 = null;
 
@@ -47,7 +47,7 @@ fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
     // Allocate new buffers with errdefer for cleanup on failure
     const pixel_count = w * h;
 
-    float_buffer = try allocator.alloc(lib.color.Color, pixel_count);
+    float_buffer = try allocator.alloc(lib.color_space.Linear, pixel_count);
     errdefer {
         allocator.free(float_buffer.?);
         float_buffer = null;

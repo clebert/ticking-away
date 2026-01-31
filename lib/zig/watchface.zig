@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const clock = @import("clock.zig");
-const color = @import("color/color.zig");
+const color_space = @import("color/color_space.zig");
 const palette = @import("color/palette.zig");
 const boundary = @import("geometry/boundary.zig");
 const prism = @import("geometry/prism.zig");
@@ -20,7 +20,7 @@ pub const PrismConfig = struct {
 };
 
 pub const GlowConfig = struct {
-    color: color.Color = color.rgb(0.5, 0.5, 0.5),
+    color: color_space.Linear = color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
     width: f32 = 0.15,
     intensity: f32 = 0.6,
     falloff: glow.Falloff = .quadratic,
@@ -174,7 +174,7 @@ pub const Scene = struct {
         const base_config = glow.Config{
             .width = glow_width,
             .falloff = self.ray_config.falloff,
-            .color = .{ .uniform = color.white },
+            .color = .{ .uniform = color_space.Linear.white },
             .intensity = .{ .uniform = self.ray_config.intensity },
         };
 
