@@ -19,7 +19,7 @@ pub const Geometry = struct {
 };
 
 pub fn apply(
-    band: *frame.Band,
+    band_srgba: *frame.BandSrgba,
     config: Config,
     geometry: ?Geometry,
 ) void {
@@ -29,14 +29,15 @@ pub fn apply(
     const threshold_u8: f32 = config.threshold * 255.0;
     const inv_scale = 1.0 / config.scale;
     const r2 = if (geometry) |geo| geo.radius * geo.radius else 0.0;
+    const band_geometry = band_srgba.geometry;
 
-    for (0..band.height) |local_y| {
-        const global_y = band.globalY(local_y);
+    for (0..band_geometry.height) |local_y| {
+        const global_y = band_geometry.globalY(local_y);
         const y_f: f32 = @floatFromInt(global_y);
         const py = y_f + 0.5;
         const gy: i32 = @intFromFloat(y_f * inv_scale);
 
-        for (0..band.width) |x| {
+        for (0..band_geometry.width) |x| {
             const x_f: f32 = @floatFromInt(x);
             const px = x_f + 0.5;
 
@@ -52,7 +53,7 @@ pub fn apply(
                 }
             }
 
-            const srgba = band.srgbaColorAt(x, local_y);
+            const srgba = band_srgba.colorAt(x, local_y);
             const red: f32 = @floatFromInt(srgba.r);
             const green: f32 = @floatFromInt(srgba.g);
             const blue: f32 = @floatFromInt(srgba.b);

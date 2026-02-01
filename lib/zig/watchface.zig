@@ -35,14 +35,6 @@ pub const RayConfig = struct {
     reverse: bool = false,
 };
 
-pub const FrameGeometry = struct {
-    boundary: boundary.Boundary,
-    paths: spectrum.Paths,
-    marker_geometry: markers.Geometry,
-    hour_markers: [markers.marker_count]markers.Marker,
-    markers_visible: bool,
-};
-
 pub const Scene = struct {
     width: usize,
     height: usize,
@@ -108,7 +100,15 @@ pub const Scene = struct {
         return rainbow.getPaletteCache(self.ray_config.palette_type);
     }
 
-    fn prepareFrame(self: *Scene) FrameGeometry {
+    const Geometry = struct {
+        boundary: boundary.Boundary,
+        paths: spectrum.Paths,
+        marker_geometry: markers.Geometry,
+        hour_markers: [markers.marker_count]markers.Marker,
+        markers_visible: bool,
+    };
+
+    fn prepareGeometry(self: *Scene) Geometry {
         if (self.prism_dirty) {
             self.updatePrism();
         }
@@ -146,29 +146,30 @@ pub const Scene = struct {
         };
     }
 
-    fn renderBackground(self: *const Scene, band: *frame.Band) void {
+    fn renderBackground(self: *const Scene, band_linear: *frame.BandLinear) void {
         const r2 = self.radius * self.radius;
+        const band_geometry = band_linear.geometry;
 
-        for (0..band.height) |local_y| {
-            const global_y = band.globalY(local_y);
+        for (0..band_geometry.height) |local_y| {
+            const global_y = band_geometry.globalY(local_y);
             const y: f32 = @floatFromInt(global_y);
             const dy = y - self.center[1];
             const dy2 = dy * dy;
 
-            for (0..band.width) |x| {
+            for (0..band_geometry.width) |x| {
                 const x_f: f32 = @floatFromInt(x);
                 const dx = x_f - self.center[0];
                 const dist2 = dx * dx + dy2;
 
-                band.linearColorAt(x, local_y).* = if (dist2 <= r2) color_space.Linear.black else color_space.Linear.white;
+                band_linear.colorAt(x, local_y).* = if (dist2 <= r2) color_space.Linear.black else color_space.Linear.white;
             }
         }
     }
 
-    pub fn render(self: *Scene, band: *frame.Band) void {
-        const geometry = self.prepareFrame();
+    pub fn render(self: *Scene, band_linear: *frame.BandLinear) void {
+        const geometry = self.prepareGeometry();
 
-        self.renderBackground(band);
+        self.renderBackground(band_linear);
 
         const circle_clip = clip.Region{ .boundary = &geometry.boundary };
         const prism_tri = &self.prism;
@@ -191,14 +192,14 @@ pub const Scene = struct {
 
             // Entry ray (white light)
             if (paths.entry_ray) |entry_seg| {
-                glow.renderLine(band, line.Segment.init(entry_seg.start, entry_seg.end), base_config, circle_clip, prism_tri);
+                glow.renderLine(band_linear, line.Segment.init(entry_seg.start, entry_seg.end), base_config, circle_clip, prism_tri);
             }
 
             // Internal rays (inside prism)
             const colored_seg = if (paths.needs_bounce) color_path.internal2 else color_path.internal1;
             if (paths.needs_bounce) {
                 if (color_path.internal1) |seg| {
-                    glow.renderLine(band, line.Segment.init(seg.start, seg.end), base_config, .{ .prism = prism_tri }, null);
+                    glow.renderLine(band_linear, line.Segment.init(seg.start, seg.end), base_config, .{ .prism = prism_tri }, null);
                 }
             }
             if (draw_internal_colored_rays) {
@@ -208,7 +209,7 @@ pub const Scene = struct {
                     if (self.ray_config.gradient_fill) {
                         cfg.intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } };
                     }
-                    glow.renderLine(band, line.Segment.init(seg.start, seg.end), cfg, .{ .prism = prism_tri }, null);
+                    glow.renderLine(band_linear, line.Segment.init(seg.start, seg.end), cfg, .{ .prism = prism_tri }, null);
                 }
             }
 
@@ -217,7 +218,7 @@ pub const Scene = struct {
                 if (color_path.exit_ray) |seg| {
                     var cfg = base_config;
                     cfg.color = .{ .uniform = linear_color };
-                    glow.renderLine(band, line.Segment.init(seg.start, seg.end), cfg, circle_clip, prism_tri);
+                    glow.renderLine(band_linear, line.Segment.init(seg.start, seg.end), cfg, circle_clip, prism_tri);
                 }
             }
         }
@@ -253,7 +254,7 @@ pub const Scene = struct {
 
             // External gradient (outside prism, inside circle)
             gradient.render(
-                band,
+                band_linear,
                 .{
                     .mode = .external,
                     .origin_x = self.center[0],
@@ -293,7 +294,7 @@ pub const Scene = struct {
             const internal_edge_margin = internal_span * edge_margin_factor;
 
             gradient.render(
-                band,
+                band_linear,
                 .{
                     .mode = .internal,
                     .origin_x = grad_origin[0],
@@ -314,7 +315,7 @@ pub const Scene = struct {
         }
 
         glow.renderPrismEdges(
-            band,
+            band_linear,
             self.prism,
             self.glow_config.color,
             self.glow_config.width * self.radius,
@@ -326,7 +327,7 @@ pub const Scene = struct {
             const marker_clip = geometry.marker_geometry.circleClip();
 
             for (geometry.hour_markers) |m| {
-                glow.renderLine(band, m.segment, m.glow_config, marker_clip, null);
+                glow.renderLine(band_linear, m.segment, m.glow_config, marker_clip, null);
             }
         }
     }

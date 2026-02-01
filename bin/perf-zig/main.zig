@@ -59,15 +59,17 @@ pub fn main() !void {
         const frame_start = timer.read();
 
         scene.setTime(@intCast(hour), @floatFromInt(minute));
-        var band = lib.frame.Band{
-            .linear_colors = linear_colors,
-            .srgba_colors = srgba_colors,
+        var geometry = lib.frame.Geometry{
             .width = width,
             .height = height,
             .y_offset = 0,
             .total_height = height,
         };
-        scene.render(&band);
+        var band_linear = lib.frame.BandLinear{
+            .colors = linear_colors,
+            .geometry = &geometry,
+        };
+        scene.render(&band_linear);
 
         frame_times[frame_idx] = timer.read() - frame_start;
     }

@@ -95,16 +95,18 @@ export fn renderWatchfaceWithConfig(
     static_scene.setTime(config_ptr.hour, config_ptr.minute);
 
     // Render scene
-    var band = lib.frame.Band{
-        .linear_colors = linear_colors.?,
-        .srgba_colors = srgba_colors.?,
+    var geometry = lib.frame.Geometry{
         .width = w,
         .height = h,
         .y_offset = 0,
         .total_height = h,
     };
+    var band_linear = lib.frame.BandLinear{
+        .colors = linear_colors.?,
+        .geometry = &geometry,
+    };
 
-    static_scene.render(&band);
+    static_scene.render(&band_linear);
 
     // Apply dither effect or convert to sRGB
     if (config_ptr.dither.enabled != 0) {
@@ -120,18 +122,23 @@ export fn renderWatchfaceWithConfig(
             dither_state.setErrorBuffer(&dither_error_buffer);
         }
 
-        lib.effect_dither.apply(&band, dither_cfg, &dither_state);
+        var band_srgba = lib.frame.BandSrgba{
+            .colors = srgba_colors.?,
+            .geometry = &geometry,
+        };
+
+        lib.effect_dither.apply(&band_linear, &band_srgba, dither_cfg, &dither_state);
     } else {
-        band.convertToSrgba();
+        var band_srgba = band_linear.toSrgba(srgba_colors.?);
 
         lib.effect_grain.apply(
-            &band,
+            &band_srgba,
             compat.toGrainConfig(&config_ptr.grain),
             compat.toGrainGeometry(&static_scene),
         );
 
         lib.effect_vignette.apply(
-            &band,
+            &band_srgba,
             compat.toVignetteConfig(&config_ptr.vignette),
             compat.toVignetteGeometry(&static_scene),
         );

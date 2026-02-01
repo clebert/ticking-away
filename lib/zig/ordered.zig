@@ -56,16 +56,18 @@ fn getThreshold(matrix: Matrix, x: usize, y: usize) f32 {
 }
 
 pub fn apply(
-    band: *frame.Band,
+    band_linear: *const frame.BandLinear,
+    band_srgba: *frame.BandSrgba,
     config: Config,
     palette: *const eink.PaletteCache,
 ) void {
     const spread = std.math.clamp(config.spread, 0.0, 1.0);
+    const band_geometry = band_linear.geometry;
 
-    for (0..band.height) |local_y| {
-        const global_y = band.globalY(local_y);
-        for (0..band.width) |x| {
-            const linear_color = band.linearColorAt(x, local_y);
+    for (0..band_geometry.height) |local_y| {
+        const global_y = band_geometry.globalY(local_y);
+        for (0..band_geometry.width) |x| {
+            const linear_color = band_linear.colorAt(x, local_y).*;
 
             var oklab = linear_color.toOklab();
 
@@ -75,7 +77,7 @@ pub fn apply(
             const color = palette.findClosest(oklab, config.chroma_weight);
             const srgba_color = palette.getSrgbaColor(color);
 
-            band.srgbaColorAt(x, local_y).* = .{
+            band_srgba.colorAt(x, local_y).* = .{
                 .r = srgba_color.r,
                 .g = srgba_color.g,
                 .b = srgba_color.b,

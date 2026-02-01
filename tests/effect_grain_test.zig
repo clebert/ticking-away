@@ -17,7 +17,6 @@ test "grain hash deterministic" {
 }
 
 test "grain apply" {
-    var linear_colors: [4]color_space.Linear = undefined;
     var srgba_colors = [_]color_space.Srgba{
         .{ .r = 128, .g = 128, .b = 128, .a = 255 },
         .{ .r = 128, .g = 128, .b = 128, .a = 255 },
@@ -25,17 +24,20 @@ test "grain apply" {
         .{ .r = 128, .g = 128, .b = 128, .a = 255 },
     };
 
-    var band = frame.Band{
-        .linear_colors = &linear_colors,
-        .srgba_colors = &srgba_colors,
+    const geometry = frame.Geometry{
         .width = 2,
         .height = 2,
         .y_offset = 0,
         .total_height = 2,
     };
 
+    var band_srgba = frame.BandSrgba{
+        .colors = &srgba_colors,
+        .geometry = &geometry,
+    };
+
     const config = grain.Config{ .intensity = 1.0, .scale = 1.0, .threshold = 0.1 };
-    grain.apply(&band, config, null);
+    grain.apply(&band_srgba, config, null);
 
     // Values should have changed but still be valid u8 values
     for (srgba_colors) |c| {

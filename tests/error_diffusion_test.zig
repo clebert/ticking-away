@@ -39,13 +39,21 @@ test "error diffusion output" {
 
     var srgba_colors: [2]color_space.Srgba = undefined;
 
-    var band = frame.Band{
-        .linear_colors = &linear_colors,
-        .srgba_colors = &srgba_colors,
+    const geometry = frame.Geometry{
         .width = 2,
         .height = 1,
         .y_offset = 0,
         .total_height = 1,
+    };
+
+    const band_linear = frame.BandLinear{
+        .colors = &linear_colors,
+        .geometry = &geometry,
+    };
+
+    var band_srgba = frame.BandSrgba{
+        .colors = &srgba_colors,
+        .geometry = &geometry,
     };
 
     const width: usize = 2;
@@ -54,7 +62,7 @@ test "error diffusion output" {
     var err = error_diffusion.ErrorBuffer.init(&backing, width);
 
     const config = error_diffusion.Config{ .algorithm = .atkinson };
-    error_diffusion.apply(&band, config, palette_cache, &err);
+    error_diffusion.apply(&band_linear, &band_srgba, config, palette_cache, &err);
 
     // Black should output black
     try std.testing.expectEqual(@as(u8, 0), srgba_colors[0].r);

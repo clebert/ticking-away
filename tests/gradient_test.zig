@@ -17,23 +17,24 @@ test "angle normalization edge cases" {
     const p = prism.Prism.init(.{ 50, 50 }, 40);
 
     var linear_colors: [100 * 100]color_space.Linear = undefined;
-    var srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&linear_colors, color_space.Linear.black);
 
-    var band = frame.Band{
-        .linear_colors = &linear_colors,
-        .srgba_colors = &srgba_colors,
+    const geometry = frame.Geometry{
         .width = 100,
         .height = 100,
         .y_offset = 0,
         .total_height = 100,
+    };
+    var band_linear = frame.BandLinear{
+        .colors = &linear_colors,
+        .geometry = &geometry,
     };
 
     const cache = rainbow.getPaletteCache(.saturated);
 
     // Test with negative-ish angles that need normalization
     gradient.render(
-        &band,
+        &band_linear,
         .{
             .mode = .external,
             .origin_x = 50,
@@ -67,23 +68,24 @@ test "wrap around gradient at boundary" {
     const p = prism.Prism.init(.{ 50, 50 }, 40);
 
     var linear_colors: [100 * 100]color_space.Linear = undefined;
-    var srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&linear_colors, color_space.Linear.black);
 
-    var band = frame.Band{
-        .linear_colors = &linear_colors,
-        .srgba_colors = &srgba_colors,
+    const geometry = frame.Geometry{
         .width = 100,
         .height = 100,
         .y_offset = 0,
         .total_height = 100,
+    };
+    var band_linear = frame.BandLinear{
+        .colors = &linear_colors,
+        .geometry = &geometry,
     };
 
     const cache = rainbow.getPaletteCache(.saturated);
 
     // Gradient that wraps around: from near-tau to past 0
     gradient.render(
-        &band,
+        &band_linear,
         .{
             .mode = .external,
             .origin_x = 50,
@@ -118,20 +120,21 @@ test "internal vs external mode" {
 
     // External mode buffer
     var ext_linear_colors: [100 * 100]color_space.Linear = undefined;
-    var ext_srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&ext_linear_colors, color_space.Linear.black);
 
-    var ext_band = frame.Band{
-        .linear_colors = &ext_linear_colors,
-        .srgba_colors = &ext_srgba_colors,
+    const ext_geometry = frame.Geometry{
         .width = 100,
         .height = 100,
         .y_offset = 0,
         .total_height = 100,
     };
+    var ext_band_linear = frame.BandLinear{
+        .colors = &ext_linear_colors,
+        .geometry = &ext_geometry,
+    };
 
     gradient.render(
-        &ext_band,
+        &ext_band_linear,
         .{
             .mode = .external,
             .origin_x = 50,
@@ -152,20 +155,21 @@ test "internal vs external mode" {
 
     // Internal mode buffer
     var int_linear_colors: [100 * 100]color_space.Linear = undefined;
-    var int_srgba_colors: [100 * 100]color_space.Srgba = undefined;
     @memset(&int_linear_colors, color_space.Linear.black);
 
-    var int_band = frame.Band{
-        .linear_colors = &int_linear_colors,
-        .srgba_colors = &int_srgba_colors,
+    const int_geometry = frame.Geometry{
         .width = 100,
         .height = 100,
         .y_offset = 0,
         .total_height = 100,
     };
+    var int_band_linear = frame.BandLinear{
+        .colors = &int_linear_colors,
+        .geometry = &int_geometry,
+    };
 
     gradient.render(
-        &int_band,
+        &int_band_linear,
         .{
             .mode = .internal,
             .origin_x = 50,

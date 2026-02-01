@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const color_space = @import("color_space.zig");
-const frame = @import("frame.zig");
 const effect_grain = @import("effect_grain.zig");
+const frame = @import("frame.zig");
 
 const default_background: u8 = 35;
 const default_strength: f32 = 0.4;
@@ -20,7 +20,7 @@ pub const Geometry = struct {
 };
 
 pub fn apply(
-    band: *frame.Band,
+    band_srgba: *frame.BandSrgba,
     config: Config,
     geometry: Geometry,
 ) void {
@@ -33,18 +33,19 @@ pub fn apply(
     const cy = geometry.center_y;
     const radius = geometry.radius;
     const r2 = radius * radius;
+    const band_geometry = band_srgba.geometry;
 
-    const width_f: f32 = @floatFromInt(band.width);
-    const total_height_f: f32 = @floatFromInt(band.total_height);
+    const width_f: f32 = @floatFromInt(band_geometry.width);
+    const total_height_f: f32 = @floatFromInt(band_geometry.total_height);
     const max_dist = @sqrt(width_f * width_f + total_height_f * total_height_f) * 0.5;
     const inv_dist_range = 1.0 / (max_dist - radius);
 
-    for (0..band.height) |local_y| {
-        const global_y = band.globalY(local_y);
+    for (0..band_geometry.height) |local_y| {
+        const global_y = band_geometry.globalY(local_y);
         const dy = @as(f32, @floatFromInt(global_y)) - cy;
         const dy2 = dy * dy;
 
-        for (0..band.width) |x| {
+        for (0..band_geometry.width) |x| {
             const dx = @as(f32, @floatFromInt(x)) - cx;
             const dist2 = dx * dx + dy2;
 
@@ -60,7 +61,7 @@ pub fn apply(
                 const dither = (@as(f32, @floatFromInt(hash & 0xFF)) / 255.0 - 0.5) * 2.0;
 
                 const grey: u8 = @intFromFloat(std.math.clamp(bg_base * vignette_factor + dither, 0.0, 255.0));
-                band.srgbaColorAt(x, local_y).* = .{ .r = grey, .g = grey, .b = grey, .a = 255 };
+                band_srgba.colorAt(x, local_y).* = .{ .r = grey, .g = grey, .b = grey, .a = 255 };
             }
         }
     }

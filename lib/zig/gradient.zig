@@ -34,7 +34,7 @@ inline fn normalizeAngle(a: f32) f32 {
 }
 
 pub fn render(
-    band: *frame.Band,
+    band_linear: *frame.BandLinear,
     config: Config,
     geometry: Geometry,
     cache: *const rainbow.PaletteCache,
@@ -63,45 +63,45 @@ pub fn render(
     const a1 = if (wrap_around) normalizeAngle(a1_sorted - eps) else @max(a1_sorted - eps, 0);
     const a2 = if (wrap_around) normalizeAngle(a2_sorted + eps) else @min(a2_sorted + eps, tau - 0.0001);
 
+    const band_geometry = band_linear.geometry;
+
     var x_start: usize = 0;
-    var x_end: usize = band.width;
+    var x_end: usize = band_geometry.width;
 
     var y_start: usize = 0;
-    var y_end: usize = band.height;
-
-    const geo_prism = geometry.prism;
+    var y_end: usize = band_geometry.height;
 
     if (config.mode == .internal) {
-        const v0 = geo_prism.vertices.get(.apex);
-        const v1 = geo_prism.vertices.get(.bottom_right);
-        const v2 = geo_prism.vertices.get(.bottom_left);
+        const v0 = geometry.prism.vertices.get(.apex);
+        const v1 = geometry.prism.vertices.get(.bottom_right);
+        const v2 = geometry.prism.vertices.get(.bottom_left);
         const min_x = @min(@min(v0[0], v1[0]), v2[0]);
         const max_x = @max(@max(v0[0], v1[0]), v2[0]);
         const min_y = @min(@min(v0[1], v1[1]), v2[1]);
         const max_y = @max(@max(v0[1], v1[1]), v2[1]);
 
         x_start = @intFromFloat(@max(min_x, 0));
-        x_end = @intFromFloat(@min(max_x + 1, @as(f32, @floatFromInt(band.width))));
+        x_end = @intFromFloat(@min(max_x + 1, @as(f32, @floatFromInt(band_geometry.width))));
 
-        const band_start_f: f32 = @floatFromInt(band.y_offset);
-        const band_end_f: f32 = @floatFromInt(band.y_offset + band.height);
+        const band_start_f: f32 = @floatFromInt(band_geometry.y_offset);
+        const band_end_f: f32 = @floatFromInt(band_geometry.y_offset + band_geometry.height);
 
         if (max_y < band_start_f or min_y > band_end_f) return;
 
         y_start = if (min_y <= band_start_f) 0 else @intFromFloat(min_y - band_start_f);
-        y_end = if (max_y >= band_end_f) band.height else @min(band.height, @as(usize, @intFromFloat(max_y - band_start_f)) + 1);
+        y_end = if (max_y >= band_end_f) band_geometry.height else @min(band_geometry.height, @as(usize, @intFromFloat(max_y - band_start_f)) + 1);
     }
 
     const radius_sq = geometry.radius * geometry.radius;
 
     for (y_start..y_end) |local_y| {
-        const global_y = band.globalY(local_y);
+        const global_y = band_geometry.globalY(local_y);
         const py = @as(f32, @floatFromInt(global_y)) + 0.5;
 
         for (x_start..x_end) |x| {
             const px = @as(f32, @floatFromInt(x)) + 0.5;
 
-            const inside = geo_prism.containsPoint(px, py);
+            const inside = geometry.prism.containsPoint(px, py);
 
             if (config.mode == .external) {
                 const dx = px - geometry.center_x;
@@ -137,7 +137,7 @@ pub fn render(
             const t_color = if (config.reverse_spectrum) 1.0 - t_color_raw else t_color_raw;
 
             const col = cache.interpolate(t_color);
-            const p = band.linearColorAt(x, local_y);
+            const p = band_linear.colorAt(x, local_y);
             const intensity_vec: @Vector(4, f32) = @splat(config.intensity);
             p.vec = p.vec + col.vec * intensity_vec;
         }

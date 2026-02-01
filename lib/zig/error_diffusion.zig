@@ -60,7 +60,8 @@ pub const ErrorBuffer = struct {
 };
 
 pub fn apply(
-    band: *frame.Band,
+    band_linear: *const frame.BandLinear,
+    band_srgba: *frame.BandSrgba,
     config: Config,
     palette: *const eink.PaletteCache,
     err: *ErrorBuffer,
@@ -69,14 +70,16 @@ pub fn apply(
         err.clear();
     }
 
-    for (0..band.height) |local_y| {
-        const global_y = band.globalY(local_y);
+    const band_geometry = band_linear.geometry;
+
+    for (0..band_geometry.height) |local_y| {
+        const global_y = band_geometry.globalY(local_y);
         const left_to_right = (global_y % 2 == 0);
 
-        for (0..band.width) |i| {
-            const x = if (left_to_right) i else band.width - 1 - i;
+        for (0..band_geometry.width) |i| {
+            const x = if (left_to_right) i else band_geometry.width - 1 - i;
 
-            const linear_color = band.linearColorAt(x, local_y).*;
+            const linear_color = band_linear.colorAt(x, local_y).*;
             const quant: QuantResult = if (config.oklab_error) blk: {
                 var oklab = linear_color.toOklab();
                 oklab.vec[0] = std.math.clamp(oklab.vec[0] + err.row(0, 0)[x], 0.0, 1.0);
@@ -110,7 +113,7 @@ pub fn apply(
             };
 
             const srgba_color = palette.getSrgbaColor(quant.color);
-            band.srgbaColorAt(x, local_y).* = .{
+            band_srgba.colorAt(x, local_y).* = .{
                 .r = srgba_color.r,
                 .g = srgba_color.g,
                 .b = srgba_color.b,
@@ -118,7 +121,7 @@ pub fn apply(
             };
 
             const x_i: i32 = @intCast(x);
-            const width_i: i32 = @intCast(band.width);
+            const width_i: i32 = @intCast(band_geometry.width);
             const step: i32 = if (left_to_right) 1 else -1;
             const fwd = x_i + step;
             const back = x_i - step;
