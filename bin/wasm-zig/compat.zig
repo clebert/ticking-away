@@ -234,7 +234,7 @@ pub fn toVignetteGeometry(s: *const lib.watchface.Scene) lib.effect_vignette.Geo
 }
 
 /// Convert C dither config to Zig error diffusion config.
-fn toErrorDiffusionConfig(c: *const SceneDitherConfig) lib.error_diffusion.Config {
+pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) lib.effect_error_diffusion.Config {
     return .{
         .algorithm = switch (c.algorithm) {
             .atkinson => .atkinson,
@@ -247,7 +247,7 @@ fn toErrorDiffusionConfig(c: *const SceneDitherConfig) lib.error_diffusion.Confi
 }
 
 /// Convert C dither config to Zig ordered dither config.
-fn toOrderedDitherConfig(c: *const SceneDitherConfig) lib.ordered.Config {
+pub fn toOrderedDitherConfig(c: *const SceneDitherConfig) lib.effect_ordered_dithering.Config {
     return .{
         .matrix = switch (c.ordered_matrix) {
             .bayer_2x2 => .bayer2x2,
@@ -260,30 +260,11 @@ fn toOrderedDitherConfig(c: *const SceneDitherConfig) lib.ordered.Config {
 }
 
 /// Convert C dither palette mode to Zig palette type.
-fn toDitherPaletteType(mode: DitherPaletteMode) lib.eink.PaletteType {
+pub fn toDitherPaletteType(mode: DitherPaletteMode) lib.eink.PaletteType {
     return switch (mode) {
         .ideal => .ideal,
         .spectra6_inky => .spectra6_inky,
         .spectra6_epdopt => .spectra6_epdopt,
         .spectra6_trmnl => .spectra6_trmnl,
-    };
-}
-
-/// Build dither config from WASM config.
-pub fn toDitherConfig(
-    c: *const WatchfaceConfig,
-    s: *const lib.watchface.Scene,
-) lib.effect_dither.Config {
-    const mode: lib.effect_dither.Mode = switch (c.dither.dither_type) {
-        .error_diffusion => .error_diffusion,
-        .ordered => .ordered,
-    };
-
-    return .{
-        .mode = mode,
-        .palette_type = toDitherPaletteType(c.dither.mode),
-        .error_diffusion = if (mode == .error_diffusion) toErrorDiffusionConfig(&c.dither) else null,
-        .ordered = if (mode == .ordered) toOrderedDitherConfig(&c.dither) else null,
-        .boundary_mask = lib.boundary.Boundary.init(s.center, s.radius),
     };
 }

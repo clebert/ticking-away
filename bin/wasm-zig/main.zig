@@ -16,10 +16,6 @@ var scene_initialized: bool = false;
 var last_width: usize = 0;
 var last_height: usize = 0;
 
-var dither_state: lib.effect_dither.State = undefined;
-var dither_state_initialized: bool = false;
-var dither_error_buffer: lib.error_diffusion.ErrorBuffer = undefined;
-
 // Static config buffer for JS to write into
 var config_buffer: compat.WatchfaceConfig = undefined;
 
@@ -60,7 +56,7 @@ fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
     }
 
     const dither_size =
-        w * lib.error_diffusion.ErrorBuffer.rows * lib.error_diffusion.ErrorBuffer.channels;
+        w * lib.effect_error_diffusion.ErrorBuffer.rows * lib.effect_error_diffusion.ErrorBuffer.channels;
 
     dither_error_backing = try allocator.alloc(f32, dither_size);
 }
@@ -110,24 +106,26 @@ export fn renderWatchfaceWithConfig(
 
     // Apply dither effect or convert to sRGB
     if (config_ptr.dither.enabled != 0) {
-        const dither_cfg = compat.toDitherConfig(config_ptr, &static_scene);
-
-        if (!dither_state_initialized or dither_state.palette_cache != lib.eink.getPaletteCache(dither_cfg.palette_type)) {
-            dither_state = lib.effect_dither.State.init(dither_cfg.palette_type);
-            dither_state_initialized = true;
-        }
-
-        if (dither_cfg.mode == .error_diffusion) {
-            dither_error_buffer = lib.error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
-            dither_state.setErrorBuffer(&dither_error_buffer);
-        }
+        const palette_type = compat.toDitherPaletteType(config_ptr.dither.mode);
+        const palette = lib.eink.getPaletteCache(palette_type);
 
         var band_srgba = lib.frame.BandSrgba{
             .colors = srgba_colors.?,
             .geometry = &geometry,
         };
 
-        lib.effect_dither.apply(&band_linear, &band_srgba, dither_cfg, &dither_state);
+        switch (config_ptr.dither.dither_type) {
+            .error_diffusion => {
+                var err = lib.effect_error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
+                lib.effect_error_diffusion.apply(&band_linear, &band_srgba, compat.toErrorDiffusionConfig(&config_ptr.dither), palette, &err);
+            },
+            .ordered => {
+                lib.effect_ordered_dithering.apply(&band_linear, &band_srgba, compat.toOrderedDitherConfig(&config_ptr.dither), palette);
+            },
+        }
+
+        const bnd = lib.boundary.Boundary.init(static_scene.center, static_scene.radius);
+        lib.effect_boundary_mask.apply(&band_srgba, bnd, palette.getSrgbaColor(.white));
     } else {
         var band_srgba = band_linear.toSrgba(srgba_colors.?);
 
