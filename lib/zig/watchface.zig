@@ -9,7 +9,7 @@ const glow = @import("glow.zig");
 const gradient = @import("gradient.zig");
 const line = @import("line.zig");
 const markers = @import("markers.zig");
-const prism = @import("prism.zig");
+const Prism = @import("Prism.zig");
 const rainbow = @import("rainbow.zig");
 const spectrum = @import("spectrum.zig");
 const vec2 = @import("vec2.zig");
@@ -38,12 +38,13 @@ pub const RayConfig = struct {
 pub const Scene = struct {
     width: usize,
     height: usize,
+
     center: vec2.Vec2,
     radius: f32,
 
     time_minutes: f32 = 0,
 
-    prism: prism.Prism = undefined,
+    prism: Prism = undefined,
     prism_dirty: bool = true,
 
     prism_config: PrismConfig = .{},
@@ -92,7 +93,7 @@ pub const Scene = struct {
 
     fn updatePrism(self: *Scene) void {
         const prism_size = self.prism_config.size * self.radius;
-        self.prism = prism.Prism.init(self.center, prism_size);
+        self.prism = Prism.init(self.center, prism_size);
         self.prism_dirty = false;
     }
 

@@ -28,20 +28,12 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Gui
 - **Types**: `PascalCase`, acronyms as single words (`Rgb`, not `RGB`)
 - **Functions/variables**: `camelCase`
 - **Comments**: Only for math formulas or non-obvious algorithms; avoid trivial comments
-- **Avoid redundancy**: Names should be clear without repeating context from the namespace
 - **SIMD**: Use `@Vector` types for calculations to leverage hardware acceleration
-- **Proper types**: Use `bool` for booleans, not integers; use appropriate numeric types
-- **Separation of concerns**: Keep modules focused on a single responsibility
-- **No abbreviations**: Use full names (`distance`, not `dist`); only abbreviate when commonly
-  accepted (`ctx`)
-- **Module-as-namespace imports**: Import modules as `const color = @import("color.zig")`, then
-  access types as `color.Color`. Don't import types directly.
-- **No aliases**: Don't create aliases like `const MarkerConfig = markers.Config`. Use the qualified
-  name (`markers.Config`) directly.
-- **No re-exports**: Don't re-export imports (`pub const ordered = @import("ordered.zig")`).
-  Exception: `root.zig` may re-export for the public API.
+- **No abbreviations**: Use full names (`distance`, not `dist`)
+- **No aliases**: Don't create aliases like `const FooBar = foo.Bar`. Use the qualified name
+  (`foo.Bar`) directly.
+- **No re-exports**: Don't re-export imports (`pub const foo = @import("foo.zig")`). Exception:
+  `root.zig` may re-export for the public API.
 - **No fake `pub`**: Don't mark unused code as `pub` to suppress warnings. Remove it instead.
-- **No module.Type naming**: Don't name a type the same as its file (e.g., `palette.Palette`). This
-  conflicts when importing the module with the same name as a variable.
 - **Const slices**: Use `[]const T` for slice parameters that are only read from; use `[]T` only for
   output buffers that are written to.

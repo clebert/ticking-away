@@ -5,7 +5,7 @@ const lib = @import("lib");
 const boundary = lib.boundary;
 const clock = lib.clock;
 const rainbow = lib.rainbow;
-const prism = lib.prism;
+const Prism = lib.Prism;
 const spectrum = lib.spectrum;
 const vec2 = lib.vec2;
 
@@ -23,7 +23,7 @@ test "07:40 vertex entry at v2" {
     const prism_size: f32 = 100.0;
 
     const center = vec2.xy(cx, cy);
-    const p = prism.Prism.init(center, prism_size);
+    const p = Prism.init(center, prism_size);
     const bnd = boundary.Boundary.init(center, radius);
 
     // 40 minutes
@@ -100,10 +100,10 @@ test "bounce logic for entry at v2" {
     const prism_size: f32 = 100.0;
 
     const center = vec2.xy(cx, cy);
-    const p = prism.Prism.init(center, prism_size);
+    const p = Prism.init(center, prism_size);
 
     // Simulate entry at bottom_left (bottom edge, u=1.0)
-    const entry_edge: prism.Edge = .bottom;
+    const entry_edge: Prism.Edge = .bottom;
     const entry_u: f32 = 1.0;
 
     // Hour angle pointing toward lower-left (should exit on edge 1)
@@ -117,7 +117,7 @@ test "bounce logic for entry at v2" {
     );
 
     // Should need bounce at apex
-    try testing.expectEqual(prism.Vertex.apex, bounce_vertex.?);
+    try testing.expectEqual(Prism.Vertex.apex, bounce_vertex.?);
 }
 
 test "03:15 exit rays should be valid" {
@@ -127,7 +127,7 @@ test "03:15 exit rays should be valid" {
     const prism_size: f32 = 117.0; // 65% of radius
 
     const center = vec2.xy(cx, cy);
-    const p = prism.Prism.init(center, prism_size);
+    const p = Prism.init(center, prism_size);
     const bnd = boundary.Boundary.init(center, radius);
 
     // 03:15 - minute at 15, hour at 3

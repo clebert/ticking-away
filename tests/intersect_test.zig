@@ -4,7 +4,7 @@ const testing = std.testing;
 const lib = @import("lib");
 const boundary = lib.boundary;
 const intersect = lib.intersect;
-const prism = lib.prism;
+const Prism = lib.Prism;
 const ray = lib.ray;
 const vec2 = lib.vec2;
 
@@ -58,7 +58,7 @@ test "ray segment miss outside" {
 // Ray-Prism tests
 
 test "prism find entry from left" {
-    const p = prism.Prism.init(vec2.xy(200, 200), 100);
+    const p = Prism.init(vec2.xy(200, 200), 100);
 
     // Ray from left going right toward center
     const r = ray.Ray.init(vec2.xy(100, 200), vec2.xy(1, 0));
@@ -69,7 +69,7 @@ test "prism find entry from left" {
 }
 
 test "prism find entry miss" {
-    const p = prism.Prism.init(vec2.xy(200, 200), 100);
+    const p = Prism.init(vec2.xy(200, 200), 100);
 
     // Ray going away from prism
     const r = ray.Ray.init(vec2.xy(100, 100), vec2.xy(-1, 0));
@@ -79,7 +79,7 @@ test "prism find entry miss" {
 }
 
 test "prism find exit from center" {
-    const p = prism.Prism.init(vec2.xy(200, 200), 100);
+    const p = Prism.init(vec2.xy(200, 200), 100);
 
     // Ray from center going right (angle = 0)
     const hit = intersect.rayPrismExit(vec2.xy(200, 200), 0.0, p);
@@ -90,7 +90,7 @@ test "prism find exit from center" {
 }
 
 test "prism find exit downward" {
-    const p = prism.Prism.init(vec2.xy(200, 200), 100);
+    const p = Prism.init(vec2.xy(200, 200), 100);
 
     // Ray from center going down (angle = PI/2)
     const hit = intersect.rayPrismExit(vec2.xy(200, 200), std.math.pi / 2.0, p);

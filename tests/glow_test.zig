@@ -5,7 +5,7 @@ const lib = @import("lib");
 const frame = lib.frame;
 const color_space = lib.color_space;
 const glow = lib.glow;
-const prism = lib.prism;
+const Prism = lib.Prism;
 const line = lib.line;
 const vec2 = lib.vec2;
 
@@ -78,7 +78,7 @@ test "renderGlowLine respects clipping" {
     };
 
     // Clip to small triangle on left side
-    const tri = prism.Prism.init(vec2.xy(5, 16), 10);
+    const tri = Prism.init(vec2.xy(5, 16), 10);
 
     glow.renderLine(&band_linear, seg, config, .{ .prism = &tri }, null);
 
@@ -148,7 +148,7 @@ test "renderPrismGlow produces glow inside triangle" {
 
     @memset(&linear_colors, color_space.Linear.black);
 
-    const tri = prism.Prism.init(vec2.xy(32, 36), 44);
+    const tri = Prism.init(vec2.xy(32, 36), 44);
 
     const glow_color = color_space.Linear.white;
     const glow_width: f32 = 8;
@@ -195,7 +195,7 @@ test "renderGlowLine excludes triangle" {
     };
 
     // Exclude triangle in center
-    const exclude = prism.Prism.init(vec2.xy(16, 18), 12);
+    const exclude = Prism.init(vec2.xy(16, 18), 12);
 
     glow.renderLine(&band_linear, seg, config, null, &exclude);
 

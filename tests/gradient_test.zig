@@ -8,13 +8,13 @@ const frame = lib.frame;
 const color_space = lib.color_space;
 const gradient = lib.gradient;
 const rainbow = lib.rainbow;
-const prism = lib.prism;
+const Prism = lib.Prism;
 
 test "angle normalization edge cases" {
     // Test via the gradient render function behavior
     // We can't directly test normalizeAngle since it's not pub,
     // but we can verify the gradient handles wrap-around correctly
-    const p = prism.Prism.init(.{ 50, 50 }, 40);
+    const p = Prism.init(.{ 50, 50 }, 40);
 
     var linear_colors: [100 * 100]color_space.Linear = undefined;
     @memset(&linear_colors, color_space.Linear.black);
@@ -65,7 +65,7 @@ test "angle normalization edge cases" {
 
 test "wrap around gradient at boundary" {
     // Test that a gradient spanning across 0/tau boundary works
-    const p = prism.Prism.init(.{ 50, 50 }, 40);
+    const p = Prism.init(.{ 50, 50 }, 40);
 
     var linear_colors: [100 * 100]color_space.Linear = undefined;
     @memset(&linear_colors, color_space.Linear.black);
@@ -115,7 +115,7 @@ test "wrap around gradient at boundary" {
 }
 
 test "internal vs external mode" {
-    const p = prism.Prism.init(.{ 50, 50 }, 30);
+    const p = Prism.init(.{ 50, 50 }, 30);
     const cache = rainbow.getPaletteCache(.saturated);
 
     // External mode buffer

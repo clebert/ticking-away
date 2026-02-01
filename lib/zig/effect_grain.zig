@@ -2,7 +2,7 @@ const std = @import("std");
 
 const color_space = @import("color_space.zig");
 const frame = @import("frame.zig");
-const prism = @import("prism.zig");
+const Prism = @import("Prism.zig");
 
 pub const Config = struct {
     intensity: f32 = 0.5,
@@ -15,7 +15,7 @@ pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
     radius: f32,
-    prism: ?prism.Prism = null,
+    prism: ?Prism = null,
 };
 
 pub fn apply(

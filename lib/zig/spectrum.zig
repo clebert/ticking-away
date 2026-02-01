@@ -3,7 +3,7 @@ const std = @import("std");
 const boundary = @import("boundary.zig");
 const clock = @import("clock.zig");
 const intersect = @import("intersect.zig");
-const prism = @import("prism.zig");
+const Prism = @import("Prism.zig");
 const rainbow = @import("rainbow.zig");
 const ray = @import("ray.zig");
 const vec2 = @import("vec2.zig");
@@ -26,7 +26,7 @@ const ColorPath = struct {
 pub const Paths = struct {
     entry_ray: ?PathSegment = null,
     entry_point: vec2.Vec2 = vec2.xy(0, 0),
-    entry_edge: prism.Edge = .right,
+    entry_edge: Prism.Edge = .right,
     entry_u: f32 = 0,
     needs_bounce: bool = false,
     bounce_point: vec2.Vec2 = vec2.xy(0, 0),
@@ -37,7 +37,7 @@ pub const Paths = struct {
         entry: vec2.Vec2,
         hour_angle: f32,
         rainbow_spread: f32,
-        p: prism.Prism,
+        p: Prism,
         b: boundary.Boundary,
     ) Paths {
         var paths = Paths{};
@@ -102,11 +102,11 @@ pub const Paths = struct {
 };
 
 pub const EdgePosition = union(enum) {
-    on_edge: prism.Edge,
-    at_vertex: prism.Vertex,
+    on_edge: Prism.Edge,
+    at_vertex: Prism.Vertex,
 };
 
-pub fn classifyEdgePosition(edge: prism.Edge, u: f32) EdgePosition {
+pub fn classifyEdgePosition(edge: Prism.Edge, u: f32) EdgePosition {
     if (u < vertex_threshold) {
         return .{ .at_vertex = edge.startVertex() };
     } else if (u > 1.0 - vertex_threshold) {
@@ -117,11 +117,11 @@ pub fn classifyEdgePosition(edge: prism.Edge, u: f32) EdgePosition {
 }
 
 pub fn computeBounceVertex(
-    entry_edge: prism.Edge,
+    entry_edge: Prism.Edge,
     entry_u: f32,
     hour_angle: f32,
-    p: prism.Prism,
-) ?prism.Vertex {
+    p: Prism,
+) ?Prism.Vertex {
     const entry_pos = classifyEdgePosition(entry_edge, entry_u);
     const prism_center = p.centroid();
 

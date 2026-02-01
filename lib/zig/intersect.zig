@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const boundary = @import("boundary.zig");
-const prism = @import("prism.zig");
+const Prism = @import("Prism.zig");
 const ray = @import("ray.zig");
 const vec2 = @import("vec2.zig");
 
@@ -13,7 +13,7 @@ pub const Hit = struct {
     point: vec2.Vec2,
     t: f32,
     u: f32,
-    edge: prism.Edge,
+    edge: Prism.Edge,
 };
 
 pub fn raySegment(
@@ -56,7 +56,7 @@ pub fn raySegment(
     };
 }
 
-pub fn rayPrismEntry(r: ray.Ray, tri: prism.Prism) ?Hit {
+pub fn rayPrismEntry(r: ray.Ray, tri: Prism) ?Hit {
     const scale = prismScale(tri);
     const eps_t = eps_rel * scale;
     const eps_u = eps_rel;
@@ -64,7 +64,7 @@ pub fn rayPrismEntry(r: ray.Ray, tri: prism.Prism) ?Hit {
     var best: ?Hit = null;
     var best_t: f32 = std.math.inf(f32);
 
-    inline for (std.meta.tags(prism.Edge)) |edge| {
+    inline for (std.meta.tags(Prism.Edge)) |edge| {
         const segment = tri.getEdge(edge);
         if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
             if (hit.t < best_t) {
@@ -82,7 +82,7 @@ pub fn rayPrismEntry(r: ray.Ray, tri: prism.Prism) ?Hit {
     return best;
 }
 
-pub fn rayPrismExit(origin: vec2.Vec2, angle: f32, tri: prism.Prism) ?Hit {
+pub fn rayPrismExit(origin: vec2.Vec2, angle: f32, tri: Prism) ?Hit {
     const r = ray.Ray.fromAngle(origin, angle);
     const scale = prismScale(tri);
     const eps_t = eps_rel * scale;
@@ -91,7 +91,7 @@ pub fn rayPrismExit(origin: vec2.Vec2, angle: f32, tri: prism.Prism) ?Hit {
     var best: ?Hit = null;
     var best_t: f32 = 0.0;
 
-    inline for (std.meta.tags(prism.Edge)) |edge| {
+    inline for (std.meta.tags(Prism.Edge)) |edge| {
         const segment = tri.getEdge(edge);
         if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
             if (hit.t > best_t) {
@@ -113,7 +113,7 @@ pub fn rayBoundary(r: ray.Ray, circ: boundary.Boundary) ?vec2.Vec2 {
     const oc = r.origin - circ.center;
     const a = vec2.dot(r.direction, r.direction);
     const b = 2.0 * vec2.dot(oc, r.direction);
-    const c = vec2.dot(oc, oc) - circ.radius_sq;
+    const c = vec2.dot(oc, oc) - circ.radius * circ.radius;
 
     const discriminant = b * b - 4.0 * a * c;
     if (discriminant < 0) return null;
@@ -128,9 +128,9 @@ pub fn rayBoundary(r: ray.Ray, circ: boundary.Boundary) ?vec2.Vec2 {
     return r.pointAt(t);
 }
 
-fn prismScale(tri: prism.Prism) f32 {
+fn prismScale(tri: Prism) f32 {
     var total: f32 = 0.0;
-    inline for (std.meta.tags(prism.Edge)) |edge| {
+    inline for (std.meta.tags(Prism.Edge)) |edge| {
         const segment = tri.getEdge(edge);
         const delta = segment.end - segment.start;
         total += vec2.length(delta);

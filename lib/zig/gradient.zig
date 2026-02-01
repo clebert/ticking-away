@@ -4,7 +4,7 @@ const pi = std.math.pi;
 
 const color_space = @import("color_space.zig");
 const frame = @import("frame.zig");
-const prism = @import("prism.zig");
+const Prism = @import("Prism.zig");
 const rainbow = @import("rainbow.zig");
 
 const Mode = enum {
@@ -26,7 +26,7 @@ pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
     radius: f32,
-    prism: prism.Prism,
+    prism: Prism,
 };
 
 inline fn normalizeAngle(a: f32) f32 {
@@ -92,8 +92,6 @@ pub fn render(
         y_end = if (max_y >= band_end_f) band_geometry.height else @min(band_geometry.height, @as(usize, @intFromFloat(max_y - band_start_f)) + 1);
     }
 
-    const radius_sq = geometry.radius * geometry.radius;
-
     for (y_start..y_end) |local_y| {
         const global_y = band_geometry.globalY(local_y);
         const py = @as(f32, @floatFromInt(global_y)) + 0.5;
@@ -106,7 +104,7 @@ pub fn render(
             if (config.mode == .external) {
                 const dx = px - geometry.center_x;
                 const dy = py - geometry.center_y;
-                if (dx * dx + dy * dy > radius_sq) continue;
+                if (dx * dx + dy * dy > (geometry.radius * geometry.radius)) continue;
                 if (inside) continue;
             } else {
                 if (!inside) continue;

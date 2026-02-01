@@ -4,7 +4,7 @@ const clip = @import("clip.zig");
 const color_space = @import("color_space.zig");
 const frame = @import("frame.zig");
 const line = @import("line.zig");
-const prism = @import("prism.zig");
+const Prism = @import("Prism.zig");
 const vec2 = @import("vec2.zig");
 
 pub const Falloff = enum {
@@ -43,7 +43,7 @@ pub const Config = struct {
     } = .{ .uniform = 1.0 },
 };
 
-fn smoothPrismDistance(p: *const prism.Prism, point: vec2.Vec2, k: f32) f32 {
+fn smoothPrismDistance(p: *const Prism, point: vec2.Vec2, k: f32) f32 {
     const d0 = @sqrt(p.getEdge(.right).distanceSq(point));
     const d1 = @sqrt(p.getEdge(.bottom).distanceSq(point));
     const d2 = @sqrt(p.getEdge(.left).distanceSq(point));
@@ -60,7 +60,7 @@ pub fn renderLine(
     seg: line.Segment,
     config: Config,
     clip_to: ?clip.Region,
-    exclude: ?*const prism.Prism,
+    exclude: ?*const Prism,
 ) void {
     const glow_width = config.width;
     const glow_width_sq = glow_width * glow_width;
@@ -131,7 +131,7 @@ pub fn renderLine(
 
 pub fn renderPrismEdges(
     band_linear: *frame.BandLinear,
-    tri: prism.Prism,
+    tri: Prism,
     glow_color: color_space.Linear,
     glow_width: f32,
     intensity: f32,
