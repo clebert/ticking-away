@@ -38,22 +38,17 @@ pub const Segment = struct {
         };
     }
 
-    const DistanceResult = struct {
+    const Projection = struct {
         distance_sq: f32,
         t: f32,
     };
 
-    pub fn distanceSq(self: Segment, px: f32, py: f32) DistanceResult {
-        const to_x = px - self.start[0];
-        const to_y = py - self.start[1];
-        const dot_val = to_x * self.dir[0] + to_y * self.dir[1];
-        const t = @min(@max(dot_val * self.inv_len_sq, 0), 1);
+    pub fn project(self: Segment, point: vec2.Vec2) Projection {
+        const to_point = point - self.start;
+        const t = std.math.clamp(vec2.dot(to_point, self.dir) * self.inv_len_sq, 0, 1);
+        const proj = self.start + @as(vec2.Vec2, @splat(t)) * self.dir;
+        const delta = point - proj;
 
-        const proj_x = self.start[0] + t * self.dir[0];
-        const proj_y = self.start[1] + t * self.dir[1];
-        const dx = px - proj_x;
-        const dy = py - proj_y;
-
-        return .{ .distance_sq = dx * dx + dy * dy, .t = t };
+        return .{ .distance_sq = vec2.dot(delta, delta), .t = t };
     }
 };

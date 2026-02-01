@@ -4,6 +4,7 @@ const testing = std.testing;
 const lib = @import("lib");
 const boundary = lib.boundary;
 const intersect = lib.intersect;
+const line = lib.line;
 const Prism = lib.Prism;
 const ray = lib.ray;
 const vec2 = lib.vec2;
@@ -13,7 +14,8 @@ const vec2 = lib.vec2;
 test "ray segment hit middle" {
     // Ray from (0, 5) going right, segment from (10, 0) to (10, 10)
     const r = ray.Ray.init(vec2.xy(0, 5), vec2.xy(1, 0));
-    const hit = intersect.raySegment(r, vec2.xy(10, 0), vec2.xy(10, 10), 0.001, 0.00001);
+    const seg = line.Segment.init(vec2.xy(10, 0), vec2.xy(10, 10));
+    const hit = intersect.raySegment(r, seg, 0.001, 0.00001);
 
     try testing.expect(hit != null);
     try testing.expectApproxEqAbs(hit.?.point[0], 10.0, 0.001);
@@ -25,7 +27,8 @@ test "ray segment hit middle" {
 test "ray segment hit endpoint" {
     // Ray hitting near start of segment
     const r = ray.Ray.init(vec2.xy(0, 0), vec2.xy(1, 0));
-    const hit = intersect.raySegment(r, vec2.xy(10, 0), vec2.xy(10, 10), 0.001, 0.00001);
+    const seg = line.Segment.init(vec2.xy(10, 0), vec2.xy(10, 10));
+    const hit = intersect.raySegment(r, seg, 0.001, 0.00001);
 
     try testing.expect(hit != null);
     try testing.expectApproxEqAbs(hit.?.u, 0.0, 0.001);
@@ -34,7 +37,8 @@ test "ray segment hit endpoint" {
 test "ray segment miss parallel" {
     // Ray parallel to segment
     const r = ray.Ray.init(vec2.xy(0, 5), vec2.xy(0, 1));
-    const hit = intersect.raySegment(r, vec2.xy(10, 0), vec2.xy(10, 10), 0.001, 0.00001);
+    const seg = line.Segment.init(vec2.xy(10, 0), vec2.xy(10, 10));
+    const hit = intersect.raySegment(r, seg, 0.001, 0.00001);
 
     try testing.expect(hit == null);
 }
@@ -42,7 +46,8 @@ test "ray segment miss parallel" {
 test "ray segment miss behind" {
     // Ray going away from segment
     const r = ray.Ray.init(vec2.xy(20, 5), vec2.xy(1, 0));
-    const hit = intersect.raySegment(r, vec2.xy(10, 0), vec2.xy(10, 10), 0.001, 0.00001);
+    const seg = line.Segment.init(vec2.xy(10, 0), vec2.xy(10, 10));
+    const hit = intersect.raySegment(r, seg, 0.001, 0.00001);
 
     try testing.expect(hit == null);
 }
@@ -50,7 +55,8 @@ test "ray segment miss behind" {
 test "ray segment miss outside" {
     // Ray misses segment entirely (above it)
     const r = ray.Ray.init(vec2.xy(0, 15), vec2.xy(1, 0));
-    const hit = intersect.raySegment(r, vec2.xy(10, 0), vec2.xy(10, 10), 0.001, 0.00001);
+    const seg = line.Segment.init(vec2.xy(10, 0), vec2.xy(10, 10));
+    const hit = intersect.raySegment(r, seg, 0.001, 0.00001);
 
     try testing.expect(hit == null);
 }

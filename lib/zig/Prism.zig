@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const frame = @import("frame.zig");
+const line = @import("line.zig");
 const vec2 = @import("vec2.zig");
 
 pub const Vertex = enum(u2) {
@@ -35,31 +36,10 @@ pub const Edge = enum(u2) {
     }
 };
 
-pub const EdgeSegment = struct {
-    start: vec2.Vec2,
-    end: vec2.Vec2,
-
-    pub fn distanceSq(self: EdgeSegment, point: vec2.Vec2) f32 {
-        const dir = self.end - self.start;
-        const len_sq = vec2.dot(dir, dir);
-
-        if (len_sq < 1e-9) {
-            const delta = point - self.start;
-            return vec2.dot(delta, delta);
-        }
-
-        const to_point = point - self.start;
-        const t = @min(@max(vec2.dot(to_point, dir) / len_sq, 0), 1);
-        const proj = self.start + @as(vec2.Vec2, @splat(t)) * dir;
-        const delta = point - proj;
-
-        return vec2.dot(delta, delta);
-    }
-};
-
 const Self = @This();
 
 vertices: std.EnumArray(Vertex, vec2.Vec2),
+edges: std.EnumArray(Edge, line.Segment),
 
 pub fn init(center: vec2.Vec2, base_width: f32) Self {
     const sqrt3 = @sqrt(3.0);
@@ -67,13 +47,21 @@ pub fn init(center: vec2.Vec2, base_width: f32) Self {
     const base_offset = base_width * sqrt3 / 6.0;
     const half_base = base_width / 2.0;
 
-    return .{
-        .vertices = std.EnumArray(Vertex, vec2.Vec2).init(.{
-            .apex = vec2.xy(center[0], center[1] - apex_offset),
-            .bottom_right = vec2.xy(center[0] + half_base, center[1] + base_offset),
-            .bottom_left = vec2.xy(center[0] - half_base, center[1] + base_offset),
-        }),
-    };
+    const vertices = std.EnumArray(Vertex, vec2.Vec2).init(.{
+        .apex = vec2.xy(center[0], center[1] - apex_offset),
+        .bottom_right = vec2.xy(center[0] + half_base, center[1] + base_offset),
+        .bottom_left = vec2.xy(center[0] - half_base, center[1] + base_offset),
+    });
+
+    var edges: std.EnumArray(Edge, line.Segment) = undefined;
+    inline for (std.meta.tags(Edge)) |edge| {
+        edges.set(edge, line.Segment.init(
+            vertices.get(edge.startVertex()),
+            vertices.get(edge.endVertex()),
+        ));
+    }
+
+    return .{ .vertices = vertices, .edges = edges };
 }
 
 pub fn scanlineRange(self: Self, y: f32) ?frame.Range {
@@ -122,13 +110,6 @@ pub fn minY(self: Self) f32 {
 
 pub fn maxY(self: Self) f32 {
     return self.vertices.get(.bottom_right)[1];
-}
-
-pub fn getEdge(self: Self, edge: Edge) EdgeSegment {
-    return .{
-        .start = self.vertices.get(edge.startVertex()),
-        .end = self.vertices.get(edge.endVertex()),
-    };
 }
 
 pub fn centroid(self: Self) vec2.Vec2 {

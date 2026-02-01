@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const boundary = @import("boundary.zig");
+const line = @import("line.zig");
 const Prism = @import("Prism.zig");
 const ray = @import("ray.zig");
 const vec2 = @import("vec2.zig");
@@ -18,24 +19,22 @@ pub const Hit = struct {
 
 pub fn raySegment(
     r: ray.Ray,
-    segment_start: vec2.Vec2,
-    segment_end: vec2.Vec2,
+    seg: line.Segment,
     eps_t: f32,
     eps_u: f32,
 ) ?Hit {
-    const edge = segment_end - segment_start;
     const perp = vec2.xy(-r.direction[1], r.direction[0]);
-    const denom = vec2.dot(edge, perp);
+    const denom = vec2.dot(seg.dir, perp);
 
-    const edge_len = vec2.length(edge);
+    const edge_len = vec2.length(seg.dir);
     const dir_len = vec2.length(r.direction);
     var eps_denom = eps_parallel * edge_len * dir_len;
     if (eps_denom < eps_norm) eps_denom = eps_norm;
 
     if (@abs(denom) < eps_denom) return null;
 
-    const v = r.origin - segment_start;
-    const cross_ev = edge[0] * v[1] - edge[1] * v[0];
+    const v = r.origin - seg.start;
+    const cross_ev = seg.dir[0] * v[1] - seg.dir[1] * v[0];
     const t = cross_ev / denom;
 
     if (t < eps_t) return null;
@@ -46,7 +45,7 @@ pub fn raySegment(
 
     const u = std.math.clamp(u_raw, 0.0, 1.0);
     const u_vec: vec2.Vec2 = @splat(u);
-    const point = segment_start + edge * u_vec;
+    const point = seg.start + seg.dir * u_vec;
 
     return .{
         .point = point,
@@ -65,8 +64,7 @@ pub fn rayPrismEntry(r: ray.Ray, tri: Prism) ?Hit {
     var best_t: f32 = std.math.inf(f32);
 
     inline for (std.meta.tags(Prism.Edge)) |edge| {
-        const segment = tri.getEdge(edge);
-        if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
+        if (raySegment(r, tri.edges.get(edge), eps_t, eps_u)) |hit| {
             if (hit.t < best_t) {
                 best_t = hit.t;
                 best = .{
@@ -92,8 +90,7 @@ pub fn rayPrismExit(origin: vec2.Vec2, angle: f32, tri: Prism) ?Hit {
     var best_t: f32 = 0.0;
 
     inline for (std.meta.tags(Prism.Edge)) |edge| {
-        const segment = tri.getEdge(edge);
-        if (raySegment(r, segment.start, segment.end, eps_t, eps_u)) |hit| {
+        if (raySegment(r, tri.edges.get(edge), eps_t, eps_u)) |hit| {
             if (hit.t > best_t) {
                 best_t = hit.t;
                 best = .{
@@ -131,9 +128,7 @@ pub fn rayBoundary(r: ray.Ray, circ: boundary.Boundary) ?vec2.Vec2 {
 fn prismScale(tri: Prism) f32 {
     var total: f32 = 0.0;
     inline for (std.meta.tags(Prism.Edge)) |edge| {
-        const segment = tri.getEdge(edge);
-        const delta = segment.end - segment.start;
-        total += vec2.length(delta);
+        total += vec2.length(tri.edges.get(edge).dir);
     }
     return total / 3.0;
 }

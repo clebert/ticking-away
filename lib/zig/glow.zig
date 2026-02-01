@@ -44,9 +44,9 @@ pub const Config = struct {
 };
 
 fn smoothPrismDistance(p: *const Prism, point: vec2.Vec2, k: f32) f32 {
-    const d0 = @sqrt(p.getEdge(.right).distanceSq(point));
-    const d1 = @sqrt(p.getEdge(.bottom).distanceSq(point));
-    const d2 = @sqrt(p.getEdge(.left).distanceSq(point));
+    const d0 = @sqrt(p.edges.get(.right).project(point).distance_sq);
+    const d1 = @sqrt(p.edges.get(.bottom).project(point).distance_sq);
+    const d2 = @sqrt(p.edges.get(.left).project(point).distance_sq);
     return smoothMin(smoothMin(d0, d1, k), d2, k);
 }
 
@@ -106,7 +106,7 @@ pub fn renderLine(
                 if (tri.containsPoint(px, y_center)) continue;
             }
 
-            const result = seg.distanceSq(px, y_center);
+            const result = seg.project(vec2.xy(px, y_center));
             if (result.distance_sq >= glow_width_sq) continue;
 
             const distance = @sqrt(result.distance_sq);
