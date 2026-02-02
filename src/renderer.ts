@@ -38,8 +38,8 @@ function writeConfig(view: DataView, offset: number): void {
   view.setInt32(offset + 44, rays.palette.value, littleEndian);
   // ray.gradient_fill: i32 (offset 48)
   view.setInt32(offset + 48, rays.gradientFill.value ? 1 : 0, littleEndian);
-  // ray.reverse: i32 (offset 52)
-  view.setInt32(offset + 52, rays.reverseSpectrum.value ? 1 : 0, littleEndian);
+  // ray.reverse: i32 (offset 52) - red on top when hour < 6
+  view.setInt32(offset + 52, time.hours.value < 6 ? 1 : 0, littleEndian);
 
   // marker.visible: i32 (offset 56)
   view.setInt32(offset + 56, display.markers.value ? 1 : 0, littleEndian);

@@ -6,6 +6,9 @@ const defaults = {
     accelerated: false,
     accelerationFactor: 1,
   },
+  time: {
+    bounceMode: 2, // 0=Legacy, 1=Always, 2=Geometric
+  },
   prism: {
     size: 90,
     rainbowSpread: 50,
@@ -19,7 +22,6 @@ const defaults = {
     glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     gradientFill: true,
     palette: 2, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
-    reverseSpectrum: true, // Album art style: red on top, violet on bottom
   },
   markers: {
     length: 10,
@@ -158,7 +160,7 @@ export const time = {
     persistedLive ? initialTime.getMinutes() : (settings.timeMinutes ?? initialTime.getMinutes()),
   ),
   seconds: signal(initialTime.getSeconds()), // Used internally for animation
-  bounceMode: signal(settings.timeBounceMode ?? 0), // 0=Legacy, 1=Always, 2=Geometric
+  bounceMode: signal(settings.timeBounceMode ?? defaults.time.bounceMode),
 
   // Actions
   setHours(e: Event): void {
@@ -231,8 +233,6 @@ export const rays = {
   // Signals: rendering mode
   gradientFill: signal(settings.raysGradientFill ?? defaults.rays.gradientFill),
   palette: signal(settings.raysPalette ?? defaults.rays.palette),
-  reverseSpectrum: signal(settings.raysReverseSpectrum ?? defaults.rays.reverseSpectrum),
-
   // Actions
   setGlowWidth(e: Event): void {
     rays.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
@@ -248,10 +248,6 @@ export const rays = {
 
   setPalette(e: Event): void {
     rays.palette.value = parseInt((e.target as HTMLSelectElement).value, 10);
-  },
-
-  toggleReverseSpectrum(): void {
-    rays.reverseSpectrum.value = !rays.reverseSpectrum.value;
   },
 };
 
@@ -350,7 +346,7 @@ export const resetAll = {
       mode.accelerationFactor.value = defaults.mode.accelerationFactor;
 
       // Time
-      time.bounceMode.value = 0;
+      time.bounceMode.value = defaults.time.bounceMode;
 
       // Prism
       prism.size.value = defaults.prism.size;
@@ -365,7 +361,6 @@ export const resetAll = {
       rays.glowFalloff.value = defaults.rays.glowFalloff;
       rays.gradientFill.value = defaults.rays.gradientFill;
       rays.palette.value = defaults.rays.palette;
-      rays.reverseSpectrum.value = defaults.rays.reverseSpectrum;
 
       // Markers
       markers.length.value = defaults.markers.length;
