@@ -42,7 +42,7 @@ test "07:40 vertex entry at v2" {
         rainbow_spread,
         p,
         bnd,
-        false,
+        .legacy,
     );
 
     // Basic checks
@@ -144,7 +144,7 @@ test "03:15 exit rays should be valid" {
         rainbow_spread,
         p,
         bnd,
-        false,
+        .legacy,
     );
 
     // Should hit the prism

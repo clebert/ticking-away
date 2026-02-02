@@ -10,6 +10,12 @@ const vec2 = @import("vec2.zig");
 
 pub const vertex_threshold: f32 = 0.0014;
 
+pub const BounceMode = enum(i32) {
+    legacy = 0,
+    always = 1,
+    geometric = 2,
+};
+
 pub const PathSegment = struct {
     start: vec2.Vec2,
     end: vec2.Vec2,
@@ -39,7 +45,7 @@ pub const Paths = struct {
         rainbow_spread: f32,
         p: Prism,
         b: boundary.Boundary,
-        force_opposite_bounce: bool,
+        bounce_mode: BounceMode,
     ) Paths {
         var paths = Paths{};
 
@@ -55,15 +61,23 @@ pub const Paths = struct {
         paths.entry_u = entry_hit.u;
         paths.entry_ray = .{ .start = entry, .end = entry_hit.point };
 
-        const bounce_vertex = if (force_opposite_bounce) blk: {
-            const exit_hit = intersect.rayPrismExit(prism_center, hour_angle, p) orelse break :blk null;
-            break :blk exit_hit.edge.oppositeVertex();
-        } else computeBounceVertex(
-            entry_hit.edge,
-            entry_hit.u,
-            hour_angle,
-            p,
-        );
+        const bounce_vertex = switch (bounce_mode) {
+            .always => blk: {
+                const exit_hit = intersect.rayPrismExit(prism_center, hour_angle, p) orelse break :blk null;
+                break :blk exit_hit.edge.oppositeVertex();
+            },
+            .legacy => computeBounceVertex(
+                entry_hit.edge,
+                entry_hit.u,
+                hour_angle,
+                p,
+            ),
+            .geometric => computeGeometricBounce(
+                entry_hit.edge,
+                entry_hit.u,
+                hour_angle,
+            ),
+        };
         paths.needs_bounce = bounce_vertex != null;
         const bounce_point = if (bounce_vertex) |v| p.vertices.get(v) else vec2.xy(0, 0);
         paths.bounce_point = bounce_point;
@@ -183,6 +197,46 @@ pub fn computeBounceVertex(
                 }
             }
         },
+    }
+
+    return null;
+}
+
+/// Simple bounce rules based on hour and minute positions.
+pub fn computeGeometricBounce(entry_edge: Prism.Edge, entry_u: f32, hour_angle: f32) ?Prism.Vertex {
+    // Convert hour_angle to hour (0-11)
+    // angle_0 = -π/2 corresponds to 12 o'clock (hour 0)
+    const angle_0: f32 = -std.math.pi / 2.0;
+    var normalized = hour_angle - angle_0;
+    if (normalized < 0) normalized += std.math.tau;
+    if (normalized >= std.math.tau) normalized -= std.math.tau;
+    const hour: u4 = @intFromFloat(@mod(normalized * 6.0 / std.math.pi, 12.0));
+
+    // Convert entry position to minute (0-60)
+    // Each prism edge spans ~20 minutes: right=0-20, bottom=20-40, left=40-60
+    const minute: f32 = switch (entry_edge) {
+        .right => entry_u * 20.0,
+        .bottom => 20.0 + entry_u * 20.0,
+        .left => 40.0 + entry_u * 20.0,
+    };
+
+    switch (hour) {
+        0, 1, 2 => {
+            if (minute < 25.0 or minute > 55.0) return .bottom_left;
+        },
+        3 => {
+            if (minute < 25.0) return .bottom_left;
+        },
+        4, 5, 6, 7 => {
+            if (minute > 15.0 and minute < 45.0) return .apex;
+        },
+        8 => {
+            if (minute > 35.0) return .bottom_right;
+        },
+        9, 10, 11 => {
+            if (minute < 5.0 or minute > 35.0) return .bottom_right;
+        },
+        else => {},
     }
 
     return null;

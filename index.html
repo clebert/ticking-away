@@ -294,13 +294,12 @@
             <button class="action-button" data-bind="onclick:time.setNow">Set to Now</button>
           </div>
           <div class="control-group" data-bind="hidden:mode.live">
-            <label>
-              <input
-                type="checkbox"
-                data-bind="checked:time.forceOppositeBounce, onchange:time.toggleForceOppositeBounce"
-              />
-              Force Opposite Bounce
-            </label>
+            <label>Bounce Mode</label>
+            <select data-bind="value:time.bounceMode, onchange:time.setBounceMode">
+              <option value="0">Legacy</option>
+              <option value="1">Always</option>
+              <option value="2">Geometric</option>
+            </select>
           </div>
 
           <!-- Prism Controls -->

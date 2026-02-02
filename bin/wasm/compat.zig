@@ -34,6 +34,21 @@ pub const RayPalette = enum(i32) {
     }
 };
 
+/// Bounce mode matching JS BounceMode enum.
+pub const BounceMode = enum(i32) {
+    legacy = 0,
+    always = 1,
+    geometric = 2,
+
+    pub fn toZig(self: BounceMode) lib.spectrum.BounceMode {
+        return switch (self) {
+            .legacy => .legacy,
+            .always => .always,
+            .geometric => .geometric,
+        };
+    }
+};
+
 /// Prism configuration matching C PrismConfig.
 pub const PrismConfig = extern struct {
     size: f32,
@@ -109,7 +124,7 @@ pub const WatchfaceConfig = extern struct {
     grain: GrainConfig,
     vignette: VignetteConfig,
     dither: SceneDitherConfig,
-    force_opposite_bounce: i32,
+    bounce_mode: BounceMode,
 };
 
 /// Convert C config to Zig scene config types.
@@ -123,7 +138,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
         .prism = .{
             .size = c.prism.size,
             .rainbow_spread = c.prism.rainbow_spread,
-            .force_opposite_bounce = c.force_opposite_bounce != 0,
+            .bounce_mode = c.bounce_mode.toZig(),
         },
         .glow_config = .{
             .color = lib.color_space.Linear.init(
