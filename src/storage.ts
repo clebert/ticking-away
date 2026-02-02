@@ -9,6 +9,7 @@ export interface Settings {
 
   timeHours: number;
   timeMinutes: number;
+  timeForceOppositeBounce: boolean;
 
   prismSize: number;
   prismRainbowSpread: number;
@@ -72,6 +73,7 @@ export function saveSettings({
 
       timeHours: time.hours.value,
       timeMinutes: time.minutes.value,
+      timeForceOppositeBounce: time.forceOppositeBounce.value,
 
       prismSize: prism.size.value,
       prismRainbowSpread: prism.rainbowSpread.value,

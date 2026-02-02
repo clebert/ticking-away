@@ -79,6 +79,9 @@ function writeConfig(view: DataView, offset: number): void {
   view.setInt32(offset + 108, dither.oklabError.value ? 1 : 0, littleEndian);
   // dither.chroma_weight: f32 (offset 112)
   view.setFloat32(offset + 112, dither.chromaWeight.value / 100.0, littleEndian);
+
+  // force_opposite_bounce: i32 (offset 116)
+  view.setInt32(offset + 116, time.forceOppositeBounce.value ? 1 : 0, littleEndian);
 }
 
 export function render(): void {

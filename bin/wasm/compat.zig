@@ -109,6 +109,7 @@ pub const WatchfaceConfig = extern struct {
     grain: GrainConfig,
     vignette: VignetteConfig,
     dither: SceneDitherConfig,
+    force_opposite_bounce: i32,
 };
 
 /// Convert C config to Zig scene config types.
@@ -122,6 +123,7 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
         .prism = .{
             .size = c.prism.size,
             .rainbow_spread = c.prism.rainbow_spread,
+            .force_opposite_bounce = c.force_opposite_bounce != 0,
         },
         .glow_config = .{
             .color = lib.color_space.Linear.init(

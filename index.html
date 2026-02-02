@@ -293,6 +293,15 @@
           <div class="button-row" data-bind="hidden:mode.live">
             <button class="action-button" data-bind="onclick:time.setNow">Set to Now</button>
           </div>
+          <div class="control-group" data-bind="hidden:mode.live">
+            <label>
+              <input
+                type="checkbox"
+                data-bind="checked:time.forceOppositeBounce, onchange:time.toggleForceOppositeBounce"
+              />
+              Force Opposite Bounce
+            </label>
+          </div>
 
           <!-- Prism Controls -->
           <div class="section-title">Prism</div>

@@ -39,6 +39,7 @@ pub const Paths = struct {
         rainbow_spread: f32,
         p: Prism,
         b: boundary.Boundary,
+        force_opposite_bounce: bool,
     ) Paths {
         var paths = Paths{};
 
@@ -54,7 +55,10 @@ pub const Paths = struct {
         paths.entry_u = entry_hit.u;
         paths.entry_ray = .{ .start = entry, .end = entry_hit.point };
 
-        const bounce_vertex = computeBounceVertex(
+        const bounce_vertex = if (force_opposite_bounce) blk: {
+            const exit_hit = intersect.rayPrismExit(prism_center, hour_angle, p) orelse break :blk null;
+            break :blk exit_hit.edge.oppositeVertex();
+        } else computeBounceVertex(
             entry_hit.edge,
             entry_hit.u,
             hour_angle,

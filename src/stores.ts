@@ -158,6 +158,7 @@ export const time = {
     persistedLive ? initialTime.getMinutes() : (settings.timeMinutes ?? initialTime.getMinutes()),
   ),
   seconds: signal(initialTime.getSeconds()), // Used internally for animation
+  forceOppositeBounce: signal(settings.timeForceOppositeBounce ?? false),
 
   // Actions
   setHours(e: Event): void {
@@ -176,6 +177,10 @@ export const time = {
       time.minutes.value = currentTime.getMinutes();
       time.seconds.value = currentTime.getSeconds();
     });
+  },
+
+  toggleForceOppositeBounce(): void {
+    time.forceOppositeBounce.value = !time.forceOppositeBounce.value;
   },
 };
 
@@ -343,6 +348,9 @@ export const resetAll = {
       // Mode
       mode.accelerated.value = defaults.mode.accelerated;
       mode.accelerationFactor.value = defaults.mode.accelerationFactor;
+
+      // Time
+      time.forceOppositeBounce.value = false;
 
       // Prism
       prism.size.value = defaults.prism.size;
