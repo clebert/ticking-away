@@ -4,13 +4,7 @@ const color_space = @import("color_space.zig");
 const eink = @import("eink.zig");
 const frame = @import("frame.zig");
 
-const Algorithm = enum {
-    atkinson,
-    floyd_steinberg,
-};
-
 pub const Config = struct {
-    algorithm: Algorithm = .atkinson,
     strength: f32 = 1.0,
     chroma_weight: f32 = 2.0,
     oklab_error: bool = true,
@@ -28,7 +22,7 @@ pub const ErrorBuffer = struct {
     data: []f32,
     width: usize,
 
-    pub const rows: usize = 3;
+    pub const rows: usize = 2;
     pub const channels: usize = 3;
 
     pub fn init(backing: []f32, width: usize) ErrorBuffer {
@@ -52,10 +46,8 @@ pub const ErrorBuffer = struct {
         const row_size = self.width * channels;
         const row0 = self.data[0..row_size];
         const row1 = self.data[row_size .. 2 * row_size];
-        const row2 = self.data[2 * row_size .. 3 * row_size];
         @memcpy(row0, row1);
-        @memcpy(row1, row2);
-        @memset(row2, 0.0);
+        @memset(row1, 0.0);
     }
 };
 
@@ -126,70 +118,32 @@ pub fn apply(
             const fwd = x_i + step;
             const back = x_i - step;
 
-            switch (config.algorithm) {
-                .atkinson => {
-                    const d: f32 = 0.125 * config.strength;
-                    const e1 = quant.error_1 * d;
-                    const e2 = quant.error_2 * d;
-                    const e3 = quant.error_3 * d;
-                    const fwd2 = x_i + 2 * step;
-
-                    if (fwd >= 0 and fwd < width_i) {
-                        const fx: usize = @intCast(fwd);
-                        err.row(0, 0)[fx] += e1;
-                        err.row(0, 1)[fx] += e2;
-                        err.row(0, 2)[fx] += e3;
-                        err.row(1, 0)[fx] += e1;
-                        err.row(1, 1)[fx] += e2;
-                        err.row(1, 2)[fx] += e3;
-                    }
-                    if (fwd2 >= 0 and fwd2 < width_i) {
-                        const fx: usize = @intCast(fwd2);
-                        err.row(0, 0)[fx] += e1;
-                        err.row(0, 1)[fx] += e2;
-                        err.row(0, 2)[fx] += e3;
-                    }
-                    if (back >= 0 and back < width_i) {
-                        const bx: usize = @intCast(back);
-                        err.row(1, 0)[bx] += e1;
-                        err.row(1, 1)[bx] += e2;
-                        err.row(1, 2)[bx] += e3;
-                    }
-                    err.row(1, 0)[x] += e1;
-                    err.row(1, 1)[x] += e2;
-                    err.row(1, 2)[x] += e3;
-                    err.row(2, 0)[x] += e1;
-                    err.row(2, 1)[x] += e2;
-                    err.row(2, 2)[x] += e3;
-                },
-                .floyd_steinberg => {
-                    const s = config.strength;
-                    if (fwd >= 0 and fwd < width_i) {
-                        const fx: usize = @intCast(fwd);
-                        const d7: f32 = (7.0 / 16.0) * s;
-                        err.row(0, 0)[fx] += quant.error_1 * d7;
-                        err.row(0, 1)[fx] += quant.error_2 * d7;
-                        err.row(0, 2)[fx] += quant.error_3 * d7;
-                    }
-                    if (back >= 0 and back < width_i) {
-                        const bx: usize = @intCast(back);
-                        const d3: f32 = (3.0 / 16.0) * s;
-                        err.row(1, 0)[bx] += quant.error_1 * d3;
-                        err.row(1, 1)[bx] += quant.error_2 * d3;
-                        err.row(1, 2)[bx] += quant.error_3 * d3;
-                    }
-                    const d5: f32 = (5.0 / 16.0) * s;
-                    err.row(1, 0)[x] += quant.error_1 * d5;
-                    err.row(1, 1)[x] += quant.error_2 * d5;
-                    err.row(1, 2)[x] += quant.error_3 * d5;
-                    if (fwd >= 0 and fwd < width_i) {
-                        const fx: usize = @intCast(fwd);
-                        const d1: f32 = (1.0 / 16.0) * s;
-                        err.row(1, 0)[fx] += quant.error_1 * d1;
-                        err.row(1, 1)[fx] += quant.error_2 * d1;
-                        err.row(1, 2)[fx] += quant.error_3 * d1;
-                    }
-                },
+            // Floyd-Steinberg error diffusion (100% distribution)
+            const s = config.strength;
+            if (fwd >= 0 and fwd < width_i) {
+                const fx: usize = @intCast(fwd);
+                const d7: f32 = (7.0 / 16.0) * s;
+                err.row(0, 0)[fx] += quant.error_1 * d7;
+                err.row(0, 1)[fx] += quant.error_2 * d7;
+                err.row(0, 2)[fx] += quant.error_3 * d7;
+            }
+            if (back >= 0 and back < width_i) {
+                const bx: usize = @intCast(back);
+                const d3: f32 = (3.0 / 16.0) * s;
+                err.row(1, 0)[bx] += quant.error_1 * d3;
+                err.row(1, 1)[bx] += quant.error_2 * d3;
+                err.row(1, 2)[bx] += quant.error_3 * d3;
+            }
+            const d5: f32 = (5.0 / 16.0) * s;
+            err.row(1, 0)[x] += quant.error_1 * d5;
+            err.row(1, 1)[x] += quant.error_2 * d5;
+            err.row(1, 2)[x] += quant.error_3 * d5;
+            if (fwd >= 0 and fwd < width_i) {
+                const fx: usize = @intCast(fwd);
+                const d1: f32 = (1.0 / 16.0) * s;
+                err.row(1, 0)[fx] += quant.error_1 * d1;
+                err.row(1, 1)[fx] += quant.error_2 * d1;
+                err.row(1, 2)[fx] += quant.error_3 * d1;
             }
         }
 

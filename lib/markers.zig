@@ -16,7 +16,6 @@ pub const Config = struct {
     visible: bool = true,
     length: f32 = 0.15,
     glow_width: f32 = 0.02,
-    glow_intensity: f32 = 0.6,
     falloff: glow.Falloff = .quadratic,
 };
 
@@ -72,12 +71,7 @@ pub fn computeMarkers(geometry: Geometry, config: Config) [marker_count]Marker {
             .glow_config = .{
                 .width = glow_width,
                 .falloff = config.falloff,
-                .color = .{ .uniform = color_space.Linear.init(
-                    config.glow_intensity,
-                    config.glow_intensity,
-                    config.glow_intensity,
-                    1.0,
-                ) },
+                .color = .{ .uniform = color_space.Linear.init(1.0, 1.0, 1.0, 1.0) },
             },
         };
     }

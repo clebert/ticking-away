@@ -18,7 +18,6 @@ pub const Config = struct {
     origin_y: f32 = 0,
     angle_start: f32 = 0,
     angle_end: f32 = 0,
-    intensity: f32 = 1.0,
     reverse_spectrum: bool = false,
 };
 
@@ -136,8 +135,7 @@ pub fn render(
 
             const col = cache.interpolate(t_color);
             const p = band_linear.colorAt(x, local_y);
-            const intensity_vec: @Vector(4, f32) = @splat(config.intensity);
-            p.vec = p.vec + col.vec * intensity_vec;
+            p.vec = p.vec + col.vec;
         }
     }
 }

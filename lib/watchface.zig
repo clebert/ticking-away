@@ -22,13 +22,11 @@ pub const PrismConfig = struct {
 pub const GlowConfig = struct {
     color: color_space.Linear = color_space.Linear.init(0.5, 0.5, 0.5, 1.0),
     width: f32 = 0.15,
-    intensity: f32 = 0.6,
     falloff: glow.Falloff = .quadratic,
 };
 
 pub const RayConfig = struct {
     glow_width: f32 = 0.025,
-    intensity: f32 = 0.8,
     falloff: glow.Falloff = .quadratic,
     palette_type: rainbow.PaletteType = .oklch_balanced,
     gradient_fill: bool = true,
@@ -183,7 +181,7 @@ pub const Scene = struct {
             .width = glow_width,
             .falloff = self.ray_config.falloff,
             .color = .{ .uniform = color_space.Linear.white },
-            .intensity = .{ .uniform = self.ray_config.intensity },
+            .intensity = .{ .uniform = 1.0 },
         };
 
         for (std.enums.values(rainbow.Color)) |color| {
@@ -208,7 +206,7 @@ pub const Scene = struct {
                     var cfg = base_config;
                     cfg.color = .{ .uniform = linear_color };
                     if (self.ray_config.gradient_fill) {
-                        cfg.intensity = .{ .gradient = .{ .start = self.ray_config.intensity, .end = 0.0 } };
+                        cfg.intensity = .{ .gradient = .{ .start = 1.0, .end = 0.0 } };
                     }
                     glow.renderLine(band_linear, line.Segment.init(seg.start, seg.end), cfg, .{ .prism = prism_tri }, null);
                 }
@@ -262,7 +260,6 @@ pub const Scene = struct {
                     .origin_y = self.center[1],
                     .angle_start = ext_angle_first - edge_margin,
                     .angle_end = ext_angle_last + edge_margin,
-                    .intensity = self.ray_config.intensity,
                     .reverse_spectrum = self.ray_config.reverse,
                 },
                 .{
@@ -302,7 +299,6 @@ pub const Scene = struct {
                     .origin_y = grad_origin[1],
                     .angle_start = internal_angle_first - internal_edge_margin,
                     .angle_end = internal_angle_last + internal_edge_margin,
-                    .intensity = self.ray_config.intensity,
                     .reverse_spectrum = self.ray_config.reverse,
                 },
                 .{
@@ -320,7 +316,6 @@ pub const Scene = struct {
             self.prism,
             self.glow_config.color,
             self.glow_config.width * self.radius,
-            self.glow_config.intensity,
             self.glow_config.falloff,
         );
 

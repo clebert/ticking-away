@@ -22,27 +22,13 @@ pub const FalloffType = enum(i32) {
 /// Ray palette matching C RayPalette enum.
 pub const RayPalette = enum(i32) {
     oklch_balanced = 0,
-    saturated = 1,
-    spectral = 2,
-    neon = 3,
-    muted = 4,
-    eink_pure = 5,
-    eink_dither = 6,
-    eink_full = 7,
-    album_cover = 8,
-    spectra6 = 9,
+    spectral = 1,
+    spectra6 = 2,
 
     pub fn toZig(self: RayPalette) lib.rainbow.PaletteType {
         return switch (self) {
             .oklch_balanced => .oklch_balanced,
-            .saturated => .saturated,
             .spectral => .spectral,
-            .neon => .neon,
-            .muted => .muted,
-            .eink_pure => .eink_pure,
-            .eink_dither => .eink_dither,
-            .eink_full => .eink_full,
-            .album_cover => .album_cover,
             .spectra6 => .spectra6,
         };
     }
@@ -60,14 +46,12 @@ pub const GlowConfig = extern struct {
     g: i32,
     b: i32,
     width: f32,
-    intensity: f32,
     falloff: FalloffType,
 };
 
 /// Ray configuration matching C RayConfig.
 pub const RayConfig = extern struct {
     glow_width: f32,
-    intensity: f32,
     falloff: FalloffType,
     ray_palette: RayPalette,
     gradient_fill: i32,
@@ -79,7 +63,6 @@ pub const MarkerConfig = extern struct {
     visible: i32,
     length: f32,
     glow_width: f32,
-    glow_intensity: f32,
     falloff: FalloffType,
 };
 
@@ -88,7 +71,6 @@ pub const GrainConfig = extern struct {
     intensity: f32,
     scale: f32,
     threshold: f32,
-    prism_only: i32,
 };
 
 /// Vignette configuration matching C VignetteConfig.
@@ -96,12 +78,6 @@ pub const VignetteConfig = extern struct {
     enabled: i32,
     strength: f32,
     background: f32,
-};
-
-/// Dither error algorithm matching C DitherErrorAlgorithm.
-pub const DitherErrorAlgorithm = enum(i32) {
-    atkinson = 0,
-    floyd_steinberg = 1,
 };
 
 /// Dither ordered matrix matching C DitherOrderedMatrix.
@@ -131,7 +107,6 @@ pub const SceneDitherConfig = extern struct {
     dither_type: DitherType,
     mode: DitherPaletteMode,
     strength: f32,
-    algorithm: DitherErrorAlgorithm,
     oklab_error: i32,
     ordered_matrix: DitherOrderedMatrix,
     spread: f32,
@@ -150,8 +125,6 @@ pub const WatchfaceConfig = extern struct {
     grain: GrainConfig,
     vignette: VignetteConfig,
     dither: SceneDitherConfig,
-    entry_u: f32,
-    exit_u: f32,
 };
 
 /// Convert C config to Zig scene config types.
@@ -174,12 +147,10 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
                 1.0,
             ),
             .width = c.glow_config.width,
-            .intensity = c.glow_config.intensity,
             .falloff = c.glow_config.falloff.toZig(),
         },
         .ray = .{
             .glow_width = c.ray.glow_width,
-            .intensity = c.ray.intensity,
             .falloff = c.ray.falloff.toZig(),
             .palette_type = c.ray.ray_palette.toZig(),
             .gradient_fill = c.ray.gradient_fill != 0,
@@ -189,7 +160,6 @@ pub fn toSceneConfig(c: *const WatchfaceConfig) struct {
             .visible = c.marker.visible != 0,
             .length = c.marker.length,
             .glow_width = c.marker.glow_width,
-            .glow_intensity = c.marker.glow_intensity,
             .falloff = c.marker.falloff.toZig(),
         },
     };
@@ -201,7 +171,6 @@ pub fn toGrainConfig(c: *const GrainConfig) lib.effect_grain.Config {
         .intensity = c.intensity,
         .scale = c.scale,
         .threshold = c.threshold,
-        .prism_only = c.prism_only != 0,
     };
 }
 
@@ -220,7 +189,6 @@ pub fn toGrainGeometry(s: *const lib.watchface.Scene) lib.effect_grain.Geometry 
         .center_x = s.center[0],
         .center_y = s.center[1],
         .radius = s.radius,
-        .prism = s.prism,
     };
 }
 
@@ -236,10 +204,6 @@ pub fn toVignetteGeometry(s: *const lib.watchface.Scene) lib.effect_vignette.Geo
 /// Convert C dither config to Zig error diffusion config.
 pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) lib.effect_error_diffusion.Config {
     return .{
-        .algorithm = switch (c.algorithm) {
-            .atkinson => .atkinson,
-            .floyd_steinberg => .floyd_steinberg,
-        },
         .strength = c.strength,
         .chroma_weight = c.chroma_weight,
         .oklab_error = c.oklab_error != 0,

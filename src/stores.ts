@@ -12,26 +12,22 @@ const defaults = {
     gray: 255,
     blueTint: 100,
     glowWidth: 6,
-    glowIntensity: 100,
     glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
   rays: {
     glowWidth: 1,
-    glowIntensity: 100,
     glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     gradientFill: true,
-    palette: 2, // 0=OkLCH Balanced, 1=Saturated, 2=Spectral, 3=Neon, 4=Muted
+    palette: 1, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
     reverseSpectrum: true, // Album art style: red on top, violet on bottom
   },
   markers: {
     length: 10,
     glowWidth: 1,
-    glowIntensity: 100,
     glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
   background: {
     grainIntensity: 100,
-    grainPrismOnly: false,
     grainBrightnessThreshold: 30,
   },
   dither: {
@@ -40,13 +36,12 @@ const defaults = {
     paletteMode: 0, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
     // Error diffusion params
     strength: 20, // 0-100, maps to 0.0-1.0
-    algorithm: 0, // 0 = ATKINSON, 1 = FLOYD_STEINBERG
     oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
     // Ordered params
     orderedMatrix: 1, // 0 = BAYER_2X2, 1 = BAYER_4X4, 2 = BAYER_8X8
     spread: 50, // 0-100, maps to 0.0-1.0
     // Shared
-    chromaWeight: 100, // 50-400, maps to 0.5-4.0 (100 = default 1.0, higher = prioritize hue for rainbows)
+    chromaWeight: 200, // 50-400, maps to 0.5-4.0 (200 = default 2.0, higher = prioritize hue)
   },
   display: {
     markers: false,
@@ -201,7 +196,6 @@ export const prism = {
 
   // Signals: glow
   glowWidth: signal(settings.prismGlowWidth ?? defaults.prism.glowWidth),
-  glowIntensity: signal(settings.prismGlowIntensity ?? defaults.prism.glowIntensity),
   glowFalloff: signal(settings.prismGlowFalloff ?? defaults.prism.glowFalloff),
 
   // Actions
@@ -225,10 +219,6 @@ export const prism = {
     prism.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  setGlowIntensity(e: Event): void {
-    prism.glowIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
   setGlowFalloff(e: Event): void {
     prism.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
@@ -237,7 +227,6 @@ export const prism = {
 export const rays = {
   // Signals: glow
   glowWidth: signal(settings.raysGlowWidth ?? defaults.rays.glowWidth),
-  glowIntensity: signal(settings.raysGlowIntensity ?? defaults.rays.glowIntensity),
   glowFalloff: signal(settings.raysGlowFalloff ?? defaults.rays.glowFalloff),
 
   // Signals: rendering mode
@@ -248,10 +237,6 @@ export const rays = {
   // Actions
   setGlowWidth(e: Event): void {
     rays.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setGlowIntensity(e: Event): void {
-    rays.glowIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setGlowFalloff(e: Event): void {
@@ -277,7 +262,6 @@ export const markers = {
 
   // Signals: glow
   glowWidth: signal(settings.markersGlowWidth ?? defaults.markers.glowWidth),
-  glowIntensity: signal(settings.markersGlowIntensity ?? defaults.markers.glowIntensity),
   glowFalloff: signal(settings.markersGlowFalloff ?? defaults.markers.glowFalloff),
 
   // Actions
@@ -289,10 +273,6 @@ export const markers = {
     markers.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  setGlowIntensity(e: Event): void {
-    markers.glowIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
   setGlowFalloff(e: Event): void {
     markers.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
@@ -301,7 +281,6 @@ export const markers = {
 export const background = {
   // Signals: effect intensities
   grainIntensity: signal(settings.backgroundGrainIntensity ?? defaults.background.grainIntensity),
-  grainPrismOnly: signal(settings.backgroundGrainPrismOnly ?? defaults.background.grainPrismOnly),
   grainBrightnessThreshold: signal(
     settings.backgroundGrainBrightnessThreshold ?? defaults.background.grainBrightnessThreshold,
   ),
@@ -312,10 +291,6 @@ export const background = {
   // Actions
   setGrainIntensity(e: Event): void {
     background.grainIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  toggleGrainPrismOnly(): void {
-    background.grainPrismOnly.value = !background.grainPrismOnly.value;
   },
 
   setGrainBrightnessThreshold(e: Event): void {
@@ -330,7 +305,6 @@ export const dither = {
   paletteMode: signal(settings.ditherPaletteMode ?? defaults.dither.paletteMode),
   // Error diffusion
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
-  algorithm: signal(settings.ditherAlgorithm ?? defaults.dither.algorithm),
   oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
   // Ordered
   orderedMatrix: signal(settings.ditherOrderedMatrix ?? defaults.dither.orderedMatrix),
@@ -357,10 +331,6 @@ export const dither = {
 
   setStrength(e: Event): void {
     dither.strength.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setAlgorithm(e: Event): void {
-    dither.algorithm.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   toggleOklabError(): void {
@@ -395,16 +365,6 @@ export const display = {
   },
 };
 
-export const debug = {
-  // Signals: debug output from WASM (updated after each render)
-  entryU: signal(0),
-  exitU: signal(0),
-
-  // Computed: formatted for display (3 decimal places)
-  entryUFormatted: computed((): string => debug.entryU.value.toFixed(5)),
-  exitUFormatted: computed((): string => debug.exitU.value.toFixed(5)),
-};
-
 export const resetAll = {
   reset(): void {
     batch(() => {
@@ -418,12 +378,10 @@ export const resetAll = {
       prism.gray.value = defaults.prism.gray;
       prism.blueTint.value = defaults.prism.blueTint;
       prism.glowWidth.value = defaults.prism.glowWidth;
-      prism.glowIntensity.value = defaults.prism.glowIntensity;
       prism.glowFalloff.value = defaults.prism.glowFalloff;
 
       // Rays
       rays.glowWidth.value = defaults.rays.glowWidth;
-      rays.glowIntensity.value = defaults.rays.glowIntensity;
       rays.glowFalloff.value = defaults.rays.glowFalloff;
       rays.gradientFill.value = defaults.rays.gradientFill;
       rays.palette.value = defaults.rays.palette;
@@ -432,12 +390,10 @@ export const resetAll = {
       // Markers
       markers.length.value = defaults.markers.length;
       markers.glowWidth.value = defaults.markers.glowWidth;
-      markers.glowIntensity.value = defaults.markers.glowIntensity;
       markers.glowFalloff.value = defaults.markers.glowFalloff;
 
       // Background
       background.grainIntensity.value = defaults.background.grainIntensity;
-      background.grainPrismOnly.value = defaults.background.grainPrismOnly;
       background.grainBrightnessThreshold.value = defaults.background.grainBrightnessThreshold;
 
       // Dither
@@ -445,7 +401,6 @@ export const resetAll = {
       dither.type.value = defaults.dither.type;
       dither.paletteMode.value = defaults.dither.paletteMode;
       dither.strength.value = defaults.dither.strength;
-      dither.algorithm.value = defaults.dither.algorithm;
       dither.oklabError.value = defaults.dither.oklabError;
       dither.orderedMatrix.value = defaults.dither.orderedMatrix;
       dither.spread.value = defaults.dither.spread;

@@ -134,7 +134,6 @@ pub fn renderPrismEdges(
     tri: Prism,
     glow_color: color_space.Linear,
     glow_width: f32,
-    intensity: f32,
     falloff: Falloff,
 ) void {
     const smooth_k = glow_width * 0.5;
@@ -158,7 +157,7 @@ pub fn renderPrismEdges(
 
             if (dist < glow_width) {
                 const t = std.math.clamp(dist / glow_width, 0, 1);
-                const alpha = falloff.apply(t) * intensity;
+                const alpha = falloff.apply(t);
                 const p = band_linear.colorAt(x, local_y);
                 const scale_vec: @Vector(4, f32) = @splat(alpha);
                 p.vec = p.vec + glow_color.vec * scale_vec;

@@ -2,20 +2,17 @@ const std = @import("std");
 
 const color_space = @import("color_space.zig");
 const frame = @import("frame.zig");
-const Prism = @import("Prism.zig");
 
 pub const Config = struct {
     intensity: f32 = 0.5,
     scale: f32 = 1.0,
     threshold: f32 = 0.1,
-    prism_only: bool = false,
 };
 
 pub const Geometry = struct {
     center_x: f32,
     center_y: f32,
     radius: f32,
-    prism: ?Prism = null,
 };
 
 pub fn apply(
@@ -45,12 +42,6 @@ pub fn apply(
                 const dx = px - geo.center_x;
                 const dy = py - geo.center_y;
                 if (dx * dx + dy * dy > r2) continue;
-
-                if (config.prism_only) {
-                    if (geo.prism) |p| {
-                        if (!p.containsPoint(px, py)) continue;
-                    }
-                }
             }
 
             const srgba = band_srgba.colorAt(x, local_y);

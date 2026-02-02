@@ -15,11 +15,9 @@ export interface Settings {
   prismGray: number;
   prismBlueTint: number;
   prismGlowWidth: number;
-  prismGlowIntensity: number;
   prismGlowFalloff: number;
 
   raysGlowWidth: number;
-  raysGlowIntensity: number;
   raysGlowFalloff: number;
   raysGradientFill: boolean;
   raysPalette: number;
@@ -27,21 +25,18 @@ export interface Settings {
 
   markersLength: number;
   markersGlowWidth: number;
-  markersGlowIntensity: number;
   markersGlowFalloff: number;
 
   displayMarkers: boolean;
   displayHighDpi: boolean;
 
   backgroundGrainIntensity: number;
-  backgroundGrainPrismOnly: boolean;
   backgroundGrainBrightnessThreshold: number;
 
   ditherEnabled: boolean;
   ditherType: number;
   ditherPaletteMode: number;
   ditherStrength: number;
-  ditherAlgorithm: number;
   ditherOklabError: boolean;
   ditherOrderedMatrix: number;
   ditherSpread: number;
@@ -86,11 +81,9 @@ export function saveSettings({
       prismGray: prism.gray.value,
       prismBlueTint: prism.blueTint.value,
       prismGlowWidth: prism.glowWidth.value,
-      prismGlowIntensity: prism.glowIntensity.value,
       prismGlowFalloff: prism.glowFalloff.value,
 
       raysGlowWidth: rays.glowWidth.value,
-      raysGlowIntensity: rays.glowIntensity.value,
       raysGlowFalloff: rays.glowFalloff.value,
       raysGradientFill: rays.gradientFill.value,
       raysPalette: rays.palette.value,
@@ -98,18 +91,15 @@ export function saveSettings({
 
       markersLength: markers.length.value,
       markersGlowWidth: markers.glowWidth.value,
-      markersGlowIntensity: markers.glowIntensity.value,
       markersGlowFalloff: markers.glowFalloff.value,
 
       backgroundGrainIntensity: background.grainIntensity.value,
-      backgroundGrainPrismOnly: background.grainPrismOnly.value,
       backgroundGrainBrightnessThreshold: background.grainBrightnessThreshold.value,
 
       ditherEnabled: dither.enabled.value,
       ditherType: dither.type.value,
       ditherPaletteMode: dither.paletteMode.value,
       ditherStrength: dither.strength.value,
-      ditherAlgorithm: dither.algorithm.value,
       ditherOklabError: dither.oklabError.value,
       ditherOrderedMatrix: dither.orderedMatrix.value,
       ditherSpread: dither.spread.value,

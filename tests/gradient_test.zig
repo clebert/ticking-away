@@ -30,7 +30,7 @@ test "angle normalization edge cases" {
         .geometry = &geometry,
     };
 
-    const cache = rainbow.getPaletteCache(.saturated);
+    const cache = rainbow.getPaletteCache(.spectral);
 
     // Test with negative-ish angles that need normalization
     gradient.render(
@@ -41,7 +41,6 @@ test "angle normalization edge cases" {
             .origin_y = 50,
             .angle_start = -pi,
             .angle_end = -pi / 2.0,
-            .intensity = 1.0,
             .reverse_spectrum = false,
         },
         .{
@@ -81,7 +80,7 @@ test "wrap around gradient at boundary" {
         .geometry = &geometry,
     };
 
-    const cache = rainbow.getPaletteCache(.saturated);
+    const cache = rainbow.getPaletteCache(.spectral);
 
     // Gradient that wraps around: from near-tau to past 0
     gradient.render(
@@ -92,7 +91,6 @@ test "wrap around gradient at boundary" {
             .origin_y = 50,
             .angle_start = tau - 0.3, // Near end
             .angle_end = 0.3, // Just past start
-            .intensity = 1.0,
             .reverse_spectrum = false,
         },
         .{
@@ -116,7 +114,7 @@ test "wrap around gradient at boundary" {
 
 test "internal vs external mode" {
     const p = Prism.init(.{ 50, 50 }, 30);
-    const cache = rainbow.getPaletteCache(.saturated);
+    const cache = rainbow.getPaletteCache(.spectral);
 
     // External mode buffer
     var ext_linear_colors: [100 * 100]color_space.Linear = undefined;
@@ -141,7 +139,6 @@ test "internal vs external mode" {
             .origin_y = 50,
             .angle_start = 0,
             .angle_end = pi / 2.0,
-            .intensity = 1.0,
             .reverse_spectrum = false,
         },
         .{
@@ -176,7 +173,6 @@ test "internal vs external mode" {
             .origin_y = 50,
             .angle_start = 0,
             .angle_end = pi / 2.0,
-            .intensity = 1.0,
             .reverse_spectrum = false,
         },
         .{

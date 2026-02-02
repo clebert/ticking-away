@@ -15,7 +15,7 @@ test "palette cache init" {
 }
 
 test "palette interpolation" {
-    const cache = rainbow.getPaletteCache(.saturated);
+    const cache = rainbow.getPaletteCache(.spectral);
 
     // t=0 should give red
     const red = cache.interpolate(0.0);
@@ -33,7 +33,7 @@ test "palette interpolation" {
 }
 
 test "palette extrapolation" {
-    const cache = rainbow.getPaletteCache(.saturated);
+    const cache = rainbow.getPaletteCache(.spectral);
 
     // t < 0 should give darker red (infrared)
     const ir = cache.interpolate(-0.5);

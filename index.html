@@ -273,12 +273,7 @@
           <!-- Time Controls (hidden in live mode) -->
           <div class="section-title" data-bind="hidden:mode.live">Time</div>
           <div class="control-group" data-bind="hidden:mode.live">
-            <label
-              >Hour: <span data-bind="textContent:time.hours">10</span>
-              <span class="debug-label"
-                >(exit u: <span data-bind="textContent:debug.exitUFormatted">0</span>)</span
-              >
-            </label>
+            <label>Hour: <span data-bind="textContent:time.hours">10</span></label>
             <input
               type="range"
               min="0"
@@ -287,12 +282,7 @@
             />
           </div>
           <div class="control-group" data-bind="hidden:mode.live">
-            <label
-              >Minute: <span data-bind="textContent:time.minutes">10</span>
-              <span class="debug-label"
-                >(entry u: <span data-bind="textContent:debug.entryUFormatted">0</span>)</span
-              >
-            </label>
+            <label>Minute: <span data-bind="textContent:time.minutes">10</span></label>
             <input
               type="range"
               min="0"
@@ -354,17 +344,6 @@
             />
           </div>
           <div class="control-group">
-            <label
-              >Glow Intensity: <span data-bind="textContent:prism.glowIntensity">100</span>%</label
-            >
-            <input
-              type="range"
-              min="10"
-              max="100"
-              data-bind="value:prism.glowIntensity, oninput:prism.setGlowIntensity"
-            />
-          </div>
-          <div class="control-group">
             <label>Glow Falloff</label>
             <select data-bind="value:prism.glowFalloff, onchange:prism.setGlowFalloff">
               <option value="0">Linear</option>
@@ -395,17 +374,6 @@
             />
           </div>
           <div class="control-group">
-            <label
-              >Glow Intensity: <span data-bind="textContent:rays.glowIntensity">50</span>%</label
-            >
-            <input
-              type="range"
-              min="0"
-              max="100"
-              data-bind="value:rays.glowIntensity, oninput:rays.setGlowIntensity"
-            />
-          </div>
-          <div class="control-group">
             <label>Glow Falloff</label>
             <select data-bind="value:rays.glowFalloff, onchange:rays.setGlowFalloff">
               <option value="0">Linear</option>
@@ -418,15 +386,8 @@
             <label>Color Palette</label>
             <select data-bind="value:rays.palette, onchange:rays.setPalette">
               <option value="0">OkLCH Balanced</option>
-              <option value="1">Saturated</option>
-              <option value="2">Spectral</option>
-              <option value="3">Neon</option>
-              <option value="4">Muted</option>
-              <option value="5">E-Ink Pure</option>
-              <option value="6">E-Ink Dither</option>
-              <option value="7">E-Ink Full</option>
-              <option value="8">Album Cover</option>
-              <option value="9">Spectra 6</option>
+              <option value="1">Spectral</option>
+              <option value="2">Spectra 6</option>
             </select>
           </div>
           <div class="control-group">
@@ -459,17 +420,6 @@
             />
           </div>
           <div class="control-group">
-            <label
-              >Glow Intensity: <span data-bind="textContent:markers.glowIntensity">60</span>%</label
-            >
-            <input
-              type="range"
-              min="0"
-              max="100"
-              data-bind="value:markers.glowIntensity, oninput:markers.setGlowIntensity"
-            />
-          </div>
-          <div class="control-group">
             <label>Glow Falloff</label>
             <select data-bind="value:markers.glowFalloff, onchange:markers.setGlowFalloff">
               <option value="0">Linear</option>
@@ -489,15 +439,6 @@
               max="100"
               data-bind="value:background.grainIntensity, oninput:background.setGrainIntensity, disabled:background.grainDisabled"
             />
-          </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:background.grainPrismOnly, onchange:background.toggleGrainPrismOnly, disabled:background.grainDisabled"
-              />
-              Prism Only</label
-            >
           </div>
           <div class="control-group">
             <label
@@ -535,15 +476,6 @@
 
           <!-- Error Diffusion Controls -->
           <div data-bind="hidden:dither.isOrdered">
-            <div class="control-group">
-              <label>Algorithm</label>
-              <select
-                data-bind="value:dither.algorithm, onchange:dither.setAlgorithm, disabled:!dither.enabled"
-              >
-                <option value="0">Atkinson (75%)</option>
-                <option value="1">Floyd-Steinberg (100%)</option>
-              </select>
-            </div>
             <div class="control-group">
               <label>Strength: <span data-bind="textContent:dither.strength">100</span>%</label>
               <input
@@ -601,7 +533,7 @@
           </div>
           <div class="control-group">
             <label
-              >Chroma Weight: <span data-bind="textContent:dither.chromaWeight">100</span>%</label
+              >Chroma Weight: <span data-bind="textContent:dither.chromaWeight">200</span>%</label
             >
             <input
               type="range"

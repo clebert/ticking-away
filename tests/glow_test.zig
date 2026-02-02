@@ -39,7 +39,6 @@ test "renderGlowLine produces non-zero output" {
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
         .width = 4,
-        .intensity = .{ .uniform = 1 },
         .falloff = .linear,
     };
 
@@ -73,7 +72,6 @@ test "renderGlowLine respects clipping" {
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
         .width = 4,
-        .intensity = .{ .uniform = 1 },
         .falloff = .linear,
     };
 
@@ -118,7 +116,6 @@ test "renderGlowLine with gradient color" {
             },
         },
         .width = 4,
-        .intensity = .{ .uniform = 1 },
         .falloff = .linear,
     };
 
@@ -152,9 +149,8 @@ test "renderPrismGlow produces glow inside triangle" {
 
     const glow_color = color_space.Linear.white;
     const glow_width: f32 = 8;
-    const intensity: f32 = 1;
 
-    glow.renderPrismEdges(&band_linear, tri, glow_color, glow_width, intensity, .linear);
+    glow.renderPrismEdges(&band_linear, tri, glow_color, glow_width, .linear);
 
     // Check that some glow was rendered (glow appears along edges)
     var found_glow = false;
@@ -190,7 +186,6 @@ test "renderGlowLine excludes triangle" {
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
         .width = 4,
-        .intensity = .{ .uniform = 1 },
         .falloff = .linear,
     };
 
@@ -231,7 +226,6 @@ test "band with y_offset renders correct region" {
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
         .width = 2,
-        .intensity = .{ .uniform = 1 },
         .falloff = .linear,
     };
 
@@ -265,7 +259,6 @@ test "band with y_offset ignores lines outside region" {
     const config = glow.Config{
         .color = .{ .uniform = color_space.Linear.white },
         .width = 2,
-        .intensity = .{ .uniform = 1 },
         .falloff = .linear,
     };
 
