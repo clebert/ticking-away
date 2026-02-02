@@ -34,12 +34,9 @@ export interface Settings {
   backgroundGrainBrightnessThreshold: number;
 
   ditherEnabled: boolean;
-  ditherType: number;
   ditherPaletteMode: number;
   ditherStrength: number;
   ditherOklabError: boolean;
-  ditherOrderedMatrix: number;
-  ditherSpread: number;
   ditherChromaWeight: number;
 }
 
@@ -97,12 +94,9 @@ export function saveSettings({
       backgroundGrainBrightnessThreshold: background.grainBrightnessThreshold.value,
 
       ditherEnabled: dither.enabled.value,
-      ditherType: dither.type.value,
       ditherPaletteMode: dither.paletteMode.value,
       ditherStrength: dither.strength.value,
       ditherOklabError: dither.oklabError.value,
-      ditherOrderedMatrix: dither.orderedMatrix.value,
-      ditherSpread: dither.spread.value,
       ditherChromaWeight: dither.chromaWeight.value,
 
       displayMarkers: display.markers.value,

@@ -80,13 +80,6 @@ pub const VignetteConfig = extern struct {
     background: f32,
 };
 
-/// Dither ordered matrix matching C DitherOrderedMatrix.
-pub const DitherOrderedMatrix = enum(i32) {
-    bayer_2x2 = 0,
-    bayer_4x4 = 1,
-    bayer_8x8 = 2,
-};
-
 /// Dither palette mode matching C DitherPaletteMode.
 pub const DitherPaletteMode = enum(i32) {
     ideal = 0,
@@ -95,21 +88,12 @@ pub const DitherPaletteMode = enum(i32) {
     spectra6_trmnl = 3,
 };
 
-/// Dither type matching C DitherType.
-pub const DitherType = enum(i32) {
-    error_diffusion = 0,
-    ordered = 1,
-};
-
 /// Scene dither configuration matching C SceneDitherConfig.
 pub const SceneDitherConfig = extern struct {
     enabled: i32,
-    dither_type: DitherType,
     mode: DitherPaletteMode,
     strength: f32,
     oklab_error: i32,
-    ordered_matrix: DitherOrderedMatrix,
-    spread: f32,
     chroma_weight: f32,
 };
 
@@ -207,19 +191,6 @@ pub fn toErrorDiffusionConfig(c: *const SceneDitherConfig) lib.effect_error_diff
         .strength = c.strength,
         .chroma_weight = c.chroma_weight,
         .oklab_error = c.oklab_error != 0,
-    };
-}
-
-/// Convert C dither config to Zig ordered dither config.
-pub fn toOrderedDitherConfig(c: *const SceneDitherConfig) lib.effect_ordered_dithering.Config {
-    return .{
-        .matrix = switch (c.ordered_matrix) {
-            .bayer_2x2 => .bayer2x2,
-            .bayer_4x4 => .bayer4x4,
-            .bayer_8x8 => .bayer8x8,
-        },
-        .spread = c.spread,
-        .chroma_weight = c.chroma_weight,
     };
 }
 

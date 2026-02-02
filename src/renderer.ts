@@ -71,20 +71,14 @@ function writeConfig(view: DataView, offset: number): void {
 
   // dither.enabled: i32 (offset 96)
   view.setInt32(offset + 96, dither.enabled.value ? 1 : 0, littleEndian);
-  // dither.dither_type: i32 (offset 100)
-  view.setInt32(offset + 100, dither.type.value, littleEndian);
-  // dither.mode: i32 (offset 104)
-  view.setInt32(offset + 104, dither.paletteMode.value, littleEndian);
-  // dither.strength: f32 (offset 108)
-  view.setFloat32(offset + 108, dither.strength.value / 100.0, littleEndian);
-  // dither.oklab_error: i32 (offset 112)
-  view.setInt32(offset + 112, dither.oklabError.value ? 1 : 0, littleEndian);
-  // dither.ordered_matrix: i32 (offset 116)
-  view.setInt32(offset + 116, dither.orderedMatrix.value, littleEndian);
-  // dither.spread: f32 (offset 120)
-  view.setFloat32(offset + 120, dither.spread.value / 100.0, littleEndian);
-  // dither.chroma_weight: f32 (offset 124)
-  view.setFloat32(offset + 124, dither.chromaWeight.value / 100.0, littleEndian);
+  // dither.mode: i32 (offset 100)
+  view.setInt32(offset + 100, dither.paletteMode.value, littleEndian);
+  // dither.strength: f32 (offset 104)
+  view.setFloat32(offset + 104, dither.strength.value / 100.0, littleEndian);
+  // dither.oklab_error: i32 (offset 108)
+  view.setInt32(offset + 108, dither.oklabError.value ? 1 : 0, littleEndian);
+  // dither.chroma_weight: f32 (offset 112)
+  view.setFloat32(offset + 112, dither.chromaWeight.value / 100.0, littleEndian);
 }
 
 export function render(): void {

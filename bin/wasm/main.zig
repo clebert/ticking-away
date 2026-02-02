@@ -114,15 +114,8 @@ export fn renderWatchfaceWithConfig(
             .geometry = &geometry,
         };
 
-        switch (config_ptr.dither.dither_type) {
-            .error_diffusion => {
-                var err = lib.effect_error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
-                lib.effect_error_diffusion.apply(&band_linear, &band_srgba, compat.toErrorDiffusionConfig(&config_ptr.dither), palette, &err);
-            },
-            .ordered => {
-                lib.effect_ordered_dithering.apply(&band_linear, &band_srgba, compat.toOrderedDitherConfig(&config_ptr.dither), palette);
-            },
-        }
+        var err = lib.effect_error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
+        lib.effect_error_diffusion.apply(&band_linear, &band_srgba, compat.toErrorDiffusionConfig(&config_ptr.dither), palette, &err);
 
         const bnd = lib.boundary.Boundary.init(static_scene.center, static_scene.radius);
         lib.effect_boundary_mask.apply(&band_srgba, bnd, palette.getSrgbaColor(.white));

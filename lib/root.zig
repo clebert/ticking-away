@@ -5,7 +5,6 @@ pub const color_space = @import("color_space.zig");
 pub const effect_boundary_mask = @import("effect_boundary_mask.zig");
 pub const effect_error_diffusion = @import("effect_error_diffusion.zig");
 pub const effect_grain = @import("effect_grain.zig");
-pub const effect_ordered_dithering = @import("effect_ordered_dithering.zig");
 pub const effect_vignette = @import("effect_vignette.zig");
 pub const eink = @import("eink.zig");
 pub const frame = @import("frame.zig");
