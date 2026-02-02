@@ -3,8 +3,6 @@ import type * as stores from "./stores.js";
 const storageKey = "settings";
 
 export interface Settings {
-  rendererType: number;
-
   modeLive: boolean;
   modeAccelerated: boolean;
   modeAccelerationFactor: number;
@@ -65,7 +63,6 @@ export function loadSettings(): Partial<Settings> {
 }
 
 export function saveSettings({
-  renderer,
   mode,
   time,
   prism,
@@ -77,8 +74,6 @@ export function saveSettings({
 }: typeof stores): void {
   try {
     const settings: Settings = {
-      rendererType: renderer.type.value,
-
       modeLive: mode.live.value,
       modeAccelerated: mode.accelerated.value,
       modeAccelerationFactor: mode.accelerationFactor.value,

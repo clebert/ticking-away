@@ -405,16 +405,6 @@ export const debug = {
   exitUFormatted: computed((): string => debug.exitU.value.toFixed(5)),
 };
 
-export const renderer = {
-  // Signals: which renderer to use (0 = C, 1 = Zig)
-  type: signal(settings.rendererType ?? 0),
-
-  // Actions
-  setType(e: Event): void {
-    renderer.type.value = parseInt((e.target as HTMLSelectElement).value, 10);
-  },
-};
-
 export const resetAll = {
   reset(): void {
     batch(() => {

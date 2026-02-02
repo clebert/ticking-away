@@ -5,10 +5,9 @@ import { resizeCanvas } from "./canvas.ts";
 import { render } from "./renderer.ts";
 import { saveSettings } from "./storage.ts";
 import * as stores from "./stores.ts";
-import { initWasmC } from "./wasm-c.ts";
-import { initWasmZig } from "./wasm-zig.ts";
+import { initWasm } from "./wasm.ts";
 
-Promise.all([initWasmC(), initWasmZig()]).then(() => {
+initWasm().then(() => {
   createBinder({ stores })(document.body);
 
   window.addEventListener("resize", () => {

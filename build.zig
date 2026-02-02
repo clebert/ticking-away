@@ -4,38 +4,8 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
-    const lib_c_sources: []const []const u8 = &.{
-        "lib/c/draw/line.c",
-        "lib/c/draw/pixel.c",
-        "lib/c/effects/gamma.c",
-        "lib/c/effects/grain.c",
-        "lib/c/effects/vignette.c",
-        "lib/c/geometry/intersect.c",
-        "lib/c/geometry/prism.c",
-        "lib/c/geometry/segment.c",
-        "lib/c/layers/background.c",
-        "lib/c/layers/gradient.c",
-        "lib/c/layers/markers.c",
-        "lib/c/layers/prism_glow.c",
-        "lib/c/layers/rays.c",
-        "lib/c/pipeline.c",
-        "lib/c/quantize/direct.c",
-        "lib/c/quantize/dither_error.c",
-        "lib/c/quantize/dither_ordered.c",
-        "lib/c/quantize/dither.c",
-        "lib/c/scene.c",
-    };
-
-    const c_flags: []const []const u8 = &.{
-        "-std=c23",
-        "-Wall",
-        "-Wextra",
-        "-Werror",
-        "-fwrapv", // Allow signed integer wrapping (matches Clang default)
-    };
-
     // =========================================================================
-    // WASM C Target (stdlib-free)
+    // WASM Target
     // =========================================================================
 
     const wasm_target = b.resolveTargetQuery(.{
@@ -44,61 +14,16 @@ pub fn build(b: *std.Build) void {
         .cpu_features_add = std.Target.wasm.featureSet(&.{ .bulk_memory, .simd128 }),
     });
 
-    const wasm_c = b.addExecutable(.{
-        .name = "index-c",
+    const wasm = b.addExecutable(.{
+        .name = "index",
         .root_module = b.createModule(.{
-            .target = wasm_target,
-            .optimize = .ReleaseFast,
-            .link_libc = false,
-            .red_zone = false,
-            .strip = true,
-        }),
-    });
-
-    wasm_c.entry = .disabled;
-    wasm_c.rdynamic = true;
-    wasm_c.import_memory = true;
-    wasm_c.lto = .full;
-
-    const wasm_c_flags = c_flags ++ .{
-        "-flto",
-        "-mbulk-memory",
-        "-msimd128",
-    };
-
-    wasm_c.root_module.addCSourceFile(.{
-        .file = b.path("bin/wasm-c/main.c"),
-        .flags = wasm_c_flags,
-    });
-
-    for (lib_c_sources) |src| {
-        wasm_c.root_module.addCSourceFile(.{ .file = b.path(src), .flags = wasm_c_flags });
-    }
-
-    wasm_c.root_module.addIncludePath(b.path("lib/c"));
-
-    const wasm_c_install = b.addInstallArtifact(wasm_c, .{
-        .dest_dir = .{ .override = .{ .custom = "../public" } },
-    });
-
-    const wasm_c_step = b.step("wasm", "Build the WASM C module");
-
-    wasm_c_step.dependOn(&wasm_c_install.step);
-
-    // =========================================================================
-    // WASM Zig Target
-    // =========================================================================
-
-    const wasm_zig = b.addExecutable(.{
-        .name = "index-zig",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/wasm-zig/main.zig"),
+            .root_source_file = b.path("bin/wasm/main.zig"),
             .target = wasm_target,
             .optimize = .ReleaseSmall,
             .strip = true,
             .imports = &.{
                 .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/zig/root.zig"),
+                    .root_source_file = b.path("lib/root.zig"),
                     .target = wasm_target,
                     .optimize = .ReleaseSmall,
                     .strip = true,
@@ -107,32 +32,32 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    wasm_zig.entry = .disabled;
-    wasm_zig.rdynamic = true;
-    wasm_zig.import_memory = true;
-    wasm_zig.lto = .full;
+    wasm.entry = .disabled;
+    wasm.rdynamic = true;
+    wasm.import_memory = true;
+    wasm.lto = .full;
 
-    const wasm_zig_install = b.addInstallArtifact(wasm_zig, .{
+    const wasm_install = b.addInstallArtifact(wasm, .{
         .dest_dir = .{ .override = .{ .custom = "../public" } },
     });
 
-    const wasm_zig_step = b.step("zig-wasm", "Build the WASM Zig module");
+    const wasm_step = b.step("wasm", "Build the WASM module");
 
-    wasm_zig_step.dependOn(&wasm_zig_install.step);
+    wasm_step.dependOn(&wasm_install.step);
 
     // =========================================================================
     // Check step for ZLS (uses native target for analysis)
     // =========================================================================
 
-    const wasm_zig_check = b.addExecutable(.{
-        .name = "index-zig",
+    const wasm_check = b.addExecutable(.{
+        .name = "index",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/wasm-zig/main.zig"),
+            .root_source_file = b.path("bin/wasm/main.zig"),
             .target = wasm_target,
             .optimize = .ReleaseSmall,
             .imports = &.{
                 .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/zig/root.zig"),
+                    .root_source_file = b.path("lib/root.zig"),
                     .target = wasm_target,
                     .optimize = .ReleaseSmall,
                 }) },
@@ -140,14 +65,14 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    wasm_zig_check.entry = .disabled;
-    wasm_zig_check.rdynamic = true;
-    wasm_zig_check.import_memory = true;
-    wasm_zig_check.lto = .full;
+    wasm_check.entry = .disabled;
+    wasm_check.rdynamic = true;
+    wasm_check.import_memory = true;
+    wasm_check.lto = .full;
 
     const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
 
-    check_step.dependOn(&wasm_zig_check.step);
+    check_step.dependOn(&wasm_check.step);
 
     // =========================================================================
     // Tests
@@ -162,7 +87,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/zig/root.zig"),
+                    .root_source_file = b.path("lib/root.zig"),
                     .target = target,
                     .optimize = optimize,
                 }) },
@@ -175,20 +100,20 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tests.step);
 
     // =========================================================================
-    // Native Performance Benchmark (Zig)
+    // Native Performance Benchmark
     // =========================================================================
 
-    const perf_zig = b.addExecutable(.{
-        .name = "perf-zig",
+    const perf = b.addExecutable(.{
+        .name = "perf",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/perf-zig/main.zig"),
+            .root_source_file = b.path("bin/perf/main.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
                 .{
                     .name = "lib",
                     .module = b.createModule(.{
-                        .root_source_file = b.path("lib/zig/root.zig"),
+                        .root_source_file = b.path("lib/root.zig"),
                         .target = target,
                         .optimize = optimize,
                     }),
@@ -197,54 +122,19 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const perf_zig_install = b.addInstallArtifact(perf_zig, .{});
-    const perf_zig_step = b.step("perf-zig", "Build the Zig performance benchmark");
+    const perf_install = b.addInstallArtifact(perf, .{});
+    const perf_step = b.step("perf", "Build the performance benchmark");
 
-    perf_zig_step.dependOn(&perf_zig_install.step);
+    perf_step.dependOn(&perf_install.step);
 
-    const run_perf_zig = b.addRunArtifact(perf_zig);
-    const run_perf_zig_step = b.step("run-perf-zig", "Run the Zig performance benchmark");
+    const run_perf = b.addRunArtifact(perf);
+    const run_perf_step = b.step("run-perf", "Run the performance benchmark");
 
-    run_perf_zig_step.dependOn(&run_perf_zig.step);
-
-    // =========================================================================
-    // Native Performance Benchmark (C)
-    // =========================================================================
-
-    const perf_c = b.addExecutable(.{
-        .name = "perf-c",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        }),
-    });
-
-    perf_c.root_module.addCSourceFile(.{
-        .file = b.path("bin/perf-c/main.c"),
-        .flags = c_flags,
-    });
-
-    for (lib_c_sources) |src| {
-        perf_c.root_module.addCSourceFile(.{ .file = b.path(src), .flags = c_flags });
-    }
-
-    perf_c.root_module.addIncludePath(b.path("lib/c"));
-
-    const perf_c_install = b.addInstallArtifact(perf_c, .{});
-    const perf_c_step = b.step("perf-c", "Build the C performance benchmark");
-
-    perf_c_step.dependOn(&perf_c_install.step);
-
-    const run_perf_c = b.addRunArtifact(perf_c);
-    const run_perf_c_step = b.step("run-perf-c", "Run the C performance benchmark");
-
-    run_perf_c_step.dependOn(&run_perf_c.step);
+    run_perf_step.dependOn(&run_perf.step);
 
     // =========================================================================
-    // Default step builds everything
+    // Default step builds WASM
     // =========================================================================
 
-    b.default_step.dependOn(wasm_c_step);
-    b.default_step.dependOn(wasm_zig_step);
+    b.default_step.dependOn(wasm_step);
 }
