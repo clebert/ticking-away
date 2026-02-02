@@ -70,9 +70,18 @@ pub fn build(b: *std.Build) void {
     wasm_check.import_memory = true;
     wasm_check.lto = .full;
 
+    const lib2_check = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("lib2/root.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
     const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
 
     check_step.dependOn(&wasm_check.step);
+    check_step.dependOn(&lib2_check.step);
 
     // =========================================================================
     // Tests
@@ -80,7 +89,7 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Build and run all tests");
 
-    const tests = b.addTest(.{
+    const lib_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/root.zig"),
             .target = target,
@@ -95,9 +104,21 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const run_tests = b.addRunArtifact(tests);
+    const run_lib_tests = b.addRunArtifact(lib_tests);
 
-    test_step.dependOn(&run_tests.step);
+    test_step.dependOn(&run_lib_tests.step);
+
+    const lib2_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("lib2/root.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
+    const run_lib2_tests = b.addRunArtifact(lib2_tests);
+
+    test_step.dependOn(&run_lib2_tests.step);
 
     // =========================================================================
     // Native Performance Benchmark
