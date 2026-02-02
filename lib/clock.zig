@@ -9,8 +9,15 @@ const angle_0: f32 = -std.math.pi / 2.0;
 const hour_arc: f32 = std.math.pi / 6.0;
 const max_spread_radians: f32 = std.math.pi / 6.0;
 
-fn minuteAngle(minutes: f32) f32 {
+pub fn minuteAngle(minutes: f32) f32 {
     return angle_0 + (minutes / 60.0) * tau;
+}
+
+pub fn angleToMinutes(angle: f32) f32 {
+    var normalized = angle - angle_0;
+    if (normalized < 0) normalized += tau;
+    if (normalized >= tau) normalized -= tau;
+    return (normalized / tau) * 60.0;
 }
 
 pub fn hourAngle(hours: f32, minutes: f32) f32 {

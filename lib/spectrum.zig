@@ -73,8 +73,8 @@ pub const Paths = struct {
                 p,
             ),
             .geometric => computeGeometricBounce(
-                entry_hit.edge,
-                entry_hit.u,
+                entry,
+                b.center,
                 hour_angle,
             ),
         };
@@ -203,7 +203,7 @@ pub fn computeBounceVertex(
 }
 
 /// Simple bounce rules based on hour and minute positions.
-pub fn computeGeometricBounce(entry_edge: Prism.Edge, entry_u: f32, hour_angle: f32) ?Prism.Vertex {
+pub fn computeGeometricBounce(entry: vec2.Vec2, center: vec2.Vec2, hour_angle: f32) ?Prism.Vertex {
     // Convert hour_angle to hour (0-11)
     // angle_0 = -π/2 corresponds to 12 o'clock (hour 0)
     const angle_0: f32 = -std.math.pi / 2.0;
@@ -212,13 +212,10 @@ pub fn computeGeometricBounce(entry_edge: Prism.Edge, entry_u: f32, hour_angle: 
     if (normalized >= std.math.tau) normalized -= std.math.tau;
     const hour: u4 = @intFromFloat(@mod(normalized * 6.0 / std.math.pi, 12.0));
 
-    // Convert entry position to minute (0-60)
-    // Each prism edge spans ~20 minutes: right=0-20, bottom=20-40, left=40-60
-    const minute: f32 = switch (entry_edge) {
-        .right => entry_u * 20.0,
-        .bottom => 20.0 + entry_u * 20.0,
-        .left => 40.0 + entry_u * 20.0,
-    };
+    // Calculate minute from entry point angle on the circle (6 degrees per minute)
+    const direction = entry - center;
+    const entry_angle = std.math.atan2(direction[1], direction[0]);
+    const minute: f32 = clock.angleToMinutes(entry_angle);
 
     switch (hour) {
         0, 1, 2 => {
