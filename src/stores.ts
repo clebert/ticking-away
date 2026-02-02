@@ -9,33 +9,33 @@ const defaults = {
   prism: {
     size: 90,
     rainbowSpread: 50,
-    gray: 255,
-    blueTint: 100,
-    glowWidth: 6,
+    gray: 248,
+    blueTint: 160,
+    glowWidth: 7,
     glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
   rays: {
     glowWidth: 1,
-    glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
+    glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     gradientFill: true,
-    palette: 1, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
+    palette: 2, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
     reverseSpectrum: true, // Album art style: red on top, violet on bottom
   },
   markers: {
     length: 10,
     glowWidth: 1,
-    glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
+    glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
   background: {
     grainIntensity: 100,
-    grainBrightnessThreshold: 30,
+    grainBrightnessThreshold: 1,
   },
   dither: {
     enabled: false,
-    paletteMode: 0, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
-    strength: 20, // 0-100, maps to 0.0-1.0
-    oklabError: false, // false = linear RGB error diffusion, true = OkLab error diffusion
-    chromaWeight: 200, // 50-400, maps to 0.5-4.0 (200 = default 2.0, higher = prioritize hue)
+    paletteMode: 2, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
+    strength: 96, // 0-100, maps to 0.0-1.0
+    oklabError: true, // false = linear RGB error diffusion, true = OkLab error diffusion
+    chromaWeight: 100, // 50-400, maps to 0.5-4.0 (200 = default 2.0, higher = prioritize hue)
   },
   display: {
     markers: false,
