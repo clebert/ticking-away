@@ -15,11 +15,11 @@ pub fn init(origin: @Vector(2, f32), target: @Vector(2, f32)) Self {
     };
 }
 
-pub const SegmentIntersection = struct {
+pub const Intersection = struct {
     distance: f32, // distance from ray start to hit
     hit: @Vector(2, f32),
 
-    pub fn closest(a: ?SegmentIntersection, b: ?SegmentIntersection) ?SegmentIntersection {
+    pub fn closest(a: ?Intersection, b: ?Intersection) ?Intersection {
         const a_val = a orelse return b;
         const b_val = b orelse return a;
 
@@ -28,7 +28,7 @@ pub const SegmentIntersection = struct {
 };
 
 /// Assumes normalized coordinates (all values in [-1, 1]).
-pub fn intersectSegment(self: Self, segment: Segment) ?SegmentIntersection {
+pub fn intersectSegment(self: Self, segment: Segment) ?Intersection {
     std.debug.assert(vector.isNormalized(self.direction));
 
     const start_to_end = segment.end - segment.start;
@@ -58,14 +58,9 @@ pub fn intersectSegment(self: Self, segment: Segment) ?SegmentIntersection {
     return .{ .distance = distance, .hit = hit };
 }
 
-pub const CircleIntersection = struct {
-    distance: f32,
-    hit: @Vector(2, f32),
-};
-
 /// Intersects the ray with a circle centered at the origin.
 /// Assumes normalized coordinates (all values in [-1, 1]).
-pub fn intersectCircle(self: Self, radius: f32) ?CircleIntersection {
+pub fn intersectCircle(self: Self, radius: f32) ?Intersection {
     std.debug.assert(vector.isNormalized(self.direction));
     std.debug.assert(radius > 0.0 and radius <= 1.0);
 

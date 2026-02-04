@@ -1,3 +1,5 @@
+const std = @import("std");
+
 pub const Color = enum {
     red,
     orange,
@@ -8,4 +10,23 @@ pub const Color = enum {
     violet,
 };
 
-const Self = @This(); // TODO: needed? otherwise rainbow.zig
+const max_spread_radians: f32 = std.math.pi / 6.0;
+
+const Self = @This();
+
+spread: f32,
+
+pub fn computeColorAngle(self: Self, base_angle: f32, color: Color) f32 {
+    std.debug.assert(self.spread >= 0.0 and self.spread <= 1.0);
+
+    const color_index: f32 = @floatFromInt(@intFromEnum(color));
+    const color_count: f32 = @floatFromInt(@typeInfo(Color).@"enum".fields.len);
+
+    // the color's position within the spectrum, normalized to [0, 1]
+    const normalized_position = (color_index + 0.5) / color_count;
+
+    const spread_radians = self.spread * max_spread_radians;
+    const offset_radians = (0.5 - normalized_position) * spread_radians;
+
+    return base_angle + offset_radians;
+}

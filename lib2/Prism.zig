@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const Ray = @import("Ray.zig");
 const Segment = @import("Segment.zig");
 const vector = @import("vector.zig");
 
@@ -65,6 +66,16 @@ pub fn init(bottom_length: f32) Self {
     }
 
     return .{ .vertices = vertices, .edges = edges };
+}
+
+pub fn intersect(self: Self, ray: Ray) ?Ray.Intersection {
+    return Ray.Intersection.closest(
+        Ray.Intersection.closest(
+            ray.intersectSegment(self.edges.get(.right)),
+            ray.intersectSegment(self.edges.get(.bottom)),
+        ),
+        ray.intersectSegment(self.edges.get(.left)),
+    );
 }
 
 test "init creates equilateral triangle centered at origin" {
