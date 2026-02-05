@@ -9,7 +9,7 @@ pub const VertexId = enum(u2) {
     bottom_right = 1,
     bottom_left = 2,
 
-    pub inline fn getOppositeEdgeId(self: VertexId) EdgeId {
+    pub fn getOppositeEdgeId(self: VertexId) EdgeId {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
     }
 };
@@ -19,19 +19,19 @@ pub const EdgeId = enum(u2) {
     bottom = 1, // bottom_right -> bottom_left
     left = 2, // bottom_left -> apex
 
-    pub inline fn getStartVertexId(self: EdgeId) VertexId {
+    pub fn getStartVertexId(self: EdgeId) VertexId {
         return @enumFromInt(@intFromEnum(self));
     }
 
-    pub inline fn getEndVertexId(self: EdgeId) VertexId {
+    pub fn getEndVertexId(self: EdgeId) VertexId {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
     }
 
-    pub inline fn getOppositeVertexId(self: EdgeId) VertexId {
+    pub fn getOppositeVertexId(self: EdgeId) VertexId {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 2) % 3);
     }
 
-    pub inline fn touchesVertex(self: EdgeId, vertex_id: VertexId) bool {
+    pub fn touchesVertex(self: EdgeId, vertex_id: VertexId) bool {
         return vertex_id == self.getStartVertexId() or vertex_id == self.getEndVertexId();
     }
 };

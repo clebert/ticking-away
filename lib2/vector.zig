@@ -1,18 +1,18 @@
-pub inline fn dot(a: @Vector(2, f32), b: @Vector(2, f32)) f32 {
+pub fn dot(a: @Vector(2, f32), b: @Vector(2, f32)) f32 {
     return @reduce(.Add, a * b);
 }
 
-pub inline fn lengthSq(v: @Vector(2, f32)) f32 {
+pub fn lengthSq(v: @Vector(2, f32)) f32 {
     return dot(v, v);
 }
 
-pub inline fn length(v: @Vector(2, f32)) f32 {
+pub fn length(v: @Vector(2, f32)) f32 {
     return @sqrt(lengthSq(v));
 }
 
 pub const tolerance: f32 = 1e-5;
 
-pub inline fn normalize(v: @Vector(2, f32)) @Vector(2, f32) {
+pub fn normalize(v: @Vector(2, f32)) @Vector(2, f32) {
     const len = length(v);
 
     if (len < tolerance) return .{ 0, 0 };
@@ -21,7 +21,7 @@ pub inline fn normalize(v: @Vector(2, f32)) @Vector(2, f32) {
 }
 
 /// 2D cross product: gives signed area of parallelogram formed by the two vectors.
-pub inline fn cross2d(a: @Vector(2, f32), b: @Vector(2, f32)) f32 {
+pub fn cross2d(a: @Vector(2, f32), b: @Vector(2, f32)) f32 {
     return a[0] * b[1] - a[1] * b[0];
 }
 
