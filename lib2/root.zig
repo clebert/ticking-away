@@ -1,5 +1,6 @@
 const std = @import("std");
 
+pub const Image = @import("Image.zig");
 pub const Linear = @import("Linear.zig");
 pub const Prism = @import("Prism.zig");
 pub const Rainbow = @import("Rainbow.zig");

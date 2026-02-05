@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const Color = enum {
+pub const ColorId = enum {
     red,
     orange,
     yellow,
@@ -16,11 +16,11 @@ const Self = @This();
 
 spread: f32,
 
-pub fn computeColorAngle(self: Self, base_angle: f32, color: Color) f32 {
+pub fn computeColorAngle(self: Self, base_angle: f32, color_id: ColorId) f32 {
     std.debug.assert(self.spread >= 0.0 and self.spread <= 1.0);
 
-    const color_index: f32 = @floatFromInt(@intFromEnum(color));
-    const color_count: f32 = @floatFromInt(@typeInfo(Color).@"enum".fields.len);
+    const color_index: f32 = @floatFromInt(@intFromEnum(color_id));
+    const color_count: f32 = @floatFromInt(@typeInfo(ColorId).@"enum".fields.len);
 
     // the color's position within the spectrum, normalized to [0, 1]
     const normalized_position = (color_index + 0.5) / color_count;

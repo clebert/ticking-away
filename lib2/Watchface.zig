@@ -13,8 +13,8 @@ const Self = @This();
 
 external_minute_hand: Segment,
 internal_minute_hand: ?Segment,
-internal_hour_hand: std.EnumArray(Rainbow.Color, Segment),
-external_hour_hand: std.EnumArray(Rainbow.Color, Segment),
+internal_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
+external_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 
 pub fn init(time_minutes: f32, radius: f32, prism: Prism, rainbow: Rainbow) ?Self {
     std.debug.assert(time_minutes >= 0.0);
@@ -46,21 +46,21 @@ pub fn init(time_minutes: f32, radius: f32, prism: Prism, rainbow: Rainbow) ?Sel
     const hour_angle = apex_angle + (@as(f32, @floatFromInt(hour)) / 12.0) *
         std.math.tau + (minute / 60.0) * hour_arc;
 
-    var internal_hour_hand: std.EnumArray(Rainbow.Color, Segment) = undefined;
-    var external_hour_hand: std.EnumArray(Rainbow.Color, Segment) = undefined;
+    var internal_hour_hand: std.EnumArray(Rainbow.ColorId, Segment) = undefined;
+    var external_hour_hand: std.EnumArray(Rainbow.ColorId, Segment) = undefined;
 
-    for (std.enums.values(Rainbow.Color)) |color| {
-        const color_angle = rainbow.computeColorAngle(hour_angle, color);
+    for (std.enums.values(Rainbow.ColorId)) |color_id| {
+        const color_angle = rainbow.computeColorAngle(hour_angle, color_id);
         const hour_ray = Ray.init(.{ 0, 0 }, .{ @cos(color_angle), @sin(color_angle) });
         const hour_prism_intersection = prism.intersect(hour_ray) orelse return null;
         const hour_boundary_intersection = hour_ray.intersectCircle(radius) orelse return null;
 
-        internal_hour_hand.set(color, .{
+        internal_hour_hand.set(color_id, .{
             .start = internal_hour_hand_start,
             .end = hour_prism_intersection.hit,
         });
 
-        external_hour_hand.set(color, .{
+        external_hour_hand.set(color_id, .{
             .start = hour_prism_intersection.hit,
             .end = hour_boundary_intersection.hit,
         });
@@ -150,8 +150,8 @@ test "init all hour hand colors share same internal start" {
     const watchface = expectInitNonNull(0.0);
     const first = watchface.internal_hour_hand.get(.red).start;
 
-    for (std.enums.values(Rainbow.Color)) |color| {
-        const start = watchface.internal_hour_hand.get(color).start;
+    for (std.enums.values(Rainbow.ColorId)) |color_id| {
+        const start = watchface.internal_hour_hand.get(color_id).start;
 
         try std.testing.expectApproxEqAbs(first[0], start[0], vector.tolerance);
         try std.testing.expectApproxEqAbs(first[1], start[1], vector.tolerance);
@@ -161,8 +161,8 @@ test "init all hour hand colors share same internal start" {
 test "init external hour hand endpoints lie on circle boundary" {
     const watchface = expectInitNonNull(195.0);
 
-    for (std.enums.values(Rainbow.Color)) |color| {
-        const end = watchface.external_hour_hand.get(color).end;
+    for (std.enums.values(Rainbow.ColorId)) |color_id| {
+        const end = watchface.external_hour_hand.get(color_id).end;
         const distance = vector.length(end);
 
         try std.testing.expectApproxEqAbs(test_radius, distance, vector.tolerance);
