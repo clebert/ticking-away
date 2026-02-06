@@ -13,13 +13,13 @@ npm run ci
 
 ### Available Scripts
 
-| Script             | Command                                     | Description                                 |
-| ------------------ | ------------------------------------------- | ------------------------------------------- |
-| `npm run build`    | `./build.sh`                                | Build WASM module and Vite production build |
-| `npm run ci`       | `npm run build && npm run lint && npm test` | Run full CI pipeline (build, lint, test)    |
-| `npm run lint`     | `./lint.sh`                                 | Run linters                                 |
-| `npm run lint:fix` | `./lint.sh --fix`                           | Run linters with auto-fix                   |
-| `npm test`         | `./test.sh`                                 | Run tests                                   |
+| Script             | Description                                 |
+| ------------------ | ------------------------------------------- |
+| `npm run build`    | Build WASM module and Vite production build |
+| `npm run ci`       | Run full CI pipeline (build, lint, test)    |
+| `npm run lint`     | Run linters                                 |
+| `npm run lint:fix` | Run linters with auto-fix                   |
+| `npm test`         | Run tests                                   |
 
 ## Zig Code Style
 

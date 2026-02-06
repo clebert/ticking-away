@@ -102,7 +102,10 @@ export function render(): void {
   writeConfig(view, configPtr);
 
   // Render watchface (allocates buffers internally)
-  const rgbaPtr = wasmModule.renderWatchfaceWithConfig(width, height, configPtr);
+  const rgbaPtr =
+    display.renderer.value === 1
+      ? wasmModule.renderLib2WithConfig(width, height, configPtr)
+      : wasmModule.renderWatchfaceWithConfig(width, height, configPtr);
 
   if (rgbaPtr === 0) {
     return;

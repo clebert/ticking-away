@@ -28,6 +28,12 @@ pub fn build(b: *std.Build) void {
                     .optimize = .ReleaseSmall,
                     .strip = true,
                 }) },
+                .{ .name = "lib2", .module = b.createModule(.{
+                    .root_source_file = b.path("lib2/root.zig"),
+                    .target = wasm_target,
+                    .optimize = .ReleaseSmall,
+                    .strip = true,
+                }) },
             },
         }),
     });
@@ -58,6 +64,11 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "lib", .module = b.createModule(.{
                     .root_source_file = b.path("lib/root.zig"),
+                    .target = wasm_target,
+                    .optimize = .ReleaseSmall,
+                }) },
+                .{ .name = "lib2", .module = b.createModule(.{
+                    .root_source_file = b.path("lib2/root.zig"),
                     .target = wasm_target,
                     .optimize = .ReleaseSmall,
                 }) },
@@ -152,6 +163,44 @@ pub fn build(b: *std.Build) void {
     const run_perf_step = b.step("run-perf", "Run the performance benchmark");
 
     run_perf_step.dependOn(&run_perf.step);
+
+    // =========================================================================
+    // Native Performance Benchmark (lib2)
+    // =========================================================================
+
+    const perf_lib2 = b.addExecutable(.{
+        .name = "perf-lib2",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/perf/lib2.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{
+                    .name = "lib2",
+                    .module = b.createModule(.{
+                        .root_source_file = b.path("lib2/root.zig"),
+                        .target = target,
+                        .optimize = optimize,
+                    }),
+                },
+            },
+        }),
+    });
+
+    const perf_lib2_install = b.addInstallArtifact(perf_lib2, .{});
+    const perf_lib2_step = b.step("perf-lib2", "Build the lib2 performance benchmark");
+
+    perf_lib2_step.dependOn(&perf_lib2_install.step);
+
+    const run_perf_lib2 = b.addRunArtifact(perf_lib2);
+
+    if (b.args) |args| {
+        run_perf_lib2.addArgs(args);
+    }
+
+    const run_perf_lib2_step = b.step("run-perf-lib2", "Run the lib2 performance benchmark");
+
+    run_perf_lib2_step.dependOn(&run_perf_lib2.step);
 
     // =========================================================================
     // Default step builds WASM

@@ -1,10 +1,11 @@
 export interface WasmModule {
   getConfigBuffer(): number;
   renderWatchfaceWithConfig(width: number, height: number, config: number): number;
+  renderLib2WithConfig(width: number, height: number, config: number): number;
 }
 
 const initialMemoryPages = 32;
-const maximumMemoryPages = 4096;
+const maximumMemoryPages = 4096 * 2;
 
 let wasmModule: WasmModule | undefined;
 let wasmMemory: WebAssembly.Memory | undefined;

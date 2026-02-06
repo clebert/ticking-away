@@ -4,6 +4,9 @@ const Linear = @import("Linear.zig");
 
 const Self = @This();
 
+pub const black: Self = .{ .r = 0, .g = 0, .b = 0 };
+pub const white: Self = .{ .r = 255, .g = 255, .b = 255 };
+
 r: u8,
 g: u8,
 b: u8,
@@ -31,7 +34,6 @@ fn srgbByteToLinear(byte: u8) f32 {
 }
 
 test "toLinear converts black correctly" {
-    const black: Self = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
     const linear = black.toLinear();
 
     try std.testing.expectEqual(@as(f32, 0.0), linear.vec[0]);
@@ -41,7 +43,6 @@ test "toLinear converts black correctly" {
 }
 
 test "toLinear converts white correctly" {
-    const white: Self = .{ .r = 255, .g = 255, .b = 255, .a = 255 };
     const linear = white.toLinear();
 
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), linear.vec[0], 1e-6);

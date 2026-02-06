@@ -27,7 +27,6 @@ pub const Intersection = struct {
     }
 };
 
-/// Assumes normalized coordinates (all values in [-1, 1]).
 pub fn intersectSegment(self: Self, segment: Segment) ?Intersection {
     std.debug.assert(vector.isNormalized(self.direction));
 
@@ -46,31 +45,30 @@ pub fn intersectSegment(self: Self, segment: Segment) ?Intersection {
 
     if (distance < vector.tolerance) return null;
 
-    const segment_parameter_unclamped =
+    const normalized_position_unclamped =
         vector.dot(start_to_origin, ray_normal) / denominator;
 
-    if (segment_parameter_unclamped < -vector.tolerance or
-        segment_parameter_unclamped > 1.0 + vector.tolerance) return null;
+    if (normalized_position_unclamped < -vector.tolerance or
+        normalized_position_unclamped > 1.0 + vector.tolerance) return null;
 
-    const segment_parameter = std.math.clamp(segment_parameter_unclamped, 0.0, 1.0);
-    const hit = segment.start + start_to_end * @as(@Vector(2, f32), @splat(segment_parameter));
+    const normalized_position = std.math.clamp(normalized_position_unclamped, 0.0, 1.0);
+    const hit = segment.start + start_to_end * @as(@Vector(2, f32), @splat(normalized_position));
 
     return .{ .distance = distance, .hit = hit };
 }
 
 /// Intersects the ray with a circle centered at the origin.
-/// Assumes normalized coordinates (all values in [-1, 1]).
 pub fn intersectCircle(self: Self, radius: f32) ?Intersection {
     std.debug.assert(vector.isNormalized(self.direction));
     std.debug.assert(radius > 0.0 and radius <= 1.0);
 
     const origin_dot_direction = vector.dot(self.origin, self.direction);
-    const center_to_origin_length_sq = vector.lengthSq(self.origin);
-    const radius_sq = radius * radius;
+    const center_to_origin_length_squared = vector.lengthSq(self.origin);
+    const radius_squared = radius * radius;
 
     // Using half the linear coefficient for simplified quadratic formula.
     const discriminant_quarter = origin_dot_direction * origin_dot_direction -
-        (center_to_origin_length_sq - radius_sq);
+        (center_to_origin_length_squared - radius_squared);
 
     if (discriminant_quarter < 0.0) return null;
 

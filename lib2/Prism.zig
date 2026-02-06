@@ -4,6 +4,8 @@ const Ray = @import("Ray.zig");
 const Segment = @import("Segment.zig");
 const vector = @import("vector.zig");
 
+const Self = @This();
+
 pub const VertexId = enum(u2) {
     apex = 0,
     bottom_right = 1,
@@ -23,8 +25,6 @@ pub const EdgeId = enum(u2) {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
     }
 };
-
-const Self = @This();
 
 vertices: std.EnumArray(VertexId, @Vector(2, f32)),
 edges: std.EnumArray(EdgeId, Segment),
@@ -54,6 +54,21 @@ pub fn init(bottom_length: f32) Self {
     }
 
     return .{ .vertices = vertices, .edges = edges };
+}
+
+pub fn containsPoint(self: Self, point: @Vector(2, f32)) bool {
+    const v0 = self.vertices.get(.apex);
+    const v1 = self.vertices.get(.bottom_right);
+    const v2 = self.vertices.get(.bottom_left);
+
+    const d0 = vector.cross2d(v1 - v0, point - v0);
+    const d1 = vector.cross2d(v2 - v1, point - v1);
+    const d2 = vector.cross2d(v0 - v2, point - v2);
+
+    const has_neg = (d0 < 0) or (d1 < 0) or (d2 < 0);
+    const has_pos = (d0 > 0) or (d1 > 0) or (d2 > 0);
+
+    return !(has_neg and has_pos);
 }
 
 pub fn intersect(self: Self, ray: Ray) ?Ray.Intersection {
@@ -114,4 +129,17 @@ test "init creates equilateral triangle centered at origin" {
 
     try std.testing.expectApproxEqAbs(right_length_squared, bottom_length_squared, vector.tolerance);
     try std.testing.expectApproxEqAbs(bottom_length_squared, left_length_squared, vector.tolerance);
+}
+
+test "containsPoint" {
+    const prism = Self.init(0.8);
+
+    // Center (origin) is inside
+    try std.testing.expect(prism.containsPoint(.{ 0, 0 }));
+
+    // Point far outside
+    try std.testing.expect(!prism.containsPoint(.{ 1, 1 }));
+
+    // Vertex is on boundary (cross products are zero)
+    try std.testing.expect(prism.containsPoint(prism.vertices.get(.apex)));
 }

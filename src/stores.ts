@@ -42,6 +42,7 @@ const defaults = {
   display: {
     markers: false,
     highDpi: false,
+    renderer: 0, // 0=Classic, 1=lib2
   },
 };
 
@@ -327,6 +328,7 @@ export const display = {
   // Signals
   markers: signal(settings.displayMarkers ?? defaults.display.markers),
   highDpi: signal(settings.displayHighDpi ?? defaults.display.highDpi),
+  renderer: signal(settings.displayRenderer ?? defaults.display.renderer),
 
   // Actions
   toggleMarkers(): void {
@@ -335,6 +337,10 @@ export const display = {
 
   toggleHighDpi(): void {
     display.highDpi.value = !display.highDpi.value;
+  },
+
+  setRenderer(e: Event): void {
+    display.renderer.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 };
 
@@ -381,6 +387,7 @@ export const resetAll = {
       // Display
       display.markers.value = defaults.display.markers;
       display.highDpi.value = defaults.display.highDpi;
+      display.renderer.value = defaults.display.renderer;
     });
   },
 };

@@ -4,10 +4,10 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
-vec: @Vector(4, f32),
-
 pub const black: Self = .{ .vec = .{ 0, 0, 0, 1 } };
 pub const white: Self = .{ .vec = .{ 1, 1, 1, 1 } };
+
+vec: @Vector(4, f32),
 
 pub fn init(r: f32, g: f32, b: f32, a: f32) Self {
     return .{ .vec = .{ r, g, b, a } };
@@ -23,6 +23,8 @@ pub fn lerp(a: Self, b: Self, t: f32) Self {
 }
 
 pub fn toSrgb(self: Self) Srgb {
+    if (@reduce(.And, self.vec == black.vec)) return .black;
+
     return .{
         .r = linearToSrgbByte(self.vec[0]),
         .g = linearToSrgbByte(self.vec[1]),

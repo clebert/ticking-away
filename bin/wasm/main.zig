@@ -5,6 +5,10 @@ const lib = @import("lib");
 
 const compat = @import("compat.zig");
 
+comptime {
+    _ = @import("wasm2.zig");
+}
+
 // Allocated buffers (reallocated when dimensions change)
 var linear_colors: ?[]lib.color_space.Linear = null;
 var srgba_colors: ?[]lib.color_space.Srgba = null;

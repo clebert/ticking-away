@@ -29,6 +29,7 @@ export interface Settings {
 
   displayMarkers: boolean;
   displayHighDpi: boolean;
+  displayRenderer: number;
 
   backgroundGrainIntensity: number;
   backgroundGrainBrightnessThreshold: number;
@@ -101,6 +102,7 @@ export function saveSettings({
 
       displayMarkers: display.markers.value,
       displayHighDpi: display.highDpi.value,
+      displayRenderer: display.renderer.value,
     };
 
     localStorage.setItem(storageKey, JSON.stringify(settings));

@@ -1,0 +1,151 @@
+const std = @import("std");
+
+const lib2 = @import("lib2");
+
+const width: usize = 390;
+const height: usize = 390;
+const max_frames: usize = 720;
+
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    var args = std.process.args();
+    _ = args.skip();
+
+    const total_frames: usize = if (args.next()) |arg|
+        std.fmt.parseInt(usize, arg, 10) catch {
+            std.debug.print("Usage: perf-lib2 [frames]\n", .{});
+            std.debug.print("  frames: number of frames to render (1-720, default: 720)\n", .{});
+            return;
+        }
+    else
+        max_frames;
+
+    if (total_frames == 0 or total_frames > max_frames) {
+        std.debug.print("Error: frames must be between 1 and {d}\n", .{max_frames});
+        return;
+    }
+
+    const pixel_count = width * height;
+    const linear_buf = try allocator.alloc(lib2.Linear, pixel_count);
+    defer allocator.free(linear_buf);
+
+    const srgb_buf = try allocator.alloc(lib2.Srgb, pixel_count);
+    defer allocator.free(srgb_buf);
+
+    const frame_times = try allocator.alloc(u64, total_frames);
+    defer allocator.free(frame_times);
+
+    const glow_times = try allocator.alloc(u64, total_frames);
+    defer allocator.free(glow_times);
+
+    const gradient_times = try allocator.alloc(u64, total_frames);
+    defer allocator.free(gradient_times);
+
+    const srgb_times = try allocator.alloc(u64, total_frames);
+    defer allocator.free(srgb_times);
+
+    const image = lib2.Image.init(width, height);
+    const viewport = image.viewport();
+
+    const scene = lib2.Scene{
+        .radius = 1.0,
+        .prism = lib2.Prism.init(0.8),
+        .normalized_rainbow_spread = 0.5,
+    };
+
+    const rainbow = lib2.Rainbow.spectral;
+    const glow_style = lib2.Glow.Style{ .width = 0.08, .falloff = .quadratic };
+
+    std.debug.print("Resolution: {d}x{d}, frames: {d}\n", .{ width, height, total_frames });
+
+    var timer = try std.time.Timer.start();
+    const start_total = timer.read();
+
+    for (0..total_frames) |frame_idx| {
+        const hour = frame_idx / 60;
+        const minute = frame_idx % 60;
+        const time = lib2.Time.init(@intCast(hour), @floatFromInt(minute));
+
+        const frame_start = timer.read();
+
+        const clock = lib2.Clock.init(time, scene) orelse continue;
+
+        @memset(linear_buf, lib2.Linear.black);
+
+        var band = image.band(lib2.Linear, linear_buf, height, 0) catch continue;
+
+        const minute_glow = lib2.Glow{ .style = glow_style, .color = lib2.Linear.white };
+
+        minute_glow.renderLine(&band, viewport, clock.external_minute_hand);
+
+        if (clock.internal_minute_hand) |segment| {
+            minute_glow.renderLine(&band, viewport, segment);
+        }
+
+        for (std.enums.values(lib2.Rainbow.ColorId)) |color_id| {
+            const ray_color = rainbow.color(color_id);
+
+            const internal_glow = lib2.Glow{ .style = glow_style, .color = ray_color };
+            internal_glow.renderLine(&band, viewport, clock.internal_hour_hand.get(color_id));
+
+            const external_glow = lib2.Glow{ .style = glow_style, .color = ray_color };
+            external_glow.renderLine(&band, viewport, clock.external_hour_hand.get(color_id));
+        }
+
+        const glow_end = timer.read();
+        glow_times[frame_idx] = glow_end - frame_start;
+
+        lib2.Spectrum.render(&band, viewport, scene, clock, rainbow);
+
+        const gradient_end = timer.read();
+        gradient_times[frame_idx] = gradient_end - glow_end;
+
+        _ = band.toSrgb(srgb_buf) catch continue;
+
+        const srgb_end = timer.read();
+        srgb_times[frame_idx] = srgb_end - gradient_end;
+        frame_times[frame_idx] = srgb_end - frame_start;
+    }
+
+    const total_ns = timer.read() - start_total;
+
+    var min_ns: u64 = std.math.maxInt(u64);
+    var max_ns: u64 = 0;
+    var sum_ns: u64 = 0;
+    var glow_sum: u64 = 0;
+    var gradient_sum: u64 = 0;
+    var srgb_sum: u64 = 0;
+
+    for (0..total_frames) |i| {
+        const t = frame_times[i];
+        min_ns = @min(min_ns, t);
+        max_ns = @max(max_ns, t);
+        sum_ns += t;
+        glow_sum += glow_times[i];
+        gradient_sum += gradient_times[i];
+        srgb_sum += srgb_times[i];
+    }
+
+    const avg_ns = sum_ns / total_frames;
+    const total_ms = @as(f64, @floatFromInt(total_ns)) / 1_000_000.0;
+    const avg_ms = @as(f64, @floatFromInt(avg_ns)) / 1_000_000.0;
+    const min_ms = @as(f64, @floatFromInt(min_ns)) / 1_000_000.0;
+    const max_ms = @as(f64, @floatFromInt(max_ns)) / 1_000_000.0;
+    const fps = 1_000_000_000.0 / @as(f64, @floatFromInt(avg_ns));
+    const glow_ms = @as(f64, @floatFromInt(glow_sum / total_frames)) / 1_000_000.0;
+    const gradient_ms = @as(f64, @floatFromInt(gradient_sum / total_frames)) / 1_000_000.0;
+    const srgb_ms = @as(f64, @floatFromInt(srgb_sum / total_frames)) / 1_000_000.0;
+
+    std.debug.print("\n=== lib2 Performance Results ===\n", .{});
+    std.debug.print("Resolution: {d}x{d}\n", .{ width, height });
+    std.debug.print("Frames: {d}\n", .{total_frames});
+    std.debug.print("Total time: {d:.2} ms\n", .{total_ms});
+    std.debug.print("Average: {d:.3} ms/frame ({d:.1} FPS)\n", .{ avg_ms, fps });
+    std.debug.print("Min: {d:.3} ms\n", .{min_ms});
+    std.debug.print("Max: {d:.3} ms\n", .{max_ms});
+    std.debug.print("\n--- Breakdown (avg per frame) ---\n", .{});
+    std.debug.print("Glow:     {d:.3} ms\n", .{glow_ms});
+    std.debug.print("Spectrum: {d:.3} ms\n", .{gradient_ms});
+    std.debug.print("sRGB:     {d:.3} ms\n", .{srgb_ms});
+}

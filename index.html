@@ -509,6 +509,13 @@
           <!-- Display Options -->
           <div class="section-title">Display</div>
           <div class="control-group">
+            <label>Renderer</label>
+            <select data-bind="value:display.renderer, onchange:display.setRenderer">
+              <option value="0">Classic</option>
+              <option value="1">lib2 (Experimental)</option>
+            </select>
+          </div>
+          <div class="control-group">
             <label
               ><input
                 type="checkbox"

@@ -15,6 +15,32 @@ pub fn init(width: usize, height: usize) Self {
     return .{ .width = width, .height = height };
 }
 
+pub const Viewport = struct {
+    scale: f32,
+    inv_scale: f32,
+    center: @Vector(2, f32),
+
+    pub fn toPixel(self: Viewport, point: @Vector(2, f32)) @Vector(2, f32) {
+        return point * @as(@Vector(2, f32), @splat(self.scale)) + self.center;
+    }
+
+    pub fn toNormalized(self: Viewport, pixel: @Vector(2, f32)) @Vector(2, f32) {
+        return (pixel - self.center) * @as(@Vector(2, f32), @splat(self.inv_scale));
+    }
+};
+
+pub fn viewport(self: Self) Viewport {
+    const width: f32 = @floatFromInt(self.width);
+    const height: f32 = @floatFromInt(self.height);
+    const scale = @min(width, height) / 2.0;
+
+    return .{
+        .scale = scale,
+        .inv_scale = 1.0 / scale,
+        .center = .{ width / 2.0, height / 2.0 },
+    };
+}
+
 pub fn Band(comptime Color: type) type {
     return struct {
         buffer: []Color,
@@ -47,7 +73,7 @@ pub fn Band(comptime Color: type) type {
     };
 }
 
-pub fn initBand(
+pub fn band(
     self: Self,
     comptime Color: type,
     buffer: []Color,

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const lib = @import("lib");
+const lib2 = @import("lib2");
 
 /// Falloff type matching C FalloffType enum.
 pub const FalloffType = enum(i32) {
@@ -17,6 +18,15 @@ pub const FalloffType = enum(i32) {
             .exponential => .exponential,
         };
     }
+
+    pub fn toLib2(self: FalloffType) lib2.Glow.Falloff {
+        return switch (self) {
+            .linear => .linear,
+            .quadratic => .quadratic,
+            .cubic => .cubic,
+            .exponential => .exponential,
+        };
+    }
 };
 
 /// Ray palette matching C RayPalette enum.
@@ -26,6 +36,14 @@ pub const RayPalette = enum(i32) {
     spectra6 = 2,
 
     pub fn toZig(self: RayPalette) lib.rainbow.PaletteType {
+        return switch (self) {
+            .oklch_balanced => .oklch_balanced,
+            .spectral => .spectral,
+            .spectra6 => .spectra6,
+        };
+    }
+
+    pub fn toLib2(self: RayPalette) lib2.Rainbow.PaletteId {
         return switch (self) {
             .oklch_balanced => .oklch_balanced,
             .spectral => .spectral,
