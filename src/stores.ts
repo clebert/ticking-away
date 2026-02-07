@@ -6,9 +6,7 @@ const defaults = {
     accelerated: false,
     accelerationFactor: 1,
   },
-  time: {
-    bounceMode: 2, // 0=Legacy, 1=Always, 2=Geometric
-  },
+
   prism: {
     size: 90,
     rainbowSpread: 50,
@@ -17,32 +15,26 @@ const defaults = {
     glowWidth: 7,
     glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
-  rays: {
+
+  rainbow: {
     glowWidth: 1,
-    glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
-    gradientFill: true,
+    glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     palette: 2, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
   },
-  markers: {
-    length: 10,
-    glowWidth: 1,
-    glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
-  },
-  background: {
+
+  effects: {
     grainIntensity: 100,
-    grainBrightnessThreshold: 1,
   },
+
   dither: {
     enabled: false,
     paletteMode: 2, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
-    strength: 96, // 0-100, maps to 0.0-1.0
-    oklabError: true, // false = linear RGB error diffusion, true = OkLab error diffusion
-    chromaWeight: 100, // 50-400, maps to 0.5-4.0 (200 = default 2.0, higher = prioritize hue)
+    strength: 98, // 0-100, maps to 0.0-1.0
+    chromaWeight: 100, // 50-400, maps to 0.5-4.0
   },
+
   display: {
-    markers: false,
-    highDpi: false,
-    renderer: 0, // 0=Classic, 1=lib2
+    highDpi: true,
   },
 };
 
@@ -161,7 +153,6 @@ export const time = {
     persistedLive ? initialTime.getMinutes() : (settings.timeMinutes ?? initialTime.getMinutes()),
   ),
   seconds: signal(initialTime.getSeconds()), // Used internally for animation
-  bounceMode: signal(settings.timeBounceMode ?? defaults.time.bounceMode),
 
   // Actions
   setHours(e: Event): void {
@@ -180,10 +171,6 @@ export const time = {
       time.minutes.value = currentTime.getMinutes();
       time.seconds.value = currentTime.getSeconds();
     });
-  },
-
-  setBounceMode(e: Event): void {
-    time.bounceMode.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 };
 
@@ -226,71 +213,38 @@ export const prism = {
   },
 };
 
-export const rays = {
+export const rainbow = {
   // Signals: glow
-  glowWidth: signal(settings.raysGlowWidth ?? defaults.rays.glowWidth),
-  glowFalloff: signal(settings.raysGlowFalloff ?? defaults.rays.glowFalloff),
+  glowWidth: signal(settings.rainbowGlowWidth ?? defaults.rainbow.glowWidth),
+  glowFalloff: signal(settings.rainbowGlowFalloff ?? defaults.rainbow.glowFalloff),
 
   // Signals: rendering mode
-  gradientFill: signal(settings.raysGradientFill ?? defaults.rays.gradientFill),
-  palette: signal(settings.raysPalette ?? defaults.rays.palette),
+  palette: signal(settings.rainbowPalette ?? defaults.rainbow.palette),
+
   // Actions
   setGlowWidth(e: Event): void {
-    rays.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
+    rainbow.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setGlowFalloff(e: Event): void {
-    rays.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
-  },
-
-  toggleGradientFill(): void {
-    rays.gradientFill.value = !rays.gradientFill.value;
+    rainbow.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   setPalette(e: Event): void {
-    rays.palette.value = parseInt((e.target as HTMLSelectElement).value, 10);
+    rainbow.palette.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 };
 
-export const markers = {
-  // Signals: geometry
-  length: signal(settings.markersLength ?? defaults.markers.length),
-
-  // Signals: glow
-  glowWidth: signal(settings.markersGlowWidth ?? defaults.markers.glowWidth),
-  glowFalloff: signal(settings.markersGlowFalloff ?? defaults.markers.glowFalloff),
-
-  // Actions
-  setLength(e: Event): void {
-    markers.length.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setGlowWidth(e: Event): void {
-    markers.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setGlowFalloff(e: Event): void {
-    markers.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
-  },
-};
-
-export const background = {
-  // Signals: effect intensities
-  grainIntensity: signal(settings.backgroundGrainIntensity ?? defaults.background.grainIntensity),
-  grainBrightnessThreshold: signal(
-    settings.backgroundGrainBrightnessThreshold ?? defaults.background.grainBrightnessThreshold,
-  ),
+export const effects = {
+  // Signals
+  grainIntensity: signal(settings.effectsGrainIntensity ?? defaults.effects.grainIntensity),
 
   // Computed
   grainDisabled: computed((): boolean => dither.enabled.value),
 
   // Actions
   setGrainIntensity(e: Event): void {
-    background.grainIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setGrainBrightnessThreshold(e: Event): void {
-    background.grainBrightnessThreshold.value = parseInt((e.target as HTMLInputElement).value, 10);
+    effects.grainIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 };
 
@@ -299,7 +253,6 @@ export const dither = {
   enabled: signal(settings.ditherEnabled ?? defaults.dither.enabled),
   paletteMode: signal(settings.ditherPaletteMode ?? defaults.dither.paletteMode),
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
-  oklabError: signal(settings.ditherOklabError ?? defaults.dither.oklabError),
   chromaWeight: signal(settings.ditherChromaWeight ?? defaults.dither.chromaWeight),
 
   // Actions
@@ -315,10 +268,6 @@ export const dither = {
     dither.strength.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  toggleOklabError(): void {
-    dither.oklabError.value = !dither.oklabError.value;
-  },
-
   setChromaWeight(e: Event): void {
     dither.chromaWeight.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
@@ -326,21 +275,11 @@ export const dither = {
 
 export const display = {
   // Signals
-  markers: signal(settings.displayMarkers ?? defaults.display.markers),
   highDpi: signal(settings.displayHighDpi ?? defaults.display.highDpi),
-  renderer: signal(settings.displayRenderer ?? defaults.display.renderer),
 
   // Actions
-  toggleMarkers(): void {
-    display.markers.value = !display.markers.value;
-  },
-
   toggleHighDpi(): void {
     display.highDpi.value = !display.highDpi.value;
-  },
-
-  setRenderer(e: Event): void {
-    display.renderer.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 };
 
@@ -351,9 +290,6 @@ export const resetAll = {
       mode.accelerated.value = defaults.mode.accelerated;
       mode.accelerationFactor.value = defaults.mode.accelerationFactor;
 
-      // Time
-      time.bounceMode.value = defaults.time.bounceMode;
-
       // Prism
       prism.size.value = defaults.prism.size;
       prism.rainbowSpread.value = defaults.prism.rainbowSpread;
@@ -362,32 +298,22 @@ export const resetAll = {
       prism.glowWidth.value = defaults.prism.glowWidth;
       prism.glowFalloff.value = defaults.prism.glowFalloff;
 
-      // Rays
-      rays.glowWidth.value = defaults.rays.glowWidth;
-      rays.glowFalloff.value = defaults.rays.glowFalloff;
-      rays.gradientFill.value = defaults.rays.gradientFill;
-      rays.palette.value = defaults.rays.palette;
+      // Rainbow
+      rainbow.glowWidth.value = defaults.rainbow.glowWidth;
+      rainbow.glowFalloff.value = defaults.rainbow.glowFalloff;
+      rainbow.palette.value = defaults.rainbow.palette;
 
-      // Markers
-      markers.length.value = defaults.markers.length;
-      markers.glowWidth.value = defaults.markers.glowWidth;
-      markers.glowFalloff.value = defaults.markers.glowFalloff;
-
-      // Background
-      background.grainIntensity.value = defaults.background.grainIntensity;
-      background.grainBrightnessThreshold.value = defaults.background.grainBrightnessThreshold;
+      // Effects
+      effects.grainIntensity.value = defaults.effects.grainIntensity;
 
       // Dither
       dither.enabled.value = defaults.dither.enabled;
       dither.paletteMode.value = defaults.dither.paletteMode;
       dither.strength.value = defaults.dither.strength;
-      dither.oklabError.value = defaults.dither.oklabError;
       dither.chromaWeight.value = defaults.dither.chromaWeight;
 
       // Display
-      display.markers.value = defaults.display.markers;
       display.highDpi.value = defaults.display.highDpi;
-      display.renderer.value = defaults.display.renderer;
     });
   },
 };

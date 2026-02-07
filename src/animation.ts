@@ -100,5 +100,6 @@ function startRealtimeAnimation(): void {
 
   // Run immediately, then every second (1 fps to limit CPU usage)
   updateTime();
+
   realtimeIntervalId = window.setInterval(updateTime, 1000);
 }

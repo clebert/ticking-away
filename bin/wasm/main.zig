@@ -3,141 +3,181 @@ const allocator = std.heap.wasm_allocator;
 
 const lib = @import("lib");
 
-const compat = @import("compat.zig");
+const GlowFalloff = enum(i32) {
+    linear = 0,
+    quadratic = 1,
+    cubic = 2,
+    exponential = 3,
 
-comptime {
-    _ = @import("wasm2.zig");
+    fn toLib(self: GlowFalloff) lib.Glow.Falloff {
+        return switch (self) {
+            .linear => .linear,
+            .quadratic => .quadratic,
+            .cubic => .cubic,
+            .exponential => .exponential,
+        };
+    }
+};
+
+const RainbowPalette = enum(i32) {
+    oklch_balanced = 0,
+    spectral = 1,
+    spectra6 = 2,
+
+    fn toLib(self: RainbowPalette) lib.Rainbow.PaletteId {
+        return switch (self) {
+            .oklch_balanced => .oklch_balanced,
+            .spectral => .spectral,
+            .spectra6 => .spectra6,
+        };
+    }
+};
+
+const DitherPalette = enum(i32) {
+    ideal = 0,
+    spectra6_inky = 1,
+    spectra6_epdopt = 2,
+    spectra6_trmnl = 3,
+
+    fn toLib(self: DitherPalette) lib.Dither.PaletteId {
+        return switch (self) {
+            .ideal => .ideal,
+            .spectra6_inky => .spectra6_inky,
+            .spectra6_epdopt => .spectra6_epdopt,
+            .spectra6_trmnl => .spectra6_trmnl,
+        };
+    }
+};
+
+const Config = extern struct {
+    hour: i32,
+    minute: f32,
+    prism_size: f32,
+    rainbow_spread: f32, // TODO: normalized_rainbow_spread?
+    glow_r: i32, // TODO: bad name
+    glow_g: i32,
+    glow_b: i32,
+    glow_width: f32,
+    glow_falloff: GlowFalloff,
+    hand_glow_width: f32,
+    hand_glow_falloff: GlowFalloff,
+    rainbow_palette: RainbowPalette,
+    grain_intensity: f32,
+    grain_scale: f32,
+    dither_enabled: i32,
+    dither_palette: DitherPalette,
+    dither_strength: f32,
+    dither_chroma_weight: f32,
+};
+
+var config: Config = undefined;
+
+export fn getConfigPtr() *Config {
+    return &config;
 }
 
-// Allocated buffers (reallocated when dimensions change)
-var linear_colors: ?[]lib.color_space.Linear = null;
-var srgba_colors: ?[]lib.color_space.Srgba = null;
-var dither_error_backing: ?[]f32 = null;
-
-// Static state (cached between frames)
-var static_scene: lib.watchface.Scene = undefined;
-var scene_initialized: bool = false;
+var linear_buffer: ?[]lib.Linear = null;
+var srgb_buffer: ?[]lib.Srgb = null;
+var dither_error_buffer: ?[]f32 = null;
 var last_width: usize = 0;
 var last_height: usize = 0;
 
-// Static config buffer for JS to write into
-var config_buffer: compat.WatchfaceConfig = undefined;
+fn ensureBuffers(width: usize, height: usize) error{OutOfMemory}!void {
+    if (width == last_width and
+        height == last_height and
+        linear_buffer != null and
+        srgb_buffer != null and
+        dither_error_buffer != null) return;
 
-export fn getConfigBuffer() *compat.WatchfaceConfig {
-    return &config_buffer;
+    if (linear_buffer) |buffer| allocator.free(buffer);
+    if (srgb_buffer) |buffer| allocator.free(buffer);
+    if (dither_error_buffer) |buffer| allocator.free(buffer);
+
+    linear_buffer = null;
+    srgb_buffer = null;
+    dither_error_buffer = null;
+
+    const pixel_count = width * height;
+
+    linear_buffer = try allocator.alloc(lib.Linear, pixel_count);
+
+    errdefer {
+        allocator.free(linear_buffer.?);
+        linear_buffer = null;
+    }
+
+    srgb_buffer = try allocator.alloc(lib.Srgb, pixel_count);
+
+    errdefer {
+        allocator.free(srgb_buffer.?);
+        srgb_buffer = null;
+    }
+
+    dither_error_buffer = try allocator.alloc(f32, lib.Dither.errorBufferSize(width));
+
+    last_width = width;
+    last_height = height;
 }
 
-/// Reallocate buffers if dimensions changed.
-fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
-    if (w == last_width and h == last_height and
-        linear_colors != null and srgba_colors != null and dither_error_backing != null)
-    {
-        return;
-    }
+export fn render(width: u32, height: u32) ?[*]u8 {
+    ensureBuffers(@intCast(width), @intCast(height)) catch return null;
 
-    // Free old buffers
-    if (linear_colors) |buf| allocator.free(buf);
-    if (srgba_colors) |buf| allocator.free(buf);
-    if (dither_error_backing) |buf| allocator.free(buf);
+    const time = lib.Time.init(@intCast(config.hour), config.minute);
 
-    linear_colors = null;
-    srgba_colors = null;
-    dither_error_backing = null;
-
-    // Allocate new buffers with errdefer for cleanup on failure
-    const pixel_count = w * h;
-
-    linear_colors = try allocator.alloc(lib.color_space.Linear, pixel_count);
-    errdefer {
-        allocator.free(linear_colors.?);
-        linear_colors = null;
-    }
-
-    srgba_colors = try allocator.alloc(lib.color_space.Srgba, pixel_count);
-    errdefer {
-        allocator.free(srgba_colors.?);
-        srgba_colors = null;
-    }
-
-    const dither_size =
-        w * lib.effect_error_diffusion.ErrorBuffer.rows * lib.effect_error_diffusion.ErrorBuffer.channels;
-
-    dither_error_backing = try allocator.alloc(f32, dither_size);
-}
-
-/// Render the complete watchface using configuration from JS.
-/// Returns pointer to RGBA buffer, or null on allocation failure.
-export fn renderWatchfaceWithConfig(
-    width: u32,
-    height: u32,
-    config_ptr: *compat.WatchfaceConfig,
-) ?[*]u8 {
-    const w: usize = @intCast(width);
-    const h: usize = @intCast(height);
-
-    // Ensure buffers are allocated for current dimensions
-    ensureBuffers(w, h) catch return null;
-
-    // Re-initialize scene if dimensions changed
-    if (!scene_initialized or w != last_width or h != last_height) {
-        static_scene = lib.watchface.Scene.init(w, h);
-        scene_initialized = true;
-        last_width = w;
-        last_height = h;
-    }
-
-    // Apply scene configuration
-    const scene_config = compat.toSceneConfig(config_ptr);
-    static_scene.setPrismConfig(scene_config.prism);
-    static_scene.setGlowConfig(scene_config.glow_config);
-    static_scene.setRayConfig(scene_config.ray);
-    static_scene.setMarkerConfig(scene_config.marker);
-    static_scene.setTime(config_ptr.hour, config_ptr.minute);
-
-    // Render scene
-    var geometry = lib.frame.Geometry{
-        .width = w,
-        .height = h,
-        .y_offset = 0,
-        .total_height = h,
-    };
-    var band_linear = lib.frame.BandLinear{
-        .colors = linear_colors.?,
-        .geometry = &geometry,
+    const scene = lib.Scene{
+        .radius = 1.0, // TODO: is always 1.0
+        .prism = lib.Prism.init(std.math.clamp(config.prism_size, 0.01, 1.0)),
+        .normalized_rainbow_spread = std.math.clamp(config.rainbow_spread, 0.0, 1.0),
     };
 
-    static_scene.render(&band_linear);
+    const clock = lib.Clock.init(time, scene);
 
-    // Apply dither effect or convert to sRGB
-    if (config_ptr.dither.enabled != 0) {
-        const palette_type = compat.toDitherPaletteType(config_ptr.dither.mode);
-        const palette = lib.eink.getPaletteCache(palette_type);
+    @memset(linear_buffer.?, lib.Linear.black);
 
-        var band_srgba = lib.frame.BandSrgba{
-            .colors = srgba_colors.?,
-            .geometry = &geometry,
+    const image = lib.Image.init(@intCast(width), @intCast(height));
+
+    var linear_band = image.band(lib.Linear, linear_buffer.?, @intCast(height), 0) catch return null;
+
+    const viewport = image.viewport();
+
+    const watchface = lib.Watchface{
+        .hand_glow_style = .{
+            .width = config.hand_glow_width,
+            .falloff = config.hand_glow_falloff.toLib(),
+        },
+        .prism_glow_style = .{
+            .width = config.glow_width,
+            .falloff = config.glow_falloff.toLib(),
+        },
+        .prism_glow_color = lib.Linear.init(
+            @as(f32, @floatFromInt(config.glow_r)) / 255.0,
+            @as(f32, @floatFromInt(config.glow_g)) / 255.0,
+            @as(f32, @floatFromInt(config.glow_b)) / 255.0,
+            1.0,
+        ),
+        .rainbow_palette_id = config.rainbow_palette.toLib(),
+    };
+
+    watchface.render(&linear_band, viewport, scene, clock);
+
+    var srgb_band = if (config.dither_enabled != 0) blk: {
+        const dither = lib.Dither{
+            .strength = config.dither_strength,
+            .chroma_weight = config.dither_chroma_weight,
+            .palette = config.dither_palette.toLib().palette(),
         };
 
-        var err = lib.effect_error_diffusion.ErrorBuffer.init(dither_error_backing.?, w);
-        lib.effect_error_diffusion.apply(&band_linear, &band_srgba, compat.toErrorDiffusionConfig(&config_ptr.dither), palette, &err);
+        break :blk dither.apply(linear_band, srgb_buffer.?, dither_error_buffer.?) catch return null;
+    } else blk: {
+        break :blk linear_band.toSrgb(srgb_buffer.?) catch return null;
+    };
 
-        const bnd = lib.boundary.Boundary.init(static_scene.center, static_scene.radius);
-        lib.effect_boundary_mask.apply(&band_srgba, bnd, palette.getSrgbaColor(.white));
-    } else {
-        var band_srgba = band_linear.toSrgba(srgba_colors.?);
+    const grain = lib.Grain{
+        .intensity = config.grain_intensity,
+        .normalized_size = config.grain_scale * viewport.inverse_scale,
+    };
 
-        lib.effect_grain.apply(
-            &band_srgba,
-            compat.toGrainConfig(&config_ptr.grain),
-            compat.toGrainGeometry(&static_scene),
-        );
+    grain.apply(&srgb_band, viewport, scene.radius);
 
-        lib.effect_vignette.apply(
-            &band_srgba,
-            compat.toVignetteConfig(&config_ptr.vignette),
-            compat.toVignetteGeometry(&static_scene),
-        );
-    }
-
-    return @ptrCast(srgba_colors.?.ptr);
+    return @ptrCast(srgb_buffer.?.ptr);
 }

@@ -293,15 +293,6 @@
           <div class="button-row" data-bind="hidden:mode.live">
             <button class="action-button" data-bind="onclick:time.setNow">Set to Now</button>
           </div>
-          <div class="control-group" data-bind="hidden:mode.live">
-            <label>Bounce Mode</label>
-            <select data-bind="value:time.bounceMode, onchange:time.setBounceMode">
-              <option value="0">Legacy</option>
-              <option value="1">Always</option>
-              <option value="2">Geometric</option>
-            </select>
-          </div>
-
           <!-- Prism Controls -->
           <div class="section-title">Prism</div>
           <div class="control-group">
@@ -361,29 +352,20 @@
             </select>
           </div>
 
-          <!-- Ray Controls -->
-          <div class="section-title">Rays</div>
+          <!-- Rainbow Controls -->
+          <div class="section-title">Rainbow</div>
           <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:rays.gradientFill, onchange:rays.toggleGradientFill"
-              />
-              Gradient Fill</label
-            >
-          </div>
-          <div class="control-group">
-            <label>Glow Width: <span data-bind="textContent:rays.glowWidth">3</span>%</label>
+            <label>Glow Width: <span data-bind="textContent:rainbow.glowWidth">3</span>%</label>
             <input
               type="range"
               min="0"
               max="10"
-              data-bind="value:rays.glowWidth, oninput:rays.setGlowWidth"
+              data-bind="value:rainbow.glowWidth, oninput:rainbow.setGlowWidth"
             />
           </div>
           <div class="control-group">
             <label>Glow Falloff</label>
-            <select data-bind="value:rays.glowFalloff, onchange:rays.setGlowFalloff">
+            <select data-bind="value:rainbow.glowFalloff, onchange:rainbow.setGlowFalloff">
               <option value="0">Linear</option>
               <option value="1">Quadratic</option>
               <option value="2">Cubic</option>
@@ -392,66 +374,24 @@
           </div>
           <div class="control-group">
             <label>Color Palette</label>
-            <select data-bind="value:rays.palette, onchange:rays.setPalette">
+            <select data-bind="value:rainbow.palette, onchange:rainbow.setPalette">
               <option value="0">OkLCH Balanced</option>
               <option value="1">Spectral</option>
               <option value="2">Spectra 6</option>
             </select>
           </div>
-          <!-- Marker Controls -->
-          <div class="section-title">Markers</div>
-          <div class="control-group">
-            <label>Length: <span data-bind="textContent:markers.length">6</span>%</label>
-            <input
-              type="range"
-              min="2"
-              max="20"
-              data-bind="value:markers.length, oninput:markers.setLength"
-            />
-          </div>
-          <div class="control-group">
-            <label>Glow Width: <span data-bind="textContent:markers.glowWidth">2</span>%</label>
-            <input
-              type="range"
-              min="0"
-              max="5"
-              data-bind="value:markers.glowWidth, oninput:markers.setGlowWidth"
-            />
-          </div>
-          <div class="control-group">
-            <label>Glow Falloff</label>
-            <select data-bind="value:markers.glowFalloff, onchange:markers.setGlowFalloff">
-              <option value="0">Linear</option>
-              <option value="1">Quadratic</option>
-              <option value="2">Cubic</option>
-              <option value="3">Exponential</option>
-            </select>
-          </div>
 
-          <!-- Background -->
-          <div class="section-title">Background</div>
+          <!-- Effects -->
+          <div class="section-title">Effects</div>
           <div class="control-group">
-            <label>Grain: <span data-bind="textContent:background.grainIntensity">50</span>%</label>
+            <label>Grain: <span data-bind="textContent:effects.grainIntensity">50</span>%</label>
             <input
               type="range"
               min="0"
               max="100"
-              data-bind="value:background.grainIntensity, oninput:background.setGrainIntensity, disabled:background.grainDisabled"
+              data-bind="value:effects.grainIntensity, oninput:effects.setGrainIntensity, disabled:effects.grainDisabled"
             />
           </div>
-          <div class="control-group">
-            <label
-              >Grain Threshold:
-              <span data-bind="textContent:background.grainBrightnessThreshold">25</span>%</label
-            >
-            <input
-              type="range"
-              min="1"
-              max="100"
-              data-bind="value:background.grainBrightnessThreshold, oninput:background.setGrainBrightnessThreshold, disabled:background.grainDisabled"
-            />
-          </div>
-
           <!-- Dithering -->
           <div class="section-title">Dithering (6-Color E-Ink)</div>
           <div class="control-group">
@@ -472,16 +412,6 @@
               data-bind="value:dither.strength, oninput:dither.setStrength, disabled:!dither.enabled"
             />
           </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:dither.oklabError, onchange:dither.toggleOklabError, disabled:!dither.enabled"
-              />
-              OkLab Error Diffusion</label
-            >
-          </div>
-
           <!-- Shared Controls -->
           <div class="control-group">
             <label>Palette Mode</label>
@@ -508,22 +438,6 @@
 
           <!-- Display Options -->
           <div class="section-title">Display</div>
-          <div class="control-group">
-            <label>Renderer</label>
-            <select data-bind="value:display.renderer, onchange:display.setRenderer">
-              <option value="0">Classic</option>
-              <option value="1">lib2 (Experimental)</option>
-            </select>
-          </div>
-          <div class="control-group">
-            <label
-              ><input
-                type="checkbox"
-                data-bind="checked:display.markers, onchange:display.toggleMarkers"
-              />
-              Show Markers</label
-            >
-          </div>
           <div class="control-group">
             <label
               ><input

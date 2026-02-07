@@ -1,21 +1,22 @@
-pub const boundary = @import("boundary.zig");
-pub const clip = @import("clip.zig");
-pub const clock = @import("clock.zig");
-pub const color_space = @import("color_space.zig");
-pub const effect_boundary_mask = @import("effect_boundary_mask.zig");
-pub const effect_error_diffusion = @import("effect_error_diffusion.zig");
-pub const effect_grain = @import("effect_grain.zig");
-pub const effect_vignette = @import("effect_vignette.zig");
-pub const eink = @import("eink.zig");
-pub const frame = @import("frame.zig");
-pub const glow = @import("glow.zig");
-pub const gradient = @import("gradient.zig");
-pub const intersect = @import("intersect.zig");
-pub const line = @import("line.zig");
-pub const markers = @import("markers.zig");
+const std = @import("std");
+
+pub const Clock = @import("Clock.zig");
+pub const Dither = @import("Dither.zig");
+pub const Glow = @import("Glow.zig");
+pub const Grain = @import("Grain.zig");
+pub const Image = @import("Image.zig");
+pub const Linear = @import("Linear.zig");
+pub const Oklab = @import("Oklab.zig");
 pub const Prism = @import("Prism.zig");
-pub const rainbow = @import("rainbow.zig");
-pub const ray = @import("ray.zig");
-pub const spectrum = @import("spectrum.zig");
-pub const vec2 = @import("vec2.zig");
-pub const watchface = @import("watchface.zig");
+pub const Rainbow = @import("Rainbow.zig");
+pub const Ray = @import("Ray.zig");
+pub const Scene = @import("Scene.zig");
+pub const Segment = @import("Segment.zig");
+pub const Spectrum = @import("Spectrum.zig");
+pub const Srgb = @import("Srgb.zig");
+pub const Time = @import("Time.zig");
+pub const Watchface = @import("Watchface.zig");
+
+test {
+    std.testing.refAllDecls(@This());
+}

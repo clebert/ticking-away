@@ -9,7 +9,6 @@ export interface Settings {
 
   timeHours: number;
   timeMinutes: number;
-  timeBounceMode: number;
 
   prismSize: number;
   prismRainbowSpread: number;
@@ -18,27 +17,18 @@ export interface Settings {
   prismGlowWidth: number;
   prismGlowFalloff: number;
 
-  raysGlowWidth: number;
-  raysGlowFalloff: number;
-  raysGradientFill: boolean;
-  raysPalette: number;
+  rainbowGlowWidth: number;
+  rainbowGlowFalloff: number;
+  rainbowPalette: number;
 
-  markersLength: number;
-  markersGlowWidth: number;
-  markersGlowFalloff: number;
-
-  displayMarkers: boolean;
-  displayHighDpi: boolean;
-  displayRenderer: number;
-
-  backgroundGrainIntensity: number;
-  backgroundGrainBrightnessThreshold: number;
+  effectsGrainIntensity: number;
 
   ditherEnabled: boolean;
   ditherPaletteMode: number;
   ditherStrength: number;
-  ditherOklabError: boolean;
   ditherChromaWeight: number;
+
+  displayHighDpi: boolean;
 }
 
 export function loadSettings(): Partial<Settings> {
@@ -59,10 +49,9 @@ export function saveSettings({
   mode,
   time,
   prism,
-  rays,
-  markers,
+  rainbow,
   display,
-  background,
+  effects,
   dither,
 }: typeof stores): void {
   try {
@@ -73,7 +62,6 @@ export function saveSettings({
 
       timeHours: time.hours.value,
       timeMinutes: time.minutes.value,
-      timeBounceMode: time.bounceMode.value,
 
       prismSize: prism.size.value,
       prismRainbowSpread: prism.rainbowSpread.value,
@@ -82,27 +70,18 @@ export function saveSettings({
       prismGlowWidth: prism.glowWidth.value,
       prismGlowFalloff: prism.glowFalloff.value,
 
-      raysGlowWidth: rays.glowWidth.value,
-      raysGlowFalloff: rays.glowFalloff.value,
-      raysGradientFill: rays.gradientFill.value,
-      raysPalette: rays.palette.value,
+      rainbowGlowWidth: rainbow.glowWidth.value,
+      rainbowGlowFalloff: rainbow.glowFalloff.value,
+      rainbowPalette: rainbow.palette.value,
 
-      markersLength: markers.length.value,
-      markersGlowWidth: markers.glowWidth.value,
-      markersGlowFalloff: markers.glowFalloff.value,
-
-      backgroundGrainIntensity: background.grainIntensity.value,
-      backgroundGrainBrightnessThreshold: background.grainBrightnessThreshold.value,
+      effectsGrainIntensity: effects.grainIntensity.value,
 
       ditherEnabled: dither.enabled.value,
       ditherPaletteMode: dither.paletteMode.value,
       ditherStrength: dither.strength.value,
-      ditherOklabError: dither.oklabError.value,
       ditherChromaWeight: dither.chromaWeight.value,
 
-      displayMarkers: display.markers.value,
       displayHighDpi: display.highDpi.value,
-      displayRenderer: display.renderer.value,
     };
 
     localStorage.setItem(storageKey, JSON.stringify(settings));
