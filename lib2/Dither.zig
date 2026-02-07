@@ -46,9 +46,24 @@ pub fn apply(
             const step: i32 = if (serpentine) -1 else 1;
 
             const linear = band.colorAt(x, y).*;
-            const oklab = linear.toOklab();
-
             const error_offset = x * channels;
+
+            // Background pixels (never rendered to): output palette black directly
+            // without error diffusion to prevent color bleeding at circle boundary
+            if (linear.vec[0] == 0 and linear.vec[1] == 0 and linear.vec[2] == 0) {
+                srgb_buffer[y * width + x] = .{
+                    .r = self.palette.srgb_colors[0].r,
+                    .g = self.palette.srgb_colors[0].g,
+                    .b = self.palette.srgb_colors[0].b,
+                    .a = @intFromFloat(@round(std.math.clamp(linear.vec[3], 0.0, 1.0) * 255.0)),
+                };
+
+                @memset(current[error_offset..][0..channels], 0);
+
+                continue;
+            }
+
+            const oklab = linear.toOklab();
             const adjusted_l = std.math.clamp(oklab.vec[0] + current[error_offset], 0.0, 1.0);
             const adjusted_a = oklab.vec[1] + current[error_offset + 1];
             const adjusted_b = oklab.vec[2] + current[error_offset + 2];
@@ -298,6 +313,60 @@ test "apply with zero strength still quantizes to palette" {
         }
 
         try std.testing.expect(found);
+    }
+}
+
+test "apply outputs palette black for background pixels without color bleeding" {
+    const image = Image.init(4, 2);
+
+    // Row of bright red pixels followed by row of black (background) pixels
+    var linear_buffer: [8]Linear = undefined;
+
+    for (0..4) |i| {
+        linear_buffer[i] = Linear.init(1.0, 0.0, 0.0, 1.0);
+    }
+
+    for (4..8) |i| {
+        linear_buffer[i] = Linear.init(0.0, 0.0, 0.0, 1.0);
+    }
+
+    var srgb_buffer: [8]Srgb = undefined;
+    var error_buffer: [4 * channels * 2]f32 = undefined;
+
+    const linear_band = image.band(Linear, &linear_buffer, 2, 0) catch unreachable;
+
+    const dither = Self{
+        .strength = 1.0,
+        .chroma_weight = 2.0,
+        .palette = PaletteId.ideal.palette(),
+    };
+
+    const srgb_band = dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable;
+
+    // Background pixels must be exactly palette black with no color bleeding
+    const palette_black = dither.palette.srgb_colors[0];
+
+    for (4..8) |i| {
+        const pixel = srgb_band.buffer[i];
+
+        try std.testing.expectEqual(palette_black.r, pixel.r);
+        try std.testing.expectEqual(palette_black.g, pixel.g);
+        try std.testing.expectEqual(palette_black.b, pixel.b);
+        try std.testing.expectEqual(@as(u8, 255), pixel.a);
+    }
+}
+
+test "all palettes have black as first color" {
+    const palette_ids = std.enums.values(PaletteId);
+
+    for (palette_ids) |id| {
+        const palette = id.palette();
+        const first = palette.srgb_colors[0];
+
+        // First color must be dark: all RGB channels <= 35
+        try std.testing.expect(first.r <= 35);
+        try std.testing.expect(first.g <= 35);
+        try std.testing.expect(first.b <= 35);
     }
 }
 
