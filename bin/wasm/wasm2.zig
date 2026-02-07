@@ -85,7 +85,15 @@ export fn renderLib2WithConfig(
 
     // Convert linear to sRGB
     const srgb_buf = srgb_colors.?;
-    _ = band.toSrgb(srgb_buf) catch return null;
+    var srgb_band = band.toSrgb(srgb_buf) catch return null;
+
+    // Apply grain effect
+    // TODO: UI should send grain scale in normalized coordinates so we can pass it directly
+    const grain = lib2.Grain{
+        .intensity = config_ptr.grain.intensity,
+        .normalized_size = config_ptr.grain.scale * viewport.inverse_scale,
+    };
+    grain.apply(&srgb_band, viewport, scene.radius);
 
     return @ptrCast(srgb_buf.ptr);
 }

@@ -26,7 +26,8 @@ npm run ci
 Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Guide):
 
 - **Types**: `PascalCase`, acronyms as single words (`Rgb`, not `RGB`)
-- **Functions/variables**: `camelCase`
+- **Functions**: `camelCase`
+- **Variables**: `snake_case`
 - **Comments**: Only for math formulas or non-obvious algorithms; avoid trivial comments
 - **SIMD**: Use `@Vector` types for calculations to leverage hardware acceleration
 - **No abbreviations**: Use full names (`distance`, not `dist`)

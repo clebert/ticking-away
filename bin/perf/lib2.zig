@@ -42,6 +42,9 @@ pub fn main() !void {
     const srgb_times = try allocator.alloc(u64, total_frames);
     defer allocator.free(srgb_times);
 
+    const grain_times = try allocator.alloc(u64, total_frames);
+    defer allocator.free(grain_times);
+
     const image = lib2.Image.init(width, height);
     const viewport = image.viewport();
 
@@ -81,11 +84,17 @@ pub fn main() !void {
         const render_end = timer.read();
         render_times[frame_idx] = render_end - frame_start;
 
-        _ = band.toSrgb(srgb_buf) catch continue;
+        var srgb_band = band.toSrgb(srgb_buf) catch continue;
 
         const srgb_end = timer.read();
         srgb_times[frame_idx] = srgb_end - render_end;
-        frame_times[frame_idx] = srgb_end - frame_start;
+
+        const grain = lib2.Grain{ .intensity = 0.4, .normalized_size = 0.01 };
+        grain.apply(&srgb_band, viewport, scene.radius);
+
+        const grain_end = timer.read();
+        grain_times[frame_idx] = grain_end - srgb_end;
+        frame_times[frame_idx] = grain_end - frame_start;
     }
 
     const total_ns = timer.read() - start_total;
@@ -95,6 +104,7 @@ pub fn main() !void {
     var sum_ns: u64 = 0;
     var render_sum: u64 = 0;
     var srgb_sum: u64 = 0;
+    var grain_sum: u64 = 0;
 
     for (0..total_frames) |i| {
         const t = frame_times[i];
@@ -103,6 +113,7 @@ pub fn main() !void {
         sum_ns += t;
         render_sum += render_times[i];
         srgb_sum += srgb_times[i];
+        grain_sum += grain_times[i];
     }
 
     const avg_ns = sum_ns / total_frames;
@@ -113,6 +124,7 @@ pub fn main() !void {
     const fps = 1_000_000_000.0 / @as(f64, @floatFromInt(avg_ns));
     const render_ms = @as(f64, @floatFromInt(render_sum / total_frames)) / 1_000_000.0;
     const srgb_ms = @as(f64, @floatFromInt(srgb_sum / total_frames)) / 1_000_000.0;
+    const grain_ms = @as(f64, @floatFromInt(grain_sum / total_frames)) / 1_000_000.0;
 
     std.debug.print("\n=== lib2 Performance Results ===\n", .{});
     std.debug.print("Resolution: {d}x{d}\n", .{ width, height });
@@ -124,4 +136,5 @@ pub fn main() !void {
     std.debug.print("\n--- Breakdown (avg per frame) ---\n", .{});
     std.debug.print("Render: {d:.3} ms\n", .{render_ms});
     std.debug.print("sRGB:   {d:.3} ms\n", .{srgb_ms});
+    std.debug.print("Grain:  {d:.3} ms\n", .{grain_ms});
 }

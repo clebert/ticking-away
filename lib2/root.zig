@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const Clock = @import("Clock.zig");
 pub const Glow = @import("Glow.zig");
+pub const Grain = @import("Grain.zig");
 pub const Image = @import("Image.zig");
 pub const Linear = @import("Linear.zig");
 pub const Oklab = @import("Oklab.zig");
