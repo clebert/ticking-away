@@ -19,12 +19,12 @@ pub fn project(self: Self, point: @Vector(2, f32)) Projection {
     const length_squared = @reduce(.Add, start_to_end * start_to_end);
 
     // When called in a loop with a fixed segment (e.g. Glow.renderLine), LLVM hoists
-    // start_to_end and inv_length_squared out of the loop via LICM.
-    const inv_length_squared =
+    // start_to_end and inverse_length_squared out of the loop via LICM.
+    const inverse_length_squared =
         if (length_squared > std.math.floatEps(f32)) 1.0 / length_squared else 0;
 
     const normalized_position =
-        std.math.clamp(@reduce(.Add, start_to_point * start_to_end) * inv_length_squared, 0, 1);
+        std.math.clamp(@reduce(.Add, start_to_point * start_to_end) * inverse_length_squared, 0, 1);
 
     const offset_to_point =
         start_to_point - @as(@Vector(2, f32), @splat(normalized_position)) * start_to_end;

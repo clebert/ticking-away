@@ -13,7 +13,13 @@ const Self = @This();
 hand_glow_style: Glow.Style,
 rainbow_palette_id: Rainbow.PaletteId,
 
-pub fn render(self: Self, band: *Image.Band(Linear), viewport: Image.Viewport, scene: Scene, clock: Clock) void {
+pub fn render(
+    self: Self,
+    band: *Image.Band(Linear),
+    viewport: Image.Viewport,
+    scene: Scene,
+    clock: Clock,
+) void {
     const rainbow = Rainbow.get(self.rainbow_palette_id);
 
     // External minute hand (white light entering prism)

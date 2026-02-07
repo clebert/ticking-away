@@ -12,16 +12,16 @@ pub const VertexId = enum(u2) {
     bottom_left = 2,
 };
 
-pub const EdgeId = enum(u2) {
+const EdgeId = enum(u2) {
     right = 0, // apex -> bottom_right
     bottom = 1, // bottom_right -> bottom_left
     left = 2, // bottom_left -> apex
 
-    pub fn getStartVertexId(self: EdgeId) VertexId {
+    fn getStartVertexId(self: EdgeId) VertexId {
         return @enumFromInt(@intFromEnum(self));
     }
 
-    pub fn getEndVertexId(self: EdgeId) VertexId {
+    fn getEndVertexId(self: EdgeId) VertexId {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
     }
 };

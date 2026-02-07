@@ -106,7 +106,7 @@ test "color returns correct entry by ColorId" {
     try std.testing.expectEqual(rainbow.colors[6].vec, rainbow.color(.violet).vec);
 }
 
-test "initFromSrgb converts sRGB to linear" {
+test "init converts sRGB to linear" {
     const red = spectral.color(.red);
 
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[0], 1e-6);
@@ -115,7 +115,7 @@ test "initFromSrgb converts sRGB to linear" {
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[3], 1e-6);
 }
 
-test "initFromSrgb sets alpha to 1" {
+test "init sets alpha to 1" {
     for (oklch_balanced.colors) |c| {
         try std.testing.expectApproxEqAbs(@as(f32, 1.0), c.vec[3], 1e-6);
     }

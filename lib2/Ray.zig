@@ -63,7 +63,7 @@ pub fn intersectCircle(self: Self, radius: f32) ?Intersection {
     std.debug.assert(radius > 0.0 and radius <= 1.0);
 
     const origin_dot_direction = vector.dot(self.origin, self.direction);
-    const center_to_origin_length_squared = vector.lengthSq(self.origin);
+    const center_to_origin_length_squared = vector.lengthSquared(self.origin);
     const radius_squared = radius * radius;
 
     // Using half the linear coefficient for simplified quadratic formula.

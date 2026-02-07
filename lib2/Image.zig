@@ -17,7 +17,7 @@ pub fn init(width: usize, height: usize) Self {
 
 pub const Viewport = struct {
     scale: f32,
-    inv_scale: f32,
+    inverse_scale: f32,
     center: @Vector(2, f32),
 
     pub fn toPixel(self: Viewport, point: @Vector(2, f32)) @Vector(2, f32) {
@@ -25,7 +25,7 @@ pub const Viewport = struct {
     }
 
     pub fn toNormalized(self: Viewport, pixel: @Vector(2, f32)) @Vector(2, f32) {
-        return (pixel - self.center) * @as(@Vector(2, f32), @splat(self.inv_scale));
+        return (pixel - self.center) * @as(@Vector(2, f32), @splat(self.inverse_scale));
     }
 };
 
@@ -36,7 +36,7 @@ pub fn viewport(self: Self) Viewport {
 
     return .{
         .scale = scale,
-        .inv_scale = 1.0 / scale,
+        .inverse_scale = 1.0 / scale,
         .center = .{ width / 2.0, height / 2.0 },
     };
 }

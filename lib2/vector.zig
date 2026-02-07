@@ -2,22 +2,22 @@ pub fn dot(a: @Vector(2, f32), b: @Vector(2, f32)) f32 {
     return @reduce(.Add, a * b);
 }
 
-pub fn lengthSq(v: @Vector(2, f32)) f32 {
+pub fn lengthSquared(v: @Vector(2, f32)) f32 {
     return dot(v, v);
 }
 
 pub fn length(v: @Vector(2, f32)) f32 {
-    return @sqrt(lengthSq(v));
+    return @sqrt(lengthSquared(v));
 }
 
 pub const tolerance: f32 = 1e-5;
 
 pub fn normalize(v: @Vector(2, f32)) @Vector(2, f32) {
-    const len = length(v);
+    const magnitude = length(v);
 
-    if (len < tolerance) return .{ 0, 0 };
+    if (magnitude < tolerance) return .{ 0, 0 };
 
-    return v / @as(@Vector(2, f32), @splat(len));
+    return v / @as(@Vector(2, f32), @splat(magnitude));
 }
 
 /// Returns true if the vector has unit length (with floating point tolerance).

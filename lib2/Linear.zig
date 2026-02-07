@@ -49,13 +49,13 @@ fn pow512(x: f32) f32 {
     if (x <= 0.0) return 0.0;
     if (x >= 1.0) return 1.0;
 
-    const cbrt_x = cbrt(x);
-    const fourth_root_cbrt = @sqrt(@sqrt(cbrt_x));
+    const cube_root_x = cubeRoot(x);
+    const fourth_root_cube_root = @sqrt(@sqrt(cube_root_x));
 
-    return cbrt_x * fourth_root_cbrt;
+    return cube_root_x * fourth_root_cube_root;
 }
 
-fn cbrt(x: f32) f32 {
+fn cubeRoot(x: f32) f32 {
     if (x == 0.0) return 0.0;
 
     const abs_x = @abs(x);
@@ -172,8 +172,8 @@ test "pow512 computes x^(5/12) correctly" {
     try std.testing.expectApproxEqAbs(expected, result, 1e-5);
 }
 
-test "cbrt computes cube root correctly" {
-    try std.testing.expectApproxEqAbs(@as(f32, 2.0), cbrt(8.0), 1e-5);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), cbrt(0.125), 1e-5);
-    try std.testing.expectEqual(@as(f32, 0.0), cbrt(0.0));
+test "cubeRoot computes cube root correctly" {
+    try std.testing.expectApproxEqAbs(@as(f32, 2.0), cubeRoot(8.0), 1e-5);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.5), cubeRoot(0.125), 1e-5);
+    try std.testing.expectEqual(@as(f32, 0.0), cubeRoot(0.0));
 }
