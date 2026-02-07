@@ -26,9 +26,9 @@ pub fn init(time: Time, scene: Scene) ?Self {
         scene.normalized_rainbow_spread >= 0.0 and scene.normalized_rainbow_spread <= 1.0,
     );
 
-    const n_hours: usize = @intFromFloat(time.minutes / 60.0);
-    const hour: u4 = @intCast(@mod(n_hours, 12));
-    const minute = time.minutes - @as(f32, @floatFromInt(n_hours)) * 60.0;
+    const hour_count: usize = @intFromFloat(time.minutes / 60.0);
+    const hour: u4 = @intCast(@mod(hour_count, 12));
+    const minute = time.minutes - @as(f32, @floatFromInt(hour_count)) * 60.0;
     const minute_angle = apex_angle + (minute / 60.0) * std.math.tau;
 
     const minute_position = @as(@Vector(2, f32), .{ @cos(minute_angle), @sin(minute_angle) }) *

@@ -55,17 +55,17 @@ pub fn render(
     const sorted_end = if (reverse) normalized_start else normalized_end;
     const wrap_around = sorted_start > sorted_end;
 
-    const epsilon: f32 = 0.002;
+    const angular_margin: f32 = 0.002;
 
     const sector_start = if (wrap_around)
-        normalizeAngle(sorted_start - epsilon)
+        normalizeAngle(sorted_start - angular_margin)
     else
-        @max(sorted_start - epsilon, 0);
+        @max(sorted_start - angular_margin, 0);
 
     const sector_end = if (wrap_around)
-        normalizeAngle(sorted_end + epsilon)
+        normalizeAngle(sorted_end + angular_margin)
     else
-        @min(sorted_end + epsilon, std.math.tau - 0.0001);
+        @min(sorted_end + angular_margin, std.math.tau - 0.0001);
 
     // Sector edge directions with epsilon margin for containment test
     const direction_start: @Vector(2, f32) = .{ @cos(sector_start), @sin(sector_start) };
