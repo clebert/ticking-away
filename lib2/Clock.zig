@@ -91,12 +91,14 @@ pub fn init(time: Time, scene: Scene) Self {
 }
 
 fn bouncingVertex(hour: u4, minute: f32) ?Prism.VertexId {
+    const margin: f32 = 0.5;
+
     switch (hour) {
-        0, 1, 2 => if (minute < 25.0 or minute > 55.0) return .bottom_left,
-        3 => if (minute < 25.0) return .bottom_left,
-        4, 5, 6, 7 => if (minute > 15.0 and minute < 45.0) return .apex,
-        8 => if (minute > 35.0) return .bottom_right,
-        9, 10, 11 => if (minute < 5.0 or minute > 35.0) return .bottom_right,
+        0, 1, 2 => if (minute < 20.0 + margin or minute > 60.0 - margin) return .bottom_left,
+        3 => if (minute < 20.0 + margin) return .bottom_left,
+        4, 5, 6, 7 => if (minute > 20.0 - margin and minute < 40.0 + margin) return .apex,
+        8 => if (minute > 40.0 - margin) return .bottom_right,
+        9, 10, 11 => if (minute < 0.0 + margin or minute > 40.0 - margin) return .bottom_right,
         else => unreachable,
     }
 
