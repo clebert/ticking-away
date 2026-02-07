@@ -68,7 +68,7 @@ pub fn main() !void {
 
         const frame_start = timer.read();
 
-        const clock = lib2.Clock.init(time, scene) orelse continue;
+        const clock = lib2.Clock.init(time, scene);
 
         @memset(linear_buf, lib2.Linear.black);
 

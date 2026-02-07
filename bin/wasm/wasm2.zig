@@ -53,7 +53,7 @@ export fn renderLib2WithConfig(
         .prism = lib2.Prism.init(std.math.clamp(config_ptr.prism.size, 0.01, 1.0)),
         .normalized_rainbow_spread = std.math.clamp(config_ptr.prism.rainbow_spread, 0.0, 1.0),
     };
-    const clock = lib2.Clock.init(time, scene) orelse return null;
+    const clock = lib2.Clock.init(time, scene);
 
     // Clear buffer to black
     const linear_buf = linear_colors.?;

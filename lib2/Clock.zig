@@ -19,7 +19,7 @@ internal_minute_hand: ?Segment,
 internal_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 external_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 
-pub fn init(time: Time, scene: Scene) ?Self {
+pub fn init(time: Time, scene: Scene) Self {
     std.debug.assert(scene.radius > 0.0 and scene.radius <= 1.0);
 
     std.debug.assert(
@@ -35,7 +35,7 @@ pub fn init(time: Time, scene: Scene) ?Self {
         @as(@Vector(2, f32), @splat(scene.radius));
 
     const minute_ray = Ray.init(minute_position, .{ 0, 0 });
-    const minute_prism_intersection = scene.prism.intersect(minute_ray) orelse return null;
+    const minute_prism_intersection = scene.prism.intersect(minute_ray) orelse unreachable;
 
     const external_minute_hand: Segment = .{
         .start = minute_position,
@@ -66,8 +66,10 @@ pub fn init(time: Time, scene: Scene) ?Self {
         const color_angle = hour_angle + (0.5 - normalized_position) * spread_radians;
 
         const hour_ray = Ray.init(.{ 0, 0 }, .{ @cos(color_angle), @sin(color_angle) });
-        const hour_prism_intersection = scene.prism.intersect(hour_ray) orelse return null;
-        const hour_boundary_intersection = hour_ray.intersectCircle(scene.radius) orelse return null;
+        const hour_prism_intersection = scene.prism.intersect(hour_ray) orelse unreachable;
+
+        const hour_boundary_intersection =
+            hour_ray.intersectCircle(scene.radius) orelse unreachable;
 
         internal_hour_hand.set(color_id, .{
             .start = internal_hour_hand_start,
@@ -107,29 +109,23 @@ const test_scene = Scene{
     .normalized_rainbow_spread = 0.5,
 };
 
-fn expectInitNonNull(minutes: f32) Self {
-    return Self.init(.{ .minutes = minutes }, test_scene) orelse {
-        std.debug.panic("expected non-null Clock for minutes={d:.1}", .{minutes});
-    };
+test "init at 12:00" {
+    _ = Self.init(.{ .minutes = 0.0 }, test_scene);
 }
 
-test "init returns non-null at 12:00" {
-    _ = expectInitNonNull(0.0);
-}
-
-test "init returns non-null at 3:15" {
-    _ = expectInitNonNull(195.0);
+test "init at 3:15" {
+    _ = Self.init(.{ .minutes = 195.0 }, test_scene);
 }
 
 test "init minute hand starts on circle boundary" {
-    const watchface = expectInitNonNull(0.0);
+    const watchface = Self.init(.{ .minutes = 0.0 }, test_scene);
     const start_distance = vector.length(watchface.external_minute_hand.start);
 
     try std.testing.expectApproxEqAbs(test_scene.radius, start_distance, vector.tolerance);
 }
 
 test "init minute hand ends on prism edge" {
-    const watchface = expectInitNonNull(0.0);
+    const watchface = Self.init(.{ .minutes = 0.0 }, test_scene);
     const end = watchface.external_minute_hand.end;
     const ray = Ray.init(watchface.external_minute_hand.start, end);
     const intersection = test_scene.prism.intersect(ray).?;
@@ -140,21 +136,21 @@ test "init minute hand ends on prism edge" {
 
 test "init internal_minute_hand is non-null when bouncing" {
     // hour=0, minute=10 → bouncingVertex returns .bottom_left
-    const watchface = expectInitNonNull(10.0);
+    const watchface = Self.init(.{ .minutes = 10.0 }, test_scene);
 
     try std.testing.expect(watchface.internal_minute_hand != null);
 }
 
 test "init internal_minute_hand is null when not bouncing" {
     // hour=0, minute=30 → bouncingVertex returns null
-    const watchface = expectInitNonNull(30.0);
+    const watchface = Self.init(.{ .minutes = 30.0 }, test_scene);
 
     try std.testing.expectEqual(null, watchface.internal_minute_hand);
 }
 
 test "init internal_minute_hand ends at prism vertex when bouncing" {
     // hour=0, minute=10 → bounces to .bottom_left
-    const watchface = expectInitNonNull(10.0);
+    const watchface = Self.init(.{ .minutes = 10.0 }, test_scene);
     const hand = watchface.internal_minute_hand.?;
     const expected = test_scene.prism.vertices.get(.bottom_left);
 
@@ -163,7 +159,7 @@ test "init internal_minute_hand ends at prism vertex when bouncing" {
 }
 
 test "init all hour hand colors share same internal start" {
-    const watchface = expectInitNonNull(0.0);
+    const watchface = Self.init(.{ .minutes = 0.0 }, test_scene);
     const first = watchface.internal_hour_hand.get(.red).start;
 
     for (std.enums.values(Rainbow.ColorId)) |color_id| {
@@ -175,7 +171,7 @@ test "init all hour hand colors share same internal start" {
 }
 
 test "init external hour hand endpoints lie on circle boundary" {
-    const watchface = expectInitNonNull(195.0);
+    const watchface = Self.init(.{ .minutes = 195.0 }, test_scene);
 
     for (std.enums.values(Rainbow.ColorId)) |color_id| {
         const end = watchface.external_hour_hand.get(color_id).end;
@@ -187,7 +183,7 @@ test "init external hour hand endpoints lie on circle boundary" {
 
 test "init internal hour hand start matches minute hand chain" {
     // When bouncing: internal_hour_hand start == internal_minute_hand end
-    const watchface_bouncing = expectInitNonNull(10.0);
+    const watchface_bouncing = Self.init(.{ .minutes = 10.0 }, test_scene);
     const bounce_hand = watchface_bouncing.internal_minute_hand.?;
     const hour_start = watchface_bouncing.internal_hour_hand.get(.red).start;
 
@@ -195,7 +191,7 @@ test "init internal hour hand start matches minute hand chain" {
     try std.testing.expectApproxEqAbs(bounce_hand.end[1], hour_start[1], vector.tolerance);
 
     // When not bouncing: internal_hour_hand start == external_minute_hand end
-    const watchface_direct = expectInitNonNull(30.0);
+    const watchface_direct = Self.init(.{ .minutes = 30.0 }, test_scene);
     const minute_end = watchface_direct.external_minute_hand.end;
     const hour_start_direct = watchface_direct.internal_hour_hand.get(.red).start;
 
@@ -207,6 +203,6 @@ test "init handles full 12-hour cycle" {
     var minutes: f32 = 0.0;
 
     while (minutes < 720.0) : (minutes += 60.0) {
-        _ = expectInitNonNull(minutes);
+        _ = Self.init(.{ .minutes = minutes }, test_scene);
     }
 }
