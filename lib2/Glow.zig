@@ -53,11 +53,24 @@ pub fn renderLine(
     viewport: Image.Viewport,
     line: Segment,
 ) void {
+    if (self.clip_radius != null) {
+        self.renderLineInner(true, band, viewport, line);
+    } else {
+        self.renderLineInner(false, band, viewport, line);
+    }
+}
+
+inline fn renderLineInner(
+    self: Self,
+    comptime clipped: bool,
+    band: *Image.Band(Linear),
+    viewport: Image.Viewport,
+    line: Segment,
+) void {
     const width_squared = self.style.width * self.style.width;
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
-    // Convert normalized geometry bounds to pixel space for iteration
     const width_vec: @Vector(2, f32) = @splat(self.style.width);
     const min_pixel = viewport.toPixel(@min(line.start, line.end) - width_vec);
     const max_pixel = viewport.toPixel(@max(line.start, line.end) + width_vec);
@@ -67,6 +80,11 @@ pub fn renderLine(
     const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
     const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
 
+    const uniform_intensity: ?f32 = switch (self.intensity) {
+        .uniform => |v| v,
+        .gradient => null,
+    };
+
     for (y_start..y_end) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
 
@@ -74,7 +92,9 @@ pub fn renderLine(
             const pixel_x: f32 = @as(f32, @floatFromInt(x)) + 0.5;
             const point = viewport.toNormalized(.{ pixel_x, pixel_y });
 
-            if (self.clip_radius) |radius| {
+            if (comptime clipped) {
+                const radius = self.clip_radius.?;
+
                 if (@reduce(.Add, point * point) > radius * radius) continue;
             }
 
@@ -85,7 +105,7 @@ pub fn renderLine(
             const radial =
                 self.style.falloff.apply(@sqrt(projection.distance_squared) / self.style.width);
 
-            const intensity = radial * self.intensity.at(projection.normalized_position);
+            const intensity = radial * (uniform_intensity orelse self.intensity.at(projection.normalized_position));
 
             const pixel = band.colorAt(x, local_y);
             const contribution = self.color.vec * @as(@Vector(4, f32), @splat(intensity));
