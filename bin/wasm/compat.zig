@@ -119,6 +119,15 @@ pub const DitherPaletteMode = enum(i32) {
     spectra6_inky = 1,
     spectra6_epdopt = 2,
     spectra6_trmnl = 3,
+
+    pub fn toLib2(self: DitherPaletteMode) lib2.Dither.PaletteId {
+        return switch (self) {
+            .ideal => .ideal,
+            .spectra6_inky => .spectra6_inky,
+            .spectra6_epdopt => .spectra6_epdopt,
+            .spectra6_trmnl => .spectra6_trmnl,
+        };
+    }
 };
 
 /// Scene dither configuration matching C SceneDitherConfig.

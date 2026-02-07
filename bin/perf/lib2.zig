@@ -33,6 +33,9 @@ pub fn main() !void {
     const srgb_buf = try allocator.alloc(lib2.Srgb, pixel_count);
     defer allocator.free(srgb_buf);
 
+    const dither_error_buf = try allocator.alloc(f32, lib2.Dither.errorBufferSize(width));
+    defer allocator.free(dither_error_buf);
+
     const frame_times = try allocator.alloc(u64, total_frames);
     defer allocator.free(frame_times);
 
@@ -41,6 +44,9 @@ pub fn main() !void {
 
     const srgb_times = try allocator.alloc(u64, total_frames);
     defer allocator.free(srgb_times);
+
+    const dither_times = try allocator.alloc(u64, total_frames);
+    defer allocator.free(dither_times);
 
     const grain_times = try allocator.alloc(u64, total_frames);
     defer allocator.free(grain_times);
@@ -84,16 +90,22 @@ pub fn main() !void {
         const render_end = timer.read();
         render_times[frame_idx] = render_end - frame_start;
 
-        var srgb_band = band.toSrgb(srgb_buf) catch continue;
+        _ = band.toSrgb(srgb_buf) catch continue;
 
         const srgb_end = timer.read();
         srgb_times[frame_idx] = srgb_end - render_end;
 
+        const dither = lib2.Dither{ .strength = 1.0, .chroma_weight = 2.0, .palette = lib2.Dither.PaletteId.ideal.palette() };
+        var dithered_band = dither.apply(band, srgb_buf, dither_error_buf) catch continue;
+
+        const dither_end = timer.read();
+        dither_times[frame_idx] = dither_end - srgb_end;
+
         const grain = lib2.Grain{ .intensity = 0.4, .normalized_size = 0.01 };
-        grain.apply(&srgb_band, viewport, scene.radius);
+        grain.apply(&dithered_band, viewport, scene.radius);
 
         const grain_end = timer.read();
-        grain_times[frame_idx] = grain_end - srgb_end;
+        grain_times[frame_idx] = grain_end - dither_end;
         frame_times[frame_idx] = grain_end - frame_start;
     }
 
@@ -104,6 +116,7 @@ pub fn main() !void {
     var sum_ns: u64 = 0;
     var render_sum: u64 = 0;
     var srgb_sum: u64 = 0;
+    var dither_sum: u64 = 0;
     var grain_sum: u64 = 0;
 
     for (0..total_frames) |i| {
@@ -113,6 +126,7 @@ pub fn main() !void {
         sum_ns += t;
         render_sum += render_times[i];
         srgb_sum += srgb_times[i];
+        dither_sum += dither_times[i];
         grain_sum += grain_times[i];
     }
 
@@ -124,6 +138,7 @@ pub fn main() !void {
     const fps = 1_000_000_000.0 / @as(f64, @floatFromInt(avg_ns));
     const render_ms = @as(f64, @floatFromInt(render_sum / total_frames)) / 1_000_000.0;
     const srgb_ms = @as(f64, @floatFromInt(srgb_sum / total_frames)) / 1_000_000.0;
+    const dither_ms = @as(f64, @floatFromInt(dither_sum / total_frames)) / 1_000_000.0;
     const grain_ms = @as(f64, @floatFromInt(grain_sum / total_frames)) / 1_000_000.0;
 
     std.debug.print("\n=== lib2 Performance Results ===\n", .{});
@@ -136,5 +151,6 @@ pub fn main() !void {
     std.debug.print("\n--- Breakdown (avg per frame) ---\n", .{});
     std.debug.print("Render: {d:.3} ms\n", .{render_ms});
     std.debug.print("sRGB:   {d:.3} ms\n", .{srgb_ms});
+    std.debug.print("Dither: {d:.3} ms\n", .{dither_ms});
     std.debug.print("Grain:  {d:.3} ms\n", .{grain_ms});
 }

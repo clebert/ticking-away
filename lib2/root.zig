@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub const Clock = @import("Clock.zig");
+pub const Dither = @import("Dither.zig");
 pub const Glow = @import("Glow.zig");
 pub const Grain = @import("Grain.zig");
 pub const Image = @import("Image.zig");

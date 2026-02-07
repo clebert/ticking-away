@@ -7,20 +7,23 @@ const compat = @import("compat.zig");
 
 var linear_colors: ?[]lib2.Linear = null;
 var srgb_colors: ?[]lib2.Srgb = null;
+var dither_error_buffer: ?[]f32 = null;
 var last_width: usize = 0;
 var last_height: usize = 0;
 
 fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
     if (w == last_width and h == last_height and
-        linear_colors != null and srgb_colors != null)
+        linear_colors != null and srgb_colors != null and dither_error_buffer != null)
     {
         return;
     }
 
     if (linear_colors) |buf| allocator.free(buf);
     if (srgb_colors) |buf| allocator.free(buf);
+    if (dither_error_buffer) |buf| allocator.free(buf);
     linear_colors = null;
     srgb_colors = null;
+    dither_error_buffer = null;
 
     const pixel_count = w * h;
 
@@ -31,6 +34,12 @@ fn ensureBuffers(w: usize, h: usize) error{OutOfMemory}!void {
     }
 
     srgb_colors = try allocator.alloc(lib2.Srgb, pixel_count);
+    errdefer {
+        allocator.free(srgb_colors.?);
+        srgb_colors = null;
+    }
+
+    dither_error_buffer = try allocator.alloc(f32, lib2.Dither.errorBufferSize(w));
 
     last_width = w;
     last_height = h;
@@ -83,17 +92,27 @@ export fn renderLib2WithConfig(
     };
     watchface.render(&band, viewport, scene, clock);
 
-    // Convert linear to sRGB
     const srgb_buf = srgb_colors.?;
-    var srgb_band = band.toSrgb(srgb_buf) catch return null;
-
-    // Apply grain effect
-    // TODO: UI should send grain scale in normalized coordinates so we can pass it directly
-    const grain = lib2.Grain{
-        .intensity = config_ptr.grain.intensity,
-        .normalized_size = config_ptr.grain.scale * viewport.inverse_scale,
+    var srgb_band = if (config_ptr.dither.enabled != 0) blk: {
+        const dither = lib2.Dither{
+            .strength = config_ptr.dither.strength,
+            .chroma_weight = config_ptr.dither.chroma_weight,
+            .palette = config_ptr.dither.mode.toLib2().palette(),
+        };
+        break :blk dither.apply(band, srgb_buf, dither_error_buffer.?) catch return null;
+    } else blk: {
+        break :blk band.toSrgb(srgb_buf) catch return null;
     };
-    grain.apply(&srgb_band, viewport, scene.radius);
+
+    if (config_ptr.dither.enabled == 0) {
+        // Apply grain effect
+        // TODO: UI should send grain scale in normalized coordinates so we can pass it directly
+        const grain = lib2.Grain{
+            .intensity = config_ptr.grain.intensity,
+            .normalized_size = config_ptr.grain.scale * viewport.inverse_scale,
+        };
+        grain.apply(&srgb_band, viewport, scene.radius);
+    }
 
     return @ptrCast(srgb_buf.ptr);
 }
