@@ -20,7 +20,9 @@ pub fn render(
     scene: Scene,
     clock: Clock,
 ) void {
-    const rainbow = Rainbow.get(self.rainbow_palette_id);
+    const right_side = clock.external_hour_hand.get(.green).end[0] > 0;
+    const base_rainbow = Rainbow.get(self.rainbow_palette_id);
+    const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
 
     // External minute hand (white light entering prism)
     const external_minute_glow = Glow{

@@ -82,6 +82,14 @@ pub fn color(self: Self, color_id: ColorId) Linear {
     return self.colors[@intFromEnum(color_id)];
 }
 
+pub fn reversed(self: Self) Self {
+    var colors = self.colors;
+
+    std.mem.reverse(Linear, &colors);
+
+    return .{ .colors = colors };
+}
+
 pub fn interpolate(self: Self, normalized_position: f32) Linear {
     std.debug.assert(normalized_position >= 0.0 and normalized_position <= 1.0);
 
@@ -119,6 +127,15 @@ test "init sets alpha to 1" {
     for (oklch_balanced.colors) |c| {
         try std.testing.expectApproxEqAbs(@as(f32, 1.0), c.vec[3], 1e-6);
     }
+}
+
+test "reversed swaps first and last colors" {
+    const rainbow = spectral;
+    const reversed_rainbow = rainbow.reversed();
+
+    try std.testing.expectEqual(rainbow.color(.red).vec, reversed_rainbow.color(.violet).vec);
+    try std.testing.expectEqual(rainbow.color(.violet).vec, reversed_rainbow.color(.red).vec);
+    try std.testing.expectEqual(rainbow.color(.green).vec, reversed_rainbow.color(.green).vec);
 }
 
 test "interpolate at 0 returns first color" {
