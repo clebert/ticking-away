@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const Linear = @import("Linear.zig");
+const Oklab = @import("Oklab.zig");
 const Srgb = @import("Srgb.zig");
 
 const Self = @This();
@@ -17,18 +18,21 @@ pub const ColorId = enum {
 
 pub const color_count: usize = @typeInfo(ColorId).@"enum".fields.len;
 
-colors: [color_count]Linear,
+linear_colors: [color_count]Linear,
+oklab_colors: [color_count]Oklab,
 
 fn init(srgb_colors: [color_count]Srgb) Self {
     @setEvalBranchQuota(10000);
 
     var linear_colors: [color_count]Linear = undefined;
+    var oklab_colors: [color_count]Oklab = undefined;
 
     for (srgb_colors, 0..) |srgb, i| {
         linear_colors[i] = srgb.toLinear();
+        oklab_colors[i] = linear_colors[i].toOklab();
     }
 
-    return .{ .colors = linear_colors };
+    return .{ .linear_colors = linear_colors, .oklab_colors = oklab_colors };
 }
 
 /// Perceptually balanced colors tuned in OkLCH
@@ -79,39 +83,51 @@ pub fn get(palette_id: PaletteId) Self {
 }
 
 pub fn color(self: Self, color_id: ColorId) Linear {
-    return self.colors[@intFromEnum(color_id)];
+    return self.linear_colors[@intFromEnum(color_id)];
 }
 
 pub fn reversed(self: Self) Self {
-    var colors = self.colors;
+    var linear_colors = self.linear_colors;
+    var oklab_colors = self.oklab_colors;
 
-    std.mem.reverse(Linear, &colors);
+    std.mem.reverse(Linear, &linear_colors);
+    std.mem.reverse(Oklab, &oklab_colors);
 
-    return .{ .colors = colors };
+    return .{ .linear_colors = linear_colors, .oklab_colors = oklab_colors };
 }
 
+const edge_fade: Oklab = .{ .vec = .{ 0, 0, 0, 1 } };
+
+/// Maps normalized_position [0,1] so each color gets an equal-width band.
+/// Edge bands fade toward black for wider red and violet.
 pub fn interpolate(self: Self, normalized_position: f32) Linear {
     std.debug.assert(normalized_position >= 0.0 and normalized_position <= 1.0);
 
-    const scaled_index = normalized_position * @as(f32, color_count - 1);
+    const color_count_f: f32 = @floatFromInt(color_count);
+    const color_position = (normalized_position * color_count_f - 0.5) / (color_count_f - 1.0);
+    const clamped_color_position = std.math.clamp(color_position, 0.0, 1.0);
+
+    const scaled_index = clamped_color_position * @as(f32, color_count - 1);
     const index: usize = @intFromFloat(@min(@floor(scaled_index), color_count - 2));
     const fraction = scaled_index - @as(f32, @floatFromInt(index));
 
-    return Linear.lerp(self.colors[index], self.colors[index + 1], fraction);
+    const base = Oklab.lerp(self.oklab_colors[index], self.oklab_colors[index + 1], fraction);
+
+    return Oklab.lerp(base, edge_fade, @abs(color_position - clamped_color_position)).toLinear();
 }
 
 test "get returns matching rainbow" {
-    try std.testing.expectEqual(oklch_balanced.colors, (get(.oklch_balanced)).colors);
-    try std.testing.expectEqual(spectral.colors, (get(.spectral)).colors);
-    try std.testing.expectEqual(spectra6.colors, (get(.spectra6)).colors);
+    try std.testing.expectEqual(oklch_balanced.linear_colors, (get(.oklch_balanced)).linear_colors);
+    try std.testing.expectEqual(spectral.linear_colors, (get(.spectral)).linear_colors);
+    try std.testing.expectEqual(spectra6.linear_colors, (get(.spectra6)).linear_colors);
 }
 
 test "color returns correct entry by ColorId" {
     const rainbow = oklch_balanced;
 
-    try std.testing.expectEqual(rainbow.colors[0].vec, rainbow.color(.red).vec);
-    try std.testing.expectEqual(rainbow.colors[3].vec, rainbow.color(.green).vec);
-    try std.testing.expectEqual(rainbow.colors[6].vec, rainbow.color(.violet).vec);
+    try std.testing.expectEqual(rainbow.linear_colors[0].vec, rainbow.color(.red).vec);
+    try std.testing.expectEqual(rainbow.linear_colors[3].vec, rainbow.color(.green).vec);
+    try std.testing.expectEqual(rainbow.linear_colors[6].vec, rainbow.color(.violet).vec);
 }
 
 test "init converts sRGB to linear" {
@@ -124,7 +140,7 @@ test "init converts sRGB to linear" {
 }
 
 test "init sets alpha to 1" {
-    for (oklch_balanced.colors) |c| {
+    for (oklch_balanced.linear_colors) |c| {
         try std.testing.expectApproxEqAbs(@as(f32, 1.0), c.vec[3], 1e-6);
     }
 }
@@ -138,27 +154,24 @@ test "reversed swaps first and last colors" {
     try std.testing.expectEqual(rainbow.color(.green).vec, reversed_rainbow.color(.green).vec);
 }
 
-test "interpolate at 0 returns first color" {
-    const result = spectral.interpolate(0.0);
+test "interpolate at color center returns that color" {
+    // Color centers are at (i + 0.5) / color_count
+    const red_center = spectral.interpolate(0.5 / 7.0);
+    const violet_center = spectral.interpolate(6.5 / 7.0);
 
-    try std.testing.expectEqual(spectral.colors[0].vec, result.vec);
+    for (0..3) |i| {
+        try std.testing.expectApproxEqAbs(spectral.linear_colors[0].vec[i], red_center.vec[i], 1e-5);
+        try std.testing.expectApproxEqAbs(spectral.linear_colors[6].vec[i], violet_center.vec[i], 1e-5);
+    }
 }
 
-test "interpolate at 1 returns last color" {
-    const result = spectral.interpolate(1.0);
+test "interpolate at edges fades toward dark" {
+    const at_zero = spectral.interpolate(0.0);
+    const at_one = spectral.interpolate(1.0);
 
-    try std.testing.expectEqual(spectral.colors[6].vec, result.vec);
-}
+    // At 0, red shifts toward dark (lower red channel)
+    try std.testing.expect(at_zero.vec[0] < spectral.linear_colors[0].vec[0]);
 
-test "interpolate at midpoint between two colors" {
-    const at_orange = spectral.interpolate(1.0 / 6.0);
-
-    try std.testing.expectEqual(spectral.colors[1].vec, at_orange.vec);
-
-    const midpoint = spectral.interpolate(1.0 / 12.0);
-    const expected = Linear.lerp(spectral.colors[0], spectral.colors[1], 0.5);
-
-    try std.testing.expectApproxEqAbs(expected.vec[0], midpoint.vec[0], 1e-6);
-    try std.testing.expectApproxEqAbs(expected.vec[1], midpoint.vec[1], 1e-6);
-    try std.testing.expectApproxEqAbs(expected.vec[2], midpoint.vec[2], 1e-6);
+    // At 1, violet shifts toward dark (lower blue channel)
+    try std.testing.expect(at_one.vec[2] < spectral.linear_colors[6].vec[2]);
 }
