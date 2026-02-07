@@ -53,6 +53,8 @@ pub fn main() !void {
 
     const watchface = lib2.Watchface{
         .hand_glow_style = .{ .width = 0.08, .falloff = .quadratic },
+        .prism_glow_style = .{ .width = 0.15, .falloff = .quadratic },
+        .prism_glow_color = lib2.Linear.init(0.3, 0.3, 0.4, 1.0),
         .rainbow_palette_id = .spectral,
     };
 

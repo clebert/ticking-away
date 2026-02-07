@@ -2,6 +2,7 @@ const std = @import("std");
 
 const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
+const Prism = @import("Prism.zig");
 const Segment = @import("Segment.zig");
 const util = @import("util.zig");
 
@@ -30,42 +31,55 @@ pub const Style = struct {
     falloff: Falloff,
 };
 
-pub const Intensity = union(enum) {
-    uniform: f32,
-    gradient: struct { start: f32, end: f32 },
+pub const ClipRegion = union(enum) {
+    none,
+    circle: f32,
+    prism: Prism,
+};
 
-    fn at(self: Intensity, normalized_position: f32) f32 {
-        return switch (self) {
-            .uniform => |v| v,
-            .gradient => |g| g.start + (g.end - g.start) * normalized_position,
-        };
-    }
+pub const LineOptions = struct {
+    clip: ClipRegion = .none,
+    fading: bool = false,
 };
 
 style: Style,
 color: Linear,
-intensity: Intensity = .{ .uniform = 1.0 },
-clip_radius: ?f32 = null,
 
 pub fn renderLine(
     self: Self,
     band: *Image.Band(Linear),
     viewport: Image.Viewport,
     line: Segment,
+    options: LineOptions,
 ) void {
-    if (self.clip_radius != null) {
-        self.renderLineInner(true, band, viewport, line);
-    } else {
-        self.renderLineInner(false, band, viewport, line);
+    switch (options.clip) {
+        .none => if (options.fading) {
+            self.renderLineInner(true, .none, band, viewport, line, undefined, undefined);
+        } else {
+            self.renderLineInner(false, .none, band, viewport, line, undefined, undefined);
+        },
+        .circle => |radius| if (options.fading) {
+            self.renderLineInner(true, .circle, band, viewport, line, radius * radius, undefined);
+        } else {
+            self.renderLineInner(false, .circle, band, viewport, line, radius * radius, undefined);
+        },
+        .prism => |prism| if (options.fading) {
+            self.renderLineInner(true, .prism, band, viewport, line, undefined, prism);
+        } else {
+            self.renderLineInner(false, .prism, band, viewport, line, undefined, prism);
+        },
     }
 }
 
 inline fn renderLineInner(
     self: Self,
-    comptime clipped: bool,
+    comptime fading: bool,
+    comptime clip_region: std.meta.Tag(ClipRegion),
     band: *Image.Band(Linear),
     viewport: Image.Viewport,
     line: Segment,
+    clip_radius_squared: f32,
+    clip_prism: Prism,
 ) void {
     const width_squared = self.style.width * self.style.width;
     const band_height = band.bandHeight();
@@ -80,10 +94,65 @@ inline fn renderLineInner(
     const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
     const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
 
-    const uniform_intensity: ?f32 = switch (self.intensity) {
-        .uniform => |v| v,
-        .gradient => null,
-    };
+    for (y_start..y_end) |local_y| {
+        const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
+
+        for (x_start..x_end) |x| {
+            const pixel_x: f32 = @as(f32, @floatFromInt(x)) + 0.5;
+            const point = viewport.toNormalized(.{ pixel_x, pixel_y });
+
+            if (comptime clip_region == .circle) {
+                if (@reduce(.Add, point * point) > clip_radius_squared) continue;
+            }
+
+            const projection = line.project(point);
+
+            if (projection.distance_squared >= width_squared) continue;
+
+            if (comptime clip_region == .prism) {
+                if (!clip_prism.containsPoint(point)) continue;
+            }
+
+            const radial =
+                self.style.falloff.apply(@sqrt(projection.distance_squared) / self.style.width);
+
+            const intensity = radial * if (comptime fading)
+                1.0 - projection.normalized_position
+            else
+                1.0;
+
+            const pixel = band.colorAt(x, local_y);
+            const contribution = self.color.vec * @as(@Vector(4, f32), @splat(intensity));
+
+            pixel.vec = @max(pixel.vec, contribution);
+        }
+    }
+}
+
+pub fn renderPrismEdges(
+    self: Self,
+    band: *Image.Band(Linear),
+    viewport: Image.Viewport,
+    prism: Prism,
+) void {
+    const width = self.style.width;
+    const smooth_k = width * 0.5;
+
+    // smoothMin subtracts at most h²·k·0.25 from the true min, so glow can
+    // appear slightly beyond `width`. Pad the early-out to avoid clipping it.
+    const early_out_threshold = width + smooth_k * 0.25;
+    const early_out_threshold_squared = early_out_threshold * early_out_threshold;
+    const band_height = band.bandHeight();
+    const y_offset: f32 = @floatFromInt(band.y_offset);
+
+    const prism_bounds = prism.bounds();
+    const min_pixel = viewport.toPixel(.{ prism_bounds[0], prism_bounds[1] });
+    const max_pixel = viewport.toPixel(.{ prism_bounds[2], prism_bounds[3] });
+
+    const x_start = util.floorClamped(min_pixel[0], band.width);
+    const x_end = util.ceilClamped(max_pixel[0], band.width);
+    const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
+    const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
 
     for (y_start..y_end) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
@@ -92,25 +161,119 @@ inline fn renderLineInner(
             const pixel_x: f32 = @as(f32, @floatFromInt(x)) + 0.5;
             const point = viewport.toNormalized(.{ pixel_x, pixel_y });
 
-            if (comptime clipped) {
-                const radius = self.clip_radius.?;
+            if (!prism.containsPoint(point)) continue;
 
-                if (@reduce(.Add, point * point) > radius * radius) continue;
-            }
+            const proj0 = prism.edges.get(.right).project(point);
+            const proj1 = prism.edges.get(.bottom).project(point);
+            const proj2 = prism.edges.get(.left).project(point);
 
-            const projection = line.project(point);
+            const min_distance_squared = @min(
+                proj0.distance_squared,
+                @min(proj1.distance_squared, proj2.distance_squared),
+            );
 
-            if (projection.distance_squared >= width_squared) continue;
+            if (min_distance_squared >= early_out_threshold_squared) continue;
 
-            const radial =
-                self.style.falloff.apply(@sqrt(projection.distance_squared) / self.style.width);
+            const d0 = @sqrt(proj0.distance_squared);
+            const d1 = @sqrt(proj1.distance_squared);
+            const d2 = @sqrt(proj2.distance_squared);
+            const distance = smoothMin(smoothMin(d0, d1, smooth_k), d2, smooth_k);
 
-            const intensity = radial * (uniform_intensity orelse self.intensity.at(projection.normalized_position));
+            if (distance >= width) continue;
+
+            const intensity = self.style.falloff.apply(distance / width);
 
             const pixel = band.colorAt(x, local_y);
             const contribution = self.color.vec * @as(@Vector(4, f32), @splat(intensity));
 
-            pixel.vec = @max(pixel.vec, contribution);
+            pixel.vec = pixel.vec + contribution;
         }
     }
+}
+
+fn smoothMin(a: f32, b: f32, k: f32) f32 {
+    const h = @max(k - @abs(a - b), 0) / k;
+
+    return @min(a, b) - h * h * k * 0.25;
+}
+
+test "smoothMin returns minimum when values are far apart" {
+    const result = smoothMin(1.0, 5.0, 0.5);
+
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), result, 0.01);
+}
+
+test "smoothMin blends when values are equal" {
+    const result = smoothMin(1.0, 1.0, 1.0);
+
+    try std.testing.expectApproxEqAbs(@as(f32, 0.75), result, 1e-6);
+}
+
+test "renderPrismEdges produces glow inside prism" {
+    const prism = Prism.init(0.8);
+    const image_size = 64;
+    const image = Image.init(image_size, image_size);
+    const viewport = image.viewport();
+
+    var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
+    var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
+
+    const glow = Self{ .style = .{ .width = 0.15, .falloff = .linear }, .color = Linear.white };
+
+    glow.renderPrismEdges(&band, viewport, prism);
+
+    var found_glow = false;
+
+    for (&buffer) |pixel| {
+        if (pixel.vec[0] > 0) {
+            found_glow = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(found_glow);
+}
+
+test "renderPrismEdges does not write outside prism" {
+    const prism = Prism.init(0.8);
+    const image_size = 64;
+    const image = Image.init(image_size, image_size);
+    const viewport = image.viewport();
+
+    var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
+    var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
+
+    const glow = Self{ .style = .{ .width = 0.15, .falloff = .linear }, .color = Linear.white };
+
+    glow.renderPrismEdges(&band, viewport, prism);
+
+    try std.testing.expectEqual(Linear.black.vec, buffer[0].vec);
+    try std.testing.expectEqual(Linear.black.vec, buffer[image_size * image_size - 1].vec);
+}
+
+test "renderPrismEdges uses additive blending" {
+    const prism = Prism.init(0.8);
+    const image_size = 64;
+    const image = Image.init(image_size, image_size);
+    const viewport = image.viewport();
+
+    const base = Linear.init(0.1, 0.1, 0.1, 1.0);
+
+    var buffer = [_]Linear{base} ** (image_size * image_size);
+    var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
+
+    const glow = Self{ .style = .{ .width = 0.15, .falloff = .linear }, .color = Linear.white };
+
+    glow.renderPrismEdges(&band, viewport, prism);
+
+    var found_additive = false;
+
+    for (&buffer) |pixel| {
+        if (pixel.vec[0] > base.vec[0] + 0.01) {
+            found_additive = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(found_additive);
 }

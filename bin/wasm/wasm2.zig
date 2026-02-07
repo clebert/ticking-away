@@ -69,6 +69,16 @@ export fn renderLib2WithConfig(
             .width = config_ptr.ray.glow_width,
             .falloff = config_ptr.ray.falloff.toLib2(),
         },
+        .prism_glow_style = .{
+            .width = config_ptr.glow_config.width,
+            .falloff = config_ptr.glow_config.falloff.toLib2(),
+        },
+        .prism_glow_color = lib2.Linear.init(
+            @as(f32, @floatFromInt(config_ptr.glow_config.r)) / 255.0,
+            @as(f32, @floatFromInt(config_ptr.glow_config.g)) / 255.0,
+            @as(f32, @floatFromInt(config_ptr.glow_config.b)) / 255.0,
+            1.0,
+        ),
         .rainbow_palette_id = config_ptr.ray.ray_palette.toLib2(),
     };
     watchface.render(&band, viewport, scene, clock);

@@ -13,6 +13,8 @@ const Time = @import("Time.zig");
 const Self = @This();
 
 hand_glow_style: Glow.Style,
+prism_glow_style: Glow.Style,
+prism_glow_color: Linear,
 rainbow_palette_id: Rainbow.PaletteId,
 
 pub fn render(
@@ -26,34 +28,28 @@ pub fn render(
     const base_rainbow = Rainbow.get(self.rainbow_palette_id);
     const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
 
-    // External minute hand (white light entering prism)
-    const external_minute_glow = Glow{
-        .style = self.hand_glow_style,
-        .color = Linear.white,
-        .clip_radius = scene.radius,
-    };
+    const hand_glow = Glow{ .style = self.hand_glow_style, .color = Linear.white };
 
-    external_minute_glow.renderLine(band, viewport, clock.external_minute_hand);
+    // External minute hand (white light entering prism)
+    hand_glow.renderLine(band, viewport, clock.external_minute_hand, .{
+        .clip = .{ .circle = scene.radius },
+    });
 
     // Internal minute hand (bouncing inside prism)
     if (clock.internal_minute_hand) |internal_minute_hand| {
-        const internal_minute_glow = Glow{
-            .style = self.hand_glow_style,
-            .color = Linear.white,
-        };
-
-        internal_minute_glow.renderLine(band, viewport, internal_minute_hand);
+        hand_glow.renderLine(band, viewport, internal_minute_hand, .{
+            .clip = .{ .prism = scene.prism },
+        });
     }
 
     // Internal hour rays (colored, fading toward prism edge)
     for (std.enums.values(Rainbow.ColorId)) |color_id| {
-        const internal_hour_glow = Glow{
-            .style = self.hand_glow_style,
-            .color = rainbow.color(color_id),
-            .intensity = .{ .gradient = .{ .start = 1.0, .end = 0.0 } },
-        };
+        const ray_glow = Glow{ .style = self.hand_glow_style, .color = rainbow.color(color_id) };
 
-        internal_hour_glow.renderLine(band, viewport, clock.internal_hour_hand.get(color_id));
+        ray_glow.renderLine(band, viewport, clock.internal_hour_hand.get(color_id), .{
+            .clip = .{ .prism = scene.prism },
+            .fading = true,
+        });
     }
 
     // Spectrum fill (rainbow gradient between rays)
@@ -74,6 +70,11 @@ pub fn render(
     );
 
     internal_spectrum.render(band, viewport, scene, rainbow);
+
+    // Prism edge glow (additive, over spectrum)
+    const prism_glow = Glow{ .style = self.prism_glow_style, .color = self.prism_glow_color };
+
+    prism_glow.renderPrismEdges(band, viewport, scene.prism);
 }
 
 const test_image_size = 64;
@@ -88,6 +89,8 @@ const test_scene = Scene{
 
 const test_watchface = Self{
     .hand_glow_style = .{ .width = 0.08, .falloff = .linear },
+    .prism_glow_style = .{ .width = 0.15, .falloff = .quadratic },
+    .prism_glow_color = Linear.init(0.5, 0.5, 0.5, 1.0),
     .rainbow_palette_id = .oklch_balanced,
 };
 
