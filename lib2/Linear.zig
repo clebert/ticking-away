@@ -33,8 +33,25 @@ pub fn toSrgb(self: Self) Srgb {
     };
 }
 
+const srgb_lut: [4096]u8 = blk: {
+    @setEvalBranchQuota(100_000);
+
+    var table: [4096]u8 = undefined;
+
+    for (0..4096) |i| {
+        const linear: f32 = @as(f32, @floatFromInt(i)) / 4095.0;
+
+        table[i] = @intFromFloat(@round(linearToSrgbComponent(linear) * 255.0));
+    }
+
+    break :blk table;
+};
+
 fn linearToSrgbByte(linear: f32) u8 {
-    return @intFromFloat(@round(linearToSrgbComponent(std.math.clamp(linear, 0.0, 1.0)) * 255.0));
+    const clamped = std.math.clamp(linear, 0.0, 1.0);
+    const index: usize = @intFromFloat(@round(clamped * 4095.0));
+
+    return srgb_lut[index];
 }
 
 fn linearToSrgbComponent(linear: f32) f32 {
