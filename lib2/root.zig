@@ -12,7 +12,6 @@ pub const Segment = @import("Segment.zig");
 pub const Spectrum = @import("Spectrum.zig");
 pub const Srgb = @import("Srgb.zig");
 pub const Time = @import("Time.zig");
-pub const vector = @import("vector.zig");
 pub const Watchface = @import("Watchface.zig");
 
 test {

@@ -3,6 +3,7 @@ const std = @import("std");
 const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
 const Segment = @import("Segment.zig");
+const util = @import("util.zig");
 
 const Self = @This();
 
@@ -61,10 +62,10 @@ pub fn renderLine(
     const min_pixel = viewport.toPixel(@min(line.start, line.end) - width_vec);
     const max_pixel = viewport.toPixel(@max(line.start, line.end) + width_vec);
 
-    const x_start = floorClamped(min_pixel[0], band.width);
-    const x_end = ceilClamped(max_pixel[0], band.width);
-    const y_start = floorClamped(min_pixel[1] - y_offset, band_height);
-    const y_end = ceilClamped(max_pixel[1] - y_offset, band_height);
+    const x_start = util.floorClamped(min_pixel[0], band.width);
+    const x_end = util.ceilClamped(max_pixel[0], band.width);
+    const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
+    const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
 
     for (y_start..y_end) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
@@ -86,30 +87,10 @@ pub fn renderLine(
 
             const intensity = radial * self.intensity.at(projection.normalized_position);
 
-            const color = band.colorAt(x, local_y);
+            const pixel = band.colorAt(x, local_y);
             const contribution = self.color.vec * @as(@Vector(4, f32), @splat(intensity));
 
-            color.vec = @max(color.vec, contribution);
+            pixel.vec = @max(pixel.vec, contribution);
         }
     }
-}
-
-fn floorClamped(value: f32, max: usize) usize {
-    if (value <= 0) return 0;
-
-    const upper: f32 = @floatFromInt(max);
-
-    if (value >= upper) return max;
-
-    return @intFromFloat(@floor(value));
-}
-
-fn ceilClamped(value: f32, max: usize) usize {
-    if (value <= 0) return 0;
-
-    const upper: f32 = @floatFromInt(max);
-
-    if (value >= upper) return max;
-
-    return @intFromFloat(@ceil(value));
 }

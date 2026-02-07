@@ -71,6 +71,20 @@ pub fn containsPoint(self: Self, point: @Vector(2, f32)) bool {
     return !(has_neg and has_pos);
 }
 
+pub fn bounds(self: Self) @Vector(4, f32) {
+    var bounds_min: @Vector(2, f32) = @splat(std.math.inf(f32));
+    var bounds_max: @Vector(2, f32) = @splat(-std.math.inf(f32));
+
+    inline for (std.meta.tags(VertexId)) |vertex_id| {
+        const vertex = self.vertices.get(vertex_id);
+
+        bounds_min = @min(bounds_min, vertex);
+        bounds_max = @max(bounds_max, vertex);
+    }
+
+    return .{ bounds_min[0], bounds_min[1], bounds_max[0], bounds_max[1] };
+}
+
 pub fn intersect(self: Self, ray: Ray) ?Ray.Intersection {
     return Ray.Intersection.closest(
         Ray.Intersection.closest(
@@ -129,6 +143,23 @@ test "init creates equilateral triangle centered at origin" {
 
     try std.testing.expectApproxEqAbs(right_length_squared, bottom_length_squared, vector.tolerance);
     try std.testing.expectApproxEqAbs(bottom_length_squared, left_length_squared, vector.tolerance);
+}
+
+test "bounds returns min/max of vertices" {
+    const prism = Self.init(0.8);
+    const prism_bounds = prism.bounds();
+
+    const apex = prism.vertices.get(.apex);
+    const bottom_right = prism.vertices.get(.bottom_right);
+    const bottom_left = prism.vertices.get(.bottom_left);
+
+    // min_x = bottom_left x, min_y = apex y
+    try std.testing.expectApproxEqAbs(bottom_left[0], prism_bounds[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(apex[1], prism_bounds[1], vector.tolerance);
+
+    // max_x = bottom_right x, max_y = bottom_right y (== bottom_left y)
+    try std.testing.expectApproxEqAbs(bottom_right[0], prism_bounds[2], vector.tolerance);
+    try std.testing.expectApproxEqAbs(bottom_right[1], prism_bounds[3], vector.tolerance);
 }
 
 test "containsPoint" {

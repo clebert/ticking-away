@@ -47,5 +47,21 @@ pub fn render(self: Self, band: *Image.Band(Linear), viewport: Image.Viewport, s
     }
 
     // Spectrum fill (rainbow gradient between rays)
-    Spectrum.render(band, viewport, scene, clock, rainbow);
+    const external_spectrum = Spectrum.init(
+        .{ 0, 0 },
+        clock.external_hour_hand.get(.red).end,
+        clock.external_hour_hand.get(.violet).end,
+        .external,
+    );
+
+    external_spectrum.render(band, viewport, scene, rainbow);
+
+    const internal_spectrum = Spectrum.init(
+        clock.internal_hour_hand.get(.red).start,
+        clock.internal_hour_hand.get(.red).end,
+        clock.internal_hour_hand.get(.violet).end,
+        .internal,
+    );
+
+    internal_spectrum.render(band, viewport, scene, rainbow);
 }
