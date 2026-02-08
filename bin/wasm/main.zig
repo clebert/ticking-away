@@ -54,9 +54,9 @@ const Config = extern struct {
     minute: f32,
     normalized_prism_size: f32,
     normalized_rainbow_spread: f32,
-    prism_glow_red: i32,
-    prism_glow_green: i32,
-    prism_glow_blue: i32,
+    prism_glow_srgb_red: i32,
+    prism_glow_srgb_green: i32,
+    prism_glow_srgb_blue: i32,
     normalized_prism_glow_width: f32,
     prism_glow_falloff: GlowFalloff,
     normalized_hand_glow_width: f32,
@@ -67,7 +67,7 @@ const Config = extern struct {
     dither_enabled: i32,
     dither_palette_id: DitherPalette,
     normalized_dither_strength: f32,
-    dither_chroma_weight: f32,
+    normalized_dither_chroma_emphasis: f32,
 };
 
 var config: Config = undefined;
@@ -145,9 +145,9 @@ export fn render(width: u32, height: u32) ?[*]u8 {
             .falloff = config.prism_glow_falloff.toLib(),
         },
         .prism_glow_color = lib.Linear.init(
-            @as(f32, @floatFromInt(config.prism_glow_red)) / 255.0,
-            @as(f32, @floatFromInt(config.prism_glow_green)) / 255.0,
-            @as(f32, @floatFromInt(config.prism_glow_blue)) / 255.0,
+            @as(f32, @floatFromInt(config.prism_glow_srgb_red)) / 255.0,
+            @as(f32, @floatFromInt(config.prism_glow_srgb_green)) / 255.0,
+            @as(f32, @floatFromInt(config.prism_glow_srgb_blue)) / 255.0,
             1.0,
         ),
         .rainbow_palette_id = config.rainbow_palette_id.toLib(),
@@ -158,7 +158,7 @@ export fn render(width: u32, height: u32) ?[*]u8 {
     var srgb_band = if (config.dither_enabled != 0) blk: {
         const dither = lib.Dither{
             .normalized_strength = config.normalized_dither_strength,
-            .chroma_weight = config.dither_chroma_weight,
+            .normalized_chroma_emphasis = config.normalized_dither_chroma_emphasis,
             .palette = config.dither_palette_id.toLib().palette(),
         };
 

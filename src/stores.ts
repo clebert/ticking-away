@@ -30,7 +30,7 @@ const defaults = {
     enabled: false,
     paletteId: 2, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
     strength: 98, // 0-100, maps to 0.0-1.0
-    chromaWeight: 100, // 50-400, maps to 0.5-4.0
+    chromaEmphasis: 33, // 0-100, maps to 0.0-1.0
   },
 
   display: {
@@ -253,7 +253,7 @@ export const dither = {
   enabled: signal(settings.ditherEnabled ?? defaults.dither.enabled),
   paletteId: signal(settings.ditherPaletteId ?? defaults.dither.paletteId),
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
-  chromaWeight: signal(settings.ditherChromaWeight ?? defaults.dither.chromaWeight),
+  chromaEmphasis: signal(settings.ditherChromaEmphasis ?? defaults.dither.chromaEmphasis),
 
   // Actions
   toggleEnabled(): void {
@@ -268,8 +268,8 @@ export const dither = {
     dither.strength.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  setChromaWeight(e: Event): void {
-    dither.chromaWeight.value = parseInt((e.target as HTMLInputElement).value, 10);
+  setChromaEmphasis(e: Event): void {
+    dither.chromaEmphasis.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 };
 
@@ -310,7 +310,7 @@ export const resetAll = {
       dither.enabled.value = defaults.dither.enabled;
       dither.paletteId.value = defaults.dither.paletteId;
       dither.strength.value = defaults.dither.strength;
-      dither.chromaWeight.value = defaults.dither.chromaWeight;
+      dither.chromaEmphasis.value = defaults.dither.chromaEmphasis;
 
       // Display
       display.highDpi.value = defaults.display.highDpi;

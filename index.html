@@ -428,13 +428,14 @@
           </div>
           <div class="control-group">
             <label
-              >Chroma Weight: <span data-bind="textContent:dither.chromaWeight">200</span>%</label
+              >Chroma Emphasis:
+              <span data-bind="textContent:dither.chromaEmphasis">33</span>%</label
             >
             <input
               type="range"
-              min="50"
-              max="400"
-              data-bind="value:dither.chromaWeight, oninput:dither.setChromaWeight, disabled:!dither.enabled"
+              min="0"
+              max="100"
+              data-bind="value:dither.chromaEmphasis, oninput:dither.setChromaEmphasis, disabled:!dither.enabled"
             />
           </div>
 

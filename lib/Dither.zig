@@ -8,7 +8,7 @@ const Srgb = @import("Srgb.zig");
 const Self = @This();
 
 normalized_strength: f32,
-chroma_weight: f32,
+normalized_chroma_emphasis: f32,
 palette: Palette,
 
 const channels = 3;
@@ -34,7 +34,8 @@ pub fn apply(
 
     @memset(error_buffer[0 .. stride * 2], 0);
 
-    const lightness_weight = 2.0 / self.chroma_weight;
+    const chroma_weight = self.normalized_chroma_emphasis * 2.0;
+    const lightness_weight = (1.0 - self.normalized_chroma_emphasis) * 2.0;
 
     for (0..height) |y| {
         const serpentine = (band.imageY(y) % 2) == 1;
@@ -68,7 +69,7 @@ pub fn apply(
             const adjusted_a = oklab.vec[1] + current[error_offset + 1];
             const adjusted_b = oklab.vec[2] + current[error_offset + 2];
 
-            const index = findClosest(self.palette.oklab_colors, adjusted_l, adjusted_a, adjusted_b, lightness_weight, self.chroma_weight);
+            const index = findClosest(self.palette.oklab_colors, adjusted_l, adjusted_a, adjusted_b, lightness_weight, chroma_weight);
 
             const quantized = self.palette.oklab_colors[index];
 
@@ -237,7 +238,7 @@ test "apply produces only palette colors" {
 
     const dither = Self{
         .normalized_strength = 1.0,
-        .chroma_weight = 2.0,
+        .normalized_chroma_emphasis = 0.667,
         .palette = PaletteId.ideal.palette(),
     };
 
@@ -271,7 +272,7 @@ test "apply preserves alpha channel" {
 
     const dither = Self{
         .normalized_strength = 1.0,
-        .chroma_weight = 2.0,
+        .normalized_chroma_emphasis = 0.667,
         .palette = PaletteId.ideal.palette(),
     };
 
@@ -293,7 +294,7 @@ test "apply with zero strength still quantizes to palette" {
 
     const dither = Self{
         .normalized_strength = 0.0,
-        .chroma_weight = 2.0,
+        .normalized_chroma_emphasis = 0.667,
         .palette = PaletteId.ideal.palette(),
     };
 
@@ -337,7 +338,7 @@ test "apply outputs palette black for background pixels without color bleeding" 
 
     const dither = Self{
         .normalized_strength = 1.0,
-        .chroma_weight = 2.0,
+        .normalized_chroma_emphasis = 0.667,
         .palette = PaletteId.ideal.palette(),
     };
 

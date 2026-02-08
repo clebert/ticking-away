@@ -26,7 +26,7 @@ export interface Settings {
   ditherEnabled: boolean;
   ditherPaletteId: number;
   ditherStrength: number;
-  ditherChromaWeight: number;
+  ditherChromaEmphasis: number;
 
   displayHighDpi: boolean;
 }
@@ -79,7 +79,7 @@ export function saveSettings({
       ditherEnabled: dither.enabled.value,
       ditherPaletteId: dither.paletteId.value,
       ditherStrength: dither.strength.value,
-      ditherChromaWeight: dither.chromaWeight.value,
+      ditherChromaEmphasis: dither.chromaEmphasis.value,
 
       displayHighDpi: display.highDpi.value,
     };

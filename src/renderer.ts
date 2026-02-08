@@ -39,7 +39,7 @@ function writeConfig(view: DataView, offset: number): void {
   view.setInt32(offset + 56, dither.enabled.value ? 1 : 0, littleEndian);
   view.setInt32(offset + 60, dither.paletteId.value, littleEndian);
   view.setFloat32(offset + 64, dither.strength.value / 100.0, littleEndian);
-  view.setFloat32(offset + 68, dither.chromaWeight.value / 100.0, littleEndian);
+  view.setFloat32(offset + 68, dither.chromaEmphasis.value / 100.0, littleEndian);
 }
 
 export function render(): void {
