@@ -32,7 +32,15 @@ pub fn apply(
 
     std.debug.assert(error_buffer.len >= stride * 2);
 
-    @memset(error_buffer[0 .. stride * 2], 0);
+    // Zero the entire buffer for the first band of each frame.
+    // Subsequent bands carry forward pending errors in slot 0.
+    if (band.y_offset == 0) {
+        @memset(error_buffer[0 .. stride * 2], 0);
+    }
+
+    // Between bands, apply() maintains the invariant: pending errors in
+    // slot 0, slot 1 zeroed. Assert slot 1 is clean as a partial check.
+    std.debug.assert(std.mem.allEqual(f32, error_buffer[stride..][0..stride], 0));
 
     const chroma_weight = self.normalized_chroma_emphasis * 2.0;
     const lightness_weight = (1.0 - self.normalized_chroma_emphasis) * 2.0;
@@ -115,7 +123,15 @@ pub fn apply(
         }
 
         @memset(current, 0);
+
         current_row = 1 - current_row;
+    }
+
+    // Ensure pending errors are in slot 0 for the next band call.
+    // After odd-height bands, pending errors end up in slot 1.
+    if (current_row != 0) {
+        @memcpy(error_buffer[0..stride], error_buffer[stride..][0..stride]);
+        @memset(error_buffer[stride..][0..stride], 0);
     }
 
     return .{ .buffer = srgb_buffer, .width = width, .y_offset = band.y_offset };
@@ -379,4 +395,130 @@ test "findClosest returns black for dark colors" {
     );
 
     try std.testing.expectEqual(@as(usize, 0), index);
+}
+
+test "error diffusion propagates to subsequent rows" {
+    const width = 8;
+    const height = 4;
+    const image = Image.init(width, height);
+    const pixel_count = width * height;
+
+    // Mid-gray: falls between black and white palette entries, generating error every pixel
+    var linear_buffer = [_]Linear{Linear.init(0.2, 0.2, 0.2, 1.0)} ** pixel_count;
+
+    const dither = Self{
+        .normalized_strength = 1.0,
+        .normalized_chroma_emphasis = 0.667,
+        .palette = PaletteId.ideal.palette(),
+    };
+
+    // With error diffusion (strength=1): errors propagate row-to-row
+    var srgb_diffused: [pixel_count]Srgb = undefined;
+    var error_buffer: [width * channels * 2]f32 = undefined;
+
+    const linear_band = image.band(Linear, &linear_buffer, height, 0) catch unreachable;
+
+    _ = dither.apply(linear_band, &srgb_diffused, &error_buffer) catch unreachable;
+
+    // Without error diffusion (strength=0): each pixel quantized independently
+    const no_diffusion = Self{
+        .normalized_strength = 0.0,
+        .normalized_chroma_emphasis = 0.667,
+        .palette = PaletteId.ideal.palette(),
+    };
+
+    var srgb_independent: [pixel_count]Srgb = undefined;
+
+    _ = no_diffusion.apply(linear_band, &srgb_independent, &error_buffer) catch unreachable;
+
+    // With strength=0, all pixels map to the same nearest color (no variation).
+    // With strength=1, error diffusion should cause at least some pixels to differ.
+    var differs = false;
+
+    for (&srgb_diffused, &srgb_independent) |d, i| {
+        if (d.r != i.r or d.g != i.g or d.b != i.b) {
+            differs = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(differs);
+}
+
+test "multi-band dithering matches single-band dithering" {
+    const width = 16;
+    const height = 48;
+    const image = Image.init(width, height);
+    const pixel_count = width * height;
+
+    // Vertical gradient: varies per row so error diffusion is meaningful across bands
+    var linear_buffer: [pixel_count]Linear = undefined;
+
+    for (0..height) |y| {
+        const t: f32 = @as(f32, @floatFromInt(y)) / @as(f32, @floatFromInt(height - 1));
+
+        for (0..width) |x| {
+            linear_buffer[y * width + x] = Linear.init(t * 0.8, t * 0.3, (1.0 - t) * 0.5, 1.0);
+        }
+    }
+
+    const dither = Self{
+        .normalized_strength = 1.0,
+        .normalized_chroma_emphasis = 0.667,
+        .palette = PaletteId.ideal.palette(),
+    };
+
+    // Reference: single-band (full height)
+    var reference: [pixel_count]Srgb = undefined;
+    var error_buffer: [width * channels * 2]f32 = undefined;
+
+    const full_band = image.band(Linear, &linear_buffer, height, 0) catch unreachable;
+
+    _ = dither.apply(full_band, &reference, &error_buffer) catch unreachable;
+
+    // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
+    const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
+
+    for (band_heights) |band_height| {
+        const band_count = height / band_height;
+
+        var banded_output: [pixel_count]Srgb = undefined;
+        var band_srgb_buffer: [pixel_count]Srgb = undefined;
+
+        for (0..band_count) |band_index| {
+            const row_start = band_index * band_height * width;
+            const band_pixels = band_height * width;
+            const band_linear = linear_buffer[row_start..][0..band_pixels];
+
+            const narrow_band = image.band(Linear, band_linear, band_height, band_index) catch unreachable;
+
+            const srgb_band = dither.apply(
+                narrow_band,
+                band_srgb_buffer[0..band_pixels],
+                &error_buffer,
+            ) catch unreachable;
+
+            @memcpy(banded_output[row_start..][0..band_pixels], srgb_band.buffer);
+        }
+
+        for (&reference, &banded_output, 0..) |ref, actual, i| {
+            const y = i / width;
+            const x = i % width;
+
+            std.testing.expectEqual(ref.r, actual.r) catch {
+                std.debug.print("band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n", .{ band_height, x, y, ref.r, actual.r });
+                return error.TestUnexpectedResult;
+            };
+
+            std.testing.expectEqual(ref.g, actual.g) catch {
+                std.debug.print("band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n", .{ band_height, x, y, ref.g, actual.g });
+                return error.TestUnexpectedResult;
+            };
+
+            std.testing.expectEqual(ref.b, actual.b) catch {
+                std.debug.print("band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n", .{ band_height, x, y, ref.b, actual.b });
+                return error.TestUnexpectedResult;
+            };
+        }
+    }
 }
