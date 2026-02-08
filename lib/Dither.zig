@@ -31,6 +31,11 @@ pub fn apply(
     const stride = width * channels;
 
     std.debug.assert(error_buffer.len >= stride * 2);
+    std.debug.assert(self.normalized_strength >= 0.0 and self.normalized_strength <= 1.0);
+
+    std.debug.assert(
+        self.normalized_chroma_emphasis >= 0.0 and self.normalized_chroma_emphasis <= 1.0,
+    );
 
     // Zero the entire buffer for the first band of each frame.
     // Subsequent bands carry forward pending errors in slot 0.

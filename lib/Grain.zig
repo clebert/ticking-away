@@ -9,7 +9,10 @@ normalized_intensity: f32,
 normalized_size: f32,
 
 pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void {
-    if (self.normalized_intensity <= 0.0) return;
+    std.debug.assert(self.normalized_intensity >= 0.0 and self.normalized_intensity <= 1.0);
+    std.debug.assert(self.normalized_size > 0.0);
+
+    if (self.normalized_intensity == 0.0) return;
 
     // max_deviation: peak noise in sRGB units at full intensity
     // noise_raw ∈ [-0.5, 0.5], so multiply by 2 to scale max_deviation to peak

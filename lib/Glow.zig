@@ -52,6 +52,8 @@ pub fn renderLine(
     line: Segment,
     options: LineOptions,
 ) void {
+    std.debug.assert(self.style.normalized_width > 0.0 and self.style.normalized_width <= 1.0);
+
     switch (options.clip) {
         .none => if (options.fading) {
             self.renderLineInner(true, .none, band, viewport, line, undefined);
@@ -134,6 +136,8 @@ pub fn renderPrismEdges(
     viewport: Image.Viewport,
     prism: Prism,
 ) void {
+    std.debug.assert(self.style.normalized_width > 0.0 and self.style.normalized_width <= 1.0);
+
     const width = self.style.normalized_width;
     const smooth_k = width * 0.5;
 
