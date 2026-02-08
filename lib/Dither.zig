@@ -68,10 +68,12 @@ pub fn apply(
             // Background pixels (never rendered to): output palette black directly
             // without error diffusion to prevent color bleeding at circle boundary
             if (linear.vec[0] == 0 and linear.vec[1] == 0 and linear.vec[2] == 0) {
+                const black = self.palette.black();
+
                 srgb_buffer[y * width + x] = .{
-                    .r = self.palette.srgb_colors[0].r,
-                    .g = self.palette.srgb_colors[0].g,
-                    .b = self.palette.srgb_colors[0].b,
+                    .r = black.r,
+                    .g = black.g,
+                    .b = black.b,
                     .a = alpha,
                 };
 
@@ -176,6 +178,14 @@ pub const Palette = struct {
 
     oklab_colors: [color_count]Oklab,
     srgb_colors: [color_count]Srgb,
+
+    pub fn black(self: Palette) Srgb {
+        return self.srgb_colors[0];
+    }
+
+    pub fn white(self: Palette) Srgb {
+        return self.srgb_colors[1];
+    }
 
     fn fromSrgb(comptime srgb_colors: [color_count]Srgb) Palette {
         @setEvalBranchQuota(10_000);
@@ -360,7 +370,7 @@ test "apply outputs palette black for background pixels without color bleeding" 
     const srgb_band = dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable;
 
     // Background pixels must be exactly palette black with no color bleeding
-    const palette_black = dither.palette.srgb_colors[0];
+    const palette_black = dither.palette.black();
 
     for (4..8) |i| {
         const pixel = srgb_band.buffer[i];
@@ -372,17 +382,23 @@ test "apply outputs palette black for background pixels without color bleeding" 
     }
 }
 
-test "all palettes have black as first color" {
+test "all palettes have black as first color and white as second" {
     const palette_ids = std.enums.values(PaletteId);
 
     for (palette_ids) |id| {
         const palette = id.palette();
-        const first = palette.srgb_colors[0];
+        const black = palette.black();
+        const white = palette.white();
 
-        // First color must be dark: all RGB channels <= 35
-        try std.testing.expect(first.r <= 35);
-        try std.testing.expect(first.g <= 35);
-        try std.testing.expect(first.b <= 35);
+        // Black must be dark: all RGB channels <= 35
+        try std.testing.expect(black.r <= 35);
+        try std.testing.expect(black.g <= 35);
+        try std.testing.expect(black.b <= 35);
+
+        // White must be bright: all RGB channels >= 150
+        try std.testing.expect(white.r >= 150);
+        try std.testing.expect(white.g >= 150);
+        try std.testing.expect(white.b >= 150);
     }
 }
 
