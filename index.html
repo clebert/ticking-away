@@ -275,7 +275,7 @@
           <!-- Prism Controls -->
           <div class="section-title">Prism</div>
           <div class="control-group">
-            <label>Size: <span data-bind="textContent:prism.size">60</span>%</label>
+            <label>Size: <span data-bind="textContent:prism.size">90</span>%</label>
             <input
               type="range"
               min="10"
@@ -284,7 +284,7 @@
             />
           </div>
           <div class="control-group">
-            <label>Prism Gray: <span data-bind="textContent:prism.gray">80</span></label>
+            <label>Prism Gray: <span data-bind="textContent:prism.gray">248</span></label>
             <input
               type="range"
               min="0"
@@ -293,7 +293,7 @@
             />
           </div>
           <div class="control-group">
-            <label>Blue Tint: <span data-bind="textContent:prism.blueTint">0</span></label>
+            <label>Blue Tint: <span data-bind="textContent:prism.blueTint">160</span></label>
             <input
               type="range"
               min="0"
@@ -302,7 +302,7 @@
             />
           </div>
           <div class="control-group">
-            <label>Glow Width: <span data-bind="textContent:prism.glowWidth">15</span>%</label>
+            <label>Glow Width: <span data-bind="textContent:prism.glowWidth">7</span>%</label>
             <input
               type="range"
               min="5"
@@ -316,7 +316,7 @@
               <option value="0">Linear</option>
               <option value="1">Quadratic</option>
               <option value="2">Cubic</option>
-              <option value="3">Exponential</option>
+              <option value="3" selected>Exponential</option>
             </select>
           </div>
 
@@ -333,7 +333,7 @@
           </div>
           <div class="control-group">
             <label
-              >Hand Glow Width: <span data-bind="textContent:rainbow.handGlowWidth">3</span>%</label
+              >Hand Glow Width: <span data-bind="textContent:rainbow.handGlowWidth">1</span>%</label
             >
             <input
               type="range"
@@ -346,7 +346,7 @@
             <label>Hand Glow Falloff</label>
             <select data-bind="value:rainbow.handGlowFalloff, onchange:rainbow.setHandGlowFalloff">
               <option value="0">Linear</option>
-              <option value="1">Quadratic</option>
+              <option value="1" selected>Quadratic</option>
               <option value="2">Cubic</option>
               <option value="3">Exponential</option>
             </select>
@@ -356,14 +356,14 @@
             <select data-bind="value:rainbow.palette, onchange:rainbow.setPalette">
               <option value="0">OkLCH Balanced</option>
               <option value="1">Spectral</option>
-              <option value="2">Spectra 6</option>
+              <option value="2" selected>Spectra 6</option>
             </select>
           </div>
 
           <!-- Effects -->
           <div class="section-title">Effects</div>
           <div class="control-group">
-            <label>Grain: <span data-bind="textContent:effects.grainIntensity">50</span>%</label>
+            <label>Grain: <span data-bind="textContent:effects.grainIntensity">100</span>%</label>
             <input
               type="range"
               min="0"
@@ -383,7 +383,7 @@
             >
           </div>
           <div class="control-group">
-            <label>Strength: <span data-bind="textContent:dither.strength">100</span>%</label>
+            <label>Strength: <span data-bind="textContent:dither.strength">98</span>%</label>
             <input
               type="range"
               min="0"
@@ -399,7 +399,7 @@
             >
               <option value="0">Ideal (Pure RGB)</option>
               <option value="1">Spectra 6 (Pimoroni Inky)</option>
-              <option value="2">Spectra 6 (EDP Optimize)</option>
+              <option value="2" selected>Spectra 6 (EDP Optimize)</option>
               <option value="3">Spectra 6 (TRMNL)</option>
             </select>
           </div>
