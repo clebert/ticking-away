@@ -14,7 +14,7 @@ pub fn build(b: *std.Build) void {
         .cpu_features_add = std.Target.wasm.featureSet(&.{ .bulk_memory, .simd128 }),
     });
 
-    const wasm = b.addExecutable(.{
+    const wasm_exe = b.addExecutable(.{
         .name = "index",
         .root_module = b.createModule(.{
             .root_source_file = b.path("bin/wasm/main.zig"),
@@ -32,12 +32,12 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    wasm.entry = .disabled;
-    wasm.rdynamic = true;
-    wasm.import_memory = true;
-    wasm.lto = .full;
+    wasm_exe.entry = .disabled;
+    wasm_exe.rdynamic = true;
+    wasm_exe.import_memory = true;
+    wasm_exe.lto = .full;
 
-    const wasm_install = b.addInstallArtifact(wasm, .{
+    const wasm_install = b.addInstallArtifact(wasm_exe, .{
         .dest_dir = .{ .override = .{ .custom = "../public" } },
     });
 
@@ -70,18 +70,9 @@ pub fn build(b: *std.Build) void {
     wasm_check.import_memory = true;
     wasm_check.lto = .full;
 
-    const lib_check = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("lib/root.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-
     const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
 
     check_step.dependOn(&wasm_check.step);
-    check_step.dependOn(&lib_check.step);
 
     // =========================================================================
     // Tests
