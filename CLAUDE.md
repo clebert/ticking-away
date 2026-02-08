@@ -21,6 +21,15 @@ npm run ci
 | `npm run lint:fix` | Run linters with auto-fix                   |
 | `npm test`         | Run tests                                   |
 
+### Profiling
+
+Build and run the native profiling binary for use with valgrind/callgrind:
+
+```bash
+zig build profile -Doptimize=ReleaseFast
+zig-out/bin/profile [iteration_count]
+```
+
 ## Zig Code Style
 
 Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Guide):

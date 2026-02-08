@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
 
     // =========================================================================
-    // WASM Target
+    // WASM
     // =========================================================================
 
     const wasm_target = b.resolveTargetQuery(.{
@@ -46,6 +46,32 @@ pub fn build(b: *std.Build) void {
     wasm_step.dependOn(&wasm_install.step);
 
     // =========================================================================
+    // Profile binary (native, for valgrind/callgrind)
+    // =========================================================================
+
+    const profile_exe = b.addExecutable(.{
+        .name = "profile",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/profile/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+
+    const profile_install = b.addInstallArtifact(profile_exe, .{});
+
+    const profile_step = b.step("profile", "Build the profiling binary");
+
+    profile_step.dependOn(&profile_install.step);
+
+    // =========================================================================
     // Check step for ZLS (uses native target for analysis)
     // =========================================================================
 
@@ -70,9 +96,26 @@ pub fn build(b: *std.Build) void {
     wasm_check.import_memory = true;
     wasm_check.lto = .full;
 
+    const profile_check = b.addExecutable(.{
+        .name = "profile",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/profile/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+
     const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
 
     check_step.dependOn(&wasm_check.step);
+    check_step.dependOn(&profile_check.step);
 
     // =========================================================================
     // Tests
