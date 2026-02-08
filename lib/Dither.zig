@@ -37,16 +37,19 @@ pub fn apply(
     const chroma_weight = self.normalized_chroma_emphasis * 2.0;
     const lightness_weight = (1.0 - self.normalized_chroma_emphasis) * 2.0;
 
+    var current_row: usize = 0;
+
     for (0..height) |y| {
         const serpentine = (band.imageY(y) % 2) == 1;
-        const current = error_buffer[0..stride];
-        const next = error_buffer[stride .. stride * 2];
+        const current = error_buffer[current_row * stride ..][0..stride];
+        const next = error_buffer[(1 - current_row) * stride ..][0..stride];
 
         for (0..width) |iteration| {
             const x = if (serpentine) width - 1 - iteration else iteration;
             const step: i32 = if (serpentine) -1 else 1;
 
             const linear = band.colorAt(x, y).*;
+            const alpha: u8 = @intFromFloat(@round(std.math.clamp(linear.vec[3], 0.0, 1.0) * 255.0));
             const error_offset = x * channels;
 
             // Background pixels (never rendered to): output palette black directly
@@ -56,10 +59,8 @@ pub fn apply(
                     .r = self.palette.srgb_colors[0].r,
                     .g = self.palette.srgb_colors[0].g,
                     .b = self.palette.srgb_colors[0].b,
-                    .a = @intFromFloat(@round(std.math.clamp(linear.vec[3], 0.0, 1.0) * 255.0)),
+                    .a = alpha,
                 };
-
-                @memset(current[error_offset..][0..channels], 0);
 
                 continue;
             }
@@ -83,7 +84,7 @@ pub fn apply(
                 .r = self.palette.srgb_colors[index].r,
                 .g = self.palette.srgb_colors[index].g,
                 .b = self.palette.srgb_colors[index].b,
-                .a = @intFromFloat(@round(std.math.clamp(linear.vec[3], 0.0, 1.0) * 255.0)),
+                .a = alpha,
             };
 
             const signed_x: i32 = @intCast(x);
@@ -96,6 +97,7 @@ pub fn apply(
 
                 inline for (0..channels) |c| {
                     current[forward_offset + c] += err[c] * (7.0 / 16.0);
+                    next[forward_offset + c] += err[c] * (1.0 / 16.0);
                 }
             }
 
@@ -110,18 +112,10 @@ pub fn apply(
             inline for (0..channels) |c| {
                 next[error_offset + c] += err[c] * (5.0 / 16.0);
             }
-
-            if (forward >= 0 and forward < signed_width) {
-                const forward_offset = @as(usize, @intCast(forward)) * channels;
-
-                inline for (0..channels) |c| {
-                    next[forward_offset + c] += err[c] * (1.0 / 16.0);
-                }
-            }
         }
 
-        @memcpy(error_buffer[0..stride], error_buffer[stride .. stride * 2]);
-        @memset(error_buffer[stride .. stride * 2], 0);
+        @memset(current, 0);
+        current_row = 1 - current_row;
     }
 
     return .{ .buffer = srgb_buffer, .width = width, .y_offset = band.y_offset };

@@ -98,20 +98,21 @@ fn pow512(x: f32) f32 {
     return cube_root_x * fourth_root_cube_root;
 }
 
+// Only valid for non-negative inputs: all callers pass LMS or clamped linear RGB values.
 fn cubeRoot(x: f32) f32 {
-    if (x == 0.0) return 0.0;
+    std.debug.assert(x >= 0.0);
 
-    const abs_x = @abs(x);
+    if (x == 0.0) return 0.0;
 
     // Initial approximation using IEEE 754 bit manipulation
     // https://en.wikipedia.org/wiki/Fast_inverse_square_root
-    var y: f32 = @bitCast(@as(u32, @bitCast(abs_x)) / 3 + 709921077);
+    var y: f32 = @bitCast(@as(u32, @bitCast(x)) / 3 + 709921077);
 
-    y = (2.0 * y + abs_x / (y * y)) / 3.0;
-    y = (2.0 * y + abs_x / (y * y)) / 3.0;
-    y = (2.0 * y + abs_x / (y * y)) / 3.0;
+    y = (2.0 * y + x / (y * y)) / 3.0;
+    y = (2.0 * y + x / (y * y)) / 3.0;
+    y = (2.0 * y + x / (y * y)) / 3.0;
 
-    return std.math.copysign(y, x);
+    return y;
 }
 
 test "lerp at t=0 returns first color" {
