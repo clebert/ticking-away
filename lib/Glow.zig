@@ -33,7 +33,7 @@ pub const Style = struct {
 
 pub const ClipRegion = union(enum) {
     none,
-    circle: f32,
+    circle,
     prism: Prism,
 };
 
@@ -54,19 +54,19 @@ pub fn renderLine(
 ) void {
     switch (options.clip) {
         .none => if (options.fading) {
-            self.renderLineInner(true, .none, band, viewport, line, undefined, undefined);
+            self.renderLineInner(true, .none, band, viewport, line, undefined);
         } else {
-            self.renderLineInner(false, .none, band, viewport, line, undefined, undefined);
+            self.renderLineInner(false, .none, band, viewport, line, undefined);
         },
-        .circle => |radius| if (options.fading) {
-            self.renderLineInner(true, .circle, band, viewport, line, radius * radius, undefined);
+        .circle => if (options.fading) {
+            self.renderLineInner(true, .circle, band, viewport, line, undefined);
         } else {
-            self.renderLineInner(false, .circle, band, viewport, line, radius * radius, undefined);
+            self.renderLineInner(false, .circle, band, viewport, line, undefined);
         },
         .prism => |prism| if (options.fading) {
-            self.renderLineInner(true, .prism, band, viewport, line, undefined, prism);
+            self.renderLineInner(true, .prism, band, viewport, line, prism);
         } else {
-            self.renderLineInner(false, .prism, band, viewport, line, undefined, prism);
+            self.renderLineInner(false, .prism, band, viewport, line, prism);
         },
     }
 }
@@ -78,7 +78,6 @@ inline fn renderLineInner(
     band: *Image.Band(Linear),
     viewport: Image.Viewport,
     line: Segment,
-    clip_radius_squared: f32,
     clip_prism: Prism,
 ) void {
     const width_squared = self.style.width * self.style.width;
@@ -102,7 +101,7 @@ inline fn renderLineInner(
             const point = viewport.toNormalized(.{ pixel_x, pixel_y });
 
             if (comptime clip_region == .circle) {
-                if (@reduce(.Add, point * point) > clip_radius_squared) continue;
+                if (@reduce(.Add, point * point) > 1.0) continue;
             }
 
             const projection = line.project(point);

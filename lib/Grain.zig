@@ -8,7 +8,7 @@ const Self = @This();
 intensity: f32,
 normalized_size: f32,
 
-pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport, radius: f32) void {
+pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void {
     if (self.intensity <= 0.0) return;
 
     // max_deviation: peak noise in sRGB units at full intensity
@@ -17,8 +17,7 @@ pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport, radi
     const strength = self.intensity * max_deviation * 2.0;
     const pixel_size = self.normalized_size * viewport.scale;
     const inverse_size = 1.0 / pixel_size;
-    const pixel_radius = radius * viewport.scale;
-    const radius_squared = pixel_radius * pixel_radius;
+    const radius_squared = viewport.scale * viewport.scale;
     const center_x = viewport.center[0];
     const center_y = viewport.center[1];
 
@@ -82,7 +81,7 @@ test "apply modifies bright pixels" {
 
     const grain = Self{ .intensity = 1.0, .normalized_size = 0.5 };
 
-    grain.apply(&band, viewport, 1.0);
+    grain.apply(&band, viewport);
 
     var changed = false;
 
@@ -105,9 +104,9 @@ test "apply skips pixels outside radius" {
 
     const grain = Self{ .intensity = 1.0, .normalized_size = 0.5 };
 
-    grain.apply(&band, viewport, 0.3);
+    grain.apply(&band, viewport);
 
-    // Corner pixel (0,0) is far from center (5,5) in a 10x10 image — outside radius 0.3
+    // Corner pixel (0,0) is far from center (5,5) in a 10x10 image — outside unit circle
     try std.testing.expectEqual(@as(u8, 180), buffer[0].r);
     try std.testing.expectEqual(@as(u8, 180), buffer[0].g);
     try std.testing.expectEqual(@as(u8, 180), buffer[0].b);
@@ -125,7 +124,7 @@ test "apply is no-op when intensity is zero" {
 
     const grain = Self{ .intensity = 0.0, .normalized_size = 0.5 };
 
-    grain.apply(&band, viewport, 1.0);
+    grain.apply(&band, viewport);
 
     try std.testing.expectEqualSlices(Srgb, &original, &buffer);
 }
@@ -142,7 +141,7 @@ test "apply skips black pixels" {
 
     const grain = Self{ .intensity = 1.0, .normalized_size = 0.5 };
 
-    grain.apply(&band, viewport, 1.0);
+    grain.apply(&band, viewport);
 
     try std.testing.expectEqualSlices(Srgb, &original, &buffer);
 }

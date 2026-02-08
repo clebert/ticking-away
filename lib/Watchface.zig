@@ -6,7 +6,6 @@ const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
 const Prism = @import("Prism.zig");
 const Rainbow = @import("Rainbow.zig");
-const Scene = @import("Scene.zig");
 const Spectrum = @import("Spectrum.zig");
 const Time = @import("Time.zig");
 
@@ -21,7 +20,7 @@ pub fn render(
     self: Self,
     band: *Image.Band(Linear),
     viewport: Image.Viewport,
-    scene: Scene,
+    prism: Prism,
     clock: Clock,
 ) void {
     const right_side = clock.external_hour_hand.get(.green).end[0] > 0;
@@ -32,13 +31,13 @@ pub fn render(
 
     // External minute hand (white light entering prism)
     hand_glow.renderLine(band, viewport, clock.external_minute_hand, .{
-        .clip = .{ .circle = scene.radius },
+        .clip = .circle,
     });
 
     // Internal minute hand (bouncing inside prism)
     if (clock.internal_minute_hand) |internal_minute_hand| {
         hand_glow.renderLine(band, viewport, internal_minute_hand, .{
-            .clip = .{ .prism = scene.prism },
+            .clip = .{ .prism = prism },
         });
     }
 
@@ -47,45 +46,41 @@ pub fn render(
         const ray_glow = Glow{ .style = self.hand_glow_style, .color = rainbow.color(color_id) };
 
         ray_glow.renderLine(band, viewport, clock.internal_hour_hand.get(color_id), .{
-            .clip = .{ .prism = scene.prism },
+            .clip = .{ .prism = prism },
             .fading = true,
         });
     }
 
     // Spectrum fill (rainbow gradient between rays)
     const external_spectrum = Spectrum.init(
+        .external,
         .{ 0, 0 },
         clock.external_hour_hand.get(.red).end,
         clock.external_hour_hand.get(.violet).end,
-        .external,
     );
 
-    external_spectrum.render(band, viewport, scene, rainbow);
+    external_spectrum.render(band, viewport, prism, rainbow);
 
     const internal_spectrum = Spectrum.init(
+        .internal,
         clock.internal_hour_hand.get(.red).start,
         clock.internal_hour_hand.get(.red).end,
         clock.internal_hour_hand.get(.violet).end,
-        .internal,
     );
 
-    internal_spectrum.render(band, viewport, scene, rainbow);
+    internal_spectrum.render(band, viewport, prism, rainbow);
 
     // Prism edge glow (additive, over spectrum)
     const prism_glow = Glow{ .style = self.prism_glow_style, .color = self.prism_glow_color };
 
-    prism_glow.renderPrismEdges(band, viewport, scene.prism);
+    prism_glow.renderPrismEdges(band, viewport, prism);
 }
 
 const test_image_size = 64;
 const test_band_height = 8;
 const test_band_count = test_image_size / test_band_height;
 
-const test_scene = Scene{
-    .radius = 1.0,
-    .prism = Prism.init(0.8),
-    .normalized_rainbow_spread = 0.5,
-};
+const test_prism = Prism.init(0.8);
 
 const test_watchface = Self{
     .hand_glow_style = .{ .width = 0.08, .falloff = .linear },
@@ -95,21 +90,21 @@ const test_watchface = Self{
 };
 
 fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
-    const clock = Clock.init(time, test_scene);
+    const clock = Clock.init(time, test_prism, 0.5);
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 
     var full_buffer = [_]Linear{Linear.black} ** (test_image_size * test_image_size);
     var full_band = image.band(Linear, &full_buffer, test_image_size, 0) catch unreachable;
 
-    test_watchface.render(&full_band, viewport, test_scene, clock);
+    test_watchface.render(&full_band, viewport, test_prism, clock);
 
     return full_buffer;
 }
 
 test "multi-band render matches single-band render" {
     const time = Time{ .minutes = 195.0 };
-    const clock = Clock.init(time, test_scene);
+    const clock = Clock.init(time, test_prism, 0.5);
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 
@@ -123,7 +118,7 @@ test "multi-band render matches single-band render" {
         var narrow_band =
             image.band(Linear, &band_buffer, test_band_height, band_index) catch unreachable;
 
-        test_watchface.render(&narrow_band, viewport, test_scene, clock);
+        test_watchface.render(&narrow_band, viewport, test_prism, clock);
 
         const row_start = band_index * test_image_size * test_band_height;
 

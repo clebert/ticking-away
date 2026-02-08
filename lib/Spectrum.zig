@@ -2,26 +2,28 @@ const std = @import("std");
 
 const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
+const Prism = @import("Prism.zig");
 const Rainbow = @import("Rainbow.zig");
-const Scene = @import("Scene.zig");
 const util = @import("util.zig");
 const vector = @import("vector.zig");
 
 const Self = @This();
 
+region: Region,
 origin: @Vector(2, f32),
 direction_start: @Vector(2, f32),
 direction_end: @Vector(2, f32),
 direction_start_exact: @Vector(2, f32),
 direction_end_exact: @Vector(2, f32),
 reverse: bool,
-side: Scene.Side,
+
+pub const Region = enum { internal, external };
 
 pub fn init(
+    region: Region,
     origin: @Vector(2, f32),
     first_end: @Vector(2, f32),
     last_end: @Vector(2, f32),
-    side: Scene.Side,
 ) Self {
     const direction_first = vector.normalize(first_end - origin);
     const direction_last = vector.normalize(last_end - origin);
@@ -48,13 +50,13 @@ pub fn init(
     const sin_epsilon = comptime @sin(@as(f32, 0.002));
 
     return .{
+        .region = region,
         .origin = origin,
         .direction_start = rotateBy(start_exact, cos_epsilon, -sin_epsilon),
         .direction_end = rotateBy(end_exact, cos_epsilon, sin_epsilon),
         .direction_start_exact = start_exact,
         .direction_end_exact = end_exact,
         .reverse = reverse,
-        .side = side,
     };
 }
 
@@ -62,7 +64,7 @@ pub fn render(
     self: Self,
     band: *Image.Band(Linear),
     viewport: Image.Viewport,
-    scene: Scene,
+    prism: Prism,
     rainbow: Rainbow,
 ) void {
     // Skip degenerate sectors: near-zero span (directions identical) or
@@ -74,10 +76,10 @@ pub fn render(
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
-    const normalized_bounds = switch (self.side) {
-        .internal => scene.prism.bounds(),
-        .external => scene.sectorBounds(self.direction_start, self.direction_end),
-    };
+    const normalized_bounds = if (self.region == .internal)
+        prism.bounds()
+    else
+        sectorBounds(self.direction_start, self.direction_end);
 
     const min_pixel = viewport.toPixel(.{ normalized_bounds[0], normalized_bounds[1] });
     const max_pixel = viewport.toPixel(.{ normalized_bounds[2], normalized_bounds[3] });
@@ -102,7 +104,11 @@ pub fn render(
 
             if (cross_start < 0 or cross_end > 0) continue;
 
-            if (!scene.containsPoint(self.side, point)) continue;
+            if (self.region == .internal) {
+                if (!prism.containsPoint(point)) continue;
+            } else {
+                if (@reduce(.Add, point * point) > 1.0 or prism.containsPoint(point)) continue;
+            }
 
             // Cross-product ratio for spectrum position (replaces atan2)
             const cross_start_exact = self.direction_start_exact[0] * dy - self.direction_start_exact[1] * dx;
@@ -127,4 +133,67 @@ fn rotateBy(direction: @Vector(2, f32), cos_angle: f32, sin_angle: f32) @Vector(
         direction[0] * cos_angle - direction[1] * sin_angle,
         direction[0] * sin_angle + direction[1] * cos_angle,
     };
+}
+
+fn sectorBounds(
+    direction_start: @Vector(2, f32),
+    direction_end: @Vector(2, f32),
+) @Vector(4, f32) {
+    const origin: @Vector(2, f32) = .{ 0, 0 };
+
+    var bounds_min = @min(origin, @min(direction_start, direction_end));
+    var bounds_max = @max(origin, @max(direction_start, direction_end));
+
+    const cardinals = [_]@Vector(2, f32){
+        .{ 1, 0 },
+        .{ 0, 1 },
+        .{ -1, 0 },
+        .{ 0, -1 },
+    };
+
+    inline for (cardinals) |cardinal| {
+        if (directionInSector(cardinal, direction_start, direction_end)) {
+            bounds_min = @min(bounds_min, cardinal);
+            bounds_max = @max(bounds_max, cardinal);
+        }
+    }
+
+    return .{ bounds_min[0], bounds_min[1], bounds_max[0], bounds_max[1] };
+}
+
+/// Tests if a direction lies within the CCW sector from start to end (span <= π).
+fn directionInSector(
+    direction: @Vector(2, f32),
+    sector_start: @Vector(2, f32),
+    sector_end: @Vector(2, f32),
+) bool {
+    return vector.cross2d(sector_start, direction) >= 0 and
+        vector.cross2d(direction, sector_end) >= 0;
+}
+
+test "sectorBounds first quadrant" {
+    const bounds = sectorBounds(.{ 1, 0 }, .{ 0, 1 });
+
+    try std.testing.expectApproxEqAbs(@as(f32, 0), bounds[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, 0), bounds[1], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), bounds[2], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), bounds[3], vector.tolerance);
+}
+
+test "sectorBounds third quadrant" {
+    const bounds = sectorBounds(.{ -1, 0 }, .{ 0, -1 });
+
+    try std.testing.expectApproxEqAbs(@as(f32, -1.0), bounds[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, -1.0), bounds[1], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, 0), bounds[2], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, 0), bounds[3], vector.tolerance);
+}
+
+test "sectorBounds wrap-around" {
+    const bounds = sectorBounds(.{ 0, -1 }, .{ 0, 1 });
+
+    try std.testing.expectApproxEqAbs(@as(f32, 0), bounds[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, -1.0), bounds[1], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), bounds[2], vector.tolerance);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), bounds[3], vector.tolerance);
 }

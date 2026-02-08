@@ -10,7 +10,6 @@ pub const Oklab = @import("Oklab.zig");
 pub const Prism = @import("Prism.zig");
 pub const Rainbow = @import("Rainbow.zig");
 pub const Ray = @import("Ray.zig");
-pub const Scene = @import("Scene.zig");
 pub const Segment = @import("Segment.zig");
 pub const Spectrum = @import("Spectrum.zig");
 pub const Srgb = @import("Srgb.zig");

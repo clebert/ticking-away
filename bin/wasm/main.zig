@@ -124,13 +124,8 @@ export fn render(width: u32, height: u32) ?[*]u8 {
 
     const time = lib.Time.init(@intCast(config.hour), config.minute);
 
-    const scene = lib.Scene{
-        .radius = 1.0, // TODO: is always 1.0
-        .prism = lib.Prism.init(std.math.clamp(config.prism_size, 0.01, 1.0)),
-        .normalized_rainbow_spread = std.math.clamp(config.rainbow_spread, 0.0, 1.0),
-    };
-
-    const clock = lib.Clock.init(time, scene);
+    const prism = lib.Prism.init(std.math.clamp(config.prism_size, 0.01, 1.0));
+    const clock = lib.Clock.init(time, prism, std.math.clamp(config.rainbow_spread, 0.0, 1.0));
 
     @memset(linear_buffer.?, lib.Linear.black);
 
@@ -158,7 +153,7 @@ export fn render(width: u32, height: u32) ?[*]u8 {
         .rainbow_palette_id = config.rainbow_palette.toLib(),
     };
 
-    watchface.render(&linear_band, viewport, scene, clock);
+    watchface.render(&linear_band, viewport, prism, clock);
 
     var srgb_band = if (config.dither_enabled != 0) blk: {
         const dither = lib.Dither{
@@ -177,7 +172,7 @@ export fn render(width: u32, height: u32) ?[*]u8 {
         .normalized_size = config.grain_scale * viewport.inverse_scale,
     };
 
-    grain.apply(&srgb_band, viewport, scene.radius);
+    grain.apply(&srgb_band, viewport);
 
     return @ptrCast(srgb_buffer.?.ptr);
 }
