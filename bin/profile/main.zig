@@ -56,6 +56,10 @@ pub fn main() void {
         var srgb_band = dither.apply(linear_band, &srgb_buffer, &dither_error_buffer) catch unreachable;
 
         grain.apply(&srgb_band, viewport);
+
+        const background = lib.Background{ .color = lib.Srgb.transparent };
+
+        background.apply(&srgb_band, viewport);
     }
 }
 
