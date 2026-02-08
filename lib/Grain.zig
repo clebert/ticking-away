@@ -148,3 +148,72 @@ test "apply skips black pixels" {
 
     try std.testing.expectEqualSlices(Srgb, &original, &buffer);
 }
+
+test "multi-band grain matches single-band grain" {
+    const width = 16;
+    const height = 48;
+    const image = Image.init(width, height);
+    const viewport = image.viewport();
+    const pixel_count = width * height;
+
+    var input: [pixel_count]Srgb = undefined;
+
+    for (0..height) |y| {
+        const t: u8 = @intCast(y * 255 / (height - 1));
+
+        for (0..width) |x| {
+            const s: u8 = @intCast(x * 255 / (width - 1));
+
+            input[y * width + x] = .{ .r = t, .g = s, .b = 128 };
+        }
+    }
+
+    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
+
+    // Reference: single-band (full height)
+    var reference = input;
+    var full_band = image.band(Srgb, &reference, height, 0) catch unreachable;
+
+    grain.apply(&full_band, viewport);
+
+    // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
+    const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
+
+    for (band_heights) |band_height| {
+        const band_count = height / band_height;
+
+        var banded_output = input;
+
+        for (0..band_count) |band_index| {
+            const row_start = band_index * band_height * width;
+            const band_pixels = band_height * width;
+
+            var narrow_band = image.band(Srgb, banded_output[row_start..][0..band_pixels], band_height, band_index) catch unreachable;
+
+            grain.apply(&narrow_band, viewport);
+        }
+
+        for (&reference, &banded_output, 0..) |ref, actual, i| {
+            const y = i / width;
+            const x = i % width;
+
+            std.testing.expectEqual(ref.r, actual.r) catch {
+                std.debug.print("band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n", .{ band_height, x, y, ref.r, actual.r });
+
+                return error.TestUnexpectedResult;
+            };
+
+            std.testing.expectEqual(ref.g, actual.g) catch {
+                std.debug.print("band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n", .{ band_height, x, y, ref.g, actual.g });
+
+                return error.TestUnexpectedResult;
+            };
+
+            std.testing.expectEqual(ref.b, actual.b) catch {
+                std.debug.print("band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n", .{ band_height, x, y, ref.b, actual.b });
+
+                return error.TestUnexpectedResult;
+            };
+        }
+    }
+}

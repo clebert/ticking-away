@@ -512,16 +512,19 @@ test "multi-band dithering matches single-band dithering" {
 
             std.testing.expectEqual(ref.r, actual.r) catch {
                 std.debug.print("band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n", .{ band_height, x, y, ref.r, actual.r });
+
                 return error.TestUnexpectedResult;
             };
 
             std.testing.expectEqual(ref.g, actual.g) catch {
                 std.debug.print("band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n", .{ band_height, x, y, ref.g, actual.g });
+
                 return error.TestUnexpectedResult;
             };
 
             std.testing.expectEqual(ref.b, actual.b) catch {
                 std.debug.print("band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n", .{ band_height, x, y, ref.b, actual.b });
+
                 return error.TestUnexpectedResult;
             };
         }
