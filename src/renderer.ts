@@ -9,7 +9,7 @@ function writeConfig(view: DataView, offset: number): void {
   view.setFloat32(offset + 4, time.minute.value, littleEndian);
 
   view.setFloat32(offset + 8, prism.size.value / 100.0, littleEndian);
-  view.setFloat32(offset + 12, prism.rainbowSpread.value / 100.0, littleEndian);
+  view.setFloat32(offset + 12, rainbow.spread.value / 100.0, littleEndian);
   view.setInt32(offset + 16, Math.max(0, prism.gray.value - prism.blueTint.value), littleEndian);
 
   view.setInt32(

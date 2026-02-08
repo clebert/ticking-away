@@ -284,17 +284,6 @@
             />
           </div>
           <div class="control-group">
-            <label
-              >Rainbow Spread: <span data-bind="textContent:prism.rainbowSpread">50</span>%</label
-            >
-            <input
-              type="range"
-              min="0"
-              max="100"
-              data-bind="value:prism.rainbowSpread, oninput:prism.setRainbowSpread"
-            />
-          </div>
-          <div class="control-group">
             <label>Prism Gray: <span data-bind="textContent:prism.gray">80</span></label>
             <input
               type="range"
@@ -333,6 +322,15 @@
 
           <!-- Rainbow Controls -->
           <div class="section-title">Rainbow</div>
+          <div class="control-group">
+            <label>Spread: <span data-bind="textContent:rainbow.spread">50</span>%</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              data-bind="value:rainbow.spread, oninput:rainbow.setSpread"
+            />
+          </div>
           <div class="control-group">
             <label
               >Hand Glow Width: <span data-bind="textContent:rainbow.handGlowWidth">3</span>%</label

@@ -11,12 +11,12 @@ export interface Settings {
   timeMinute: number;
 
   prismSize: number;
-  prismRainbowSpread: number;
   prismGray: number;
   prismBlueTint: number;
   prismGlowWidth: number;
   prismGlowFalloff: number;
 
+  rainbowSpread: number;
   rainbowHandGlowWidth: number;
   rainbowHandGlowFalloff: number;
   rainbowPalette: number;
@@ -64,12 +64,12 @@ export function saveSettings({
       timeMinute: time.minute.value,
 
       prismSize: prism.size.value,
-      prismRainbowSpread: prism.rainbowSpread.value,
       prismGray: prism.gray.value,
       prismBlueTint: prism.blueTint.value,
       prismGlowWidth: prism.glowWidth.value,
       prismGlowFalloff: prism.glowFalloff.value,
 
+      rainbowSpread: rainbow.spread.value,
       rainbowHandGlowWidth: rainbow.handGlowWidth.value,
       rainbowHandGlowFalloff: rainbow.handGlowFalloff.value,
       rainbowPalette: rainbow.palette.value,

@@ -9,7 +9,6 @@ const defaults = {
 
   prism: {
     size: 90,
-    rainbowSpread: 50,
     gray: 248,
     blueTint: 160,
     glowWidth: 7,
@@ -17,6 +16,7 @@ const defaults = {
   },
 
   rainbow: {
+    spread: 50,
     handGlowWidth: 1,
     handGlowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     palette: 2, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
@@ -177,7 +177,6 @@ export const time = {
 export const prism = {
   // Signals: geometry
   size: signal(settings.prismSize ?? defaults.prism.size),
-  rainbowSpread: signal(settings.prismRainbowSpread ?? defaults.prism.rainbowSpread),
 
   // Signals: color
   gray: signal(settings.prismGray ?? defaults.prism.gray),
@@ -190,10 +189,6 @@ export const prism = {
   // Actions
   setSize(e: Event): void {
     prism.size.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setRainbowSpread(e: Event): void {
-    prism.rainbowSpread.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setGray(e: Event): void {
@@ -214,6 +209,9 @@ export const prism = {
 };
 
 export const rainbow = {
+  // Signals: spread
+  spread: signal(settings.rainbowSpread ?? defaults.rainbow.spread),
+
   // Signals: glow
   handGlowWidth: signal(settings.rainbowHandGlowWidth ?? defaults.rainbow.handGlowWidth),
   handGlowFalloff: signal(settings.rainbowHandGlowFalloff ?? defaults.rainbow.handGlowFalloff),
@@ -222,6 +220,10 @@ export const rainbow = {
   palette: signal(settings.rainbowPalette ?? defaults.rainbow.palette),
 
   // Actions
+  setSpread(e: Event): void {
+    rainbow.spread.value = parseInt((e.target as HTMLInputElement).value, 10);
+  },
+
   setHandGlowWidth(e: Event): void {
     rainbow.handGlowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
@@ -292,13 +294,13 @@ export const resetAll = {
 
       // Prism
       prism.size.value = defaults.prism.size;
-      prism.rainbowSpread.value = defaults.prism.rainbowSpread;
       prism.gray.value = defaults.prism.gray;
       prism.blueTint.value = defaults.prism.blueTint;
       prism.glowWidth.value = defaults.prism.glowWidth;
       prism.glowFalloff.value = defaults.prism.glowFalloff;
 
       // Rainbow
+      rainbow.spread.value = defaults.rainbow.spread;
       rainbow.handGlowWidth.value = defaults.rainbow.handGlowWidth;
       rainbow.handGlowFalloff.value = defaults.rainbow.handGlowFalloff;
       rainbow.palette.value = defaults.rainbow.palette;
