@@ -48,7 +48,7 @@ export function stopAnimation(): void {
 
 function startAcceleratedAnimation(accelerationFactor: number): void {
   acceleratedStartTimestamp = performance.now();
-  acceleratedStartMinutes = time.hours.peek() * 60 + time.minutes.peek();
+  acceleratedStartMinutes = time.hour.peek() * 60 + time.minute.peek();
 
   const animate = (now: number) => {
     if (lastFrameTime > 0) {
@@ -61,14 +61,14 @@ function startAcceleratedAnimation(accelerationFactor: number): void {
     const totalMinutes = acceleratedStartMinutes + elapsedSeconds * accelerationFactor;
     const wrappedMinutes = totalMinutes % (12 * 60);
 
-    const newHours = Math.floor(wrappedMinutes / 60);
-    const newMinutes = wrappedMinutes % 60;
-    const newSeconds = (newMinutes % 1) * 60;
+    const newHour = Math.floor(wrappedMinutes / 60);
+    const newMinute = wrappedMinutes % 60;
+    const newSecond = (newMinute % 1) * 60;
 
     batch(() => {
-      time.hours.value = newHours;
-      time.minutes.value = newMinutes;
-      time.seconds.value = newSeconds;
+      time.hour.value = newHour;
+      time.minute.value = newMinute;
+      time.second.value = newSecond;
     });
 
     animationFrameId = requestAnimationFrame(animate);
@@ -88,13 +88,13 @@ function startRealtimeAnimation(): void {
     lastFrameTime = now;
 
     const currentTime = new Date();
-    const fractionalSeconds = currentTime.getSeconds();
-    const fractionalMinutes = currentTime.getMinutes() + fractionalSeconds / 60;
+    const fractionalSecond = currentTime.getSeconds();
+    const fractionalMinute = currentTime.getMinutes() + fractionalSecond / 60;
 
     batch(() => {
-      time.hours.value = currentTime.getHours() % 12;
-      time.minutes.value = fractionalMinutes;
-      time.seconds.value = fractionalSeconds;
+      time.hour.value = currentTime.getHours() % 12;
+      time.minute.value = fractionalMinute;
+      time.second.value = fractionalSecond;
     });
   };
 

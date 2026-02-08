@@ -5,8 +5,8 @@ import { getWasmMemory, getWasmModule } from "./wasm.ts";
 function writeConfig(view: DataView, offset: number): void {
   const littleEndian = true;
 
-  view.setInt32(offset + 0, time.hours.value, littleEndian);
-  view.setFloat32(offset + 4, time.minutes.value, littleEndian);
+  view.setInt32(offset + 0, time.hour.value, littleEndian);
+  view.setFloat32(offset + 4, time.minute.value, littleEndian);
 
   view.setFloat32(offset + 8, prism.size.value / 100.0, littleEndian);
   view.setFloat32(offset + 12, prism.rainbowSpread.value / 100.0, littleEndian);
@@ -22,8 +22,8 @@ function writeConfig(view: DataView, offset: number): void {
   view.setFloat32(offset + 28, prism.glowWidth.value / 100.0, littleEndian);
   view.setInt32(offset + 32, prism.glowFalloff.value, littleEndian);
 
-  view.setFloat32(offset + 36, rainbow.glowWidth.value / 100.0, littleEndian);
-  view.setInt32(offset + 40, rainbow.glowFalloff.value, littleEndian);
+  view.setFloat32(offset + 36, rainbow.handGlowWidth.value / 100.0, littleEndian);
+  view.setInt32(offset + 40, rainbow.handGlowFalloff.value, littleEndian);
   view.setInt32(offset + 44, rainbow.palette.value, littleEndian);
 
   const grainIntensity = dither.enabled.value ? 0 : effects.grainIntensity.value / 100;
@@ -37,7 +37,7 @@ function writeConfig(view: DataView, offset: number): void {
   );
 
   view.setInt32(offset + 56, dither.enabled.value ? 1 : 0, littleEndian);
-  view.setInt32(offset + 60, dither.paletteMode.value, littleEndian);
+  view.setInt32(offset + 60, dither.paletteId.value, littleEndian);
   view.setFloat32(offset + 64, dither.strength.value / 100.0, littleEndian);
   view.setFloat32(offset + 68, dither.chromaWeight.value / 100.0, littleEndian);
 }

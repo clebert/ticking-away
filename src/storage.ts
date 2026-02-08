@@ -7,8 +7,8 @@ export interface Settings {
   modeAccelerated: boolean;
   modeAccelerationFactor: number;
 
-  timeHours: number;
-  timeMinutes: number;
+  timeHour: number;
+  timeMinute: number;
 
   prismSize: number;
   prismRainbowSpread: number;
@@ -17,14 +17,14 @@ export interface Settings {
   prismGlowWidth: number;
   prismGlowFalloff: number;
 
-  rainbowGlowWidth: number;
-  rainbowGlowFalloff: number;
+  rainbowHandGlowWidth: number;
+  rainbowHandGlowFalloff: number;
   rainbowPalette: number;
 
   effectsGrainIntensity: number;
 
   ditherEnabled: boolean;
-  ditherPaletteMode: number;
+  ditherPaletteId: number;
   ditherStrength: number;
   ditherChromaWeight: number;
 
@@ -60,8 +60,8 @@ export function saveSettings({
       modeAccelerated: mode.accelerated.value,
       modeAccelerationFactor: mode.accelerationFactor.value,
 
-      timeHours: time.hours.value,
-      timeMinutes: time.minutes.value,
+      timeHour: time.hour.value,
+      timeMinute: time.minute.value,
 
       prismSize: prism.size.value,
       prismRainbowSpread: prism.rainbowSpread.value,
@@ -70,14 +70,14 @@ export function saveSettings({
       prismGlowWidth: prism.glowWidth.value,
       prismGlowFalloff: prism.glowFalloff.value,
 
-      rainbowGlowWidth: rainbow.glowWidth.value,
-      rainbowGlowFalloff: rainbow.glowFalloff.value,
+      rainbowHandGlowWidth: rainbow.handGlowWidth.value,
+      rainbowHandGlowFalloff: rainbow.handGlowFalloff.value,
       rainbowPalette: rainbow.palette.value,
 
       effectsGrainIntensity: effects.grainIntensity.value,
 
       ditherEnabled: dither.enabled.value,
-      ditherPaletteMode: dither.paletteMode.value,
+      ditherPaletteId: dither.paletteId.value,
       ditherStrength: dither.strength.value,
       ditherChromaWeight: dither.chromaWeight.value,
 

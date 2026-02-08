@@ -5,16 +5,16 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
-intensity: f32,
+normalized_intensity: f32,
 normalized_size: f32,
 
 pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void {
-    if (self.intensity <= 0.0) return;
+    if (self.normalized_intensity <= 0.0) return;
 
     // max_deviation: peak noise in sRGB units at full intensity
     // noise_raw ∈ [-0.5, 0.5], so multiply by 2 to scale max_deviation to peak
     const max_deviation = 0.06 * 255.0;
-    const strength = self.intensity * max_deviation * 2.0;
+    const strength = self.normalized_intensity * max_deviation * 2.0;
     const pixel_size = self.normalized_size * viewport.scale;
     const inverse_size = 1.0 / pixel_size;
     const radius_squared = viewport.scale * viewport.scale;
@@ -79,7 +79,7 @@ test "apply modifies bright pixels" {
     var buffer = [_]Srgb{.{ .r = 180, .g = 180, .b = 180 }} ** 16;
     var band = image.band(Srgb, &buffer, 4, 0) catch unreachable;
 
-    const grain = Self{ .intensity = 1.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
 
     grain.apply(&band, viewport);
 
@@ -102,7 +102,7 @@ test "apply skips pixels outside radius" {
     var buffer = [_]Srgb{.{ .r = 180, .g = 180, .b = 180 }} ** 100;
     var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
-    const grain = Self{ .intensity = 1.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
 
     grain.apply(&band, viewport);
 
@@ -122,7 +122,7 @@ test "apply is no-op when intensity is zero" {
 
     var band = image.band(Srgb, &buffer, 4, 0) catch unreachable;
 
-    const grain = Self{ .intensity = 0.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_intensity = 0.0, .normalized_size = 0.5 };
 
     grain.apply(&band, viewport);
 
@@ -139,7 +139,7 @@ test "apply skips black pixels" {
 
     var band = image.band(Srgb, &buffer, 4, 0) catch unreachable;
 
-    const grain = Self{ .intensity = 1.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
 
     grain.apply(&band, viewport);
 

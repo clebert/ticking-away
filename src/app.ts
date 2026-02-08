@@ -38,7 +38,7 @@ initWasm().then(() => {
 
   effect(() => {
     if (!stores.mode.live.value) {
-      stores.time.minutes.value = Math.round(stores.time.minutes.value) % 60;
+      stores.time.minute.value = Math.round(stores.time.minute.value) % 60;
     }
   });
 });

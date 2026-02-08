@@ -17,8 +17,8 @@ const defaults = {
   },
 
   rainbow: {
-    glowWidth: 1,
-    glowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
+    handGlowWidth: 1,
+    handGlowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     palette: 2, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
   },
 
@@ -28,7 +28,7 @@ const defaults = {
 
   dither: {
     enabled: false,
-    paletteMode: 2, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
+    paletteId: 2, // 0 = IDEAL, 1 = SPECTRA6_INKY, 2 = SPECTRA6_EPDOPT
     strength: 98, // 0-100, maps to 0.0-1.0
     chromaWeight: 100, // 50-400, maps to 0.5-4.0
   },
@@ -144,32 +144,32 @@ const persistedLive = settings.modeLive ?? true;
 
 export const time = {
   // Signals
-  hours: signal(
+  hour: signal(
     persistedLive
       ? initialTime.getHours() % 12
-      : (settings.timeHours ?? initialTime.getHours() % 12),
+      : (settings.timeHour ?? initialTime.getHours() % 12),
   ),
-  minutes: signal(
-    persistedLive ? initialTime.getMinutes() : (settings.timeMinutes ?? initialTime.getMinutes()),
+  minute: signal(
+    persistedLive ? initialTime.getMinutes() : (settings.timeMinute ?? initialTime.getMinutes()),
   ),
-  seconds: signal(initialTime.getSeconds()), // Used internally for animation
+  second: signal(initialTime.getSeconds()), // Used internally for animation
 
   // Actions
-  setHours(e: Event): void {
-    time.hours.value = parseInt((e.target as HTMLInputElement).value, 10);
+  setHour(e: Event): void {
+    time.hour.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  setMinutes(e: Event): void {
-    time.minutes.value = parseInt((e.target as HTMLInputElement).value, 10);
+  setMinute(e: Event): void {
+    time.minute.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setNow(): void {
     const currentTime = new Date();
 
     batch(() => {
-      time.hours.value = currentTime.getHours() % 12;
-      time.minutes.value = currentTime.getMinutes();
-      time.seconds.value = currentTime.getSeconds();
+      time.hour.value = currentTime.getHours() % 12;
+      time.minute.value = currentTime.getMinutes();
+      time.second.value = currentTime.getSeconds();
     });
   },
 };
@@ -215,19 +215,19 @@ export const prism = {
 
 export const rainbow = {
   // Signals: glow
-  glowWidth: signal(settings.rainbowGlowWidth ?? defaults.rainbow.glowWidth),
-  glowFalloff: signal(settings.rainbowGlowFalloff ?? defaults.rainbow.glowFalloff),
+  handGlowWidth: signal(settings.rainbowHandGlowWidth ?? defaults.rainbow.handGlowWidth),
+  handGlowFalloff: signal(settings.rainbowHandGlowFalloff ?? defaults.rainbow.handGlowFalloff),
 
   // Signals: rendering mode
   palette: signal(settings.rainbowPalette ?? defaults.rainbow.palette),
 
   // Actions
-  setGlowWidth(e: Event): void {
-    rainbow.glowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
+  setHandGlowWidth(e: Event): void {
+    rainbow.handGlowWidth.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  setGlowFalloff(e: Event): void {
-    rainbow.glowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  setHandGlowFalloff(e: Event): void {
+    rainbow.handGlowFalloff.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   setPalette(e: Event): void {
@@ -251,7 +251,7 @@ export const effects = {
 export const dither = {
   // Signals
   enabled: signal(settings.ditherEnabled ?? defaults.dither.enabled),
-  paletteMode: signal(settings.ditherPaletteMode ?? defaults.dither.paletteMode),
+  paletteId: signal(settings.ditherPaletteId ?? defaults.dither.paletteId),
   strength: signal(settings.ditherStrength ?? defaults.dither.strength),
   chromaWeight: signal(settings.ditherChromaWeight ?? defaults.dither.chromaWeight),
 
@@ -260,8 +260,8 @@ export const dither = {
     dither.enabled.value = !dither.enabled.value;
   },
 
-  setPaletteMode(e: Event): void {
-    dither.paletteMode.value = parseInt((e.target as HTMLSelectElement).value, 10);
+  setPaletteId(e: Event): void {
+    dither.paletteId.value = parseInt((e.target as HTMLSelectElement).value, 10);
   },
 
   setStrength(e: Event): void {
@@ -299,8 +299,8 @@ export const resetAll = {
       prism.glowFalloff.value = defaults.prism.glowFalloff;
 
       // Rainbow
-      rainbow.glowWidth.value = defaults.rainbow.glowWidth;
-      rainbow.glowFalloff.value = defaults.rainbow.glowFalloff;
+      rainbow.handGlowWidth.value = defaults.rainbow.handGlowWidth;
+      rainbow.handGlowFalloff.value = defaults.rainbow.handGlowFalloff;
       rainbow.palette.value = defaults.rainbow.palette;
 
       // Effects
@@ -308,7 +308,7 @@ export const resetAll = {
 
       // Dither
       dither.enabled.value = defaults.dither.enabled;
-      dither.paletteMode.value = defaults.dither.paletteMode;
+      dither.paletteId.value = defaults.dither.paletteId;
       dither.strength.value = defaults.dither.strength;
       dither.chromaWeight.value = defaults.dither.chromaWeight;
 

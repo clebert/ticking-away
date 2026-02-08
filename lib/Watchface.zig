@@ -83,8 +83,8 @@ const test_band_count = test_image_size / test_band_height;
 const test_prism = Prism.init(0.8);
 
 const test_watchface = Self{
-    .hand_glow_style = .{ .width = 0.08, .falloff = .linear },
-    .prism_glow_style = .{ .width = 0.15, .falloff = .quadratic },
+    .hand_glow_style = .{ .normalized_width = 0.08, .falloff = .linear },
+    .prism_glow_style = .{ .normalized_width = 0.15, .falloff = .quadratic },
     .prism_glow_color = Linear.init(0.5, 0.5, 0.5, 1.0),
     .rainbow_palette_id = .oklch_balanced,
 };
@@ -103,7 +103,7 @@ fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
 }
 
 test "multi-band render matches single-band render" {
-    const time = Time{ .minutes = 195.0 };
+    const time = Time{ .total_minutes = 195.0 };
     const clock = Clock.init(time, test_prism, 0.5);
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
@@ -134,7 +134,7 @@ test "multi-band render matches single-band render" {
 }
 
 test "render produces visible output at 3:15" {
-    const buffer = renderFull(.{ .minutes = 195.0 });
+    const buffer = renderFull(.{ .total_minutes = 195.0 });
 
     var sum: f64 = 0;
 
@@ -146,7 +146,7 @@ test "render produces visible output at 3:15" {
 }
 
 test "render produces rainbow colors" {
-    const buffer = renderFull(.{ .minutes = 195.0 });
+    const buffer = renderFull(.{ .total_minutes = 195.0 });
 
     var has_red = false;
     var has_green = false;
@@ -167,6 +167,6 @@ test "render survives full 12-hour cycle" {
     var minutes: f32 = 0.0;
 
     while (minutes < 720.0) : (minutes += 30.0) {
-        _ = &renderFull(.{ .minutes = minutes });
+        _ = &renderFull(.{ .total_minutes = minutes });
     }
 }

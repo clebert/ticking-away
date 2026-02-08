@@ -273,21 +273,21 @@
           <!-- Time Controls (hidden in live mode) -->
           <div class="section-title" data-bind="hidden:mode.live">Time</div>
           <div class="control-group" data-bind="hidden:mode.live">
-            <label>Hour: <span data-bind="textContent:time.hours">10</span></label>
+            <label>Hour: <span data-bind="textContent:time.hour">10</span></label>
             <input
               type="range"
               min="0"
               max="11"
-              data-bind="value:time.hours, oninput:time.setHours"
+              data-bind="value:time.hour, oninput:time.setHour"
             />
           </div>
           <div class="control-group" data-bind="hidden:mode.live">
-            <label>Minute: <span data-bind="textContent:time.minutes">10</span></label>
+            <label>Minute: <span data-bind="textContent:time.minute">10</span></label>
             <input
               type="range"
               min="0"
               max="59"
-              data-bind="value:time.minutes, oninput:time.setMinutes"
+              data-bind="value:time.minute, oninput:time.setMinute"
             />
           </div>
           <div class="button-row" data-bind="hidden:mode.live">
@@ -355,17 +355,19 @@
           <!-- Rainbow Controls -->
           <div class="section-title">Rainbow</div>
           <div class="control-group">
-            <label>Glow Width: <span data-bind="textContent:rainbow.glowWidth">3</span>%</label>
+            <label
+              >Hand Glow Width: <span data-bind="textContent:rainbow.handGlowWidth">3</span>%</label
+            >
             <input
               type="range"
               min="0"
               max="10"
-              data-bind="value:rainbow.glowWidth, oninput:rainbow.setGlowWidth"
+              data-bind="value:rainbow.handGlowWidth, oninput:rainbow.setHandGlowWidth"
             />
           </div>
           <div class="control-group">
-            <label>Glow Falloff</label>
-            <select data-bind="value:rainbow.glowFalloff, onchange:rainbow.setGlowFalloff">
+            <label>Hand Glow Falloff</label>
+            <select data-bind="value:rainbow.handGlowFalloff, onchange:rainbow.setHandGlowFalloff">
               <option value="0">Linear</option>
               <option value="1">Quadratic</option>
               <option value="2">Cubic</option>
@@ -414,9 +416,9 @@
           </div>
           <!-- Shared Controls -->
           <div class="control-group">
-            <label>Palette Mode</label>
+            <label>Palette</label>
             <select
-              data-bind="value:dither.paletteMode, onchange:dither.setPaletteMode, disabled:!dither.enabled"
+              data-bind="value:dither.paletteId, onchange:dither.setPaletteId, disabled:!dither.enabled"
             >
               <option value="0">Ideal (Pure RGB)</option>
               <option value="1">Spectra 6 (Pimoroni Inky)</option>

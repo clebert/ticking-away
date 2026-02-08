@@ -27,7 +27,7 @@ pub const Falloff = enum {
 };
 
 pub const Style = struct {
-    width: f32,
+    normalized_width: f32,
     falloff: Falloff,
 };
 
@@ -80,11 +80,11 @@ inline fn renderLineInner(
     line: Segment,
     clip_prism: Prism,
 ) void {
-    const width_squared = self.style.width * self.style.width;
+    const width_squared = self.style.normalized_width * self.style.normalized_width;
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
-    const width_vec: @Vector(2, f32) = @splat(self.style.width);
+    const width_vec: @Vector(2, f32) = @splat(self.style.normalized_width);
     const min_pixel = viewport.toPixel(@min(line.start, line.end) - width_vec);
     const max_pixel = viewport.toPixel(@max(line.start, line.end) + width_vec);
 
@@ -113,7 +113,7 @@ inline fn renderLineInner(
             }
 
             const radial =
-                self.style.falloff.apply(@sqrt(projection.distance_squared) / self.style.width);
+                self.style.falloff.apply(@sqrt(projection.distance_squared) / self.style.normalized_width);
 
             const intensity = radial * if (comptime fading)
                 1.0 - projection.normalized_position
@@ -134,7 +134,7 @@ pub fn renderPrismEdges(
     viewport: Image.Viewport,
     prism: Prism,
 ) void {
-    const width = self.style.width;
+    const width = self.style.normalized_width;
     const smooth_k = width * 0.5;
 
     // smoothMin subtracts at most h²·k·0.25 from the true min, so glow can
@@ -217,7 +217,7 @@ test "renderPrismEdges produces glow inside prism" {
     var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
     var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
 
-    const glow = Self{ .style = .{ .width = 0.15, .falloff = .linear }, .color = Linear.white };
+    const glow = Self{ .style = .{ .normalized_width = 0.15, .falloff = .linear }, .color = Linear.white };
 
     glow.renderPrismEdges(&band, viewport, prism);
 
@@ -242,7 +242,7 @@ test "renderPrismEdges does not write outside prism" {
     var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
     var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
 
-    const glow = Self{ .style = .{ .width = 0.15, .falloff = .linear }, .color = Linear.white };
+    const glow = Self{ .style = .{ .normalized_width = 0.15, .falloff = .linear }, .color = Linear.white };
 
     glow.renderPrismEdges(&band, viewport, prism);
 
@@ -261,7 +261,7 @@ test "renderPrismEdges uses additive blending" {
     var buffer = [_]Linear{base} ** (image_size * image_size);
     var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
 
-    const glow = Self{ .style = .{ .width = 0.15, .falloff = .linear }, .color = Linear.white };
+    const glow = Self{ .style = .{ .normalized_width = 0.15, .falloff = .linear }, .color = Linear.white };
 
     glow.renderPrismEdges(&band, viewport, prism);
 

@@ -52,21 +52,21 @@ const DitherPalette = enum(i32) {
 const Config = extern struct {
     hour: i32,
     minute: f32,
-    prism_size: f32,
-    rainbow_spread: f32, // TODO: normalized_rainbow_spread?
-    glow_r: i32, // TODO: bad name
-    glow_g: i32,
-    glow_b: i32,
-    glow_width: f32,
-    glow_falloff: GlowFalloff,
-    hand_glow_width: f32,
+    normalized_prism_size: f32,
+    normalized_rainbow_spread: f32,
+    prism_glow_red: i32,
+    prism_glow_green: i32,
+    prism_glow_blue: i32,
+    normalized_prism_glow_width: f32,
+    prism_glow_falloff: GlowFalloff,
+    normalized_hand_glow_width: f32,
     hand_glow_falloff: GlowFalloff,
-    rainbow_palette: RainbowPalette,
-    grain_intensity: f32,
-    grain_scale: f32,
+    rainbow_palette_id: RainbowPalette,
+    normalized_grain_intensity: f32,
+    device_pixel_ratio: f32,
     dither_enabled: i32,
-    dither_palette: DitherPalette,
-    dither_strength: f32,
+    dither_palette_id: DitherPalette,
+    normalized_dither_strength: f32,
     dither_chroma_weight: f32,
 };
 
@@ -124,8 +124,8 @@ export fn render(width: u32, height: u32) ?[*]u8 {
 
     const time = lib.Time.init(@intCast(config.hour), config.minute);
 
-    const prism = lib.Prism.init(std.math.clamp(config.prism_size, 0.01, 1.0));
-    const clock = lib.Clock.init(time, prism, std.math.clamp(config.rainbow_spread, 0.0, 1.0));
+    const prism = lib.Prism.init(std.math.clamp(config.normalized_prism_size, 0.01, 1.0));
+    const clock = lib.Clock.init(time, prism, std.math.clamp(config.normalized_rainbow_spread, 0.0, 1.0));
 
     @memset(linear_buffer.?, lib.Linear.black);
 
@@ -137,29 +137,29 @@ export fn render(width: u32, height: u32) ?[*]u8 {
 
     const watchface = lib.Watchface{
         .hand_glow_style = .{
-            .width = config.hand_glow_width,
+            .normalized_width = config.normalized_hand_glow_width,
             .falloff = config.hand_glow_falloff.toLib(),
         },
         .prism_glow_style = .{
-            .width = config.glow_width,
-            .falloff = config.glow_falloff.toLib(),
+            .normalized_width = config.normalized_prism_glow_width,
+            .falloff = config.prism_glow_falloff.toLib(),
         },
         .prism_glow_color = lib.Linear.init(
-            @as(f32, @floatFromInt(config.glow_r)) / 255.0,
-            @as(f32, @floatFromInt(config.glow_g)) / 255.0,
-            @as(f32, @floatFromInt(config.glow_b)) / 255.0,
+            @as(f32, @floatFromInt(config.prism_glow_red)) / 255.0,
+            @as(f32, @floatFromInt(config.prism_glow_green)) / 255.0,
+            @as(f32, @floatFromInt(config.prism_glow_blue)) / 255.0,
             1.0,
         ),
-        .rainbow_palette_id = config.rainbow_palette.toLib(),
+        .rainbow_palette_id = config.rainbow_palette_id.toLib(),
     };
 
     watchface.render(&linear_band, viewport, prism, clock);
 
     var srgb_band = if (config.dither_enabled != 0) blk: {
         const dither = lib.Dither{
-            .strength = config.dither_strength,
+            .normalized_strength = config.normalized_dither_strength,
             .chroma_weight = config.dither_chroma_weight,
-            .palette = config.dither_palette.toLib().palette(),
+            .palette = config.dither_palette_id.toLib().palette(),
         };
 
         break :blk dither.apply(linear_band, srgb_buffer.?, dither_error_buffer.?) catch return null;
@@ -168,8 +168,8 @@ export fn render(width: u32, height: u32) ?[*]u8 {
     };
 
     const grain = lib.Grain{
-        .intensity = config.grain_intensity,
-        .normalized_size = config.grain_scale * viewport.inverse_scale,
+        .normalized_intensity = config.normalized_grain_intensity,
+        .normalized_size = config.device_pixel_ratio * viewport.inverse_scale,
     };
 
     grain.apply(&srgb_band, viewport);

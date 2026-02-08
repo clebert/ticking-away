@@ -30,18 +30,18 @@ vertices: std.EnumArray(VertexId, @Vector(2, f32)),
 edges: std.EnumArray(EdgeId, Segment),
 
 /// Creates an equilateral triangle prism centered at the origin (0, 0).
-pub fn init(bottom_length: f32) Self {
-    std.debug.assert(bottom_length > 0 and bottom_length <= 1.0);
+pub fn init(normalized_size: f32) Self {
+    std.debug.assert(normalized_size > 0 and normalized_size <= 1.0);
 
     const sqrt3 = @sqrt(3.0);
-    const apex_offset = bottom_length * sqrt3 / 3.0;
-    const bottom_offset = bottom_length * sqrt3 / 6.0;
-    const half_bottom_length = bottom_length / 2.0;
+    const apex_offset = normalized_size * sqrt3 / 3.0;
+    const bottom_offset = normalized_size * sqrt3 / 6.0;
+    const half_size = normalized_size / 2.0;
 
     const vertices = std.EnumArray(VertexId, @Vector(2, f32)).init(.{
         .apex = .{ 0, -apex_offset },
-        .bottom_right = .{ half_bottom_length, bottom_offset },
-        .bottom_left = .{ -half_bottom_length, bottom_offset },
+        .bottom_right = .{ half_size, bottom_offset },
+        .bottom_left = .{ -half_size, bottom_offset },
     });
 
     var edges: std.EnumArray(EdgeId, Segment) = undefined;
@@ -96,13 +96,13 @@ pub fn intersect(self: Self, ray: Ray) ?Ray.Intersection {
 }
 
 test "init creates equilateral triangle centered at origin" {
-    const bottom_length = 0.8;
-    const prism = Self.init(bottom_length);
+    const normalized_size = 0.8;
+    const prism = Self.init(normalized_size);
 
     const sqrt3 = @sqrt(3.0);
-    const expected_apex_offset = bottom_length * sqrt3 / 3.0;
-    const expected_bottom_offset = bottom_length * sqrt3 / 6.0;
-    const expected_half_bottom_length = bottom_length / 2.0;
+    const expected_apex_offset = normalized_size * sqrt3 / 3.0;
+    const expected_bottom_offset = normalized_size * sqrt3 / 6.0;
+    const expected_half_size = normalized_size / 2.0;
 
     // Verify vertex positions
     const apex = prism.vertices.get(.apex);
@@ -112,10 +112,10 @@ test "init creates equilateral triangle centered at origin" {
     try std.testing.expectApproxEqAbs(@as(f32, 0), apex[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(-expected_apex_offset, apex[1], vector.tolerance);
 
-    try std.testing.expectApproxEqAbs(expected_half_bottom_length, bottom_right[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(expected_half_size, bottom_right[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(expected_bottom_offset, bottom_right[1], vector.tolerance);
 
-    try std.testing.expectApproxEqAbs(-expected_half_bottom_length, bottom_left[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(-expected_half_size, bottom_left[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(expected_bottom_offset, bottom_left[1], vector.tolerance);
 
     // Verify edges connect correct vertices

@@ -7,7 +7,7 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
-strength: f32,
+normalized_strength: f32,
 chroma_weight: f32,
 palette: Palette,
 
@@ -73,9 +73,9 @@ pub fn apply(
             const quantized = self.palette.oklab_colors[index];
 
             const err = [channels]f32{
-                (adjusted_l - quantized.vec[0]) * self.strength,
-                (adjusted_a - quantized.vec[1]) * self.strength,
-                (adjusted_b - quantized.vec[2]) * self.strength,
+                (adjusted_l - quantized.vec[0]) * self.normalized_strength,
+                (adjusted_a - quantized.vec[1]) * self.normalized_strength,
+                (adjusted_b - quantized.vec[2]) * self.normalized_strength,
             };
 
             srgb_buffer[y * width + x] = .{
@@ -236,7 +236,7 @@ test "apply produces only palette colors" {
     const linear_band = image.band(Linear, &linear_buffer, 4, 0) catch unreachable;
 
     const dither = Self{
-        .strength = 1.0,
+        .normalized_strength = 1.0,
         .chroma_weight = 2.0,
         .palette = PaletteId.ideal.palette(),
     };
@@ -270,7 +270,7 @@ test "apply preserves alpha channel" {
     const linear_band = image.band(Linear, &linear_buffer, 2, 0) catch unreachable;
 
     const dither = Self{
-        .strength = 1.0,
+        .normalized_strength = 1.0,
         .chroma_weight = 2.0,
         .palette = PaletteId.ideal.palette(),
     };
@@ -292,7 +292,7 @@ test "apply with zero strength still quantizes to palette" {
     const linear_band = image.band(Linear, &linear_buffer, 4, 0) catch unreachable;
 
     const dither = Self{
-        .strength = 0.0,
+        .normalized_strength = 0.0,
         .chroma_weight = 2.0,
         .palette = PaletteId.ideal.palette(),
     };
@@ -336,7 +336,7 @@ test "apply outputs palette black for background pixels without color bleeding" 
     const linear_band = image.band(Linear, &linear_buffer, 2, 0) catch unreachable;
 
     const dither = Self{
-        .strength = 1.0,
+        .normalized_strength = 1.0,
         .chroma_weight = 2.0,
         .palette = PaletteId.ideal.palette(),
     };
