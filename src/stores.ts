@@ -18,8 +18,8 @@ const defaults = {
   rainbow: {
     spread: 50,
     handGlowWidth: 1,
-    handGlowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
-    palette: 2, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
+    handGlowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
+    palette: 0, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
   },
 
   effects: {

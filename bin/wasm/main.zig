@@ -174,9 +174,9 @@ export fn render(width: u32, height: u32) ?[*]u8 {
 
     grain.apply(&srgb_band, viewport);
 
-    const background = lib.Background{ .color = lib.Srgb.transparent };
+    const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 
-    background.apply(&srgb_band, viewport);
+    crop.apply(&srgb_band, viewport);
 
     return @ptrCast(srgb_buffer.?.ptr);
 }

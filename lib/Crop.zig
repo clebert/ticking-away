@@ -5,10 +5,11 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
-color: Srgb,
+outside_color: Srgb,
 
 pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void {
-    const radius_squared = viewport.scale * viewport.scale;
+    const radius = viewport.scale - 1.0;
+    const radius_squared = radius * radius;
     const center_x = viewport.center[0];
     const center_y = viewport.center[1];
 
@@ -20,7 +21,7 @@ pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void
         const row = band.buffer[local_y * band.width ..][0..band.width];
 
         if (dx_max_squared < 0.0) {
-            @memset(row, self.color);
+            @memset(row, self.outside_color);
 
             continue;
         }
@@ -36,25 +37,25 @@ pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void
         );
 
         if (x_start > 0) {
-            @memset(row[0..x_start], self.color);
+            @memset(row[0..x_start], self.outside_color);
         }
 
         if (x_end < band.width) {
-            @memset(row[x_end..band.width], self.color);
+            @memset(row[x_end..band.width], self.outside_color);
         }
     }
 }
 
-test "apply sets pixels outside circle to background color" {
+test "apply sets pixels outside circle to outside color" {
     const image = Image.init(10, 10);
     const viewport = image.viewport();
 
     var buffer = [_]Srgb{Srgb.black} ** 100;
     var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
-    const background = Self{ .color = Srgb.white };
+    const crop = Self{ .outside_color = Srgb.white };
 
-    background.apply(&band, viewport);
+    crop.apply(&band, viewport);
 
     // Corner pixel (0,0) is outside the unit circle — should be white
     try std.testing.expectEqual(Srgb.white, buffer[0]);
@@ -63,16 +64,16 @@ test "apply sets pixels outside circle to background color" {
     try std.testing.expectEqual(Srgb.black, buffer[5 * 10 + 5]);
 }
 
-test "apply sets transparent background" {
+test "apply sets transparent outside color" {
     const image = Image.init(10, 10);
     const viewport = image.viewport();
 
     var buffer = [_]Srgb{Srgb.black} ** 100;
     var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
-    const background = Self{ .color = Srgb.transparent };
+    const crop = Self{ .outside_color = Srgb.transparent };
 
-    background.apply(&band, viewport);
+    crop.apply(&band, viewport);
 
     // Corner pixel should be transparent
     try std.testing.expectEqual(@as(u8, 0), buffer[0].a);
@@ -88,9 +89,9 @@ test "apply handles wide image" {
     var buffer = [_]Srgb{Srgb.black} ** 200;
     var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
-    const background = Self{ .color = Srgb.white };
+    const crop = Self{ .outside_color = Srgb.white };
 
-    background.apply(&band, viewport);
+    crop.apply(&band, viewport);
 
     // Far left pixel (0,5) is outside circle in a wide image (circle radius = 5)
     try std.testing.expectEqual(Srgb.white, buffer[5 * 20 + 0]);
@@ -102,7 +103,7 @@ test "apply handles wide image" {
     try std.testing.expectEqual(Srgb.black, buffer[5 * 20 + 10]);
 }
 
-test "multi-band background matches single-band background" {
+test "multi-band crop matches single-band crop" {
     const width = 16;
     const height = 48;
     const image = Image.init(width, height);
@@ -121,13 +122,13 @@ test "multi-band background matches single-band background" {
         }
     }
 
-    const background = Self{ .color = .{ .r = 20, .g = 30, .b = 40 } };
+    const crop = Self{ .outside_color = .{ .r = 20, .g = 30, .b = 40 } };
 
     // Reference: single-band (full height)
     var reference = input;
     var full_band = image.band(Srgb, &reference, height, 0) catch unreachable;
 
-    background.apply(&full_band, viewport);
+    crop.apply(&full_band, viewport);
 
     // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
@@ -143,7 +144,7 @@ test "multi-band background matches single-band background" {
 
             var narrow_band = image.band(Srgb, banded_output[row_start..][0..band_pixels], band_height, band_index) catch unreachable;
 
-            background.apply(&narrow_band, viewport);
+            crop.apply(&narrow_band, viewport);
         }
 
         for (&reference, &banded_output, 0..) |ref, actual, i| {
