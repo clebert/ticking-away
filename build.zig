@@ -72,6 +72,32 @@ pub fn build(b: *std.Build) void {
     profile_step.dependOn(&profile_install.step);
 
     // =========================================================================
+    // PNG export binary (native, renders to PNG file)
+    // =========================================================================
+
+    const png_exe = b.addExecutable(.{
+        .name = "png",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/png/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+
+    const png_install = b.addInstallArtifact(png_exe, .{});
+
+    const png_step = b.step("png", "Build the PNG export binary");
+
+    png_step.dependOn(&png_install.step);
+
+    // =========================================================================
     // Check step for ZLS (uses native target for analysis)
     // =========================================================================
 
@@ -112,10 +138,27 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const png_check = b.addExecutable(.{
+        .name = "png",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/png/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+
     const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
 
     check_step.dependOn(&wasm_check.step);
     check_step.dependOn(&profile_check.step);
+    check_step.dependOn(&png_check.step);
 
     // =========================================================================
     // Tests

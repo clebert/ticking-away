@@ -35,6 +35,8 @@ zig-out/bin/profile [iteration_count]
 Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Guide):
 
 - **Types**: `PascalCase`, acronyms as single words (`Rgb`, not `RGB`)
+- **File names**: `PascalCase.zig` for struct modules (file IS a struct via `@This()`),
+  `snake_case.zig` for namespace modules (only functions/constants, no struct fields)
 - **Functions**: `camelCase`
 - **Variables**: `snake_case`
 - **Comments**: Only for math formulas or non-obvious algorithms; avoid trivial comments
