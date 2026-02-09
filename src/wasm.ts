@@ -4,7 +4,7 @@ export interface WasmModule {
 }
 
 const initialMemoryPages = 32;
-const maximumMemoryPages = 4096;
+const maximumMemoryPages = 8192;
 
 let wasmModule: WasmModule | undefined;
 let wasmMemory: WebAssembly.Memory | undefined;
