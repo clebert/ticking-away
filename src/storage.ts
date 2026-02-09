@@ -20,7 +20,7 @@ export interface Settings {
   rainbowHandGlowFalloff: number;
   rainbowPalette: number;
 
-  effectsGrainIntensity: number;
+  effectsGrainDeviation: number;
 
   ditherEnabled: boolean;
   ditherPaletteId: number;
@@ -72,7 +72,7 @@ export function saveSettings({
       rainbowHandGlowFalloff: rainbow.handGlowFalloff.value,
       rainbowPalette: rainbow.palette.value,
 
-      effectsGrainIntensity: effects.grainIntensity.value,
+      effectsGrainDeviation: effects.grainDeviation.value,
 
       ditherEnabled: dither.enabled.value,
       ditherPaletteId: dither.paletteId.value,

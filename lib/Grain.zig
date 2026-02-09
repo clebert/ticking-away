@@ -5,21 +5,17 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
-normalized_intensity: f32,
-normalized_size: f32,
+/// Maximum per-pixel deviation as a fraction of the sRGB range (0.0–1.0).
+/// At 1.0, each pixel can shift by up to ±127.5 sRGB units.
+normalized_deviation: f32,
 
 pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void {
-    std.debug.assert(self.normalized_intensity >= 0.0 and self.normalized_intensity <= 1.0);
-    std.debug.assert(self.normalized_size > 0.0);
+    std.debug.assert(self.normalized_deviation >= 0.0 and self.normalized_deviation <= 1.0);
 
-    if (self.normalized_intensity == 0.0) return;
+    if (self.normalized_deviation == 0.0) return;
 
-    // max_deviation: peak noise in sRGB units at full intensity
-    // noise_raw ∈ [-0.5, 0.5], so multiply by 2 to scale max_deviation to peak
-    const max_deviation = 0.06 * 255.0;
-    const strength = self.normalized_intensity * max_deviation * 2.0;
-    const pixel_size = self.normalized_size * viewport.scale;
-    const inverse_size = 1.0 / pixel_size;
+    // noise_raw ∈ [-0.5, 0.5], so multiply by 2 to scale to peak-to-peak
+    const strength = self.normalized_deviation * 255.0 * 2.0;
     const radius_squared = viewport.scale * viewport.scale;
     const center_x = viewport.center[0];
     const center_y = viewport.center[1];
@@ -43,10 +39,8 @@ pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void
 
         if (x_start >= x_end) continue;
 
-        const grid_y: i32 = @intFromFloat(y * inverse_size);
-
-        // Murmur-style hash: grid position → deterministic noise
-        const hash_y: u32 = @as(u32, @bitCast(grid_y)) *% 668265263;
+        // Murmur-style hash: pixel position → deterministic noise
+        const hash_y: u32 = @as(u32, @bitCast(@as(i32, @intFromFloat(y)))) *% 668265263;
 
         const row = band.buffer[local_y * band.width ..][x_start..x_end];
 
@@ -57,9 +51,9 @@ pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void
             const g: f32 = @floatFromInt(srgb.g);
             const b: f32 = @floatFromInt(srgb.b);
 
-            const grid_x: u32 = @bitCast(@as(i32, @intFromFloat(@as(f32, @floatFromInt(x)) * inverse_size)));
+            const hash_x: u32 = @intCast(x);
 
-            var h = grid_x *% 374761393 +% hash_y;
+            var h = hash_x *% 374761393 +% hash_y;
 
             h = (h ^ (h >> 13)) *% 1274126177;
             h ^= h >> 16;
@@ -82,7 +76,7 @@ test "apply modifies bright pixels" {
     var buffer = [_]Srgb{.{ .r = 180, .g = 180, .b = 180 }} ** 16;
     var band = image.band(Srgb, &buffer, 4, 0) catch unreachable;
 
-    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_deviation = 0.1 };
 
     grain.apply(&band, viewport);
 
@@ -105,7 +99,7 @@ test "apply skips pixels outside radius" {
     var buffer = [_]Srgb{.{ .r = 180, .g = 180, .b = 180 }} ** 100;
     var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
-    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_deviation = 0.1 };
 
     grain.apply(&band, viewport);
 
@@ -115,7 +109,7 @@ test "apply skips pixels outside radius" {
     try std.testing.expectEqual(@as(u8, 180), buffer[0].b);
 }
 
-test "apply is no-op when intensity is zero" {
+test "apply is no-op when deviation is zero" {
     const image = Image.init(4, 4);
     const viewport = image.viewport();
 
@@ -125,7 +119,7 @@ test "apply is no-op when intensity is zero" {
 
     var band = image.band(Srgb, &buffer, 4, 0) catch unreachable;
 
-    const grain = Self{ .normalized_intensity = 0.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_deviation = 0.0 };
 
     grain.apply(&band, viewport);
 
@@ -142,7 +136,7 @@ test "apply skips black pixels" {
 
     var band = image.band(Srgb, &buffer, 4, 0) catch unreachable;
 
-    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_deviation = 0.1 };
 
     grain.apply(&band, viewport);
 
@@ -168,7 +162,7 @@ test "multi-band grain matches single-band grain" {
         }
     }
 
-    const grain = Self{ .normalized_intensity = 1.0, .normalized_size = 0.5 };
+    const grain = Self{ .normalized_deviation = 0.1 };
 
     // Reference: single-band (full height)
     var reference = input;

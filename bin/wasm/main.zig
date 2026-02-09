@@ -60,8 +60,7 @@ const Config = extern struct {
     normalized_hand_glow_width: f32,
     hand_glow_falloff: GlowFalloff,
     rainbow_palette_id: RainbowPalette,
-    normalized_grain_intensity: f32,
-    device_pixel_ratio: f32,
+    normalized_grain_deviation: f32,
     dither_enabled: i32,
     dither_palette_id: DitherPalette,
     normalized_dither_strength: f32,
@@ -161,8 +160,7 @@ export fn render(width: u32, height: u32) ?[*]u8 {
     };
 
     const grain = lib.Grain{
-        .normalized_intensity = config.normalized_grain_intensity,
-        .normalized_size = config.device_pixel_ratio * viewport.inverse_scale,
+        .normalized_deviation = config.normalized_grain_deviation,
     };
 
     grain.apply(&srgb_band, viewport);

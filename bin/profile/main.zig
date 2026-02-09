@@ -34,8 +34,7 @@ pub fn main() void {
     };
 
     const grain = lib.Grain{
-        .normalized_intensity = 0.5,
-        .normalized_size = viewport.inverse_scale,
+        .normalized_deviation = 0.1,
     };
 
     for (0..iteration_count) |iteration| {

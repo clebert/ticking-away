@@ -1,5 +1,5 @@
 import { getCanvas } from "./canvas.ts";
-import { display, dither, effects, prism, rainbow, time } from "./stores.ts";
+import { dither, effects, prism, rainbow, time } from "./stores.ts";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
 function writeConfig(view: DataView, offset: number): void {
@@ -18,20 +18,14 @@ function writeConfig(view: DataView, offset: number): void {
   view.setInt32(offset + 32, rainbow.handGlowFalloff.value, littleEndian);
   view.setInt32(offset + 36, rainbow.palette.value, littleEndian);
 
-  const grainIntensity = dither.enabled.value ? 0 : effects.grainIntensity.value / 100;
+  const grainDeviation = dither.enabled.value ? 0 : effects.grainDeviation.value / 100;
 
-  view.setFloat32(offset + 40, grainIntensity, littleEndian);
+  view.setFloat32(offset + 40, grainDeviation, littleEndian);
 
-  view.setFloat32(
-    offset + 44,
-    display.highDpi.value ? window.devicePixelRatio || 1 : 1,
-    littleEndian,
-  );
-
-  view.setInt32(offset + 48, dither.enabled.value ? 1 : 0, littleEndian);
-  view.setInt32(offset + 52, dither.paletteId.value, littleEndian);
-  view.setFloat32(offset + 56, dither.strength.value / 100.0, littleEndian);
-  view.setFloat32(offset + 60, dither.chromaEmphasis.value / 100.0, littleEndian);
+  view.setInt32(offset + 44, dither.enabled.value ? 1 : 0, littleEndian);
+  view.setInt32(offset + 48, dither.paletteId.value, littleEndian);
+  view.setFloat32(offset + 52, dither.strength.value / 100.0, littleEndian);
+  view.setFloat32(offset + 56, dither.chromaEmphasis.value / 100.0, littleEndian);
 }
 
 export function render(): void {

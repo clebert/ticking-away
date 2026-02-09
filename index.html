@@ -354,12 +354,12 @@
           <!-- Effects -->
           <div class="section-title">Effects</div>
           <div class="control-group">
-            <label>Grain: <span data-bind="textContent:effects.grainIntensity">100</span>%</label>
+            <label>Grain: <span data-bind="textContent:effects.grainDeviation">10</span>%</label>
             <input
               type="range"
               min="0"
               max="100"
-              data-bind="value:effects.grainIntensity, oninput:effects.setGrainIntensity, disabled:effects.grainDisabled"
+              data-bind="value:effects.grainDeviation, oninput:effects.setGrainDeviation, disabled:effects.grainDisabled"
             />
           </div>
           <!-- Dithering -->

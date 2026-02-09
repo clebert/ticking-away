@@ -45,11 +45,8 @@ pub fn main() !void {
 
     var srgb_band = linear_band.toSrgb(srgb_buffer) catch unreachable;
 
-    const device_pixel_ratio: f32 = 2.0;
-
     const grain = lib.Grain{
-        .normalized_intensity = 1.0,
-        .normalized_size = device_pixel_ratio * viewport.inverse_scale,
+        .normalized_deviation = 0.1,
     };
 
     grain.apply(&srgb_band, viewport);

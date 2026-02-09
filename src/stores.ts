@@ -22,7 +22,7 @@ const defaults = {
   },
 
   effects: {
-    grainIntensity: 100,
+    grainDeviation: 10,
   },
 
   dither: {
@@ -231,14 +231,14 @@ export const rainbow = {
 
 export const effects = {
   // Signals
-  grainIntensity: signal(settings.effectsGrainIntensity ?? defaults.effects.grainIntensity),
+  grainDeviation: signal(settings.effectsGrainDeviation ?? defaults.effects.grainDeviation),
 
   // Computed
   grainDisabled: computed((): boolean => dither.enabled.value),
 
   // Actions
-  setGrainIntensity(e: Event): void {
-    effects.grainIntensity.value = parseInt((e.target as HTMLInputElement).value, 10);
+  setGrainDeviation(e: Event): void {
+    effects.grainDeviation.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 };
 
@@ -297,7 +297,7 @@ export const resetAll = {
       rainbow.palette.value = defaults.rainbow.palette;
 
       // Effects
-      effects.grainIntensity.value = defaults.effects.grainIntensity;
+      effects.grainDeviation.value = defaults.effects.grainDeviation;
 
       // Dither
       dither.enabled.value = defaults.dither.enabled;
