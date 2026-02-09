@@ -9,8 +9,7 @@ const defaults = {
 
   prism: {
     size: 90,
-    gray: 248,
-    blueTint: 160,
+    glowGreen: 75,
     glowWidth: 7,
     glowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
   },
@@ -178,11 +177,8 @@ export const prism = {
   // Signals: geometry
   size: signal(settings.prismSize ?? defaults.prism.size),
 
-  // Signals: color
-  gray: signal(settings.prismGray ?? defaults.prism.gray),
-  blueTint: signal(settings.prismBlueTint ?? defaults.prism.blueTint),
-
   // Signals: glow
+  glowGreen: signal(settings.prismGlowGreen ?? defaults.prism.glowGreen),
   glowWidth: signal(settings.prismGlowWidth ?? defaults.prism.glowWidth),
   glowFalloff: signal(settings.prismGlowFalloff ?? defaults.prism.glowFalloff),
 
@@ -191,12 +187,8 @@ export const prism = {
     prism.size.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
-  setGray(e: Event): void {
-    prism.gray.value = parseInt((e.target as HTMLInputElement).value, 10);
-  },
-
-  setBlueTint(e: Event): void {
-    prism.blueTint.value = parseInt((e.target as HTMLInputElement).value, 10);
+  setGlowGreen(e: Event): void {
+    prism.glowGreen.value = parseInt((e.target as HTMLInputElement).value, 10);
   },
 
   setGlowWidth(e: Event): void {
@@ -294,8 +286,7 @@ export const resetAll = {
 
       // Prism
       prism.size.value = defaults.prism.size;
-      prism.gray.value = defaults.prism.gray;
-      prism.blueTint.value = defaults.prism.blueTint;
+      prism.glowGreen.value = defaults.prism.glowGreen;
       prism.glowWidth.value = defaults.prism.glowWidth;
       prism.glowFalloff.value = defaults.prism.glowFalloff;
 

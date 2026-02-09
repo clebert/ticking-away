@@ -34,22 +34,10 @@ pub fn main() !void {
 
     var linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
 
-    // Compute prism glow color from gray/blueTint, matching src/stores.ts defaults
-    // and the same /255 conversion as bin/wasm/main.zig (no sRGB gamma correction).
-    const gray: f32 = 248;
-    const blue_tint: f32 = 160;
-
-    const prism_glow_color = lib.Linear.init(
-        @max(0, gray - blue_tint) / 255.0,
-        @max(0, gray - @floor(blue_tint / 2.0)) / 255.0,
-        gray / 255.0,
-        1.0,
-    );
-
     const watchface = lib.Watchface{
         .hand_glow_style = .{ .normalized_width = 0.01, .falloff = .exponential },
         .prism_glow_style = .{ .normalized_width = 0.07, .falloff = .exponential },
-        .prism_glow_color = prism_glow_color,
+        .prism_glow_color = lib.Linear.init(0.1, 0.75, 1.0, 1.0),
         .rainbow_palette_id = .oklch_balanced,
     };
 

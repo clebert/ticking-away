@@ -284,21 +284,12 @@
             />
           </div>
           <div class="control-group">
-            <label>Prism Gray: <span data-bind="textContent:prism.gray">248</span></label>
+            <label>Glow Green: <span data-bind="textContent:prism.glowGreen">75</span>%</label>
             <input
               type="range"
               min="0"
-              max="255"
-              data-bind="value:prism.gray, oninput:prism.setGray"
-            />
-          </div>
-          <div class="control-group">
-            <label>Blue Tint: <span data-bind="textContent:prism.blueTint">160</span></label>
-            <input
-              type="range"
-              min="0"
-              max="200"
-              data-bind="value:prism.blueTint, oninput:prism.setBlueTint"
+              max="100"
+              data-bind="value:prism.glowGreen, oninput:prism.setGlowGreen"
             />
           </div>
           <div class="control-group">

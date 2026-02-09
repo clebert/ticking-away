@@ -54,9 +54,7 @@ const Config = extern struct {
     minute: f32,
     normalized_prism_size: f32,
     normalized_rainbow_spread: f32,
-    prism_glow_srgb_red: i32,
-    prism_glow_srgb_green: i32,
-    prism_glow_srgb_blue: i32,
+    normalized_prism_glow_green: f32,
     normalized_prism_glow_width: f32,
     prism_glow_falloff: GlowFalloff,
     normalized_hand_glow_width: f32,
@@ -144,12 +142,7 @@ export fn render(width: u32, height: u32) ?[*]u8 {
             .normalized_width = config.normalized_prism_glow_width,
             .falloff = config.prism_glow_falloff.toLib(),
         },
-        .prism_glow_color = lib.Linear.init(
-            @as(f32, @floatFromInt(config.prism_glow_srgb_red)) / 255.0,
-            @as(f32, @floatFromInt(config.prism_glow_srgb_green)) / 255.0,
-            @as(f32, @floatFromInt(config.prism_glow_srgb_blue)) / 255.0,
-            1.0,
-        ),
+        .prism_glow_color = lib.Linear.init(0.1, config.normalized_prism_glow_green, 1.0, 1.0),
         .rainbow_palette_id = config.rainbow_palette_id.toLib(),
     };
 

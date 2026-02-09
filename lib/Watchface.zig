@@ -70,7 +70,6 @@ pub fn render(
 
     internal_spectrum.render(band, viewport, prism, rainbow);
 
-    // Prism edge glow (additive, over spectrum)
     const prism_glow = Glow{ .style = self.prism_glow_style, .color = self.prism_glow_color };
 
     prism_glow.renderPrismEdges(band, viewport, prism);
@@ -85,7 +84,7 @@ const test_prism = Prism.init(0.8);
 const test_watchface = Self{
     .hand_glow_style = .{ .normalized_width = 0.08, .falloff = .linear },
     .prism_glow_style = .{ .normalized_width = 0.15, .falloff = .quadratic },
-    .prism_glow_color = Linear.init(0.5, 0.5, 0.5, 1.0),
+    .prism_glow_color = Linear.init(0.1, 0.75, 1.0, 1.0),
     .rainbow_palette_id = .oklch_balanced,
 };
 

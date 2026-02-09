@@ -11,8 +11,7 @@ export interface Settings {
   timeMinute: number;
 
   prismSize: number;
-  prismGray: number;
-  prismBlueTint: number;
+  prismGlowGreen: number;
   prismGlowWidth: number;
   prismGlowFalloff: number;
 
@@ -64,8 +63,7 @@ export function saveSettings({
       timeMinute: time.minute.value,
 
       prismSize: prism.size.value,
-      prismGray: prism.gray.value,
-      prismBlueTint: prism.blueTint.value,
+      prismGlowGreen: prism.glowGreen.value,
       prismGlowWidth: prism.glowWidth.value,
       prismGlowFalloff: prism.glowFalloff.value,
 

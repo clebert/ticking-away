@@ -184,10 +184,12 @@ pub fn renderPrismEdges(
 
             if (distance >= width) continue;
 
-            const intensity = self.style.falloff.apply(distance / width);
+            const normalized_distance = @max(distance / width, 0.0);
+            const intensity = self.style.falloff.apply(normalized_distance);
+            const blended_color = Linear.lerp(Linear.white, self.color, @sqrt(normalized_distance));
 
             const pixel = band.colorAt(x, local_y);
-            const contribution = self.color.vec * @as(@Vector(4, f32), @splat(intensity));
+            const contribution = blended_color.vec * @as(@Vector(4, f32), @splat(intensity));
 
             pixel.vec = pixel.vec + contribution;
         }
