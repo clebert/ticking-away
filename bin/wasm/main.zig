@@ -163,7 +163,7 @@ export fn render(width: u32, height: u32) ?[*]u8 {
         .normalized_deviation = config.normalized_grain_deviation,
     };
 
-    grain.apply(&srgb_band, viewport);
+    grain.apply(&srgb_band, viewport, prism);
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 

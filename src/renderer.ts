@@ -14,7 +14,7 @@ function writeConfig(view: DataView, offset: number): void {
   view.setFloat32(offset + 20, prism.glowWidth.value / 100.0, littleEndian);
   view.setInt32(offset + 24, prism.glowFalloff.value, littleEndian);
 
-  view.setFloat32(offset + 28, rainbow.handGlowWidth.value / 100.0, littleEndian);
+  view.setFloat32(offset + 28, rainbow.handGlowWidth.value / 1000.0, littleEndian);
   view.setInt32(offset + 32, rainbow.handGlowFalloff.value, littleEndian);
   view.setInt32(offset + 36, rainbow.palette.value, littleEndian);
 

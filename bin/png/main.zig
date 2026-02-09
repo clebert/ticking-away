@@ -35,7 +35,7 @@ pub fn main() !void {
     var linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
 
     const watchface = lib.Watchface{
-        .hand_glow_style = .{ .normalized_width = 0.01, .falloff = .exponential },
+        .hand_glow_style = .{ .normalized_width = 0.005, .falloff = .quadratic },
         .prism_glow_style = .{ .normalized_width = 0.07, .falloff = .exponential },
         .prism_glow_color = lib.Linear.init(0.1, 0.75, 1.0, 1.0),
         .rainbow_palette_id = .oklch_balanced,
@@ -49,7 +49,7 @@ pub fn main() !void {
         .normalized_deviation = 0.1,
     };
 
-    grain.apply(&srgb_band, viewport);
+    grain.apply(&srgb_band, viewport, prism);
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 

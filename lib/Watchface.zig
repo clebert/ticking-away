@@ -82,7 +82,7 @@ const test_band_count = test_image_size / test_band_height;
 const test_prism = Prism.init(0.8);
 
 const test_watchface = Self{
-    .hand_glow_style = .{ .normalized_width = 0.08, .falloff = .linear },
+    .hand_glow_style = .{ .normalized_width = 0.005, .falloff = .quadratic },
     .prism_glow_style = .{ .normalized_width = 0.15, .falloff = .quadratic },
     .prism_glow_color = Linear.init(0.1, 0.75, 1.0, 1.0),
     .rainbow_palette_id = .oklch_balanced,

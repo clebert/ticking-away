@@ -16,8 +16,8 @@ const defaults = {
 
   rainbow: {
     spread: 50,
-    handGlowWidth: 1,
-    handGlowFalloff: 3, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
+    handGlowWidth: 5,
+    handGlowFalloff: 1, // 0=Linear, 1=Quadratic, 2=Cubic, 3=Exponential
     palette: 0, // 0=OkLCH Balanced, 1=Spectral, 2=Spectra6
   },
 
@@ -206,6 +206,7 @@ export const rainbow = {
 
   // Signals: glow
   handGlowWidth: signal(settings.rainbowHandGlowWidth ?? defaults.rainbow.handGlowWidth),
+  handGlowWidthPercent: computed((): string => (rainbow.handGlowWidth.value / 10).toFixed(1)),
   handGlowFalloff: signal(settings.rainbowHandGlowFalloff ?? defaults.rainbow.handGlowFalloff),
 
   // Signals: rendering mode
