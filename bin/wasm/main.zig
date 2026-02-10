@@ -112,9 +112,10 @@ export fn render(
         break :blk linear_band.toSrgb(srgb_buffer.?) catch return null;
     };
 
-    const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
-
-    grain.apply(&srgb_band, viewport, prism);
+    if (!config.dither_enabled) {
+        const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
+        grain.apply(&srgb_band, viewport, prism);
+    }
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 
