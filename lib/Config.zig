@@ -52,5 +52,5 @@ fn validateRanges(config: Self) !void {
 }
 
 test "init returns valid config from defaults" {
-    try init(std.testing.allocator);
+    _ = try init(std.testing.allocator);
 }
