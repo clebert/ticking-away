@@ -8,6 +8,12 @@ const pixel_count = width * height;
 const default_iteration_count = 100;
 
 pub fn main() void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+
+    defer arena.deinit();
+
+    const allocator = arena.allocator();
+
     const iteration_count = parseIterationCount();
 
     std.debug.print("{d} iterations at {d}x{d}\n", .{ iteration_count, width, height });
@@ -16,15 +22,19 @@ pub fn main() void {
     var srgb_buffer: [pixel_count]lib.Srgb = undefined;
     var dither_error_buffer: [lib.Dither.errorBufferSize(width)]f32 = undefined;
 
+    const config = lib.Config.init(allocator) catch @panic("failed to init config");
+
     const image = lib.Image.init(width, height);
     const viewport = image.viewport();
-    const prism = lib.Prism.init(0.8);
+    const prism = lib.Prism.init(config.prism_normalized_size);
 
     const watchface = lib.Watchface{
-        .hand_glow_style = .{ .normalized_width = 0.005, .falloff = .quadratic },
-        .prism_glow_style = .{ .normalized_width = 0.15, .falloff = .quadratic },
+        .hand_glow_normalized_width = config.hand_glow_normalized_width,
+        .hand_glow_falloff = config.hand_glow_falloff,
+        .prism_glow_normalized_width = config.prism_glow_normalized_width,
+        .prism_glow_falloff = config.prism_glow_falloff,
         .prism_glow_color = lib.Linear.init(0.5, 0.5, 0.5, 1.0),
-        .rainbow_palette_id = .oklch_balanced,
+        .rainbow_palette_id = config.rainbow_palette_id,
     };
 
     const dither = lib.Dither{
@@ -33,9 +43,7 @@ pub fn main() void {
         .palette = lib.Dither.PaletteId.ideal.palette(),
     };
 
-    const grain = lib.Grain{
-        .normalized_deviation = 0.1,
-    };
+    const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
     for (0..iteration_count) |iteration| {
         const hour: u32 = @intCast(iteration % 12);
@@ -44,7 +52,7 @@ pub fn main() void {
             @as(f32, @floatFromInt(iteration_count));
 
         const time = lib.Time.init(hour, minute);
-        const clock = lib.Clock.init(time, prism, 0.5);
+        const clock = lib.Clock.init(time, prism, config.rainbow_normalized_spread);
 
         @memset(&linear_buffer, lib.Linear.black);
 
@@ -52,7 +60,8 @@ pub fn main() void {
 
         watchface.render(&linear_band, viewport, prism, clock);
 
-        var srgb_band = dither.apply(linear_band, &srgb_buffer, &dither_error_buffer) catch unreachable;
+        var srgb_band =
+            dither.apply(linear_band, &srgb_buffer, &dither_error_buffer) catch unreachable;
 
         grain.apply(&srgb_band, viewport, prism);
 

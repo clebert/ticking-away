@@ -1,6 +1,13 @@
 export interface WasmModule {
-  getConfigPtr(): number;
-  render(width: number, height: number): number;
+  getConfigJsonBufferPtr(): number;
+
+  render(
+    width: number,
+    height: number,
+    hour: number,
+    minute: number,
+    configJsonByteLength: number,
+  ): number;
 }
 
 const initialMemoryPages = 32;
@@ -25,10 +32,18 @@ export async function initWasm(): Promise<void> {
   wasmModule = result.instance.exports as unknown as WasmModule;
 }
 
-export function getWasmModule(): WasmModule | undefined {
+export function getWasmModule(): WasmModule {
+  if (!wasmModule) {
+    throw new Error("WASM module not initialized: call initWasm() first");
+  }
+
   return wasmModule;
 }
 
-export function getWasmMemory(): WebAssembly.Memory | undefined {
+export function getWasmMemory(): WebAssembly.Memory {
+  if (!wasmMemory) {
+    throw new Error("WASM memory not initialized: call initWasm() first");
+  }
+
   return wasmMemory;
 }

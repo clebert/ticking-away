@@ -22,32 +22,32 @@ pub fn main() !void {
     const linear_buffer = try allocator.alloc(lib.Linear, pixel_count);
     const srgb_buffer = try allocator.alloc(lib.Srgb, pixel_count);
 
-    // Render watchface with default settings matching src/stores.ts
+    const config = try lib.Config.init(allocator);
 
     const image = lib.Image.init(size, size);
     const viewport = image.viewport();
-    const prism = lib.Prism.init(0.9);
+    const prism = lib.Prism.init(config.prism_normalized_size);
     const time = lib.Time.init(args.hour, @floatFromInt(args.minute));
-    const clock = lib.Clock.init(time, prism, 0.5);
+    const clock = lib.Clock.init(time, prism, config.rainbow_normalized_spread);
 
     @memset(linear_buffer, lib.Linear.black);
 
     var linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
 
     const watchface = lib.Watchface{
-        .hand_glow_style = .{ .normalized_width = 0.005, .falloff = .quadratic },
-        .prism_glow_style = .{ .normalized_width = 0.07, .falloff = .exponential },
-        .prism_glow_color = lib.Linear.init(0.1, 0.75, 1.0, 1.0),
-        .rainbow_palette_id = .oklch_balanced,
+        .hand_glow_normalized_width = config.hand_glow_normalized_width,
+        .hand_glow_falloff = config.hand_glow_falloff,
+        .prism_glow_normalized_width = config.prism_glow_normalized_width,
+        .prism_glow_falloff = config.prism_glow_falloff,
+        .prism_glow_color = lib.Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
+        .rainbow_palette_id = config.rainbow_palette_id,
     };
 
     watchface.render(&linear_band, viewport, prism, clock);
 
     var srgb_band = linear_band.toSrgb(srgb_buffer) catch unreachable;
 
-    const grain = lib.Grain{
-        .normalized_deviation = 0.1,
-    };
+    const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
     grain.apply(&srgb_band, viewport, prism);
 

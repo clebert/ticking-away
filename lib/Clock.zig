@@ -11,16 +11,16 @@ const Self = @This();
 
 const hour_arc: f32 = std.math.pi / 6.0; // 2π/12 = π/6 ≈ 30° (one hour moves 30°)
 const apex_angle: f32 = -std.math.pi / 2.0; // −π/2 (−90°, 12 o'clock)
-const max_rainbow_spread_radians: f32 = std.math.pi / 6.0;
+const rainbow_max_spread_radians: f32 = std.math.pi / 6.0;
 
 external_minute_hand: Segment,
 internal_minute_hand: ?Segment,
 internal_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 external_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 
-pub fn init(time: Time, prism: Prism, normalized_rainbow_spread: f32) Self {
+pub fn init(time: Time, prism: Prism, rainbow_normalized_spread: f32) Self {
     std.debug.assert(
-        normalized_rainbow_spread >= 0.0 and normalized_rainbow_spread <= 1.0,
+        rainbow_normalized_spread >= 0.0 and rainbow_normalized_spread <= 1.0,
     );
 
     const hour_count: usize = @intFromFloat(time.total_minutes / 60.0);
@@ -48,7 +48,7 @@ pub fn init(time: Time, prism: Prism, normalized_rainbow_spread: f32) Self {
     const hour_angle = apex_angle + (@as(f32, @floatFromInt(hour)) / 12.0) *
         std.math.tau + (minute / 60.0) * hour_arc;
 
-    const spread_radians = normalized_rainbow_spread * max_rainbow_spread_radians;
+    const spread_radians = rainbow_normalized_spread * rainbow_max_spread_radians;
 
     var internal_hour_hand: std.EnumArray(Rainbow.ColorId, Segment) = undefined;
     var external_hour_hand: std.EnumArray(Rainbow.ColorId, Segment) = undefined;

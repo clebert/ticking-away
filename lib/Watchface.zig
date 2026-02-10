@@ -11,8 +11,10 @@ const Time = @import("Time.zig");
 
 const Self = @This();
 
-hand_glow_style: Glow.Style,
-prism_glow_style: Glow.Style,
+hand_glow_normalized_width: f32,
+hand_glow_falloff: Glow.Falloff,
+prism_glow_normalized_width: f32,
+prism_glow_falloff: Glow.Falloff,
 prism_glow_color: Linear,
 rainbow_palette_id: Rainbow.PaletteId,
 
@@ -27,7 +29,11 @@ pub fn render(
     const base_rainbow = Rainbow.get(self.rainbow_palette_id);
     const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
 
-    const hand_glow = Glow{ .style = self.hand_glow_style, .color = Linear.white };
+    const hand_glow = Glow{
+        .normalized_width = self.hand_glow_normalized_width,
+        .falloff = self.hand_glow_falloff,
+        .color = Linear.white,
+    };
 
     // External minute hand (white light entering prism)
     hand_glow.renderLine(band, viewport, clock.external_minute_hand, .{
@@ -43,7 +49,11 @@ pub fn render(
 
     // Internal hour rays (colored, fading toward prism edge)
     for (std.enums.values(Rainbow.ColorId)) |color_id| {
-        const ray_glow = Glow{ .style = self.hand_glow_style, .color = rainbow.color(color_id) };
+        const ray_glow = Glow{
+            .normalized_width = self.hand_glow_normalized_width,
+            .falloff = self.hand_glow_falloff,
+            .color = rainbow.color(color_id),
+        };
 
         ray_glow.renderLine(band, viewport, clock.internal_hour_hand.get(color_id), .{
             .clip = .{ .prism = prism },
@@ -70,7 +80,11 @@ pub fn render(
 
     internal_spectrum.render(band, viewport, prism, rainbow);
 
-    const prism_glow = Glow{ .style = self.prism_glow_style, .color = self.prism_glow_color };
+    const prism_glow = Glow{
+        .normalized_width = self.prism_glow_normalized_width,
+        .falloff = self.prism_glow_falloff,
+        .color = self.prism_glow_color,
+    };
 
     prism_glow.renderPrismEdges(band, viewport, prism);
 }
@@ -82,8 +96,10 @@ const test_band_count = test_image_size / test_band_height;
 const test_prism = Prism.init(0.8);
 
 const test_watchface = Self{
-    .hand_glow_style = .{ .normalized_width = 0.005, .falloff = .quadratic },
-    .prism_glow_style = .{ .normalized_width = 0.15, .falloff = .quadratic },
+    .hand_glow_normalized_width = 0.005,
+    .hand_glow_falloff = .quadratic,
+    .prism_glow_normalized_width = 0.15,
+    .prism_glow_falloff = .quadratic,
     .prism_glow_color = Linear.init(0.1, 0.75, 1.0, 1.0),
     .rainbow_palette_id = .oklch_balanced,
 };

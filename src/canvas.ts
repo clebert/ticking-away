@@ -2,11 +2,11 @@ export function getCanvas(): HTMLCanvasElement {
   return document.getElementById("canvas") as HTMLCanvasElement;
 }
 
-export function resizeCanvas(highDpi: boolean): void {
+export function resizeCanvas(): void {
   const canvas = getCanvas();
   const container = canvas.parentElement as HTMLElement;
   const containerRect = container.getBoundingClientRect();
-  const devicePixelRatio = highDpi ? window.devicePixelRatio || 1 : 1;
+  const devicePixelRatio = window.devicePixelRatio || 1;
 
   const newWidth = Math.max(Math.floor(containerRect.width * devicePixelRatio), 100);
   const newHeight = Math.max(Math.floor(containerRect.height * devicePixelRatio), 100);

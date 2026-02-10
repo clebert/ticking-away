@@ -1,57 +1,45 @@
-import { getCanvas } from "./canvas.ts";
-import { dither, effects, prism, rainbow, time } from "./stores.ts";
+import { useSignal, useSignalEffect } from "@preact/signals";
+import { useEffect } from "preact/hooks";
+import { useAnimation } from "./animation.tsx";
+import { getCanvas, resizeCanvas } from "./canvas.ts";
+import { type Config, useConfig, writeConfigJson } from "./config.tsx";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
-function writeConfig(view: DataView, offset: number): void {
-  const littleEndian = true;
+export function useRenderer(): void {
+  const { $hour, $minute } = useAnimation();
+  const { $config } = useConfig();
+  const $resizeTrigger = useSignal(0);
 
-  view.setInt32(offset + 0, time.hour.value, littleEndian);
-  view.setFloat32(offset + 4, time.minute.value, littleEndian);
+  useEffect(() => {
+    const handleResize = () => {
+      resizeCanvas();
+      $resizeTrigger.value++;
+    };
 
-  view.setFloat32(offset + 8, prism.size.value / 100.0, littleEndian);
-  view.setFloat32(offset + 12, rainbow.spread.value / 100.0, littleEndian);
-  view.setFloat32(offset + 16, prism.glowGreen.value / 100.0, littleEndian);
-  view.setFloat32(offset + 20, prism.glowWidth.value / 100.0, littleEndian);
-  view.setInt32(offset + 24, prism.glowFalloff.value, littleEndian);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  view.setFloat32(offset + 28, rainbow.handGlowWidth.value / 1000.0, littleEndian);
-  view.setInt32(offset + 32, rainbow.handGlowFalloff.value, littleEndian);
-  view.setInt32(offset + 36, rainbow.palette.value, littleEndian);
-
-  const grainDeviation = dither.enabled.value ? 0 : effects.grainDeviation.value / 100;
-
-  view.setFloat32(offset + 40, grainDeviation, littleEndian);
-
-  view.setInt32(offset + 44, dither.enabled.value ? 1 : 0, littleEndian);
-  view.setInt32(offset + 48, dither.paletteId.value, littleEndian);
-  view.setFloat32(offset + 52, dither.strength.value / 100.0, littleEndian);
-  view.setFloat32(offset + 56, dither.chromaEmphasis.value / 100.0, littleEndian);
+  useSignalEffect(() => {
+    void $resizeTrigger.value;
+    renderToCanvas($hour.value, $minute.value, $config.value);
+  });
 }
 
-export function render(): void {
-  const wasmModule = getWasmModule();
-  const wasmMemory = getWasmMemory();
-
-  if (!wasmModule || !wasmMemory) {
-    return;
-  }
-
+function renderToCanvas(hour: number, minute: number, config: Config): void {
   const canvas = getCanvas();
   const width = canvas.width;
   const height = canvas.height;
 
-  const configPtr = wasmModule.getConfigPtr();
+  if (width === 0 || height === 0) return;
 
-  writeConfig(new DataView(wasmMemory.buffer), configPtr);
+  const imageDataPtr = getWasmModule().render(width, height, hour, minute, writeConfigJson(config));
 
-  const imageDataPtr = wasmModule.render(width, height);
-
-  if (imageDataPtr === 0) {
-    return;
-  }
+  if (imageDataPtr === 0) return;
 
   const imageData = new ImageData(
-    new Uint8ClampedArray(wasmMemory.buffer, imageDataPtr, width * height * 4),
+    new Uint8ClampedArray(getWasmMemory().buffer, imageDataPtr, width * height * 4),
     width,
     height,
   );

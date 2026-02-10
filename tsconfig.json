@@ -1,6 +1,8 @@
 {
-  "include": ["*.js", "src/**/*.js", "src/**/*.ts"],
+  "include": ["*.js", "src/**/*.js", "src/**/*.ts", "src/**/*.tsx"],
   "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "allowImportingTsExtensions": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
@@ -25,7 +27,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "pretty": true,
-    "resolveJsonModule": false,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "target": "esnext",

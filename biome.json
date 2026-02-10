@@ -13,6 +13,9 @@
   },
   "linter": {
     "rules": {
+      "a11y": {
+        "noLabelWithoutControl": "off"
+      },
       "complexity": {
         "noImportantStyles": "off",
         "useLiteralKeys": "off"
