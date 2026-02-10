@@ -7,6 +7,7 @@ import defaultConfig from "../lib/config.json";
 import { getWasmMemory, getWasmModule } from "./wasm.ts";
 
 const ConfigSchema = z.object({
+  background_enabled: z.boolean(),
   prism_normalized_size: z.number(),
   prism_glow_linear_green: z.number(),
   prism_glow_normalized_width: z.number(),
@@ -15,6 +16,7 @@ const ConfigSchema = z.object({
   hand_glow_normalized_width: z.number(),
   hand_glow_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
   rainbow_palette_id: z.enum(["oklch_balanced", "spectral", "spectra6"]),
+  grain_enabled: z.boolean(),
   grain_normalized_deviation: z.number(),
   dither_enabled: z.boolean(),
   dither_palette_id: z.enum(["ideal", "spectra6_inky", "spectra6_epdopt", "spectra6_trmnl"]),

@@ -133,7 +133,7 @@ function PrismSection(): JSX.Element {
         <input
           type="range"
           min="10"
-          max="90"
+          max="100"
           value={Math.round(config.prism_normalized_size * 100)}
           onInput={(e) => updateConfig("prism_normalized_size", intValue(e) / 100)}
         />
@@ -245,6 +245,26 @@ function EffectsSection(): JSX.Element {
       <div class="section-title">Effects</div>
       <div class="control-group">
         <label>
+          <input
+            type="checkbox"
+            checked={config.background_enabled}
+            onChange={() => updateConfig("background_enabled", !config.background_enabled)}
+          />{" "}
+          Show Background
+        </label>
+      </div>
+      <div class="control-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={config.grain_enabled}
+            onChange={() => updateConfig("grain_enabled", !config.grain_enabled)}
+          />{" "}
+          Enable Grain
+        </label>
+      </div>
+      <div class="control-group">
+        <label>
           Grain: <span>{Math.round(config.grain_normalized_deviation * 100)}</span>%
         </label>
         <input
@@ -253,7 +273,7 @@ function EffectsSection(): JSX.Element {
           max="100"
           value={Math.round(config.grain_normalized_deviation * 100)}
           onInput={(e) => updateConfig("grain_normalized_deviation", intValue(e) / 100)}
-          disabled={config.dither_enabled}
+          disabled={!config.grain_enabled}
         />
       </div>
     </>

@@ -7,6 +7,7 @@ const Self = @This();
 
 pub const black: Self = .{ .vec = .{ 0, 0, 0, 1 } };
 pub const white: Self = .{ .vec = .{ 1, 1, 1, 1 } };
+pub const transparent: Self = .{ .vec = .{ 0, 0, 0, 0 } };
 
 vec: @Vector(4, f32),
 
@@ -50,6 +51,7 @@ pub fn toOklab(self: Self) Oklab {
 
 pub fn toSrgb(self: Self) Srgb {
     if (@reduce(.And, self.vec == black.vec)) return .black;
+    if (@reduce(.And, self.vec == transparent.vec)) return .transparent;
 
     return .{
         .r = linearToSrgbByte(self.vec[0]),

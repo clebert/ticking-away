@@ -83,7 +83,7 @@ export fn render(
     const clock = lib.Clock.init(time, prism, config.rainbow_normalized_spread);
     const image = lib.Image.init(@intCast(width), @intCast(height));
 
-    @memset(linear_buffer.?, lib.Linear.black);
+    @memset(linear_buffer.?, if (config.background_enabled) lib.Linear.black else lib.Linear.transparent);
 
     var linear_band = image.band(lib.Linear, linear_buffer.?, @intCast(height), 0) catch return null;
 
@@ -112,8 +112,9 @@ export fn render(
         break :blk linear_band.toSrgb(srgb_buffer.?) catch return null;
     };
 
-    if (!config.dither_enabled) {
+    if (config.grain_enabled) {
         const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
+
         grain.apply(&srgb_band, viewport, prism);
     }
 

@@ -1,15 +1,17 @@
 {
-  "prism_normalized_size": 0.9,
+  "background_enabled": true,
+  "prism_normalized_size": 1.0,
   "prism_glow_linear_green": 0.75,
-  "prism_glow_normalized_width": 0.07,
+  "prism_glow_normalized_width": 0.1,
   "prism_glow_falloff": "exponential",
   "rainbow_normalized_spread": 0.5,
   "hand_glow_normalized_width": 0.005,
   "hand_glow_falloff": "quadratic",
   "rainbow_palette_id": "oklch_balanced",
+  "grain_enabled": false,
   "grain_normalized_deviation": 0.1,
   "dither_enabled": false,
-  "dither_palette_id": "spectra6_epdopt",
-  "dither_normalized_strength": 0.98,
-  "dither_normalized_chroma_emphasis": 0.33
+  "dither_palette_id": "ideal",
+  "dither_normalized_strength": 0.9,
+  "dither_normalized_chroma_emphasis": 0.45
 }

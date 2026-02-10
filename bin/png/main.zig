@@ -30,7 +30,7 @@ pub fn main() !void {
     const time = lib.Time.init(args.hour, @floatFromInt(args.minute));
     const clock = lib.Clock.init(time, prism, config.rainbow_normalized_spread);
 
-    @memset(linear_buffer, lib.Linear.black);
+    @memset(linear_buffer, if (config.background_enabled) lib.Linear.black else lib.Linear.transparent);
 
     var linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
 
@@ -47,9 +47,11 @@ pub fn main() !void {
 
     var srgb_band = linear_band.toSrgb(srgb_buffer) catch unreachable;
 
-    const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
+    if (config.grain_enabled) {
+        const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-    grain.apply(&srgb_band, viewport, prism);
+        grain.apply(&srgb_band, viewport, prism);
+    }
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 

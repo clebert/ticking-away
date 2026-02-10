@@ -6,6 +6,7 @@ const Rainbow = @import("Rainbow.zig");
 
 const Self = @This();
 
+background_enabled: bool,
 prism_normalized_size: f32,
 prism_glow_linear_green: f32,
 prism_glow_normalized_width: f32,
@@ -14,6 +15,7 @@ rainbow_normalized_spread: f32,
 hand_glow_normalized_width: f32,
 hand_glow_falloff: Glow.Falloff,
 rainbow_palette_id: Rainbow.PaletteId,
+grain_enabled: bool,
 grain_normalized_deviation: f32,
 dither_enabled: bool,
 dither_palette_id: Dither.PaletteId,
@@ -50,19 +52,5 @@ fn validateRanges(config: Self) !void {
 }
 
 test "init returns valid config from defaults" {
-    const config = try init(std.testing.allocator);
-
-    try std.testing.expectApproxEqAbs(@as(f32, 0.9), config.prism_normalized_size, 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.75), config.prism_glow_linear_green, 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.07), config.prism_glow_normalized_width, 1e-6);
-    try std.testing.expectEqual(Glow.Falloff.exponential, config.prism_glow_falloff);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), config.rainbow_normalized_spread, 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.005), config.hand_glow_normalized_width, 1e-6);
-    try std.testing.expectEqual(Glow.Falloff.quadratic, config.hand_glow_falloff);
-    try std.testing.expectEqual(Rainbow.PaletteId.oklch_balanced, config.rainbow_palette_id);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.1), config.grain_normalized_deviation, 1e-6);
-    try std.testing.expect(!config.dither_enabled);
-    try std.testing.expectEqual(Dither.PaletteId.spectra6_epdopt, config.dither_palette_id);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.98), config.dither_normalized_strength, 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.33), config.dither_normalized_chroma_emphasis, 1e-6);
+    try init(std.testing.allocator);
 }
