@@ -163,9 +163,17 @@ test "render produces rainbow colors" {
     var has_blue = false;
 
     for (&buffer) |pixel| {
-        if (pixel.vec[0] > 0.1 and pixel.vec[0] > pixel.vec[1] * 2 and pixel.vec[0] > pixel.vec[2] * 2) has_red = true;
-        if (pixel.vec[1] > 0.1 and pixel.vec[1] > pixel.vec[0] * 2 and pixel.vec[1] > pixel.vec[2] * 2) has_green = true;
-        if (pixel.vec[2] > 0.1 and pixel.vec[2] > pixel.vec[0] * 2 and pixel.vec[2] > pixel.vec[1] * 2) has_blue = true;
+        if (pixel.vec[0] > 0.1 and
+            pixel.vec[0] > pixel.vec[1] * 2 and
+            pixel.vec[0] > pixel.vec[2] * 2) has_red = true;
+
+        if (pixel.vec[1] > 0.1 and
+            pixel.vec[1] > pixel.vec[0] * 2 and
+            pixel.vec[1] > pixel.vec[2] * 2) has_green = true;
+
+        if (pixel.vec[2] > 0.1 and
+            pixel.vec[2] > pixel.vec[0] * 2 and
+            pixel.vec[2] > pixel.vec[1] * 2) has_blue = true;
     }
 
     try std.testing.expect(has_red);

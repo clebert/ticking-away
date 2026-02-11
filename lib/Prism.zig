@@ -92,12 +92,7 @@ pub fn rotated(self: Self, angle: f32) Self {
     var vertices: std.EnumArray(VertexId, @Vector(2, f32)) = undefined;
 
     inline for (std.meta.tags(VertexId)) |vertex_id| {
-        const vertex = self.vertices.get(vertex_id);
-
-        vertices.set(vertex_id, .{
-            vertex[0] * cos_angle - vertex[1] * sin_angle,
-            vertex[0] * sin_angle + vertex[1] * cos_angle,
-        });
+        vertices.set(vertex_id, rotatePoint(self.vertices.get(vertex_id), cos_angle, sin_angle));
     }
 
     var edges: std.EnumArray(EdgeId, Segment) = undefined;
@@ -110,6 +105,13 @@ pub fn rotated(self: Self, angle: f32) Self {
     }
 
     return .{ .vertices = vertices, .edges = edges };
+}
+
+fn rotatePoint(point: @Vector(2, f32), cos_angle: f32, sin_angle: f32) @Vector(2, f32) {
+    return .{
+        point[0] * cos_angle - point[1] * sin_angle,
+        point[0] * sin_angle + point[1] * cos_angle,
+    };
 }
 
 pub fn intersect(self: Self, ray: Ray) ?Ray.Intersection {
@@ -168,8 +170,17 @@ test "init creates equilateral triangle centered at origin" {
     const bottom_length_squared = @reduce(.Add, bottom_start_to_end * bottom_start_to_end);
     const left_length_squared = @reduce(.Add, left_start_to_end * left_start_to_end);
 
-    try std.testing.expectApproxEqAbs(right_length_squared, bottom_length_squared, vector.tolerance);
-    try std.testing.expectApproxEqAbs(bottom_length_squared, left_length_squared, vector.tolerance);
+    try std.testing.expectApproxEqAbs(
+        right_length_squared,
+        bottom_length_squared,
+        vector.tolerance,
+    );
+
+    try std.testing.expectApproxEqAbs(
+        bottom_length_squared,
+        left_length_squared,
+        vector.tolerance,
+    );
 }
 
 test "bounds returns min/max of vertices" {
@@ -245,8 +256,15 @@ test "rotated preserves shape and applies rotation" {
     inline for (std.meta.tags(EdgeId)) |edge_id| {
         const edge = rotated_prism.edges.get(edge_id);
 
-        try std.testing.expectEqual(rotated_prism.vertices.get(edge_id.getStartVertexId()), edge.start);
-        try std.testing.expectEqual(rotated_prism.vertices.get(edge_id.getEndVertexId()), edge.end);
+        try std.testing.expectEqual(
+            rotated_prism.vertices.get(edge_id.getStartVertexId()),
+            edge.start,
+        );
+
+        try std.testing.expectEqual(
+            rotated_prism.vertices.get(edge_id.getEndVertexId()),
+            edge.end,
+        );
     }
 }
 
