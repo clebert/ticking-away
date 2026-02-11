@@ -26,11 +26,18 @@ pub fn main() !void {
 
     const image = lib.Image.init(size, size);
     const viewport = image.viewport();
-    const prism = lib.Prism.init(config.prism_normalized_size);
-    const time = lib.Time.init(args.hour, @floatFromInt(args.minute));
-    const clock = lib.Clock.init(time, prism, config.rainbow_normalized_spread);
 
-    @memset(linear_buffer, if (config.background_enabled) lib.Linear.black else lib.Linear.transparent);
+    const clock = lib.Clock.init(
+        lib.Time.init(args.hour, @floatFromInt(args.minute)),
+        config.prism_normalized_size,
+        config.prism_rotating,
+        config.rainbow_normalized_spread,
+    );
+
+    @memset(
+        linear_buffer,
+        if (config.background_enabled) lib.Linear.black else lib.Linear.transparent,
+    );
 
     var linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
 
@@ -43,14 +50,14 @@ pub fn main() !void {
         .rainbow_palette_id = config.rainbow_palette_id,
     };
 
-    watchface.render(&linear_band, viewport, prism, clock);
+    watchface.render(&linear_band, viewport, clock);
 
     var srgb_band = linear_band.toSrgb(srgb_buffer) catch unreachable;
 
     if (config.grain_enabled) {
         const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-        grain.apply(&srgb_band, viewport, prism);
+        grain.apply(&srgb_band, viewport, clock.prism);
     }
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };

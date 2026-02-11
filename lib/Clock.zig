@@ -13,12 +13,20 @@ const hour_arc: f32 = std.math.pi / 6.0; // 2π/12 = π/6 ≈ 30° (one hour mov
 const apex_angle: f32 = -std.math.pi / 2.0; // −π/2 (−90°, 12 o'clock)
 const rainbow_max_spread_radians: f32 = std.math.pi / 6.0;
 
+prism: Prism,
 external_minute_hand: Segment,
 internal_minute_hand: ?Segment,
 internal_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 external_hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 
-pub fn init(time: Time, prism: Prism, rainbow_normalized_spread: f32) Self {
+pub fn init(
+    time: Time,
+    prism_normalized_size: f32,
+    prism_rotating: bool,
+    rainbow_normalized_spread: f32,
+) Self {
+    var prism = Prism.init(prism_normalized_size);
+
     std.debug.assert(
         rainbow_normalized_spread >= 0.0 and rainbow_normalized_spread <= 1.0,
     );
@@ -28,25 +36,52 @@ pub fn init(time: Time, prism: Prism, rainbow_normalized_spread: f32) Self {
     const minute = time.total_minutes - @as(f32, @floatFromInt(hour_count)) * 60.0;
     const minute_angle = apex_angle + (minute / 60.0) * std.math.tau;
 
+    const hour_angle = apex_angle + (@as(f32, @floatFromInt(hour)) / 12.0) *
+        std.math.tau + (minute / 60.0) * hour_arc;
+
+    const hour_ray_center = Ray.init(.{ 0, 0 }, .{ @cos(hour_angle), @sin(hour_angle) });
+
     const minute_position: @Vector(2, f32) = .{ @cos(minute_angle), @sin(minute_angle) };
 
-    const minute_ray = Ray.init(minute_position, .{ 0, 0 });
-    const minute_prism_intersection = prism.intersect(minute_ray) orelse unreachable;
+    var entry_point: @Vector(2, f32) = undefined;
+    var internal_minute_hand: ?Segment = undefined;
+    var internal_hour_hand_start: @Vector(2, f32) = undefined;
+
+    if (prism_rotating) {
+        // π/6 aligns the right edge perpendicular to the minute hand direction
+        prism = prism.rotated(minute_angle + std.math.pi / 6.0);
+
+        // Light enters at the midpoint of the right edge
+        entry_point = (prism.vertices.get(.apex) + prism.vertices.get(.bottom_right)) /
+            @as(@Vector(2, f32), @splat(2.0));
+
+        const right_edge = prism.edges.get(.right);
+        const bounce_vertex = prism.vertices.get(.bottom_left);
+
+        internal_minute_hand = if (hour_ray_center.intersectSegment(right_edge) != null) .{
+            .start = entry_point,
+            .end = bounce_vertex,
+        } else null;
+
+        internal_hour_hand_start = if (internal_minute_hand != null) bounce_vertex else entry_point;
+    } else {
+        const minute_ray = Ray.init(minute_position, .{ 0, 0 });
+        const hit = (prism.intersect(minute_ray) orelse unreachable).hit;
+
+        entry_point = hit;
+
+        internal_minute_hand = if (bouncingVertexId(hour, minute)) |vertex_id| .{
+            .start = hit,
+            .end = prism.vertices.get(vertex_id),
+        } else null;
+
+        internal_hour_hand_start = if (internal_minute_hand) |hand| hand.end else hit;
+    }
 
     const external_minute_hand: Segment = .{
         .start = minute_position,
-        .end = minute_prism_intersection.hit,
+        .end = entry_point,
     };
-
-    const internal_minute_hand: ?Segment = if (bouncingVertexId(hour, minute)) |vertex_id| blk: {
-        break :blk .{ .start = external_minute_hand.end, .end = prism.vertices.get(vertex_id) };
-    } else null;
-
-    const internal_hour_hand_start =
-        if (internal_minute_hand) |hand| hand.end else external_minute_hand.end;
-
-    const hour_angle = apex_angle + (@as(f32, @floatFromInt(hour)) / 12.0) *
-        std.math.tau + (minute / 60.0) * hour_arc;
 
     const spread_radians = rainbow_normalized_spread * rainbow_max_spread_radians;
 
@@ -79,6 +114,7 @@ pub fn init(time: Time, prism: Prism, rainbow_normalized_spread: f32) Self {
     }
 
     return .{
+        .prism = prism,
         .external_minute_hand = external_minute_hand,
         .internal_minute_hand = internal_minute_hand,
         .internal_hour_hand = internal_hour_hand,
@@ -101,60 +137,64 @@ fn bouncingVertexId(hour: u4, minute: f32) ?Prism.VertexId {
     return null;
 }
 
-const test_prism = Prism.init(0.8);
+const test_prism_normalized_size: f32 = 0.8;
 const test_rainbow_spread: f32 = 0.5;
 
 test "init at 12:00" {
-    _ = Self.init(.{ .total_minutes = 0.0 }, test_prism, test_rainbow_spread);
+    _ = Self.init(
+        .{ .total_minutes = 0.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
 }
 
 test "init at 3:15" {
-    _ = Self.init(.{ .total_minutes = 195.0 }, test_prism, test_rainbow_spread);
+    _ = Self.init(
+        .{ .total_minutes = 195.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
 }
 
 test "init minute hand starts on circle boundary" {
-    const watchface = Self.init(.{ .total_minutes = 0.0 }, test_prism, test_rainbow_spread);
+    const watchface = Self.init(
+        .{ .total_minutes = 0.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
+
     const start_distance = vector.length(watchface.external_minute_hand.start);
 
     try std.testing.expectApproxEqAbs(1.0, start_distance, vector.tolerance);
 }
 
 test "init minute hand ends on prism edge" {
-    const watchface = Self.init(.{ .total_minutes = 0.0 }, test_prism, test_rainbow_spread);
-    const end = watchface.external_minute_hand.end;
-    const ray = Ray.init(watchface.external_minute_hand.start, end);
-    const intersection = test_prism.intersect(ray).?;
+    const clock = Self.init(
+        .{ .total_minutes = 0.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
+
+    const end = clock.external_minute_hand.end;
+    const ray = Ray.init(clock.external_minute_hand.start, end);
+    const intersection = clock.prism.intersect(ray).?;
 
     try std.testing.expectApproxEqAbs(intersection.hit[0], end[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(intersection.hit[1], end[1], vector.tolerance);
 }
 
-test "init internal_minute_hand is non-null when bouncing" {
-    // hour=0, minute=10 → bouncingVertex returns .bottom_left
-    const watchface = Self.init(.{ .total_minutes = 10.0 }, test_prism, test_rainbow_spread);
-
-    try std.testing.expect(watchface.internal_minute_hand != null);
-}
-
-test "init internal_minute_hand is null when not bouncing" {
-    // hour=0, minute=30 → bouncingVertex returns null
-    const watchface = Self.init(.{ .total_minutes = 30.0 }, test_prism, test_rainbow_spread);
-
-    try std.testing.expectEqual(null, watchface.internal_minute_hand);
-}
-
-test "init internal_minute_hand ends at prism vertex when bouncing" {
-    // hour=0, minute=10 → bounces to .bottom_left
-    const watchface = Self.init(.{ .total_minutes = 10.0 }, test_prism, test_rainbow_spread);
-    const hand = watchface.internal_minute_hand.?;
-    const expected = test_prism.vertices.get(.bottom_left);
-
-    try std.testing.expectApproxEqAbs(expected[0], hand.end[0], vector.tolerance);
-    try std.testing.expectApproxEqAbs(expected[1], hand.end[1], vector.tolerance);
-}
-
 test "init all hour hand colors share same internal start" {
-    const watchface = Self.init(.{ .total_minutes = 0.0 }, test_prism, test_rainbow_spread);
+    const watchface = Self.init(
+        .{ .total_minutes = 0.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
+
     const first = watchface.internal_hour_hand.get(.red).start;
 
     for (std.enums.values(Rainbow.ColorId)) |color_id| {
@@ -166,7 +206,12 @@ test "init all hour hand colors share same internal start" {
 }
 
 test "init external hour hand endpoints lie on circle boundary" {
-    const watchface = Self.init(.{ .total_minutes = 195.0 }, test_prism, test_rainbow_spread);
+    const watchface = Self.init(
+        .{ .total_minutes = 195.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
 
     for (std.enums.values(Rainbow.ColorId)) |color_id| {
         const end = watchface.external_hour_hand.get(color_id).end;
@@ -176,28 +221,97 @@ test "init external hour hand endpoints lie on circle boundary" {
     }
 }
 
-test "init internal hour hand start matches minute hand chain" {
-    // When bouncing: internal_hour_hand start == internal_minute_hand end
-    const watchface_bouncing = Self.init(.{ .total_minutes = 10.0 }, test_prism, test_rainbow_spread);
-    const bounce_hand = watchface_bouncing.internal_minute_hand.?;
-    const hour_start = watchface_bouncing.internal_hour_hand.get(.red).start;
+test "init internal minute hand bounces when hour exits entry edge" {
+    const clock = Self.init(
+        .{ .total_minutes = 0.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
 
-    try std.testing.expectApproxEqAbs(bounce_hand.end[0], hour_start[0], vector.tolerance);
-    try std.testing.expectApproxEqAbs(bounce_hand.end[1], hour_start[1], vector.tolerance);
+    const hand = clock.internal_minute_hand.?;
+    const hour_start = clock.internal_hour_hand.get(.red).start;
 
-    // When not bouncing: internal_hour_hand start == external_minute_hand end
-    const watchface_direct = Self.init(.{ .total_minutes = 30.0 }, test_prism, test_rainbow_spread);
-    const minute_end = watchface_direct.external_minute_hand.end;
-    const hour_start_direct = watchface_direct.internal_hour_hand.get(.red).start;
-
-    try std.testing.expectApproxEqAbs(minute_end[0], hour_start_direct[0], vector.tolerance);
-    try std.testing.expectApproxEqAbs(minute_end[1], hour_start_direct[1], vector.tolerance);
+    try std.testing.expectApproxEqAbs(hand.end[0], hour_start[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(hand.end[1], hour_start[1], vector.tolerance);
 }
 
-test "init handles full 12-hour cycle" {
+test "init internal minute hand is null when hour exits different edge" {
+    const clock = Self.init(
+        .{ .total_minutes = 360.0 },
+        test_prism_normalized_size,
+        true,
+        test_rainbow_spread,
+    );
+
+    try std.testing.expectEqual(null, clock.internal_minute_hand);
+
+    const hour_start = clock.internal_hour_hand.get(.red).start;
+    const entry = clock.external_minute_hand.end;
+
+    try std.testing.expectApproxEqAbs(entry[0], hour_start[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(entry[1], hour_start[1], vector.tolerance);
+}
+
+test "init handles full 12-hour cycle rotating" {
     var minutes: f32 = 0.0;
 
     while (minutes < 720.0) : (minutes += 60.0) {
-        _ = Self.init(.{ .total_minutes = minutes }, test_prism, test_rainbow_spread);
+        _ = Self.init(
+            .{ .total_minutes = minutes },
+            test_prism_normalized_size,
+            true,
+            test_rainbow_spread,
+        );
     }
+}
+
+test "init handles full 12-hour cycle static" {
+    var minutes: f32 = 0.0;
+
+    while (minutes < 720.0) : (minutes += 60.0) {
+        _ = Self.init(
+            .{ .total_minutes = minutes },
+            test_prism_normalized_size,
+            false,
+            test_rainbow_spread,
+        );
+    }
+}
+
+test "init static internal_minute_hand is non-null when bouncing" {
+    const clock = Self.init(
+        .{ .total_minutes = 10.0 },
+        test_prism_normalized_size,
+        false,
+        test_rainbow_spread,
+    );
+
+    try std.testing.expect(clock.internal_minute_hand != null);
+}
+
+test "init static internal_minute_hand is null when not bouncing" {
+    const clock = Self.init(
+        .{ .total_minutes = 30.0 },
+        test_prism_normalized_size,
+        false,
+        test_rainbow_spread,
+    );
+
+    try std.testing.expectEqual(null, clock.internal_minute_hand);
+}
+
+test "init static internal_minute_hand ends at prism vertex when bouncing" {
+    const clock = Self.init(
+        .{ .total_minutes = 10.0 },
+        test_prism_normalized_size,
+        false,
+        test_rainbow_spread,
+    );
+
+    const hand = clock.internal_minute_hand.?;
+    const expected = clock.prism.vertices.get(.bottom_left);
+
+    try std.testing.expectApproxEqAbs(expected[0], hand.end[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(expected[1], hand.end[1], vector.tolerance);
 }

@@ -140,6 +140,16 @@ function PrismSection(): JSX.Element {
       </div>
       <div class="control-group">
         <label>
+          <input
+            type="checkbox"
+            checked={config.prism_rotating}
+            onChange={() => updateConfig("prism_rotating", !config.prism_rotating)}
+          />{" "}
+          Rotating
+        </label>
+      </div>
+      <div class="control-group">
+        <label>
           Glow Green: <span>{Math.round(config.prism_glow_linear_green * 100)}</span>%
         </label>
         <input

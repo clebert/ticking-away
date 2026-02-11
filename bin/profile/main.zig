@@ -26,8 +26,6 @@ pub fn main() void {
 
     const image = lib.Image.init(width, height);
     const viewport = image.viewport();
-    const prism = lib.Prism.init(config.prism_normalized_size);
-
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .hand_glow_falloff = config.hand_glow_falloff,
@@ -51,19 +49,23 @@ pub fn main() void {
         const minute: f32 = @as(f32, @floatFromInt(iteration)) * 60.0 /
             @as(f32, @floatFromInt(iteration_count));
 
-        const time = lib.Time.init(hour, minute);
-        const clock = lib.Clock.init(time, prism, config.rainbow_normalized_spread);
+        const clock = lib.Clock.init(
+            lib.Time.init(hour, minute),
+            config.prism_normalized_size,
+            config.prism_rotating,
+            config.rainbow_normalized_spread,
+        );
 
         @memset(&linear_buffer, lib.Linear.black);
 
         var linear_band = image.band(lib.Linear, &linear_buffer, height, 0) catch unreachable;
 
-        watchface.render(&linear_band, viewport, prism, clock);
+        watchface.render(&linear_band, viewport, clock);
 
         var srgb_band =
             dither.apply(linear_band, &srgb_buffer, &dither_error_buffer) catch unreachable;
 
-        grain.apply(&srgb_band, viewport, prism);
+        grain.apply(&srgb_band, viewport, clock.prism);
 
         const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 

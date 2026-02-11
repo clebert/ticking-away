@@ -78,14 +78,22 @@ export fn render(
 
     ensureBuffers(@intCast(width), @intCast(height)) catch return null;
 
-    const time = lib.Time.init(hour, minute);
-    const prism = lib.Prism.init(config.prism_normalized_size);
-    const clock = lib.Clock.init(time, prism, config.rainbow_normalized_spread);
+    const clock = lib.Clock.init(
+        lib.Time.init(hour, minute),
+        config.prism_normalized_size,
+        config.prism_rotating,
+        config.rainbow_normalized_spread,
+    );
+
     const image = lib.Image.init(@intCast(width), @intCast(height));
 
-    @memset(linear_buffer.?, if (config.background_enabled) lib.Linear.black else lib.Linear.transparent);
+    @memset(
+        linear_buffer.?,
+        if (config.background_enabled) lib.Linear.black else lib.Linear.transparent,
+    );
 
-    var linear_band = image.band(lib.Linear, linear_buffer.?, @intCast(height), 0) catch return null;
+    var linear_band =
+        image.band(lib.Linear, linear_buffer.?, @intCast(height), 0) catch return null;
 
     const viewport = image.viewport();
 
@@ -98,7 +106,7 @@ export fn render(
         .rainbow_palette_id = config.rainbow_palette_id,
     };
 
-    watchface.render(&linear_band, viewport, prism, clock);
+    watchface.render(&linear_band, viewport, clock);
 
     var srgb_band = if (config.dither_enabled) blk: {
         const dither = lib.Dither{
@@ -107,7 +115,11 @@ export fn render(
             .palette = config.dither_palette_id.palette(),
         };
 
-        break :blk dither.apply(linear_band, srgb_buffer.?, dither_error_buffer.?) catch return null;
+        break :blk dither.apply(
+            linear_band,
+            srgb_buffer.?,
+            dither_error_buffer.?,
+        ) catch return null;
     } else blk: {
         break :blk linear_band.toSrgb(srgb_buffer.?) catch return null;
     };
@@ -115,7 +127,7 @@ export fn render(
     if (config.grain_enabled) {
         const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-        grain.apply(&srgb_band, viewport, prism);
+        grain.apply(&srgb_band, viewport, clock.prism);
     }
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
