@@ -2,7 +2,7 @@
 
 > _Ticking away the moments that make up a dull day._
 
-<img src="prism.png" alt="Ticking Away" width="512">
+<img src="logo.png" alt="Ticking Away" width="512">
 
 A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover, featuring a prism that
 refracts light into a rainbow. The name comes from the opening line of "Time".

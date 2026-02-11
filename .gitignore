@@ -8,3 +8,5 @@
 /public/*.wasm
 /TODO.md
 /zig-out/
+/*.png
+!/logo.png
