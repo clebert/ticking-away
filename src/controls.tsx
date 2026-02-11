@@ -166,7 +166,7 @@ function PrismSection(): JSX.Element {
         </label>
         <input
           type="range"
-          min="5"
+          min="0"
           max="50"
           value={Math.round(config.prism_glow_normalized_width * 100)}
           onInput={(e) => updateConfig("prism_glow_normalized_width", intValue(e) / 100)}
