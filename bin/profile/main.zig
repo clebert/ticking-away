@@ -65,7 +65,7 @@ pub fn main() void {
         var srgb_band =
             dither.apply(linear_band, &srgb_buffer, &dither_error_buffer) catch unreachable;
 
-        grain.apply(&srgb_band, viewport, clock.prism);
+        grain.apply(&srgb_band);
 
         const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 

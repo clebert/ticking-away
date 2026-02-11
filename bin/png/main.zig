@@ -57,7 +57,7 @@ pub fn main() !void {
     if (config.grain_enabled) {
         const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-        grain.apply(&srgb_band, viewport, clock.prism);
+        grain.apply(&srgb_band);
     }
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };

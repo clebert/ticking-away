@@ -38,6 +38,7 @@ pub fn render(self: Self, band: *Image.Band(Linear), viewport: Image.Viewport, c
     if (clock.internal_minute_hand) |internal_minute_hand| {
         hand_glow.renderLine(band, viewport, internal_minute_hand, .{
             .clip = .{ .prism = clock.prism },
+            .rainbow = rainbow,
         });
     }
 

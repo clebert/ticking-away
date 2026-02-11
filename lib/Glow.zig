@@ -3,6 +3,7 @@ const std = @import("std");
 const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
 const Prism = @import("Prism.zig");
+const Rainbow = @import("Rainbow.zig");
 const Segment = @import("Segment.zig");
 const util = @import("util.zig");
 
@@ -35,6 +36,7 @@ pub const ClipRegion = union(enum) {
 pub const LineOptions = struct {
     clip: ClipRegion = .none,
     fading: bool = false,
+    rainbow: ?Rainbow = null,
 };
 
 normalized_width: f32,
@@ -52,19 +54,19 @@ pub fn renderLine(
 
     switch (options.clip) {
         .none => if (options.fading) {
-            self.renderLineInner(true, .none, band, viewport, line, undefined);
+            self.renderLineInner(true, .none, band, viewport, line, undefined, options.rainbow);
         } else {
-            self.renderLineInner(false, .none, band, viewport, line, undefined);
+            self.renderLineInner(false, .none, band, viewport, line, undefined, options.rainbow);
         },
         .circle => if (options.fading) {
-            self.renderLineInner(true, .circle, band, viewport, line, undefined);
+            self.renderLineInner(true, .circle, band, viewport, line, undefined, options.rainbow);
         } else {
-            self.renderLineInner(false, .circle, band, viewport, line, undefined);
+            self.renderLineInner(false, .circle, band, viewport, line, undefined, options.rainbow);
         },
         .prism => |prism| if (options.fading) {
-            self.renderLineInner(true, .prism, band, viewport, line, prism);
+            self.renderLineInner(true, .prism, band, viewport, line, prism, options.rainbow);
         } else {
-            self.renderLineInner(false, .prism, band, viewport, line, prism);
+            self.renderLineInner(false, .prism, band, viewport, line, prism, options.rainbow);
         },
     }
 }
@@ -77,6 +79,7 @@ inline fn renderLineInner(
     viewport: Image.Viewport,
     line: Segment,
     clip_prism: Prism,
+    rainbow: ?Rainbow,
 ) void {
     const width_squared = self.normalized_width * self.normalized_width;
     const band_height = band.bandHeight();
@@ -90,6 +93,10 @@ inline fn renderLineInner(
     const x_end = util.ceilClamped(max_pixel[0], band.width);
     const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
     const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
+
+    const line_direction = line.end - line.start;
+    const line_length = @sqrt(@reduce(.Add, line_direction * line_direction));
+    const inv_line_length = if (line_length > std.math.floatEps(f32)) 1.0 / line_length else 0;
 
     for (y_start..y_end) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
@@ -113,13 +120,29 @@ inline fn renderLineInner(
             const radial =
                 self.falloff.apply(@sqrt(projection.distance_squared) / self.normalized_width);
 
-            const intensity = radial * if (comptime fading)
-                1.0 - projection.normalized_position
-            else
-                1.0;
+            const fade = 1.0 - projection.normalized_position;
+            const intensity = radial * if (comptime fading) fade * fade else 1.0;
+
+            const line_color = if (rainbow) |r| blk: {
+                const start_to_point = point - line.start;
+
+                const signed_distance =
+                    (line_direction[0] * start_to_point[1] - line_direction[1] * start_to_point[0]) *
+                    inv_line_length;
+
+                const rainbow_color = r.interpolate(
+                    std.math.clamp(signed_distance / self.normalized_width * 0.5 + 0.5, 0.0, 1.0),
+                );
+
+                const dispersion = @sqrt(
+                    std.math.clamp(projection.normalized_position * 4.0, 0.0, 1.0),
+                );
+
+                break :blk Linear.lerp(Linear.white, rainbow_color, dispersion);
+            } else self.color;
 
             const pixel = band.colorAt(x, local_y);
-            const contribution = self.color.vec * @as(@Vector(4, f32), @splat(intensity));
+            const contribution = line_color.vec * @as(@Vector(4, f32), @splat(intensity));
 
             pixel.vec = @max(pixel.vec, contribution);
         }
