@@ -214,7 +214,7 @@ function RainbowSection(): JSX.Element {
         <input
           type="range"
           min="0"
-          max="10"
+          max="20"
           value={Math.round(config.hand_glow_normalized_width * 1000)}
           onInput={(e) => updateConfig("hand_glow_normalized_width", intValue(e) / 1000)}
         />
