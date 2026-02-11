@@ -38,7 +38,7 @@ pub fn init(time: Time, prism: Prism, rainbow_normalized_spread: f32) Self {
         .end = minute_prism_intersection.hit,
     };
 
-    const internal_minute_hand: ?Segment = if (bouncingVertex(hour, minute)) |vertex_id| blk: {
+    const internal_minute_hand: ?Segment = if (bouncingVertexId(hour, minute)) |vertex_id| blk: {
         break :blk .{ .start = external_minute_hand.end, .end = prism.vertices.get(vertex_id) };
     } else null;
 
@@ -86,7 +86,7 @@ pub fn init(time: Time, prism: Prism, rainbow_normalized_spread: f32) Self {
     };
 }
 
-fn bouncingVertex(hour: u4, minute: f32) ?Prism.VertexId {
+fn bouncingVertexId(hour: u4, minute: f32) ?Prism.VertexId {
     const margin: f32 = 0.5;
 
     switch (hour) {
