@@ -226,4 +226,5 @@ pub fn build(b: *std.Build) void {
     // =========================================================================
 
     b.default_step.dependOn(wasm_step);
+    b.default_step.dependOn(check_step);
 }

@@ -29,8 +29,9 @@ pub fn main() !void {
     const tz = blk: {
         const file = try std.fs.openFileAbsolute("/etc/localtime", .{});
         defer file.close();
-        var read_buffer: [4096]u8 = undefined;
-        break :blk try std.Tz.parse(allocator, file.reader(&read_buffer));
+        const data = try file.readToEndAlloc(allocator, 1 << 16);
+        var stream = std.io.fixedBufferStream(data);
+        break :blk try std.Tz.parse(allocator, stream.reader());
     };
 
     const config = try lib.Config.init(allocator);
@@ -59,7 +60,7 @@ pub fn main() !void {
     defer display.deinit();
 
     while (true) {
-        const now = localTime(tz);
+        const now = try localTime(tz);
         const minute = snapMinute(now.minute, interval);
 
         std.debug.print("{d:0>2}:{d:0>2}\n", .{ now.hour, minute });
@@ -83,7 +84,7 @@ fn render(
     watchface: lib.Watchface,
     dither: lib.Dither,
     image: lib.Image,
-    viewport: lib.Image.Viewport,
+    viewport: lib.Image.Viewport(.clockwise_90),
     crop: lib.Crop,
     clock: lib.Clock,
 ) !void {
@@ -99,13 +100,13 @@ fn render(
         for (0..band_count) |band_index| {
             @memset(&linear_buffer, lib.Linear.black);
 
-            var linear_band = image.band(lib.Linear, &linear_buffer, band_height, band_index) catch unreachable;
+            const linear_band = image.band(lib.Linear, &linear_buffer, band_height, band_index) catch unreachable;
 
-            watchface.render(&linear_band, viewport, clock);
+            watchface.render(linear_band, viewport, clock);
 
-            var srgb_band = (dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable);
+            const srgb_band = (dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable);
 
-            crop.apply(&srgb_band, viewport);
+            crop.apply(srgb_band, viewport);
 
             packRow(&srgb_band, dither.palette, column_offset, &pack_row);
 
@@ -149,9 +150,9 @@ const LocalTime = struct {
     second: u32,
 };
 
-fn localTime(tz: std.Tz) LocalTime {
-    const epoch = std.posix.clock_gettime(.REALTIME);
-    const utc_seconds: i64 = epoch.tv_sec;
+fn localTime(tz: std.Tz) !LocalTime {
+    const epoch = try std.posix.clock_gettime(.REALTIME);
+    const utc_seconds: i64 = epoch.sec;
     const offset: i64 = utcOffset(tz, utc_seconds);
     const local_seconds: u64 = @intCast(utc_seconds + offset);
     const epoch_seconds = std.time.epoch.EpochSeconds{ .secs = local_seconds };
