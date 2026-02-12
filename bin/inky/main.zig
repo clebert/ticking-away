@@ -29,7 +29,8 @@ pub fn main() !void {
     const tz = blk: {
         const file = try std.fs.openFileAbsolute("/etc/localtime", .{});
         defer file.close();
-        break :blk try std.Tz.parse(allocator, file.reader());
+        var read_buffer: [4096]u8 = undefined;
+        break :blk try std.Tz.parse(allocator, file.reader(&read_buffer));
     };
 
     const config = try lib.Config.init(allocator);
