@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const lib = @import("lib");
+
 const spi = @import("spi.zig");
 
 const display_width = 1200;
@@ -28,32 +29,46 @@ pub fn main() !void {
 
     const tz = blk: {
         const file = try std.fs.openFileAbsolute("/etc/localtime", .{});
+
         defer file.close();
+
         const data = try file.readToEndAlloc(allocator, 1 << 16);
+
         var stream = std.io.fixedBufferStream(data);
+
         break :blk try std.Tz.parse(allocator, stream.reader());
     };
 
-    const config = try lib.Config.init(allocator);
+    const prism_normalized_size = 0.9;
+    const prism_rotating = false;
+    const prism_glow_linear_green = 0.75;
+    const prism_glow_normalized_width = 0.07;
+    const prism_glow_falloff = lib.Glow.Falloff.exponential;
+    const rainbow_normalized_spread = 0.5;
+    const hand_glow_normalized_width = 0.01;
+    const hand_glow_falloff = lib.Glow.Falloff.quadratic;
+    const rainbow_palette_id = lib.Rainbow.PaletteId.spectra6;
+    const dither_palette_id = lib.Dither.PaletteId.spectra6_epdopt;
+    const dither_normalized_strength = 0.9;
+    const dither_normalized_chroma_emphasis = 0.45;
 
     const watchface = lib.Watchface{
-        .hand_glow_normalized_width = config.hand_glow_normalized_width,
-        .hand_glow_falloff = config.hand_glow_falloff,
-        .prism_glow_normalized_width = config.prism_glow_normalized_width,
-        .prism_glow_falloff = config.prism_glow_falloff,
-        .prism_glow_color = lib.Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
-        .rainbow_palette_id = config.rainbow_palette_id,
+        .hand_glow_normalized_width = hand_glow_normalized_width,
+        .hand_glow_falloff = hand_glow_falloff,
+        .prism_glow_normalized_width = prism_glow_normalized_width,
+        .prism_glow_falloff = prism_glow_falloff,
+        .prism_glow_color = lib.Linear.init(0.1, prism_glow_linear_green, 1.0, 1.0),
+        .rainbow_palette_id = rainbow_palette_id,
     };
 
     const dither = lib.Dither{
-        .normalized_strength = config.dither_normalized_strength,
-        .normalized_chroma_emphasis = config.dither_normalized_chroma_emphasis,
-        .palette = config.dither_palette_id.palette(),
+        .normalized_strength = dither_normalized_strength,
+        .normalized_chroma_emphasis = dither_normalized_chroma_emphasis,
+        .palette = dither_palette_id.palette(),
     };
 
     const image = lib.Image.init(display_width, display_height);
     const viewport = image.viewportRotated(.clockwise_90);
-    const crop = lib.Crop{ .outside_color = dither.palette.white() };
 
     var display = try spi.Display.init();
 
@@ -67,12 +82,12 @@ pub fn main() !void {
 
         const clock = lib.Clock.init(
             lib.Time.init(now.hour, @floatFromInt(minute)),
-            config.prism_normalized_size,
-            config.prism_rotating,
-            config.rainbow_normalized_spread,
+            prism_normalized_size,
+            prism_rotating,
+            rainbow_normalized_spread,
         );
 
-        try render(&display, watchface, dither, image, viewport, crop, clock);
+        try render(&display, watchface, dither, image, viewport, clock);
         try display.refresh();
 
         sleepUntilNext(now.minute, now.second, interval);
@@ -85,7 +100,6 @@ fn render(
     dither: lib.Dither,
     image: lib.Image,
     viewport: lib.Image.Viewport(.clockwise_90),
-    crop: lib.Crop,
     clock: lib.Clock,
 ) !void {
     var linear_buffer: [band_pixels]lib.Linear = undefined;
@@ -105,8 +119,6 @@ fn render(
             watchface.render(linear_band, viewport, clock);
 
             const srgb_band = (dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable);
-
-            crop.apply(srgb_band, viewport);
 
             packRow(&srgb_band, dither.palette, column_offset, &pack_row);
 
@@ -167,10 +179,12 @@ fn localTime(tz: std.Tz) !LocalTime {
 
 fn utcOffset(tz: std.Tz, utc_seconds: i64) i64 {
     var offset: i32 = 0;
+
     for (tz.transitions) |transition| {
         if (transition.ts > utc_seconds) break;
         offset = transition.timetype.offset;
     }
+
     return offset;
 }
 

@@ -51,7 +51,6 @@ comfortably in the Pico 2's 520 KB SRAM.
 
 ### Heap (arena allocator)
 
-| Allocation        | Size             |
-| ----------------- | ---------------- |
-| Timezone file     | ~3 KB typical    |
-| Config JSON parse | temporary, freed |
+| Allocation    | Size          |
+| ------------- | ------------- |
+| Timezone file | ~3 KB typical |
