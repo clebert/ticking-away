@@ -3,7 +3,7 @@ const allocator = std.heap.wasm_allocator;
 
 const lib = @import("lib");
 
-var config_json_buffer: [512]u8 = undefined;
+var config_json_buffer: [1024]u8 = undefined;
 var parse_buffer: [4096]u8 = undefined;
 var cached_config: ?lib.Config = null;
 

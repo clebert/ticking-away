@@ -93,7 +93,7 @@ export function resetConfig($config: Signal<Config>): void {
 // --- WASM config serialization ---
 
 const encoder = new TextEncoder();
-const configJsonBufferSize = 512;
+const configJsonBufferSize = 1024;
 
 // Cached alongside the config signal so writeConfigJson can do a cheap reference
 // check instead of re-stringifying on every render frame.
