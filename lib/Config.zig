@@ -8,7 +8,6 @@ const Self = @This();
 
 background_enabled: bool,
 prism_normalized_size: f32,
-prism_rotating: bool,
 prism_glow_linear_green: f32,
 prism_glow_normalized_width: f32,
 prism_glow_falloff: Glow.Falloff,

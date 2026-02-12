@@ -9,7 +9,6 @@ import { getWasmMemory, getWasmModule } from "./wasm.ts";
 const ConfigSchema = z.object({
   background_enabled: z.boolean(),
   prism_normalized_size: z.number(),
-  prism_rotating: z.boolean(),
   prism_glow_linear_green: z.number(),
   prism_glow_normalized_width: z.number(),
   prism_glow_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),

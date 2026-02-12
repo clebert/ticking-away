@@ -39,18 +39,17 @@ pub fn main() !void {
         break :blk try std.Tz.parse(allocator, stream.reader());
     };
 
-    const prism_normalized_size = 0.9;
-    const prism_rotating = false;
-    const prism_glow_linear_green = 0.75;
-    const prism_glow_normalized_width = 0.07;
+    const prism_normalized_size: f32 = 0.9;
+    const prism_glow_linear_green: f32 = 0.75;
+    const prism_glow_normalized_width: f32 = 0.07;
     const prism_glow_falloff = lib.Glow.Falloff.exponential;
-    const rainbow_normalized_spread = 0.5;
-    const hand_glow_normalized_width = 0.01;
+    const rainbow_normalized_spread: f32 = 0.5;
+    const hand_glow_normalized_width: f32 = 0.01;
     const hand_glow_falloff = lib.Glow.Falloff.quadratic;
     const rainbow_palette_id = lib.Rainbow.PaletteId.spectra6;
     const dither_palette_id = lib.Dither.PaletteId.spectra6_epdopt;
-    const dither_normalized_strength = 0.9;
-    const dither_normalized_chroma_emphasis = 0.45;
+    const dither_normalized_strength: f32 = 0.9;
+    const dither_normalized_chroma_emphasis: f32 = 0.45;
 
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = hand_glow_normalized_width,
@@ -83,7 +82,6 @@ pub fn main() !void {
         const clock = lib.Clock.init(
             lib.Time.init(now.hour, @floatFromInt(minute)),
             prism_normalized_size,
-            prism_rotating,
             rainbow_normalized_spread,
         );
 

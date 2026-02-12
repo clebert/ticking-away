@@ -81,7 +81,6 @@ export fn render(
     const clock = lib.Clock.init(
         lib.Time.init(hour, minute),
         config.prism_normalized_size,
-        config.prism_rotating,
         config.rainbow_normalized_spread,
     );
 

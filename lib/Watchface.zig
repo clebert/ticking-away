@@ -100,7 +100,7 @@ const test_watchface = Self{
 };
 
 fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
-    const clock = Clock.init(time, test_prism_normalized_size, true, 0.5);
+    const clock = Clock.init(time, test_prism_normalized_size, 0.5);
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 
@@ -115,7 +115,7 @@ fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
 
 test "multi-band render matches single-band render" {
     const time = Time{ .total_minutes = 195.0 };
-    const clock = Clock.init(time, test_prism_normalized_size, true, 0.5);
+    const clock = Clock.init(time, test_prism_normalized_size, 0.5);
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 

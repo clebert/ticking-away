@@ -85,35 +85,6 @@ pub fn bounds(self: Self) @Vector(4, f32) {
     return .{ bounds_min[0], bounds_min[1], bounds_max[0], bounds_max[1] };
 }
 
-pub fn rotated(self: Self, angle: f32) Self {
-    const cos_angle = @cos(angle);
-    const sin_angle = @sin(angle);
-
-    var vertices: std.EnumArray(VertexId, @Vector(2, f32)) = undefined;
-
-    inline for (std.meta.tags(VertexId)) |vertex_id| {
-        vertices.set(vertex_id, rotatePoint(self.vertices.get(vertex_id), cos_angle, sin_angle));
-    }
-
-    var edges: std.EnumArray(EdgeId, Segment) = undefined;
-
-    inline for (std.meta.tags(EdgeId)) |edge_id| {
-        edges.set(edge_id, .{
-            .start = vertices.get(edge_id.getStartVertexId()),
-            .end = vertices.get(edge_id.getEndVertexId()),
-        });
-    }
-
-    return .{ .vertices = vertices, .edges = edges };
-}
-
-fn rotatePoint(point: @Vector(2, f32), cos_angle: f32, sin_angle: f32) @Vector(2, f32) {
-    return .{
-        point[0] * cos_angle - point[1] * sin_angle,
-        point[0] * sin_angle + point[1] * cos_angle,
-    };
-}
-
 pub fn intersect(self: Self, ray: Ray) ?Ray.Intersection {
     return Ray.Intersection.closest(
         Ray.Intersection.closest(
@@ -198,74 +169,6 @@ test "bounds returns min/max of vertices" {
     // max_x = bottom_right x, max_y = bottom_right y (== bottom_left y)
     try std.testing.expectApproxEqAbs(bottom_right[0], prism_bounds[2], vector.tolerance);
     try std.testing.expectApproxEqAbs(bottom_right[1], prism_bounds[3], vector.tolerance);
-}
-
-test "rotated preserves shape and applies rotation" {
-    const prism = Self.init(0.8);
-
-    // Rotating by 0 gives back the same prism
-    const same = prism.rotated(0);
-
-    inline for (std.meta.tags(VertexId)) |vertex_id| {
-        const original = prism.vertices.get(vertex_id);
-        const result = same.vertices.get(vertex_id);
-
-        try std.testing.expectApproxEqAbs(original[0], result[0], vector.tolerance);
-        try std.testing.expectApproxEqAbs(original[1], result[1], vector.tolerance);
-    }
-
-    // Rotating by 2π gives back the same prism
-    const full = prism.rotated(2.0 * std.math.pi);
-
-    inline for (std.meta.tags(VertexId)) |vertex_id| {
-        const original = prism.vertices.get(vertex_id);
-        const result = full.vertices.get(vertex_id);
-
-        try std.testing.expectApproxEqAbs(original[0], result[0], vector.tolerance);
-        try std.testing.expectApproxEqAbs(original[1], result[1], vector.tolerance);
-    }
-
-    // Rotating by π/2 maps (x, y) -> (-y, x)
-    const quarter = prism.rotated(std.math.pi / 2.0);
-
-    inline for (std.meta.tags(VertexId)) |vertex_id| {
-        const original = prism.vertices.get(vertex_id);
-        const result = quarter.vertices.get(vertex_id);
-
-        try std.testing.expectApproxEqAbs(-original[1], result[0], vector.tolerance);
-        try std.testing.expectApproxEqAbs(original[0], result[1], vector.tolerance);
-    }
-
-    // Edge lengths are preserved (rotation is an isometry)
-    const rotated_prism = prism.rotated(0.7);
-
-    inline for (std.meta.tags(EdgeId)) |edge_id| {
-        const original_edge = prism.edges.get(edge_id);
-        const rotated_edge = rotated_prism.edges.get(edge_id);
-        const original_delta = original_edge.end - original_edge.start;
-        const rotated_delta = rotated_edge.end - rotated_edge.start;
-
-        try std.testing.expectApproxEqAbs(
-            @reduce(.Add, original_delta * original_delta),
-            @reduce(.Add, rotated_delta * rotated_delta),
-            vector.tolerance,
-        );
-    }
-
-    // Edges connect correct vertices after rotation
-    inline for (std.meta.tags(EdgeId)) |edge_id| {
-        const edge = rotated_prism.edges.get(edge_id);
-
-        try std.testing.expectEqual(
-            rotated_prism.vertices.get(edge_id.getStartVertexId()),
-            edge.start,
-        );
-
-        try std.testing.expectEqual(
-            rotated_prism.vertices.get(edge_id.getEndVertexId()),
-            edge.end,
-        );
-    }
 }
 
 test "containsPoint" {
