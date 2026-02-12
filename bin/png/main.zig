@@ -39,7 +39,7 @@ pub fn main() !void {
         if (config.background_enabled) lib.Linear.black else lib.Linear.transparent,
     );
 
-    var linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
+    const linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
 
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
@@ -50,19 +50,19 @@ pub fn main() !void {
         .rainbow_palette_id = config.rainbow_palette_id,
     };
 
-    watchface.render(&linear_band, viewport, clock);
+    watchface.render(linear_band, viewport, clock);
 
-    var srgb_band = linear_band.toSrgb(srgb_buffer) catch unreachable;
+    const srgb_band = linear_band.toSrgb(srgb_buffer) catch unreachable;
 
     if (config.grain_enabled) {
         const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-        grain.apply(&srgb_band);
+        grain.apply(srgb_band);
     }
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 
-    crop.apply(&srgb_band, viewport);
+    crop.apply(srgb_band, viewport);
 
     try png.write(allocator, args.output_path, size, size, srgb_buffer);
 

@@ -7,7 +7,7 @@ const Self = @This();
 
 outside_color: Srgb,
 
-pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: anytype) void {
+pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
     const radius = viewport.scale - 1.0;
     const radius_squared = radius * radius;
     const center_x = viewport.center[0];
@@ -53,11 +53,11 @@ test "apply sets pixels outside circle to outside color" {
     const viewport = image.viewport();
 
     var buffer = [_]Srgb{Srgb.black} ** 100;
-    var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
+    const band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
     const crop = Self{ .outside_color = Srgb.white };
 
-    crop.apply(&band, viewport);
+    crop.apply(band, viewport);
 
     // Corner pixel (0,0) is outside the unit circle — should be white
     try std.testing.expectEqual(Srgb.white, buffer[0]);
@@ -71,11 +71,11 @@ test "apply sets transparent outside color" {
     const viewport = image.viewport();
 
     var buffer = [_]Srgb{Srgb.black} ** 100;
-    var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
+    const band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
     const crop = Self{ .outside_color = Srgb.transparent };
 
-    crop.apply(&band, viewport);
+    crop.apply(band, viewport);
 
     // Corner pixel should be transparent
     try std.testing.expectEqual(@as(u8, 0), buffer[0].a);
@@ -89,11 +89,11 @@ test "apply handles wide image" {
     const viewport = image.viewport();
 
     var buffer = [_]Srgb{Srgb.black} ** 200;
-    var band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
 
+    const band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
     const crop = Self{ .outside_color = Srgb.white };
 
-    crop.apply(&band, viewport);
+    crop.apply(band, viewport);
 
     // Far left pixel (0,5) is outside circle in a wide image (circle radius = 5)
     try std.testing.expectEqual(Srgb.white, buffer[5 * 20 + 0]);
@@ -128,9 +128,10 @@ test "multi-band crop matches single-band crop" {
 
     // Reference: single-band (full height)
     var reference = input;
-    var full_band = image.band(Srgb, &reference, height, 0) catch unreachable;
 
-    crop.apply(&full_band, viewport);
+    const full_band = image.band(Srgb, &reference, height, 0) catch unreachable;
+
+    crop.apply(full_band, viewport);
 
     // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
@@ -144,9 +145,14 @@ test "multi-band crop matches single-band crop" {
             const row_start = band_index * band_height * width;
             const band_pixels = band_height * width;
 
-            var narrow_band = image.band(Srgb, banded_output[row_start..][0..band_pixels], band_height, band_index) catch unreachable;
+            const narrow_band = image.band(
+                Srgb,
+                banded_output[row_start..][0..band_pixels],
+                band_height,
+                band_index,
+            ) catch unreachable;
 
-            crop.apply(&narrow_band, viewport);
+            crop.apply(narrow_band, viewport);
         }
 
         for (&reference, &banded_output, 0..) |ref, actual, i| {
@@ -154,19 +160,28 @@ test "multi-band crop matches single-band crop" {
             const x = i % width;
 
             std.testing.expectEqual(ref.r, actual.r) catch {
-                std.debug.print("band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n", .{ band_height, x, y, ref.r, actual.r });
+                std.debug.print(
+                    "band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n",
+                    .{ band_height, x, y, ref.r, actual.r },
+                );
 
                 return error.TestUnexpectedResult;
             };
 
             std.testing.expectEqual(ref.g, actual.g) catch {
-                std.debug.print("band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n", .{ band_height, x, y, ref.g, actual.g });
+                std.debug.print(
+                    "band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n",
+                    .{ band_height, x, y, ref.g, actual.g },
+                );
 
                 return error.TestUnexpectedResult;
             };
 
             std.testing.expectEqual(ref.b, actual.b) catch {
-                std.debug.print("band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n", .{ band_height, x, y, ref.b, actual.b });
+                std.debug.print(
+                    "band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n",
+                    .{ band_height, x, y, ref.b, actual.b },
+                );
 
                 return error.TestUnexpectedResult;
             };

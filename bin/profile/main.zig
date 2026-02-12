@@ -58,18 +58,18 @@ pub fn main() void {
 
         @memset(&linear_buffer, lib.Linear.black);
 
-        var linear_band = image.band(lib.Linear, &linear_buffer, height, 0) catch unreachable;
+        const linear_band = image.band(lib.Linear, &linear_buffer, height, 0) catch unreachable;
 
-        watchface.render(&linear_band, viewport, clock);
+        watchface.render(linear_band, viewport, clock);
 
-        var srgb_band =
+        const srgb_band =
             dither.apply(linear_band, &srgb_buffer, &dither_error_buffer) catch unreachable;
 
-        grain.apply(&srgb_band);
+        grain.apply(srgb_band);
 
         const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 
-        crop.apply(&srgb_band, viewport);
+        crop.apply(srgb_band, viewport);
     }
 }
 

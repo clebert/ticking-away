@@ -45,7 +45,7 @@ color: Linear,
 
 pub fn renderLine(
     self: Self,
-    band: *Image.Band(Linear),
+    band: Image.Band(Linear),
     viewport: anytype,
     line: Segment,
     options: LineOptions,
@@ -75,7 +75,7 @@ inline fn renderLineInner(
     self: Self,
     comptime fading: bool,
     comptime clip_region: std.meta.Tag(ClipRegion),
-    band: *Image.Band(Linear),
+    band: Image.Band(Linear),
     viewport: anytype,
     line: Segment,
     clip_prism: Prism,
@@ -153,7 +153,7 @@ inline fn renderLineInner(
 
 pub fn renderPrismEdges(
     self: Self,
-    band: *Image.Band(Linear),
+    band: Image.Band(Linear),
     viewport: anytype,
     prism: Prism,
 ) void {
@@ -244,11 +244,11 @@ test "renderPrismEdges produces glow inside prism" {
     const viewport = image.viewport();
 
     var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
-    var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
 
+    const band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
     const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
 
-    glow.renderPrismEdges(&band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, prism);
 
     var found_glow = false;
 
@@ -269,11 +269,11 @@ test "renderPrismEdges produces glow with rotated viewport" {
     const pixel_count = 48 * 64;
 
     var buffer = [_]Linear{Linear.black} ** pixel_count;
-    var band = image.band(Linear, &buffer, 64, 0) catch unreachable;
 
+    const band = image.band(Linear, &buffer, 64, 0) catch unreachable;
     const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
 
-    glow.renderPrismEdges(&band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, prism);
 
     var found_glow = false;
 
@@ -294,11 +294,11 @@ test "renderPrismEdges does not write outside prism" {
     const viewport = image.viewport();
 
     var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
-    var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
 
+    const band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
     const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
 
-    glow.renderPrismEdges(&band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, prism);
 
     try std.testing.expectEqual(Linear.black.vec, buffer[0].vec);
     try std.testing.expectEqual(Linear.black.vec, buffer[image_size * image_size - 1].vec);
@@ -313,11 +313,11 @@ test "renderPrismEdges uses additive blending" {
     const base = Linear.init(0.1, 0.1, 0.1, 1.0);
 
     var buffer = [_]Linear{base} ** (image_size * image_size);
-    var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
 
+    const band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
     const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
 
-    glow.renderPrismEdges(&band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, prism);
 
     var found_additive = false;
 

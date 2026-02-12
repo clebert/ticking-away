@@ -106,9 +106,9 @@ export fn render(
         .rainbow_palette_id = config.rainbow_palette_id,
     };
 
-    watchface.render(&linear_band, viewport, clock);
+    watchface.render(linear_band, viewport, clock);
 
-    var srgb_band = if (config.dither_enabled) blk: {
+    const srgb_band = if (config.dither_enabled) blk: {
         const dither = lib.Dither{
             .normalized_strength = config.dither_normalized_strength,
             .normalized_chroma_emphasis = config.dither_normalized_chroma_emphasis,
@@ -127,12 +127,12 @@ export fn render(
     if (config.grain_enabled) {
         const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-        grain.apply(&srgb_band);
+        grain.apply(srgb_band);
     }
 
     const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
 
-    crop.apply(&srgb_band, viewport);
+    crop.apply(srgb_band, viewport);
 
     return @ptrCast(srgb_buffer.?.ptr);
 }

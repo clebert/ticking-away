@@ -18,7 +18,7 @@ prism_glow_falloff: Glow.Falloff,
 prism_glow_color: Linear,
 rainbow_palette_id: Rainbow.PaletteId,
 
-pub fn render(self: Self, band: *Image.Band(Linear), viewport: anytype, clock: Clock) void {
+pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Clock) void {
     const right_side = clock.external_hour_hand.get(.green).end[0] > 0;
     const base_rainbow = Rainbow.get(self.rainbow_palette_id);
     const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
@@ -105,9 +105,10 @@ fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
     const viewport = image.viewport();
 
     var full_buffer = [_]Linear{Linear.black} ** (test_image_size * test_image_size);
-    var full_band = image.band(Linear, &full_buffer, test_image_size, 0) catch unreachable;
 
-    test_watchface.render(&full_band, viewport, clock);
+    const full_band = image.band(Linear, &full_buffer, test_image_size, 0) catch unreachable;
+
+    test_watchface.render(full_band, viewport, clock);
 
     return full_buffer;
 }
@@ -125,10 +126,10 @@ test "multi-band render matches single-band render" {
     for (0..test_band_count) |band_index| {
         @memset(&band_buffer, Linear.black);
 
-        var narrow_band =
+        const narrow_band =
             image.band(Linear, &band_buffer, test_band_height, band_index) catch unreachable;
 
-        test_watchface.render(&narrow_band, viewport, clock);
+        test_watchface.render(narrow_band, viewport, clock);
 
         const row_start = band_index * test_image_size * test_band_height;
 

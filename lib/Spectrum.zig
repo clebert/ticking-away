@@ -62,7 +62,7 @@ pub fn init(
 
 pub fn render(
     self: Self,
-    band: *Image.Band(Linear),
+    band: Image.Band(Linear),
     viewport: anytype,
     prism: Prism,
     rainbow: Rainbow,
@@ -181,11 +181,11 @@ test "render produces spectrum with rotated viewport" {
     const pixel_count = 48 * 64;
 
     var buffer = [_]Linear{Linear.black} ** pixel_count;
-    var band = image.band(Linear, &buffer, 64, 0) catch unreachable;
 
+    const band = image.band(Linear, &buffer, 64, 0) catch unreachable;
     const spectrum = Self.init(.external, .{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 });
 
-    spectrum.render(&band, viewport, prism, rainbow);
+    spectrum.render(band, viewport, prism, rainbow);
 
     var found_color = false;
 
