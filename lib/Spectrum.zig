@@ -63,7 +63,7 @@ pub fn init(
 pub fn render(
     self: Self,
     band: *Image.Band(Linear),
-    viewport: Image.Viewport,
+    viewport: anytype,
     prism: Prism,
     rainbow: Rainbow,
 ) void {
@@ -81,8 +81,10 @@ pub fn render(
     else
         sectorBounds(self.direction_start, self.direction_end);
 
-    const min_pixel = viewport.toPixel(.{ normalized_bounds[0], normalized_bounds[1] });
-    const max_pixel = viewport.toPixel(.{ normalized_bounds[2], normalized_bounds[3] });
+    const pixel_a = viewport.toPixel(.{ normalized_bounds[0], normalized_bounds[1] });
+    const pixel_b = viewport.toPixel(.{ normalized_bounds[2], normalized_bounds[3] });
+    const min_pixel = @min(pixel_a, pixel_b);
+    const max_pixel = @max(pixel_a, pixel_b);
 
     const x_min = util.floorClamped(min_pixel[0], band.width);
     const x_max = util.ceilClamped(max_pixel[0], band.width);
@@ -169,6 +171,32 @@ fn directionInSector(
 ) bool {
     return vector.cross2d(sector_start, direction) >= 0 and
         vector.cross2d(direction, sector_end) >= 0;
+}
+
+test "render produces spectrum with rotated viewport" {
+    const prism = Prism.init(0.8);
+    const rainbow = Rainbow.get(.spectral);
+    const image = Image.init(48, 64);
+    const viewport = image.viewportRotated(.clockwise_90);
+    const pixel_count = 48 * 64;
+
+    var buffer = [_]Linear{Linear.black} ** pixel_count;
+    var band = image.band(Linear, &buffer, 64, 0) catch unreachable;
+
+    const spectrum = Self.init(.external, .{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 });
+
+    spectrum.render(&band, viewport, prism, rainbow);
+
+    var found_color = false;
+
+    for (&buffer) |pixel| {
+        if (pixel.vec[0] > 0 or pixel.vec[1] > 0 or pixel.vec[2] > 0) {
+            found_color = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(found_color);
 }
 
 test "sectorBounds first quadrant" {

@@ -7,7 +7,7 @@ const Self = @This();
 
 outside_color: Srgb,
 
-pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void {
+pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: anytype) void {
     const radius = viewport.scale - 1.0;
     const radius_squared = radius * radius;
     const center_x = viewport.center[0];
@@ -29,7 +29,9 @@ pub fn apply(self: Self, band: *Image.Band(Srgb), viewport: Image.Viewport) void
         const dx_max = @sqrt(dx_max_squared);
         const x_lo = center_x - 0.5 - dx_max;
         const x_hi = center_x - 0.5 + dx_max;
-        const x_start: usize = if (x_lo < 0) 0 else @intFromFloat(x_lo);
+
+        // Use @ceil (not @intFromFloat truncation) so left/right margins are symmetric.
+        const x_start: usize = if (x_lo < 0) 0 else @intFromFloat(@ceil(x_lo));
 
         const x_end: usize = @min(
             if (x_hi < 0) 0 else @as(usize, @intFromFloat(x_hi)) + 1,

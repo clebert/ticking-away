@@ -46,7 +46,7 @@ color: Linear,
 pub fn renderLine(
     self: Self,
     band: *Image.Band(Linear),
-    viewport: Image.Viewport,
+    viewport: anytype,
     line: Segment,
     options: LineOptions,
 ) void {
@@ -76,7 +76,7 @@ inline fn renderLineInner(
     comptime fading: bool,
     comptime clip_region: std.meta.Tag(ClipRegion),
     band: *Image.Band(Linear),
-    viewport: Image.Viewport,
+    viewport: anytype,
     line: Segment,
     clip_prism: Prism,
     rainbow: ?Rainbow,
@@ -86,8 +86,10 @@ inline fn renderLineInner(
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
     const width_vec: @Vector(2, f32) = @splat(self.normalized_width);
-    const min_pixel = viewport.toPixel(@min(line.start, line.end) - width_vec);
-    const max_pixel = viewport.toPixel(@max(line.start, line.end) + width_vec);
+    const pixel_a = viewport.toPixel(@min(line.start, line.end) - width_vec);
+    const pixel_b = viewport.toPixel(@max(line.start, line.end) + width_vec);
+    const min_pixel = @min(pixel_a, pixel_b);
+    const max_pixel = @max(pixel_a, pixel_b);
 
     const x_start = util.floorClamped(min_pixel[0], band.width);
     const x_end = util.ceilClamped(max_pixel[0], band.width);
@@ -152,7 +154,7 @@ inline fn renderLineInner(
 pub fn renderPrismEdges(
     self: Self,
     band: *Image.Band(Linear),
-    viewport: Image.Viewport,
+    viewport: anytype,
     prism: Prism,
 ) void {
     std.debug.assert(self.normalized_width > 0.0 and self.normalized_width <= 1.0);
@@ -168,8 +170,10 @@ pub fn renderPrismEdges(
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
     const prism_bounds = prism.bounds();
-    const min_pixel = viewport.toPixel(.{ prism_bounds[0], prism_bounds[1] });
-    const max_pixel = viewport.toPixel(.{ prism_bounds[2], prism_bounds[3] });
+    const pixel_a = viewport.toPixel(.{ prism_bounds[0], prism_bounds[1] });
+    const pixel_b = viewport.toPixel(.{ prism_bounds[2], prism_bounds[3] });
+    const min_pixel = @min(pixel_a, pixel_b);
+    const max_pixel = @max(pixel_a, pixel_b);
 
     const x_start = util.floorClamped(min_pixel[0], band.width);
     const x_end = util.ceilClamped(max_pixel[0], band.width);
@@ -241,6 +245,31 @@ test "renderPrismEdges produces glow inside prism" {
 
     var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
     var band = image.band(Linear, &buffer, image_size, 0) catch unreachable;
+
+    const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
+
+    glow.renderPrismEdges(&band, viewport, prism);
+
+    var found_glow = false;
+
+    for (&buffer) |pixel| {
+        if (pixel.vec[0] > 0) {
+            found_glow = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(found_glow);
+}
+
+test "renderPrismEdges produces glow with rotated viewport" {
+    const prism = Prism.init(0.8);
+    const image = Image.init(48, 64);
+    const viewport = image.viewportRotated(.clockwise_90);
+    const pixel_count = 48 * 64;
+
+    var buffer = [_]Linear{Linear.black} ** pixel_count;
+    var band = image.band(Linear, &buffer, 64, 0) catch unreachable;
 
     const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
 

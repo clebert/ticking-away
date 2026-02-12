@@ -15,21 +15,51 @@ pub fn init(width: usize, height: usize) Self {
     return .{ .width = width, .height = height };
 }
 
-pub const Viewport = struct {
-    scale: f32,
-    inverse_scale: f32,
-    center: @Vector(2, f32),
-
-    pub fn toPixel(self: Viewport, point: @Vector(2, f32)) @Vector(2, f32) {
-        return point * @as(@Vector(2, f32), @splat(self.scale)) + self.center;
-    }
-
-    pub fn toNormalized(self: Viewport, pixel: @Vector(2, f32)) @Vector(2, f32) {
-        return (pixel - self.center) * @as(@Vector(2, f32), @splat(self.inverse_scale));
-    }
+pub const Rotation = enum {
+    none,
+    clockwise_90,
 };
 
-pub fn viewport(self: Self) Viewport {
+pub fn Viewport(comptime rotation: Rotation) type {
+    return struct {
+        scale: f32,
+        inverse_scale: f32,
+        center: @Vector(2, f32),
+
+        const forward_90cw = [2]@Vector(2, f32){ .{ 0, 1 }, .{ -1, 0 } };
+        const inverse_90cw = [2]@Vector(2, f32){ .{ 0, -1 }, .{ 1, 0 } };
+
+        pub fn toPixel(self: @This(), point: @Vector(2, f32)) @Vector(2, f32) {
+            const unrotated = switch (rotation) {
+                .none => point,
+                .clockwise_90 => @Vector(2, f32){
+                    @reduce(.Add, inverse_90cw[0] * point),
+                    @reduce(.Add, inverse_90cw[1] * point),
+                },
+            };
+
+            return unrotated * @as(@Vector(2, f32), @splat(self.scale)) + self.center;
+        }
+
+        pub fn toNormalized(self: @This(), pixel: @Vector(2, f32)) @Vector(2, f32) {
+            const centered = (pixel - self.center) * @as(@Vector(2, f32), @splat(self.inverse_scale));
+
+            return switch (rotation) {
+                .none => centered,
+                .clockwise_90 => @Vector(2, f32){
+                    @reduce(.Add, forward_90cw[0] * centered),
+                    @reduce(.Add, forward_90cw[1] * centered),
+                },
+            };
+        }
+    };
+}
+
+pub fn viewport(self: Self) Viewport(.none) {
+    return self.viewportRotated(.none);
+}
+
+pub fn viewportRotated(self: Self, comptime rotation: Rotation) Viewport(rotation) {
     const width: f32 = @floatFromInt(self.width);
     const height: f32 = @floatFromInt(self.height);
     const scale = @min(width, height) / 2.0;
@@ -145,6 +175,46 @@ test "toPixel and toNormalized are inverse operations" {
 
     try std.testing.expectApproxEqAbs(original[0], round_trip[0], 1e-5);
     try std.testing.expectApproxEqAbs(original[1], round_trip[1], 1e-5);
+}
+
+test "rotated viewport maps center pixel to origin" {
+    const image = Self.init(120, 160);
+    const test_viewport = image.viewportRotated(.clockwise_90);
+    const point = test_viewport.toNormalized(.{ 60, 80 });
+
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), point[0], 1e-6);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), point[1], 1e-6);
+}
+
+test "rotated viewport toPixel maps origin to center" {
+    const image = Self.init(120, 160);
+    const test_viewport = image.viewportRotated(.clockwise_90);
+    const pixel = test_viewport.toPixel(.{ 0, 0 });
+
+    try std.testing.expectApproxEqAbs(@as(f32, 60.0), pixel[0], 1e-6);
+    try std.testing.expectApproxEqAbs(@as(f32, 80.0), pixel[1], 1e-6);
+}
+
+test "rotated viewport toPixel and toNormalized are inverse operations" {
+    const image = Self.init(120, 160);
+    const test_viewport = image.viewportRotated(.clockwise_90);
+    const original: @Vector(2, f32) = .{ 0.3, -0.7 };
+    const round_trip = test_viewport.toNormalized(test_viewport.toPixel(original));
+
+    try std.testing.expectApproxEqAbs(original[0], round_trip[0], 1e-5);
+    try std.testing.expectApproxEqAbs(original[1], round_trip[1], 1e-5);
+}
+
+test "rotated viewport applies 90 degree clockwise rotation" {
+    const image = Self.init(120, 160);
+    const test_viewport = image.viewportRotated(.clockwise_90);
+
+    // Pixel at center-right (120, 80) should map to normalized (0, -1) (top of circle)
+    // centered = (60/60, 0/60) = (1, 0), rotated 90° CW: (0, -1)
+    const point = test_viewport.toNormalized(.{ 120, 80 });
+
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), point[0], 1e-5);
+    try std.testing.expectApproxEqAbs(@as(f32, -1.0), point[1], 1e-5);
 }
 
 test "band returns correct y_offset" {

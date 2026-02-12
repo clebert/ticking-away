@@ -18,7 +18,7 @@ prism_glow_falloff: Glow.Falloff,
 prism_glow_color: Linear,
 rainbow_palette_id: Rainbow.PaletteId,
 
-pub fn render(self: Self, band: *Image.Band(Linear), viewport: Image.Viewport, clock: Clock) void {
+pub fn render(self: Self, band: *Image.Band(Linear), viewport: anytype, clock: Clock) void {
     const right_side = clock.external_hour_hand.get(.green).end[0] > 0;
     const base_rainbow = Rainbow.get(self.rainbow_palette_id);
     const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
