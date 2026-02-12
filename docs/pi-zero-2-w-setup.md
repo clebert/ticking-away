@@ -116,8 +116,11 @@ cd ticking-away
 ## Build and Run
 
 ```sh
-# TODO
+zig build inky -Doptimize=ReleaseFast
+sudo zig-out/bin/inky --interval 5
 ```
+
+The `--interval` flag sets the update interval in minutes (must evenly divide 60). Default: 1.
 
 Note: `sudo` is required for GPIO and SPI access.
 

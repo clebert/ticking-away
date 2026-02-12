@@ -1,7 +1,6 @@
 /.zig-cache/
 /bin/*/*
-!/bin/*/*.c
-!/bin/*/*.h
+!/bin/*/*.md
 !/bin/*/*.zig
 /dist/
 /node_modules/

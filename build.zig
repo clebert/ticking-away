@@ -98,6 +98,32 @@ pub fn build(b: *std.Build) void {
     png_step.dependOn(&png_install.step);
 
     // =========================================================================
+    // Inky display binary (native, drives Inky Impression 13.3" over SPI)
+    // =========================================================================
+
+    const inky_exe = b.addExecutable(.{
+        .name = "inky",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/inky/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+
+    const inky_install = b.addInstallArtifact(inky_exe, .{});
+
+    const inky_step = b.step("inky", "Build the Inky display binary");
+
+    inky_step.dependOn(&inky_install.step);
+
+    // =========================================================================
     // Check step for ZLS (uses native target for analysis)
     // =========================================================================
 
@@ -154,11 +180,28 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const inky_check = b.addExecutable(.{
+        .name = "inky",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/inky/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+
     const check_step = b.step("check", "Check Zig code for errors (used by ZLS)");
 
     check_step.dependOn(&wasm_check.step);
     check_step.dependOn(&profile_check.step);
     check_step.dependOn(&png_check.step);
+    check_step.dependOn(&inky_check.step);
 
     // =========================================================================
     // Tests
