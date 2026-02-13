@@ -7,6 +7,7 @@ pub const Dither = @import("Dither.zig");
 pub const Glow = @import("Glow.zig");
 pub const Grain = @import("Grain.zig");
 pub const Image = @import("Image.zig");
+pub const intensity = @import("intensity.zig");
 pub const Linear = @import("Linear.zig");
 pub const Oklab = @import("Oklab.zig");
 pub const Prism = @import("Prism.zig");

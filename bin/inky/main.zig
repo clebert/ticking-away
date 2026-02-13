@@ -39,21 +39,23 @@ pub fn main() !void {
         break :blk try std.Tz.parse(allocator, stream.reader());
     };
 
-    const prism_normalized_size: f32 = 0.9;
+    const prism_normalized_size: f32 = 0.85;
     const prism_glow_linear_green: f32 = 0.75;
-    const prism_glow_normalized_width: f32 = 0.07;
-    const prism_glow_falloff = lib.Glow.Falloff.exponential;
+    const prism_glow_normalized_width: f32 = 0.06;
+    const prism_glow_falloff = lib.intensity.Falloff.exponential;
     const rainbow_normalized_spread: f32 = 0.5;
     const hand_glow_normalized_width: f32 = 0.01;
-    const hand_glow_falloff = lib.Glow.Falloff.quadratic;
+    const hand_glow_falloff = lib.intensity.Falloff.quadratic;
+    const hand_length_falloff = lib.intensity.Falloff.quadratic;
     const rainbow_palette_id = lib.Rainbow.PaletteId.spectra6;
     const dither_palette_id = lib.Dither.PaletteId.spectra6_epdopt;
-    const dither_normalized_strength: f32 = 0.9;
-    const dither_normalized_chroma_emphasis: f32 = 0.45;
+    const dither_normalized_strength: f32 = 0.85;
+    const dither_normalized_chroma_emphasis: f32 = 0.9;
 
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = hand_glow_normalized_width,
         .hand_glow_falloff = hand_glow_falloff,
+        .hand_length_falloff = hand_length_falloff,
         .prism_glow_normalized_width = prism_glow_normalized_width,
         .prism_glow_falloff = prism_glow_falloff,
         .prism_glow_color = lib.Linear.init(0.1, prism_glow_linear_green, 1.0, 1.0),
@@ -112,11 +114,11 @@ fn render(
         for (0..band_count) |band_index| {
             @memset(&linear_buffer, lib.Linear.black);
 
-            const linear_band = image.band(lib.Linear, &linear_buffer, band_height, band_index) catch unreachable;
+            const linear_band = try image.band(lib.Linear, &linear_buffer, band_height, band_index);
 
             watchface.render(linear_band, viewport, clock);
 
-            const srgb_band = (dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable);
+            const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
             packRow(&srgb_band, dither.palette, column_offset, &pack_row);
 

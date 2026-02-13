@@ -38,11 +38,12 @@ pub fn main() !void {
         if (config.background_enabled) lib.Linear.black else lib.Linear.transparent,
     );
 
-    const linear_band = image.band(lib.Linear, linear_buffer, size, 0) catch unreachable;
+    const linear_band = try image.band(lib.Linear, linear_buffer, size, 0);
 
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .hand_glow_falloff = config.hand_glow_falloff,
+        .hand_length_falloff = config.hand_length_falloff,
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
         .prism_glow_falloff = config.prism_glow_falloff,
         .prism_glow_color = lib.Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
@@ -51,7 +52,7 @@ pub fn main() !void {
 
     watchface.render(linear_band, viewport, clock);
 
-    const srgb_band = linear_band.toSrgb(srgb_buffer) catch unreachable;
+    const srgb_band = try linear_band.toSrgb(srgb_buffer);
 
     if (config.grain_enabled) {
         const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };

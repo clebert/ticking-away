@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const Dither = @import("Dither.zig");
-const Glow = @import("Glow.zig");
+const intensity = @import("intensity.zig");
 const Rainbow = @import("Rainbow.zig");
 
 const Self = @This();
@@ -10,10 +10,11 @@ background_enabled: bool,
 prism_normalized_size: f32,
 prism_glow_linear_green: f32,
 prism_glow_normalized_width: f32,
-prism_glow_falloff: Glow.Falloff,
+prism_glow_falloff: intensity.Falloff,
 rainbow_normalized_spread: f32,
 hand_glow_normalized_width: f32,
-hand_glow_falloff: Glow.Falloff,
+hand_glow_falloff: intensity.Falloff,
+hand_length_falloff: intensity.Falloff,
 rainbow_palette_id: Rainbow.PaletteId,
 grain_enabled: bool,
 grain_normalized_deviation: f32,

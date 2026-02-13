@@ -1,15 +1,14 @@
 const std = @import("std");
 
 const Image = @import("Image.zig");
+const intensity = @import("intensity.zig");
 const Linear = @import("Linear.zig");
-const Prism = @import("Prism.zig");
 const Rainbow = @import("Rainbow.zig");
 const util = @import("util.zig");
 const vector = @import("vector.zig");
 
 const Self = @This();
 
-region: Region,
 origin: @Vector(2, f32),
 direction_start: @Vector(2, f32),
 direction_end: @Vector(2, f32),
@@ -17,10 +16,7 @@ direction_start_exact: @Vector(2, f32),
 direction_end_exact: @Vector(2, f32),
 reverse: bool,
 
-pub const Region = enum { internal, external };
-
 pub fn init(
-    region: Region,
     origin: @Vector(2, f32),
     first_end: @Vector(2, f32),
     last_end: @Vector(2, f32),
@@ -50,7 +46,6 @@ pub fn init(
     const sin_epsilon = comptime @sin(@as(f32, 0.002));
 
     return .{
-        .region = region,
         .origin = origin,
         .direction_start = rotateBy(start_exact, cos_epsilon, -sin_epsilon),
         .direction_end = rotateBy(end_exact, cos_epsilon, sin_epsilon),
@@ -64,8 +59,8 @@ pub fn render(
     self: Self,
     band: Image.Band(Linear),
     viewport: anytype,
-    prism: Prism,
     rainbow: Rainbow,
+    attenuation: intensity.Attenuation,
 ) void {
     // Skip degenerate sectors: near-zero span (directions identical) or
     // near-π span (directions antiparallel) where cross-product interpolation breaks down.
@@ -76,10 +71,7 @@ pub fn render(
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
-    const normalized_bounds = if (self.region == .internal)
-        prism.bounds()
-    else
-        sectorBounds(self.direction_start, self.direction_end);
+    const normalized_bounds = sectorBounds(self.direction_start, self.direction_end);
 
     const pixel_a = viewport.toPixel(.{ normalized_bounds[0], normalized_bounds[1] });
     const pixel_b = viewport.toPixel(.{ normalized_bounds[2], normalized_bounds[3] });
@@ -106,16 +98,28 @@ pub fn render(
 
             if (cross_start < 0 or cross_end > 0) continue;
 
-            if (self.region == .internal) {
-                if (!prism.containsPoint(point)) continue;
-            } else {
-                if (@reduce(.Add, point * point) > 1.0 or prism.containsPoint(point)) continue;
-            }
+            const distance_squared = @reduce(.Add, point * point);
+
+            if (distance_squared > 1.0) continue;
+
+            // Attenuation: fade brightness from origin to attenuation distance
+            const attenuation_distance =
+                @max(attenuation.normalized_distance, std.math.floatEps(f32));
+
+            const attenuation_linear =
+                std.math.clamp(@sqrt(distance_squared) / attenuation_distance, 0.0, 1.0);
+
+            const attenuation_value = attenuation.falloff.apply(1.0 - attenuation_linear);
 
             // Cross-product ratio for spectrum position (replaces atan2)
-            const cross_start_exact = self.direction_start_exact[0] * dy - self.direction_start_exact[1] * dx;
-            const cross_end_exact = self.direction_end_exact[0] * dy - self.direction_end_exact[1] * dx;
-            const spectrum_position_raw = std.math.clamp(cross_start_exact / (cross_start_exact - cross_end_exact), 0, 1);
+            const cross_start_exact =
+                self.direction_start_exact[0] * dy - self.direction_start_exact[1] * dx;
+
+            const cross_end_exact =
+                self.direction_end_exact[0] * dy - self.direction_end_exact[1] * dx;
+
+            const spectrum_position_raw =
+                std.math.clamp(cross_start_exact / (cross_start_exact - cross_end_exact), 0, 1);
 
             const spectrum_position =
                 if (self.reverse) 1.0 - spectrum_position_raw else spectrum_position_raw;
@@ -123,7 +127,7 @@ pub fn render(
             const color = rainbow.interpolate(spectrum_position);
             const pixel = band.colorAt(x, local_y);
 
-            pixel.vec = pixel.vec + color.vec;
+            pixel.vec = pixel.vec + color.vec * @as(@Vector(4, f32), @splat(attenuation_value));
         }
     }
 }
@@ -174,7 +178,6 @@ fn directionInSector(
 }
 
 test "render produces spectrum with rotated viewport" {
-    const prism = Prism.init(0.8);
     const rainbow = Rainbow.get(.spectral);
     const image = Image.init(48, 64);
     const viewport = image.viewportRotated(.clockwise_90);
@@ -182,21 +185,80 @@ test "render produces spectrum with rotated viewport" {
 
     var buffer = [_]Linear{Linear.black} ** pixel_count;
 
-    const band = image.band(Linear, &buffer, 64, 0) catch unreachable;
-    const spectrum = Self.init(.external, .{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 });
+    const band = try image.band(Linear, &buffer, 64, 0);
+    const spectrum = Self.init(.{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 });
 
-    spectrum.render(band, viewport, prism, rainbow);
+    spectrum.render(band, viewport, rainbow, .{ .normalized_distance = 0.5, .falloff = .cubic });
 
     var found_color = false;
 
     for (&buffer) |pixel| {
         if (pixel.vec[0] > 0 or pixel.vec[1] > 0 or pixel.vec[2] > 0) {
             found_color = true;
+
             break;
         }
     }
 
     try std.testing.expect(found_color);
+}
+
+test "attenuation reduces brightness near origin" {
+    const rainbow = Rainbow.get(.spectral);
+    const size = 200;
+    const image = Image.init(size, size);
+    const viewport = image.viewport();
+    const pixel_count = size * size;
+    const center = size / 2;
+
+    var buffer = [_]Linear{Linear.black} ** pixel_count;
+
+    const band = try image.band(Linear, &buffer, size, 0);
+
+    // Sector pointing right, centered on x-axis
+    const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.2 }, .{ 1, -0.2 });
+    spectrum.render(band, viewport, rainbow, .{ .normalized_distance = 0.5, .falloff = .cubic });
+
+    // Sum brightness in the near zone (5-15% radius) and far zone (50-75% radius)
+    // across multiple rows to average out angular color differences.
+    var near_sum: f64 = 0;
+    var near_count: u32 = 0;
+    var far_sum: f64 = 0;
+    var far_count: u32 = 0;
+
+    for (0..size) |y| {
+        for (0..size) |x| {
+            const pixel = buffer[y * size + x];
+            const brightness = pixel.vec[0] + pixel.vec[1] + pixel.vec[2];
+
+            if (brightness == 0) continue;
+
+            const dx: f32 = (@as(f32, @floatFromInt(x)) + 0.5 - @as(f32, @floatFromInt(center))) /
+                @as(f32, @floatFromInt(center));
+
+            const dy: f32 = (@as(f32, @floatFromInt(y)) + 0.5 - @as(f32, @floatFromInt(center))) /
+                @as(f32, @floatFromInt(center));
+
+            const distance = @sqrt(dx * dx + dy * dy);
+
+            if (distance >= 0.05 and distance < 0.15) {
+                near_sum += brightness;
+                near_count += 1;
+            } else if (distance >= 0.50 and distance < 0.75) {
+                far_sum += brightness;
+                far_count += 1;
+            }
+        }
+    }
+
+    try std.testing.expect(near_count > 0);
+    try std.testing.expect(far_count > 0);
+
+    const near_avg = near_sum / @as(f64, @floatFromInt(near_count));
+    const far_avg = far_sum / @as(f64, @floatFromInt(far_count));
+
+    // Far zone should be at least 3x brighter than near zone due to cubic attenuation
+    try std.testing.expect(far_avg > near_avg * 3.0);
 }
 
 test "sectorBounds first quadrant" {

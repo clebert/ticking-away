@@ -54,7 +54,7 @@ test "apply sets pixels outside circle to outside color" {
 
     var buffer = [_]Srgb{Srgb.black} ** 100;
 
-    const band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
+    const band = try image.band(Srgb, &buffer, 10, 0);
     const crop = Self{ .outside_color = Srgb.white };
 
     crop.apply(band, viewport);
@@ -72,7 +72,7 @@ test "apply sets transparent outside color" {
 
     var buffer = [_]Srgb{Srgb.black} ** 100;
 
-    const band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
+    const band = try image.band(Srgb, &buffer, 10, 0);
     const crop = Self{ .outside_color = Srgb.transparent };
 
     crop.apply(band, viewport);
@@ -90,7 +90,7 @@ test "apply handles wide image" {
 
     var buffer = [_]Srgb{Srgb.black} ** 200;
 
-    const band = image.band(Srgb, &buffer, 10, 0) catch unreachable;
+    const band = try image.band(Srgb, &buffer, 10, 0);
     const crop = Self{ .outside_color = Srgb.white };
 
     crop.apply(band, viewport);
@@ -129,7 +129,7 @@ test "multi-band crop matches single-band crop" {
     // Reference: single-band (full height)
     var reference = input;
 
-    const full_band = image.band(Srgb, &reference, height, 0) catch unreachable;
+    const full_band = try image.band(Srgb, &reference, height, 0);
 
     crop.apply(full_band, viewport);
 
@@ -145,12 +145,12 @@ test "multi-band crop matches single-band crop" {
             const row_start = band_index * band_height * width;
             const band_pixels = band_height * width;
 
-            const narrow_band = image.band(
+            const narrow_band = try image.band(
                 Srgb,
                 banded_output[row_start..][0..band_pixels],
                 band_height,
                 band_index,
-            ) catch unreachable;
+            );
 
             crop.apply(narrow_band, viewport);
         }

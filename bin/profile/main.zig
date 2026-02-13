@@ -7,7 +7,7 @@ const height = 256;
 const pixel_count = width * height;
 const default_iteration_count = 100;
 
-pub fn main() void {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 
     defer arena.deinit();
@@ -29,6 +29,7 @@ pub fn main() void {
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .hand_glow_falloff = config.hand_glow_falloff,
+        .hand_length_falloff = config.hand_length_falloff,
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
         .prism_glow_falloff = config.prism_glow_falloff,
         .prism_glow_color = lib.Linear.init(0.5, 0.5, 0.5, 1.0),
@@ -57,12 +58,11 @@ pub fn main() void {
 
         @memset(&linear_buffer, lib.Linear.black);
 
-        const linear_band = image.band(lib.Linear, &linear_buffer, height, 0) catch unreachable;
+        const linear_band = try image.band(lib.Linear, &linear_buffer, height, 0);
 
         watchface.render(linear_band, viewport, clock);
 
-        const srgb_band =
-            dither.apply(linear_band, &srgb_buffer, &dither_error_buffer) catch unreachable;
+        const srgb_band = try dither.apply(linear_band, &srgb_buffer, &dither_error_buffer);
 
         grain.apply(srgb_band);
 

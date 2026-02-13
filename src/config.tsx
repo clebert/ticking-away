@@ -15,6 +15,7 @@ const ConfigSchema = z.object({
   rainbow_normalized_spread: z.number(),
   hand_glow_normalized_width: z.number(),
   hand_glow_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
+  hand_length_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
   rainbow_palette_id: z.enum(["oklch_balanced", "spectral", "spectra6"]),
   grain_enabled: z.boolean(),
   grain_normalized_deviation: z.number(),

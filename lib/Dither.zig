@@ -259,7 +259,7 @@ test "apply produces only palette colors" {
     var srgb_buffer: [16]Srgb = undefined;
     var error_buffer: [4 * channels * 2]f32 = undefined;
 
-    const linear_band = image.band(Linear, &linear_buffer, 4, 0) catch unreachable;
+    const linear_band = try image.band(Linear, &linear_buffer, 4, 0);
 
     const dither = Self{
         .normalized_strength = 1.0,
@@ -267,7 +267,7 @@ test "apply produces only palette colors" {
         .palette = PaletteId.ideal.palette(),
     };
 
-    const srgb_band = dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable;
+    const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
     for (srgb_band.buffer) |pixel| {
         var found = false;
@@ -293,7 +293,7 @@ test "apply preserves alpha channel" {
     var srgb_buffer: [4]Srgb = undefined;
     var error_buffer: [2 * channels * 2]f32 = undefined;
 
-    const linear_band = image.band(Linear, &linear_buffer, 2, 0) catch unreachable;
+    const linear_band = try image.band(Linear, &linear_buffer, 2, 0);
 
     const dither = Self{
         .normalized_strength = 1.0,
@@ -301,7 +301,7 @@ test "apply preserves alpha channel" {
         .palette = PaletteId.ideal.palette(),
     };
 
-    const srgb_band = dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable;
+    const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
     for (srgb_band.buffer) |pixel| {
         try std.testing.expectEqual(@as(u8, 191), pixel.a);
@@ -315,7 +315,7 @@ test "apply with zero strength still quantizes to palette" {
     var srgb_buffer: [16]Srgb = undefined;
     var error_buffer: [4 * channels * 2]f32 = undefined;
 
-    const linear_band = image.band(Linear, &linear_buffer, 4, 0) catch unreachable;
+    const linear_band = try image.band(Linear, &linear_buffer, 4, 0);
 
     const dither = Self{
         .normalized_strength = 0.0,
@@ -323,7 +323,7 @@ test "apply with zero strength still quantizes to palette" {
         .palette = PaletteId.ideal.palette(),
     };
 
-    const srgb_band = dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable;
+    const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
     for (srgb_band.buffer) |pixel| {
         var found = false;
@@ -359,7 +359,7 @@ test "apply outputs palette black for background pixels without color bleeding" 
     var srgb_buffer: [8]Srgb = undefined;
     var error_buffer: [4 * channels * 2]f32 = undefined;
 
-    const linear_band = image.band(Linear, &linear_buffer, 2, 0) catch unreachable;
+    const linear_band = try image.band(Linear, &linear_buffer, 2, 0);
 
     const dither = Self{
         .normalized_strength = 1.0,
@@ -367,7 +367,7 @@ test "apply outputs palette black for background pixels without color bleeding" 
         .palette = PaletteId.ideal.palette(),
     };
 
-    const srgb_band = dither.apply(linear_band, &srgb_buffer, &error_buffer) catch unreachable;
+    const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
     // Background pixels must be exactly palette black with no color bleeding
     const palette_black = dither.palette.black();
@@ -437,9 +437,9 @@ test "error diffusion propagates to subsequent rows" {
     var srgb_diffused: [pixel_count]Srgb = undefined;
     var error_buffer: [width * channels * 2]f32 = undefined;
 
-    const linear_band = image.band(Linear, &linear_buffer, height, 0) catch unreachable;
+    const linear_band = try image.band(Linear, &linear_buffer, height, 0);
 
-    _ = dither.apply(linear_band, &srgb_diffused, &error_buffer) catch unreachable;
+    _ = try dither.apply(linear_band, &srgb_diffused, &error_buffer);
 
     // Without error diffusion (strength=0): each pixel quantized independently
     const no_diffusion = Self{
@@ -450,7 +450,7 @@ test "error diffusion propagates to subsequent rows" {
 
     var srgb_independent: [pixel_count]Srgb = undefined;
 
-    _ = no_diffusion.apply(linear_band, &srgb_independent, &error_buffer) catch unreachable;
+    _ = try no_diffusion.apply(linear_band, &srgb_independent, &error_buffer);
 
     // With strength=0, all pixels map to the same nearest color (no variation).
     // With strength=1, error diffusion should cause at least some pixels to differ.
@@ -493,9 +493,9 @@ test "multi-band dithering matches single-band dithering" {
     var reference: [pixel_count]Srgb = undefined;
     var error_buffer: [width * channels * 2]f32 = undefined;
 
-    const full_band = image.band(Linear, &linear_buffer, height, 0) catch unreachable;
+    const full_band = try image.band(Linear, &linear_buffer, height, 0);
 
-    _ = dither.apply(full_band, &reference, &error_buffer) catch unreachable;
+    _ = try dither.apply(full_band, &reference, &error_buffer);
 
     // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
@@ -510,14 +510,13 @@ test "multi-band dithering matches single-band dithering" {
             const row_start = band_index * band_height * width;
             const band_pixels = band_height * width;
             const band_linear = linear_buffer[row_start..][0..band_pixels];
+            const narrow_band = try image.band(Linear, band_linear, band_height, band_index);
 
-            const narrow_band = image.band(Linear, band_linear, band_height, band_index) catch unreachable;
-
-            const srgb_band = dither.apply(
+            const srgb_band = try dither.apply(
                 narrow_band,
                 band_srgb_buffer[0..band_pixels],
                 &error_buffer,
-            ) catch unreachable;
+            );
 
             @memcpy(banded_output[row_start..][0..band_pixels], srgb_band.buffer);
         }
@@ -527,19 +526,28 @@ test "multi-band dithering matches single-band dithering" {
             const x = i % width;
 
             std.testing.expectEqual(ref.r, actual.r) catch {
-                std.debug.print("band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n", .{ band_height, x, y, ref.r, actual.r });
+                std.debug.print(
+                    "band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n",
+                    .{ band_height, x, y, ref.r, actual.r },
+                );
 
                 return error.TestUnexpectedResult;
             };
 
             std.testing.expectEqual(ref.g, actual.g) catch {
-                std.debug.print("band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n", .{ band_height, x, y, ref.g, actual.g });
+                std.debug.print(
+                    "band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n",
+                    .{ band_height, x, y, ref.g, actual.g },
+                );
 
                 return error.TestUnexpectedResult;
             };
 
             std.testing.expectEqual(ref.b, actual.b) catch {
-                std.debug.print("band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n", .{ band_height, x, y, ref.b, actual.b });
+                std.debug.print(
+                    "band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n",
+                    .{ band_height, x, y, ref.b, actual.b },
+                );
 
                 return error.TestUnexpectedResult;
             };

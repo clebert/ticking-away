@@ -222,6 +222,20 @@ function RainbowSection(): JSX.Element {
         </select>
       </div>
       <div class="control-group">
+        <label>Hand Length Falloff</label>
+        <select
+          value={config.hand_length_falloff}
+          onChange={(e) =>
+            updateConfig("hand_length_falloff", selectValue("hand_length_falloff", e))
+          }
+        >
+          <option value="linear">Linear</option>
+          <option value="quadratic">Quadratic</option>
+          <option value="cubic">Cubic</option>
+          <option value="exponential">Exponential</option>
+        </select>
+      </div>
+      <div class="control-group">
         <label>Color Palette</label>
         <select
           value={config.rainbow_palette_id}

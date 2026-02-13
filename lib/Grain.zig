@@ -55,7 +55,7 @@ test "apply modifies non-black pixels" {
 
     var buffer = [_]Srgb{.{ .r = 180, .g = 180, .b = 180 }} ** pixel_count;
 
-    const band = (Image.init(64, 64)).band(Srgb, &buffer, 64, 0) catch unreachable;
+    const band = try (Image.init(64, 64)).band(Srgb, &buffer, 64, 0);
     const grain = Self{ .normalized_deviation = 0.1 };
 
     grain.apply(band);
@@ -78,7 +78,7 @@ test "apply is no-op when deviation is zero" {
     var buffer = [_]Srgb{.{ .r = 128, .g = 128, .b = 128 }} ** pixel_count;
 
     const original = buffer;
-    const band = (Image.init(64, 64)).band(Srgb, &buffer, 64, 0) catch unreachable;
+    const band = try (Image.init(64, 64)).band(Srgb, &buffer, 64, 0);
     const grain = Self{ .normalized_deviation = 0.0 };
 
     grain.apply(band);
@@ -92,7 +92,7 @@ test "apply skips black pixels" {
     var buffer = [_]Srgb{.{ .r = 0, .g = 0, .b = 0 }} ** pixel_count;
 
     const original = buffer;
-    const band = (Image.init(64, 64)).band(Srgb, &buffer, 64, 0) catch unreachable;
+    const band = try (Image.init(64, 64)).band(Srgb, &buffer, 64, 0);
     const grain = Self{ .normalized_deviation = 0.1 };
 
     grain.apply(band);
@@ -123,7 +123,7 @@ test "multi-band grain matches single-band grain" {
     // Reference: single-band (full height)
     var reference = input;
 
-    const full_band = image.band(Srgb, &reference, height, 0) catch unreachable;
+    const full_band = try image.band(Srgb, &reference, height, 0);
 
     grain.apply(full_band);
 
@@ -139,12 +139,12 @@ test "multi-band grain matches single-band grain" {
             const row_start = band_index * band_height * width;
             const band_pixels = band_height * width;
 
-            const narrow_band = image.band(
+            const narrow_band = try image.band(
                 Srgb,
                 banded_output[row_start..][0..band_pixels],
                 band_height,
                 band_index,
-            ) catch unreachable;
+            );
 
             grain.apply(narrow_band);
         }

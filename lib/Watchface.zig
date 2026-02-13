@@ -3,23 +3,25 @@ const std = @import("std");
 const Clock = @import("Clock.zig");
 const Glow = @import("Glow.zig");
 const Image = @import("Image.zig");
+const intensity = @import("intensity.zig");
 const Linear = @import("Linear.zig");
-const Prism = @import("Prism.zig");
 const Rainbow = @import("Rainbow.zig");
+const Ray = @import("Ray.zig");
 const Spectrum = @import("Spectrum.zig");
 const Time = @import("Time.zig");
 
 const Self = @This();
 
 hand_glow_normalized_width: f32,
-hand_glow_falloff: Glow.Falloff,
+hand_glow_falloff: intensity.Falloff,
+hand_length_falloff: intensity.Falloff,
 prism_glow_normalized_width: f32,
-prism_glow_falloff: Glow.Falloff,
+prism_glow_falloff: intensity.Falloff,
 prism_glow_color: Linear,
 rainbow_palette_id: Rainbow.PaletteId,
 
 pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Clock) void {
-    const right_side = clock.external_hour_hand.get(.green).end[0] > 0;
+    const right_side = clock.hour_hand.get(.green).end[0] > 0;
     const base_rainbow = Rainbow.get(self.rainbow_palette_id);
     const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
 
@@ -29,51 +31,32 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
         .color = Linear.white,
     };
 
-    // External minute hand (white light entering prism)
-    hand_glow.renderLine(band, viewport, clock.external_minute_hand, .{
-        .clip = .circle,
+    // Minute hand (white line from circle boundary, fading at prism)
+    const minute_ray = Ray.init(clock.minute_hand.start, clock.minute_hand.end);
+    const minute_intersection = clock.prism.intersect(minute_ray) orelse unreachable;
+
+    const attenuation_origin =
+        clock.minute_hand.project(minute_intersection.hit).normalized_position;
+
+    hand_glow.renderLine(band, viewport, clock.minute_hand, .{
+        .normalized_distance = attenuation_origin,
+        .falloff = self.hand_length_falloff,
     });
 
-    // Internal minute hand (bouncing inside prism)
-    if (clock.internal_minute_hand) |internal_minute_hand| {
-        hand_glow.renderLine(band, viewport, internal_minute_hand, .{
-            .clip = .{ .prism = clock.prism },
-            .rainbow = rainbow,
-        });
-    }
-
-    // Internal hour rays (colored, fading toward prism edge)
-    for (std.enums.values(Rainbow.ColorId)) |color_id| {
-        const ray_glow = Glow{
-            .normalized_width = self.hand_glow_normalized_width,
-            .falloff = self.hand_glow_falloff,
-            .color = rainbow.color(color_id),
-        };
-
-        ray_glow.renderLine(band, viewport, clock.internal_hour_hand.get(color_id), .{
-            .clip = .{ .prism = clock.prism },
-            .fading = true,
-        });
-    }
-
     // Spectrum fill (rainbow gradient between rays)
-    const external_spectrum = Spectrum.init(
-        .external,
+    const spectrum = Spectrum.init(
         .{ 0, 0 },
-        clock.external_hour_hand.get(.red).end,
-        clock.external_hour_hand.get(.violet).end,
+        clock.hour_hand.get(.red).end,
+        clock.hour_hand.get(.violet).end,
     );
 
-    external_spectrum.render(band, viewport, clock.prism, rainbow);
+    const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_hand.get(.green).end);
+    const hour_intersection = clock.prism.intersect(hour_ray) orelse unreachable;
 
-    const internal_spectrum = Spectrum.init(
-        .internal,
-        clock.internal_hour_hand.get(.red).start,
-        clock.internal_hour_hand.get(.red).end,
-        clock.internal_hour_hand.get(.violet).end,
-    );
-
-    internal_spectrum.render(band, viewport, clock.prism, rainbow);
+    spectrum.render(band, viewport, rainbow, .{
+        .normalized_distance = hour_intersection.distance,
+        .falloff = self.hand_length_falloff,
+    });
 
     const prism_glow = Glow{
         .normalized_width = self.prism_glow_normalized_width,
@@ -93,6 +76,7 @@ const test_prism_normalized_size: f32 = 0.8;
 const test_watchface = Self{
     .hand_glow_normalized_width = 0.005,
     .hand_glow_falloff = .quadratic,
+    .hand_length_falloff = .cubic,
     .prism_glow_normalized_width = 0.15,
     .prism_glow_falloff = .quadratic,
     .prism_glow_color = Linear.init(0.1, 0.75, 1.0, 1.0),
@@ -127,7 +111,7 @@ test "multi-band render matches single-band render" {
         @memset(&band_buffer, Linear.black);
 
         const narrow_band =
-            image.band(Linear, &band_buffer, test_band_height, band_index) catch unreachable;
+            try image.band(Linear, &band_buffer, test_band_height, band_index);
 
         test_watchface.render(narrow_band, viewport, clock);
 
@@ -186,6 +170,7 @@ test "render survives full 12-hour cycle" {
     var minutes: f32 = 0.0;
 
     while (minutes < 720.0) : (minutes += 30.0) {
+        // The & prevents the compiler from optimizing away the call
         _ = &renderFull(.{ .total_minutes = minutes });
     }
 }

@@ -99,6 +99,7 @@ export fn render(
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .hand_glow_falloff = config.hand_glow_falloff,
+        .hand_length_falloff = config.hand_length_falloff,
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
         .prism_glow_falloff = config.prism_glow_falloff,
         .prism_glow_color = lib.Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
