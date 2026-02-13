@@ -39,33 +39,25 @@ pub fn main() !void {
         break :blk try std.Tz.parse(allocator, stream.reader());
     };
 
-    const prism_normalized_size: f32 = 0.85;
-    const prism_glow_linear_green: f32 = 0.75;
-    const prism_glow_normalized_width: f32 = 0.06;
-    const prism_glow_falloff = lib.intensity.Falloff.exponential;
-    const rainbow_normalized_spread: f32 = 0.5;
-    const hand_glow_normalized_width: f32 = 0.01;
-    const hand_glow_falloff = lib.intensity.Falloff.quadratic;
-    const hand_length_falloff = lib.intensity.Falloff.quadratic;
-    const rainbow_palette_id = lib.Rainbow.PaletteId.spectra6;
-    const dither_palette_id = lib.Dither.PaletteId.spectra6_epdopt;
-    const dither_normalized_strength: f32 = 0.85;
-    const dither_normalized_chroma_emphasis: f32 = 0.9;
+    var config = try lib.Config.init(allocator);
+
+    config.rainbow_palette_id = .spectra6;
+    config.dither_palette_id = .spectra6_epdopt;
 
     const watchface = lib.Watchface{
-        .hand_glow_normalized_width = hand_glow_normalized_width,
-        .hand_glow_falloff = hand_glow_falloff,
-        .hand_length_falloff = hand_length_falloff,
-        .prism_glow_normalized_width = prism_glow_normalized_width,
-        .prism_glow_falloff = prism_glow_falloff,
-        .prism_glow_color = lib.Linear.init(0.1, prism_glow_linear_green, 1.0, 1.0),
-        .rainbow_palette_id = rainbow_palette_id,
+        .hand_glow_normalized_width = config.hand_glow_normalized_width,
+        .hand_glow_falloff = config.hand_glow_falloff,
+        .hand_length_falloff = config.hand_length_falloff,
+        .prism_glow_normalized_width = config.prism_glow_normalized_width,
+        .prism_glow_falloff = config.prism_glow_falloff,
+        .prism_glow_color = lib.Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
+        .rainbow_palette_id = config.rainbow_palette_id,
     };
 
     const dither = lib.Dither{
-        .normalized_strength = dither_normalized_strength,
-        .normalized_chroma_emphasis = dither_normalized_chroma_emphasis,
-        .palette = dither_palette_id.palette(),
+        .normalized_strength = config.dither_normalized_strength,
+        .normalized_chroma_emphasis = config.dither_normalized_chroma_emphasis,
+        .palette = config.dither_palette_id.palette(),
     };
 
     const image = lib.Image.init(display_width, display_height);
@@ -83,8 +75,8 @@ pub fn main() !void {
 
         const clock = lib.Clock.init(
             lib.Time.init(now.hour, @floatFromInt(minute)),
-            prism_normalized_size,
-            rainbow_normalized_spread,
+            config.prism_normalized_size,
+            config.rainbow_normalized_spread,
         );
 
         try render(&display, watchface, dither, image, viewport, clock);
