@@ -226,7 +226,6 @@ test "renderPrismEdges produces glow inside prism" {
     for (&buffer) |pixel| {
         if (pixel.vec[0] > 0) {
             found_glow = true;
-
             break;
         }
     }
@@ -252,7 +251,6 @@ test "renderPrismEdges produces glow with rotated viewport" {
     for (&buffer) |pixel| {
         if (pixel.vec[0] > 0) {
             found_glow = true;
-
             break;
         }
     }
@@ -296,7 +294,6 @@ test "renderPrismEdges uses additive blending" {
     for (&buffer) |pixel| {
         if (pixel.vec[0] > base.vec[0] + 0.01) {
             found_additive = true;
-
             break;
         }
     }

@@ -195,7 +195,6 @@ test "render produces spectrum with rotated viewport" {
     for (&buffer) |pixel| {
         if (pixel.vec[0] > 0 or pixel.vec[1] > 0 or pixel.vec[2] > 0) {
             found_color = true;
-
             break;
         }
     }

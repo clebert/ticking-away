@@ -125,7 +125,13 @@ export fn render(
     };
 
     if (config.grain_enabled) {
-        const grain = lib.Grain{ .normalized_deviation = config.grain_normalized_deviation };
+        const grain = lib.Grain{
+            .normalized_deviation = config.grain_normalized_deviation,
+            .dither_palette = if (config.dither_enabled)
+                config.dither_palette_id.palette()
+            else
+                null,
+        };
 
         grain.apply(srgb_band);
     }

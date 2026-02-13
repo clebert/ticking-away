@@ -182,6 +182,7 @@ fn utcOffset(tz: std.Tz, utc_seconds: i64) i64 {
 
     for (tz.transitions) |transition| {
         if (transition.ts > utc_seconds) break;
+
         offset = transition.timetype.offset;
     }
 
