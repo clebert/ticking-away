@@ -15,6 +15,16 @@ pub fn init(r: f32, g: f32, b: f32, a: f32) Self {
     return .{ .vec = .{ r, g, b, a } };
 }
 
+/// Rec. 709 luminance coefficients for linear RGB.
+pub fn toGrayscale(self: Self) Self {
+    const luminance =
+        0.2126 * self.vec[0] +
+        0.7152 * self.vec[1] +
+        0.0722 * self.vec[2];
+
+    return .{ .vec = .{ luminance, luminance, luminance, self.vec[3] } };
+}
+
 /// https://en.wikipedia.org/wiki/Linear_interpolation
 pub fn lerp(a: Self, b: Self, t: f32) Self {
     std.debug.assert(t >= 0.0 and t <= 1.0);
