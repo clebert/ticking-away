@@ -112,7 +112,6 @@ pub const Display = struct {
         try self.sendCommand(0x12, .both, &.{0x00});
         sleepMs(300);
         try self.sendCommand(0x02, .both, &.{0x00});
-        sleepMs(300);
     }
 
     fn reset(self: *Display) !void {
