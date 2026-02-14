@@ -149,9 +149,9 @@ The DC (Data/Command) pin distinguishes between command bytes and data bytes:
 6. Set DC LOW
 ```
 
-No delay is needed within the command sequence itself. The only required delay in the entire
-protocol is 300ms after the PON (power on) command before issuing DRF (display refresh) — see the
-refresh sequence below.
+No delay is needed within the command sequence itself. The only delays in the protocol are the
+hardware reset (30ms low, 30ms recovery) and 300ms after the PON (power on) command before issuing
+DRF (display refresh) — see the refresh sequence below.
 
 ---
 
@@ -198,8 +198,8 @@ RESET LOW  → wait 30ms → RESET HIGH → wait 30ms
 All 17 commands are sent without delays. Order matters.
 
 ```
-0x74  CS0   {0xC0, 0x1C, 0x1C, 0xCC, 0xCC, 0xCC, 0x15, 0x15, 0x55}  // Anti-noise timing
-0xF0  both  {0x49, 0x55, 0x13, 0x5D, 0x05, 0x10}                      // Undocumented init
+0x74  CS0   {0xC0, 0x1C, 0x1C, 0xCC, 0xCC, 0xCC, 0x15, 0x15, 0x55}      // Anti-noise timing
+0xF0  both  {0x49, 0x55, 0x13, 0x5D, 0x05, 0x10}                        // Undocumented init
 0x00  both  {0xDF, 0x69}                                                // Panel setting
 0x30  both  {0x08}                                                      // PLL control
 0x50  both  {0xF7}                                                      // VCOM and data interval
@@ -207,8 +207,8 @@ All 17 commands are sent without delays. Order matters.
 0x86  both  {0x10}                                                      // Auto gate ID
 0xE3  both  {0x22}                                                      // Power saving
 0xE0  both  {0x01}                                                      // Cascade setting
-0x61  both  {0x04, 0xB0, 0x03, 0x20}                                   // Resolution (1200x800)
-0x01  CS0   {0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38}                      // Power setting
+0x61  both  {0x04, 0xB0, 0x03, 0x20}                                    // Resolution (1200x800)
+0x01  CS0   {0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38}                        // Power setting
 0xB6  CS0   {0x07}                                                      // Enable buffer
 0x06  CS0   {0xD8, 0x18}                                                // Booster soft start (+)
 0xB7  CS0   {0x01}                                                      // Boost VDDP enable
@@ -252,7 +252,8 @@ in-progress refresh — it queues a power-down for after the update completes.
 
 ### Timing Details
 
-The 300ms delay after PON is the only required delay in the entire update sequence. Testing showed:
+The 300ms delay after PON is the only required delay in the update sequence (apart from the hardware
+reset delays). Testing showed:
 
 - **200ms**: Too short — display does not update
 - **300ms**: Works reliably
@@ -264,12 +265,12 @@ No delays are needed for init commands, DTM, DRF, or POF.
 
 ## Timing Summary
 
-| Operation              | Duration  | Notes                           |
-| ---------------------- | --------- | ------------------------------- |
-| Reset pulse (low)      | 30ms      |                                 |
-| Reset recovery (high)  | 30ms      |                                 |
-| Post-PON delay         | **300ms** | Only required delay in protocol |
-| Physical refresh (DRF) | ~30-40s   | E-ink update, non-blocking      |
+| Operation              | Duration  | Notes                         |
+| ---------------------- | --------- | ----------------------------- |
+| Reset pulse (low)      | 30ms      |                               |
+| Reset recovery (high)  | 30ms      |                               |
+| Post-PON delay         | **300ms** | Boost converter settling time |
+| Physical refresh (DRF) | ~30-40s   | E-ink update, non-blocking    |
 
 ---
 
