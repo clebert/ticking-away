@@ -10,16 +10,12 @@ const SPI_IOC_WR_MAX_SPEED_HZ = IOCTL.IOW('k', 4, u32);
 
 // GPIO ioctl commands (linux/gpio.h, magic 0xB4)
 const GPIO_GET_LINEHANDLE_IOCTL = 0xC16CB403;
-const GPIOHANDLE_GET_LINE_VALUES_IOCTL = 0xC040B408;
 const GPIOHANDLE_SET_LINE_VALUES_IOCTL = 0xC040B409;
 
-const GPIOHANDLE_REQUEST_INPUT = 0x1;
 const GPIOHANDLE_REQUEST_OUTPUT = 0x2;
-const GPIOHANDLE_REQUEST_BIAS_PULL_UP = 0x20;
 
 // GPIO pin assignments (BCM numbering)
 const pin_reset = 27;
-const pin_busy = 17;
 const pin_dc = 22;
 const pin_cs0 = 26;
 const pin_cs1 = 16;
@@ -45,7 +41,6 @@ pub const Display = struct {
     spi_fd: posix.fd_t,
     gpio_chip_fd: posix.fd_t,
     reset_fd: posix.fd_t,
-    busy_fd: posix.fd_t,
     dc_fd: posix.fd_t,
     cs0_fd: posix.fd_t,
     cs1_fd: posix.fd_t,
@@ -56,9 +51,6 @@ pub const Display = struct {
 
         const reset_fd = try requestOutput(gpio_chip_fd, pin_reset, 1);
         errdefer posix.close(reset_fd);
-
-        const busy_fd = try requestInput(gpio_chip_fd, pin_busy);
-        errdefer posix.close(busy_fd);
 
         const dc_fd = try requestOutput(gpio_chip_fd, pin_dc, 0);
         errdefer posix.close(dc_fd);
@@ -79,7 +71,6 @@ pub const Display = struct {
             .spi_fd = spi_fd,
             .gpio_chip_fd = gpio_chip_fd,
             .reset_fd = reset_fd,
-            .busy_fd = busy_fd,
             .dc_fd = dc_fd,
             .cs0_fd = cs0_fd,
             .cs1_fd = cs1_fd,
@@ -95,7 +86,6 @@ pub const Display = struct {
         posix.close(self.cs1_fd);
         posix.close(self.cs0_fd);
         posix.close(self.dc_fd);
-        posix.close(self.busy_fd);
         posix.close(self.reset_fd);
         posix.close(self.gpio_chip_fd);
         posix.close(self.spi_fd);
@@ -117,36 +107,17 @@ pub const Display = struct {
     }
 
     pub fn refresh(self: *Display) !void {
-        std.debug.print("refresh: power on\n", .{});
         try self.sendCommand(0x04, .both, &.{});
-        try self.busyWait(200);
-
-        std.debug.print("refresh: triggering display update\n", .{});
+        sleepMs(200);
         try self.sendCommand(0x12, .both, &.{0x00});
-        try self.busyWait(32_000);
-
-        std.debug.print("refresh: power off\n", .{});
         try self.sendCommand(0x02, .both, &.{0x00});
-        try self.busyWait(200);
-
-        std.debug.print("refresh: complete\n", .{});
     }
 
     fn reset(self: *Display) !void {
-        std.debug.print("reset: asserting hardware reset\n", .{});
         try setGpio(self.reset_fd, 0);
         sleepMs(30);
         try setGpio(self.reset_fd, 1);
         sleepMs(30);
-        try self.busyWait(300);
-
-        const busy = try readGpio(self.busy_fd);
-
-        if (busy == 1) {
-            std.debug.print("reset: warning: BUSY still HIGH — display may not be connected\n", .{});
-        } else {
-            std.debug.print("reset: display responded (BUSY LOW)\n", .{});
-        }
     }
 
     fn initSequence(self: *Display) !void {
@@ -167,14 +138,11 @@ pub const Display = struct {
         try self.sendCommand(0x05, .cs0, &.{ 0xD8, 0x18 });
         try self.sendCommand(0xB0, .cs0, &.{0x01});
         try self.sendCommand(0xB1, .cs0, &.{0x02});
-
-        std.debug.print("init: sequence complete\n", .{});
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
         try self.selectChip(cs);
         try setGpio(self.dc_fd, 0);
-        sleepMs(300);
         try spiWrite(self.spi_fd, &.{command});
 
         if (data.len > 0) {
@@ -184,27 +152,6 @@ pub const Display = struct {
 
         try self.deselectChips();
         try setGpio(self.dc_fd, 0);
-    }
-
-    fn busyWait(self: *Display, timeout_ms: u32) !void {
-        if (try readGpio(self.busy_fd) == 1) {
-            std.debug.print("  busy: HIGH at start, sleeping {d}ms (display may not be connected)\n", .{timeout_ms});
-            sleepMs(timeout_ms);
-            return;
-        }
-
-        var elapsed: u32 = 0;
-
-        while (elapsed < timeout_ms) {
-            if (try readGpio(self.busy_fd) == 0) {
-                if (elapsed > 0) std.debug.print("  busy: ready after {d}ms\n", .{elapsed});
-                return;
-            }
-            sleepMs(100);
-            elapsed += 100;
-        }
-
-        std.debug.print("  busy: timeout after {d}ms\n", .{timeout_ms});
     }
 
     fn selectChip(self: *Display, cs: ChipSelect) !void {
@@ -244,33 +191,12 @@ fn requestOutput(chip_fd: posix.fd_t, pin: u32, default: u8) !posix.fd_t {
     return request.fd;
 }
 
-fn requestInput(chip_fd: posix.fd_t, pin: u32) !posix.fd_t {
-    var request = GpiohandleRequest{};
-
-    request.lineoffsets[0] = pin;
-    request.flags = GPIOHANDLE_REQUEST_INPUT | GPIOHANDLE_REQUEST_BIAS_PULL_UP;
-    request.lines = 1;
-    @memcpy(request.consumer_label[0..4], "inky");
-
-    try ioctl(chip_fd, GPIO_GET_LINEHANDLE_IOCTL, &request);
-
-    return request.fd;
-}
-
 fn setGpio(line_fd: posix.fd_t, value: u8) !void {
     var data = GpiohandleData{};
 
     data.values[0] = value;
 
     try ioctl(line_fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
-}
-
-fn readGpio(line_fd: posix.fd_t) !u8 {
-    var data = GpiohandleData{};
-
-    try ioctl(line_fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data);
-
-    return data.values[0];
 }
 
 fn spiWrite(fd: posix.fd_t, data: []const u8) !void {
