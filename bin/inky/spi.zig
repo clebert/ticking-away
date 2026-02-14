@@ -110,7 +110,6 @@ pub const Display = struct {
         try self.sendCommand(0x04, .both, &.{});
         sleepMs(500); // 300ms command processing + 200ms for boost converter after PON
         try self.sendCommand(0x12, .both, &.{0x00});
-        sleepMs(300);
         try self.sendCommand(0x02, .both, &.{0x00});
     }
 
