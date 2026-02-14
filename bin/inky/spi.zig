@@ -124,8 +124,7 @@ pub const Display = struct {
         // Each command needs processing time before the next can be sent.
         // Without delays, controllers misprocess commands (particularly
         // framebuffer config), causing misaligned halves. 50ms is too
-        // short, 300ms is proven; 200ms gives margin while keeping
-        // startup under 4 seconds.
+        // short; 300ms per command is the minimum proven to work.
         try self.initCommand(0x74, .cs0, &.{ 0xC0, 0x1C, 0x1C, 0xCC, 0xCC, 0xCC, 0x15, 0x15, 0x55 });
         try self.initCommand(0xF0, .both, &.{ 0x49, 0x55, 0x13, 0x5D, 0x05, 0x10 });
         try self.initCommand(0x00, .both, &.{ 0xDF, 0x69 });
@@ -153,7 +152,7 @@ pub const Display = struct {
 
     fn initCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
         try self.sendCommand(command, cs, data);
-        sleepMs(200);
+        sleepMs(300);
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
