@@ -139,6 +139,10 @@ pub const Display = struct {
         try self.sendCommand(0xB0, .cs0, &.{0x01});
         try self.sendCommand(0xB1, .cs0, &.{0x02});
 
+        // Reset the data pointer on both controllers. The cs0-only commands
+        // above reset cs0's pointer as a side effect, but cs1's is undefined.
+        try self.sendCommand(0x10, .both, &.{});
+
         // Prime the boost converter with a PON→POF cycle (no DRF).
         // Without this, the first real refresh after init silently fails.
         try self.sendCommand(0x04, .both, &.{});
