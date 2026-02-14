@@ -124,7 +124,7 @@ pub const Display = struct {
     }
 
     fn initSequence(self: *Display) !void {
-        const init_delay_ms: u32 = 100;
+        const init_delay_ms: u32 = 300;
 
         try self.sendCommand(0x74, .cs0, &.{ 0xC0, 0x1C, 0x1C, 0xCC, 0xCC, 0xCC, 0x15, 0x15, 0x55 });
         sleepMs(init_delay_ms);
