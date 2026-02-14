@@ -108,7 +108,7 @@ pub const Display = struct {
 
     pub fn refresh(self: *Display) !void {
         try self.sendCommand(0x04, .both, &.{});
-        sleepMs(500); // 300ms command processing + 200ms for boost converter after PON
+        sleepMs(200); // Let boost converter reach operating voltage after PON
         try self.sendCommand(0x12, .both, &.{0x00});
         try self.sendCommand(0x02, .both, &.{0x00});
     }
