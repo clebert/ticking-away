@@ -41,6 +41,8 @@ pub fn main() !void {
 
     var config = try lib.Config.init(allocator);
 
+    config.prism_normalized_size = 1.0;
+    config.rainbow_normalized_spread = 1.0;
     config.rainbow_palette_id = args.rainbow_palette_id;
     config.dither_palette_id = args.dither_palette_id;
     config.dither_normalized_strength = args.dither_strength;
@@ -113,6 +115,10 @@ fn render(
             watchface.render(linear_band, viewport, clock);
 
             const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
+
+            const crop = lib.Crop{ .outside_color = dither.palette.white() };
+
+            crop.apply(srgb_band, viewport);
 
             packRow(&srgb_band, dither.palette, column_offset, &pack_row);
 
