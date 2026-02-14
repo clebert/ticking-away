@@ -42,6 +42,7 @@ pub fn main() !void {
     var config = try lib.Config.init(allocator);
 
     config.prism_normalized_size = args.prism_size;
+    config.rainbow_normalized_spread = args.rainbow_spread;
     config.rainbow_palette_id = args.rainbow_palette_id;
     config.dither_palette_id = args.dither_palette_id;
     config.dither_normalized_strength = args.dither_strength;
@@ -212,6 +213,7 @@ const Args = struct {
     dither_strength: f32 = 0.9,
     dither_chroma: f32 = 0.5,
     prism_size: f32 = 1.0,
+    rainbow_spread: f32 = 1.0,
     background_enabled: bool = false,
 };
 
@@ -249,6 +251,12 @@ fn parseArgs() ?Args {
             args.dither_chroma = std.fmt.parseFloat(f32, value) catch return null;
 
             if (args.dither_chroma < 0.0 or args.dither_chroma > 1.0) return null;
+        } else if (std.mem.eql(u8, arg, "--rainbow-spread")) {
+            const value = arguments.next() orelse return null;
+
+            args.rainbow_spread = std.fmt.parseFloat(f32, value) catch return null;
+
+            if (args.rainbow_spread < 0.0 or args.rainbow_spread > 1.0) return null;
         } else if (std.mem.eql(u8, arg, "--prism-size")) {
             const value = arguments.next() orelse return null;
 
@@ -277,6 +285,7 @@ fn printUsage() void {
         \\                          ideal, spectra6_inky, spectra6_epdopt, spectra6_trmnl
         \\  --dither-strength <n>   Dither strength 0.0-1.0 (default: 0.9)
         \\  --dither-chroma <n>     Dither chroma emphasis 0.0-1.0 (default: 0.5)
+        \\  --rainbow-spread <n>    Rainbow spread 0.0-1.0 (default: 1.0)
         \\  --prism-size <n>        Prism size 0.0-1.0 (default: 1.0)
         \\  --background            Enable circular crop with white background
         \\
