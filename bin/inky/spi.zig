@@ -141,8 +141,16 @@ pub const Display = struct {
         try self.sendCommand(0x05, .cs0, &.{ 0xD8, 0x18 });
         try self.sendCommand(0xB0, .cs0, &.{0x01});
         try self.sendCommand(0xB1, .cs0, &.{0x02});
-        sleepMs(5000);
         std.debug.print("init done\n", .{});
+
+        // Prime the controller with a dummy refresh cycle.
+        // The first PON→DRF→POF after init never produces a physical update;
+        // this sacrificial cycle makes the next real refresh work immediately.
+        try self.sendCommand(0x04, .both, &.{});
+        sleepMs(200);
+        try self.sendCommand(0x12, .both, &.{0x00});
+        try self.sendCommand(0x02, .both, &.{0x00});
+        std.debug.print("prime done\n", .{});
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
