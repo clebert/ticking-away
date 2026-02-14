@@ -119,7 +119,7 @@ pub const Display = struct {
         try setGpio(self.reset_fd, 0);
         sleepMs(30);
         try setGpio(self.reset_fd, 1);
-        sleepMs(500);
+        sleepMs(3000);
         std.debug.print("reset done\n", .{});
     }
 
