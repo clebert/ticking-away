@@ -108,16 +108,16 @@ pub const Display = struct {
 
     pub fn refresh(self: *Display) !void {
         try self.sendCommand(0x04, .both, &.{});
-        sleepMs(200);
+        sleepMs(200); // Let the boost converter reach operating voltage after PON
         try self.sendCommand(0x12, .both, &.{0x00});
         try self.sendCommand(0x02, .both, &.{0x00});
     }
 
     fn reset(self: *Display) !void {
         try setGpio(self.reset_fd, 0);
-        sleepMs(30);
+        sleepMs(30); // Hold low for controller to register reset
         try setGpio(self.reset_fd, 1);
-        sleepMs(30);
+        sleepMs(30); // Wait for controller to come out of reset
     }
 
     fn initSequence(self: *Display) !void {
