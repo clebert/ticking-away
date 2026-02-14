@@ -93,7 +93,6 @@ pub const Display = struct {
 
     pub fn beginData(self: *Display, cs: ChipSelect) !void {
         try self.sendCommand(0x10, cs, &.{});
-        sleepMs(300);
         try setGpio(self.dc_fd, 1);
         try self.selectChip(cs);
     }
