@@ -22,7 +22,7 @@ pub fn main() !void {
 
     const allocator = arena.allocator();
 
-    const interval = parseArgs() orelse {
+    const args = parseArgs() orelse {
         printUsage();
         std.process.exit(1);
     };
@@ -41,8 +41,10 @@ pub fn main() !void {
 
     var config = try lib.Config.init(allocator);
 
-    config.rainbow_palette_id = .spectra6;
-    config.dither_palette_id = .spectra6_epdopt;
+    config.rainbow_palette_id = args.rainbow_palette_id;
+    config.dither_palette_id = args.dither_palette_id;
+    config.dither_normalized_strength = args.dither_strength;
+    config.dither_normalized_chroma_emphasis = args.dither_chroma;
 
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
@@ -69,7 +71,7 @@ pub fn main() !void {
 
     while (true) {
         const now = try localTime(tz);
-        const minute = snapMinute(now.minute, interval);
+        const minute = snapMinute(now.minute, args.interval);
 
         std.debug.print("{d:0>2}:{d:0>2}\n", .{ now.hour, minute });
 
@@ -82,7 +84,7 @@ pub fn main() !void {
         try render(&display, watchface, dither, image, viewport, clock);
         try display.refresh();
 
-        sleepUntilNext(now.minute, now.second, interval);
+        sleepUntilNext(now.minute, now.second, args.interval);
     }
 }
 
@@ -194,34 +196,68 @@ fn sleepUntilNext(current_minute: u32, current_second: u32, interval: u32) void 
     std.posix.nanosleep(@intCast(remaining_seconds), 0);
 }
 
-fn parseArgs() ?u32 {
+const Args = struct {
+    interval: u32 = 1,
+    rainbow_palette_id: lib.Rainbow.PaletteId = .spectra6,
+    dither_palette_id: lib.Dither.PaletteId = .spectra6_epdopt,
+    dither_strength: f32 = 0.9,
+    dither_chroma: f32 = 0.5,
+};
+
+fn parseArgs() ?Args {
     var arguments = std.process.args();
 
     _ = arguments.next(); // skip program name
 
-    var interval: u32 = 1;
+    var args = Args{};
 
     while (arguments.next()) |arg| {
         if (std.mem.eql(u8, arg, "--interval")) {
             const value = arguments.next() orelse return null;
 
-            interval = std.fmt.parseInt(u32, value, 10) catch return null;
+            args.interval = std.fmt.parseInt(u32, value, 10) catch return null;
 
-            if (interval == 0 or interval > 60 or 60 % interval != 0) return null;
+            if (args.interval == 0 or args.interval > 60 or 60 % args.interval != 0) return null;
+        } else if (std.mem.eql(u8, arg, "--rainbow-palette")) {
+            const value = arguments.next() orelse return null;
+
+            args.rainbow_palette_id = std.meta.stringToEnum(lib.Rainbow.PaletteId, value) orelse return null;
+        } else if (std.mem.eql(u8, arg, "--dither-palette")) {
+            const value = arguments.next() orelse return null;
+
+            args.dither_palette_id = std.meta.stringToEnum(lib.Dither.PaletteId, value) orelse return null;
+        } else if (std.mem.eql(u8, arg, "--dither-strength")) {
+            const value = arguments.next() orelse return null;
+
+            args.dither_strength = std.fmt.parseFloat(f32, value) catch return null;
+
+            if (args.dither_strength < 0.0 or args.dither_strength > 1.0) return null;
+        } else if (std.mem.eql(u8, arg, "--dither-chroma")) {
+            const value = arguments.next() orelse return null;
+
+            args.dither_chroma = std.fmt.parseFloat(f32, value) catch return null;
+
+            if (args.dither_chroma < 0.0 or args.dither_chroma > 1.0) return null;
         } else {
             return null;
         }
     }
 
-    return interval;
+    return args;
 }
 
 fn printUsage() void {
     std.debug.print(
-        \\Usage: inky [--interval <minutes>]
+        \\Usage: inky [options]
         \\
-        \\  --interval  Update interval in minutes (default: 1)
-        \\              Must evenly divide 60 (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
+        \\  --interval <minutes>    Update interval (default: 1)
+        \\                          Must evenly divide 60 (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
+        \\  --rainbow-palette <id>  Rainbow palette (default: spectra6)
+        \\                          oklch_balanced, spectral, spectra6
+        \\  --dither-palette <id>   Dither palette (default: spectra6_epdopt)
+        \\                          ideal, spectra6_inky, spectra6_epdopt, spectra6_trmnl
+        \\  --dither-strength <n>   Dither strength 0.0-1.0 (default: 0.9)
+        \\  --dither-chroma <n>     Dither chroma emphasis 0.0-1.0 (default: 0.5)
         \\
     , .{});
 }
