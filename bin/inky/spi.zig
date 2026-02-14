@@ -138,16 +138,6 @@ pub const Display = struct {
         try self.sendCommand(0x05, .cs0, &.{ 0xD8, 0x18 });
         try self.sendCommand(0xB0, .cs0, &.{0x01});
         try self.sendCommand(0xB1, .cs0, &.{0x02});
-
-        // Reset the data pointer on both controllers. The cs0-only commands
-        // above reset cs0's pointer as a side effect, but cs1's is undefined.
-        try self.sendCommand(0x10, .both, &.{});
-
-        // Prime the boost converter with a PON→POF cycle (no DRF).
-        // Without this, the first real refresh after init silently fails.
-        try self.sendCommand(0x04, .both, &.{});
-        sleepMs(200); // Let the boost converter reach operating voltage
-        try self.sendCommand(0x02, .both, &.{0x00});
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
