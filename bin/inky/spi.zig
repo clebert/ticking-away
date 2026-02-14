@@ -107,17 +107,20 @@ pub const Display = struct {
     }
 
     pub fn refresh(self: *Display) !void {
+        std.debug.print("refresh start\n", .{});
         try self.sendCommand(0x04, .both, &.{});
         sleepMs(200);
         try self.sendCommand(0x12, .both, &.{0x00});
         try self.sendCommand(0x02, .both, &.{0x00});
+        std.debug.print("refresh done\n", .{});
     }
 
     fn reset(self: *Display) !void {
         try setGpio(self.reset_fd, 0);
         sleepMs(30);
         try setGpio(self.reset_fd, 1);
-        sleepMs(30);
+        sleepMs(500);
+        std.debug.print("reset done\n", .{});
     }
 
     fn initSequence(self: *Display) !void {
@@ -138,12 +141,12 @@ pub const Display = struct {
         try self.sendCommand(0x05, .cs0, &.{ 0xD8, 0x18 });
         try self.sendCommand(0xB0, .cs0, &.{0x01});
         try self.sendCommand(0xB1, .cs0, &.{0x02});
+        std.debug.print("init done\n", .{});
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
         try self.selectChip(cs);
         try setGpio(self.dc_fd, 0);
-        sleepMs(10);
         try spiWrite(self.spi_fd, &.{command});
 
         if (data.len > 0) {
