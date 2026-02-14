@@ -93,6 +93,7 @@ pub const Display = struct {
 
     pub fn beginData(self: *Display, cs: ChipSelect) !void {
         try self.sendCommand(0x10, cs, &.{});
+        sleepMs(300);
         try setGpio(self.dc_fd, 1);
         try self.selectChip(cs);
     }
@@ -108,9 +109,11 @@ pub const Display = struct {
 
     pub fn refresh(self: *Display) !void {
         try self.sendCommand(0x04, .both, &.{});
-        sleepMs(200); // Let the boost converter reach operating voltage after PON
+        sleepMs(500); // 300ms command processing + 200ms for boost converter after PON
         try self.sendCommand(0x12, .both, &.{0x00});
+        sleepMs(300);
         try self.sendCommand(0x02, .both, &.{0x00});
+        sleepMs(300);
     }
 
     fn reset(self: *Display) !void {
@@ -152,7 +155,6 @@ pub const Display = struct {
 
         try self.deselectChips();
         try setGpio(self.dc_fd, 0);
-        sleepMs(300); // Controller needs processing time after each command
     }
 
     fn selectChip(self: *Display, cs: ChipSelect) !void {
