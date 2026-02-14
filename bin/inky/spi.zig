@@ -17,9 +17,6 @@ const GPIOHANDLE_REQUEST_INPUT = 0x1;
 const GPIOHANDLE_REQUEST_OUTPUT = 0x2;
 const GPIOHANDLE_REQUEST_BIAS_PULL_UP = 0x20;
 
-// I2C ioctl commands (linux/i2c-dev.h)
-const I2C_SLAVE = 0x0703;
-
 // GPIO pin assignments (BCM numbering)
 const pin_reset = 27;
 const pin_busy = 17;
@@ -232,52 +229,6 @@ pub const Display = struct {
         try setGpio(self.cs1_fd, 1);
     }
 };
-
-pub fn probeEeprom() void {
-    const fd = posix.open("/dev/i2c-1", .{ .ACCMODE = .RDWR, .CLOEXEC = true }, 0) catch |err| {
-        std.debug.print("eeprom: cannot open /dev/i2c-1: {s}\n", .{@errorName(err)});
-        return;
-    };
-
-    defer posix.close(fd);
-
-    const result = linux.ioctl(fd, I2C_SLAVE, 0x50);
-
-    if (linux.E.init(result) != .SUCCESS) {
-        std.debug.print("eeprom: cannot set I2C address 0x50\n", .{});
-        return;
-    }
-
-    _ = posix.write(fd, &[_]u8{ 0x00, 0x00 }) catch |err| {
-        std.debug.print("eeprom: write failed: {s}\n", .{@errorName(err)});
-        return;
-    };
-
-    var buffer: [29]u8 = undefined;
-
-    const n = posix.read(fd, &buffer) catch |err| {
-        std.debug.print("eeprom: read failed: {s}\n", .{@errorName(err)});
-        return;
-    };
-
-    if (n < 7) {
-        std.debug.print("eeprom: short read ({d} bytes)\n", .{n});
-        return;
-    }
-
-    const width = @as(u16, buffer[0]) | (@as(u16, buffer[1]) << 8);
-    const height = @as(u16, buffer[2]) | (@as(u16, buffer[3]) << 8);
-    const color_type = buffer[4];
-    const display_variant = buffer[6];
-
-    std.debug.print("eeprom: {d}x{d}, color={d}, variant={d}", .{ width, height, color_type, display_variant });
-
-    if (display_variant == 21) {
-        std.debug.print(" (Inky Impression 13.3\")\n", .{});
-    } else {
-        std.debug.print(" (warning: expected variant 21)\n", .{});
-    }
-}
 
 fn requestOutput(chip_fd: posix.fd_t, pin: u32, default: u8) !posix.fd_t {
     var request = GpiohandleRequest{};
