@@ -143,6 +143,7 @@ pub const Display = struct {
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
         try self.selectChip(cs);
         try setGpio(self.dc_fd, 0);
+        sleepMs(10);
         try spiWrite(self.spi_fd, &.{command});
 
         if (data.len > 0) {
