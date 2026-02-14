@@ -17,6 +17,9 @@ const GPIOHANDLE_REQUEST_INPUT = 0x1;
 const GPIOHANDLE_REQUEST_OUTPUT = 0x2;
 const GPIOHANDLE_REQUEST_BIAS_PULL_UP = 0x20;
 
+// I2C ioctl commands (linux/i2c-dev.h)
+const I2C_SLAVE = 0x0703;
+
 // GPIO pin assignments (BCM numbering)
 const pin_reset = 27;
 const pin_busy = 17;
@@ -104,35 +107,49 @@ pub const Display = struct {
     pub fn beginData(self: *Display, cs: ChipSelect) !void {
         try self.sendCommand(0x10, cs, &.{});
         try setGpio(self.dc_fd, 1);
-        self.selectChip(cs);
+        try self.selectChip(cs);
     }
 
     pub fn writeData(self: *Display, data: []const u8) !void {
         try spiWrite(self.spi_fd, data);
     }
 
-    pub fn endData(self: *Display) void {
-        self.deselectChips();
-        setGpio(self.dc_fd, 0) catch {};
+    pub fn endData(self: *Display) !void {
+        try self.deselectChips();
+        try setGpio(self.dc_fd, 0);
     }
 
     pub fn refresh(self: *Display) !void {
+        std.debug.print("refresh: power on\n", .{});
         try self.sendCommand(0x04, .both, &.{});
         try self.busyWait(200);
 
+        std.debug.print("refresh: triggering display update\n", .{});
         try self.sendCommand(0x12, .both, &.{0x00});
         try self.busyWait(32_000);
 
+        std.debug.print("refresh: power off\n", .{});
         try self.sendCommand(0x02, .both, &.{0x00});
         try self.busyWait(200);
+
+        std.debug.print("refresh: complete\n", .{});
     }
 
     fn reset(self: *Display) !void {
+        std.debug.print("reset: asserting hardware reset\n", .{});
         try setGpio(self.reset_fd, 0);
         sleepMs(30);
         try setGpio(self.reset_fd, 1);
         sleepMs(30);
         try self.busyWait(300);
+
+        const busy = try readGpio(self.busy_fd);
+
+        if (busy == 1) {
+            std.debug.print("reset: warning: BUSY still HIGH — display may not be connected\n", .{});
+        } else {
+            std.debug.print("reset: display responded (BUSY LOW)\n", .{});
+        }
     }
 
     fn initSequence(self: *Display) !void {
@@ -153,10 +170,12 @@ pub const Display = struct {
         try self.sendCommand(0x05, .cs0, &.{ 0xD8, 0x18 });
         try self.sendCommand(0xB0, .cs0, &.{0x01});
         try self.sendCommand(0xB1, .cs0, &.{0x02});
+
+        std.debug.print("init: sequence complete\n", .{});
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
-        self.selectChip(cs);
+        try self.selectChip(cs);
         try setGpio(self.dc_fd, 0);
         sleepMs(300);
         try spiWrite(self.spi_fd, &.{command});
@@ -166,12 +185,13 @@ pub const Display = struct {
             try spiWrite(self.spi_fd, data);
         }
 
-        self.deselectChips();
-        setGpio(self.dc_fd, 0) catch {};
+        try self.deselectChips();
+        try setGpio(self.dc_fd, 0);
     }
 
     fn busyWait(self: *Display, timeout_ms: u32) !void {
         if (try readGpio(self.busy_fd) == 1) {
+            std.debug.print("  busy: HIGH at start, sleeping {d}ms (display may not be connected)\n", .{timeout_ms});
             sleepMs(timeout_ms);
             return;
         }
@@ -179,34 +199,85 @@ pub const Display = struct {
         var elapsed: u32 = 0;
 
         while (elapsed < timeout_ms) {
-            if (try readGpio(self.busy_fd) == 0) return;
+            if (try readGpio(self.busy_fd) == 0) {
+                if (elapsed > 0) std.debug.print("  busy: ready after {d}ms\n", .{elapsed});
+                return;
+            }
             sleepMs(100);
             elapsed += 100;
         }
+
+        std.debug.print("  busy: timeout after {d}ms\n", .{timeout_ms});
     }
 
-    fn selectChip(self: *Display, cs: ChipSelect) void {
+    fn selectChip(self: *Display, cs: ChipSelect) !void {
         switch (cs) {
             .cs0 => {
-                setGpio(self.cs0_fd, 0) catch {};
-                setGpio(self.cs1_fd, 1) catch {};
+                try setGpio(self.cs0_fd, 0);
+                try setGpio(self.cs1_fd, 1);
             },
             .cs1 => {
-                setGpio(self.cs0_fd, 1) catch {};
-                setGpio(self.cs1_fd, 0) catch {};
+                try setGpio(self.cs0_fd, 1);
+                try setGpio(self.cs1_fd, 0);
             },
             .both => {
-                setGpio(self.cs0_fd, 0) catch {};
-                setGpio(self.cs1_fd, 0) catch {};
+                try setGpio(self.cs0_fd, 0);
+                try setGpio(self.cs1_fd, 0);
             },
         }
     }
 
-    fn deselectChips(self: *Display) void {
-        setGpio(self.cs0_fd, 1) catch {};
-        setGpio(self.cs1_fd, 1) catch {};
+    fn deselectChips(self: *Display) !void {
+        try setGpio(self.cs0_fd, 1);
+        try setGpio(self.cs1_fd, 1);
     }
 };
+
+pub fn probeEeprom() void {
+    const fd = posix.open("/dev/i2c-1", .{ .ACCMODE = .RDWR, .CLOEXEC = true }, 0) catch |err| {
+        std.debug.print("eeprom: cannot open /dev/i2c-1: {s}\n", .{@errorName(err)});
+        return;
+    };
+
+    defer posix.close(fd);
+
+    const result = linux.ioctl(fd, I2C_SLAVE, 0x50);
+
+    if (linux.E.init(result) != .SUCCESS) {
+        std.debug.print("eeprom: cannot set I2C address 0x50\n", .{});
+        return;
+    }
+
+    _ = posix.write(fd, &[_]u8{ 0x00, 0x00 }) catch |err| {
+        std.debug.print("eeprom: write failed: {s}\n", .{@errorName(err)});
+        return;
+    };
+
+    var buffer: [29]u8 = undefined;
+
+    const n = posix.read(fd, &buffer) catch |err| {
+        std.debug.print("eeprom: read failed: {s}\n", .{@errorName(err)});
+        return;
+    };
+
+    if (n < 7) {
+        std.debug.print("eeprom: short read ({d} bytes)\n", .{n});
+        return;
+    }
+
+    const width = @as(u16, buffer[0]) | (@as(u16, buffer[1]) << 8);
+    const height = @as(u16, buffer[2]) | (@as(u16, buffer[3]) << 8);
+    const color_type = buffer[4];
+    const display_variant = buffer[6];
+
+    std.debug.print("eeprom: {d}x{d}, color={d}, variant={d}", .{ width, height, color_type, display_variant });
+
+    if (display_variant == 21) {
+        std.debug.print(" (Inky Impression 13.3\")\n", .{});
+    } else {
+        std.debug.print(" (warning: expected variant 21)\n", .{});
+    }
+}
 
 fn requestOutput(chip_fd: posix.fd_t, pin: u32, default: u8) !posix.fd_t {
     var request = GpiohandleRequest{};

@@ -65,6 +65,8 @@ pub fn main() !void {
     const image = lib.Image.init(display_width, display_height);
     const viewport = image.viewportRotated(.clockwise_90);
 
+    spi.probeEeprom();
+
     var display = try spi.Display.init();
 
     defer display.deinit();
@@ -119,7 +121,7 @@ fn render(
             try display.writeData(&pack_row);
         }
 
-        display.endData();
+        try display.endData();
     }
 }
 
