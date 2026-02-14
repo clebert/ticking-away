@@ -143,6 +143,12 @@ pub const Display = struct {
         try self.initCommand(0x05, .cs0, &.{ 0xD8, 0x18 });
         try self.initCommand(0xB0, .cs0, &.{0x01});
         try self.initCommand(0xB1, .cs0, &.{0x02});
+
+        // Cycle power once so the first real DRF produces a physical update.
+        // Without this, the first DRF after init is silently ignored.
+        try self.sendCommand(0x04, .both, &.{}); // PON
+        sleepMs(200);
+        try self.sendCommand(0x02, .both, &.{0x00}); // POF
     }
 
     fn initCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
