@@ -41,8 +41,7 @@ pub fn main() !void {
 
     var config = try lib.Config.init(allocator);
 
-    config.prism_normalized_size = 1.0;
-    config.rainbow_normalized_spread = 1.0;
+    config.prism_normalized_size = args.prism_size;
     config.rainbow_palette_id = args.rainbow_palette_id;
     config.dither_palette_id = args.dither_palette_id;
     config.dither_normalized_strength = args.dither_strength;
@@ -83,7 +82,12 @@ pub fn main() !void {
             config.rainbow_normalized_spread,
         );
 
-        try render(&display, watchface, dither, image, viewport, clock);
+        const crop: ?lib.Crop = if (args.background_enabled)
+            .{ .outside_color = dither.palette.white() }
+        else
+            null;
+
+        try render(&display, watchface, dither, crop, image, viewport, clock);
         try display.refresh();
 
         sleepUntilNext(now.minute, now.second, args.interval);
@@ -94,6 +98,7 @@ fn render(
     display: *spi.Display,
     watchface: lib.Watchface,
     dither: lib.Dither,
+    crop: ?lib.Crop,
     image: lib.Image,
     viewport: lib.Image.Viewport(.clockwise_90),
     clock: lib.Clock,
@@ -116,9 +121,7 @@ fn render(
 
             const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
-            const crop = lib.Crop{ .outside_color = dither.palette.white() };
-
-            crop.apply(srgb_band, viewport);
+            if (crop) |c| c.apply(srgb_band, viewport);
 
             packRow(&srgb_band, dither.palette, column_offset, &pack_row);
 
@@ -208,6 +211,8 @@ const Args = struct {
     dither_palette_id: lib.Dither.PaletteId = .spectra6_epdopt,
     dither_strength: f32 = 0.9,
     dither_chroma: f32 = 0.5,
+    prism_size: f32 = 1.0,
+    background_enabled: bool = false,
 };
 
 fn parseArgs() ?Args {
@@ -244,6 +249,14 @@ fn parseArgs() ?Args {
             args.dither_chroma = std.fmt.parseFloat(f32, value) catch return null;
 
             if (args.dither_chroma < 0.0 or args.dither_chroma > 1.0) return null;
+        } else if (std.mem.eql(u8, arg, "--prism-size")) {
+            const value = arguments.next() orelse return null;
+
+            args.prism_size = std.fmt.parseFloat(f32, value) catch return null;
+
+            if (args.prism_size < 0.0 or args.prism_size > 1.0) return null;
+        } else if (std.mem.eql(u8, arg, "--background")) {
+            args.background_enabled = true;
         } else {
             return null;
         }
@@ -264,6 +277,8 @@ fn printUsage() void {
         \\                          ideal, spectra6_inky, spectra6_epdopt, spectra6_trmnl
         \\  --dither-strength <n>   Dither strength 0.0-1.0 (default: 0.9)
         \\  --dither-chroma <n>     Dither chroma emphasis 0.0-1.0 (default: 0.5)
+        \\  --prism-size <n>        Prism size 0.0-1.0 (default: 1.0)
+        \\  --background            Enable circular crop with white background
         \\
     , .{});
 }
