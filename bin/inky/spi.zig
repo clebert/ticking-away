@@ -232,5 +232,5 @@ fn ioctl(fd: posix.fd_t, request: u32, arg: anytype) !void {
 }
 
 fn sleepMs(ms: u32) void {
-    std.posix.nanosleep(0, @as(u64, ms) * 1_000_000);
+    std.posix.nanosleep(ms / 1000, @as(u64, ms % 1000) * 1_000_000);
 }
