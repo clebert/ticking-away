@@ -69,12 +69,6 @@ pub fn main() !void {
 
     defer display.deinit();
 
-    // The first refresh after init never produces a physical display update,
-    // but it primes the controller so subsequent refreshes work correctly.
-    // We render the real frame (not a dummy) so the data is ready if the
-    // controller ever does use it, then skip the sleep to immediately retry.
-    var primed = false;
-
     while (true) {
         const now = try localTime(tz);
         const minute = snapMinute(now.minute, args.interval);
@@ -89,11 +83,6 @@ pub fn main() !void {
 
         try render(&display, watchface, dither, image, viewport, clock);
         try display.refresh();
-
-        if (!primed) {
-            primed = true;
-            continue;
-        }
 
         sleepUntilNext(now.minute, now.second, args.interval);
     }
