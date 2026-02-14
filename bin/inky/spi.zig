@@ -124,42 +124,25 @@ pub const Display = struct {
     }
 
     fn initSequence(self: *Display) !void {
-        const init_delay_ms: u32 = 300;
-
         try self.sendCommand(0x74, .cs0, &.{ 0xC0, 0x1C, 0x1C, 0xCC, 0xCC, 0xCC, 0x15, 0x15, 0x55 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0xF0, .both, &.{ 0x49, 0x55, 0x13, 0x5D, 0x05, 0x10 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x00, .both, &.{ 0xDF, 0x69 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x30, .both, &.{0x08});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x50, .both, &.{0xF7});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x60, .both, &.{ 0x03, 0x03 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x86, .both, &.{0x10});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0xE3, .both, &.{0x22});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0xE0, .both, &.{0x01});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x61, .both, &.{ 0x04, 0xB0, 0x03, 0x20 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x01, .cs0, &.{ 0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0xB6, .cs0, &.{0x07});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x06, .cs0, &.{ 0xD8, 0x18 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0xB7, .cs0, &.{0x01});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0x05, .cs0, &.{ 0xD8, 0x18 });
-        sleepMs(init_delay_ms);
         try self.sendCommand(0xB0, .cs0, &.{0x01});
-        sleepMs(init_delay_ms);
         try self.sendCommand(0xB1, .cs0, &.{0x02});
-        std.debug.print("init done ({d}ms)\n", .{init_delay_ms * 17});
+        sleepMs(5000);
+        std.debug.print("init done\n", .{});
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
