@@ -139,10 +139,11 @@ pub const Display = struct {
         try self.sendCommand(0xB0, .cs0, &.{0x01});
         try self.sendCommand(0xB1, .cs0, &.{0x02});
 
-        // Prime the controller with a dummy refresh cycle.
-        // The first PON→DRF→POF after init never produces a physical update;
-        // this sacrificial cycle makes the next real refresh work immediately.
-        try self.refresh();
+        // Prime the boost converter with a PON→POF cycle (no DRF).
+        // Without this, the first real refresh after init silently fails.
+        try self.sendCommand(0x04, .both, &.{});
+        sleepMs(200); // Let the boost converter reach operating voltage
+        try self.sendCommand(0x02, .both, &.{0x00});
     }
 
     fn sendCommand(self: *Display, command: u8, cs: ChipSelect, data: []const u8) !void {
