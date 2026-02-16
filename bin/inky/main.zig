@@ -22,11 +22,6 @@ pub fn main() !void {
 
     const allocator = arena.allocator();
 
-    const args = parseArgs() orelse {
-        printUsage();
-        std.process.exit(1);
-    };
-
     const tz = blk: {
         const file = try std.fs.openFileAbsolute("/etc/localtime", .{});
 
@@ -39,14 +34,12 @@ pub fn main() !void {
         break :blk try std.Tz.parse(allocator, stream.reader());
     };
 
-    var config = try lib.Config.init(allocator);
+    const interval = parseInterval() orelse {
+        printUsage();
+        std.process.exit(1);
+    };
 
-    config.prism_normalized_size = args.prism_size;
-    config.rainbow_normalized_spread = args.rainbow_spread;
-    config.rainbow_palette_id = args.rainbow_palette_id;
-    config.dither_palette_id = args.dither_palette_id;
-    config.dither_normalized_strength = args.dither_strength;
-    config.dither_normalized_chroma_emphasis = args.dither_chroma;
+    const config = try lib.Config.init(allocator);
 
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
@@ -73,7 +66,7 @@ pub fn main() !void {
 
     while (true) {
         const now = try localTime(tz);
-        const minute = snapMinute(now.minute, args.interval);
+        const minute = snapMinute(now.minute, interval);
 
         std.debug.print("{d:0>2}:{d:0>2}\n", .{ now.hour, minute });
 
@@ -83,15 +76,14 @@ pub fn main() !void {
             config.rainbow_normalized_spread,
         );
 
-        const crop: ?lib.Crop = if (args.background_enabled)
-            .{ .outside_color = dither.palette.white() }
-        else
-            null;
+        const crop: ?lib.Crop = if (config.background_enabled) .{
+            .outside_color = dither.palette.white(),
+        } else null;
 
         try render(&display, watchface, dither, crop, image, viewport, clock);
         try display.refresh();
 
-        sleepUntilNext(now.minute, now.second, args.interval);
+        sleepUntilNext(now.minute, now.second, interval);
     }
 }
 
@@ -206,88 +198,34 @@ fn sleepUntilNext(current_minute: u32, current_second: u32, interval: u32) void 
     std.posix.nanosleep(@intCast(remaining_seconds), 0);
 }
 
-const Args = struct {
-    interval: u32 = 1,
-    rainbow_palette_id: lib.Rainbow.PaletteId = .spectra6,
-    dither_palette_id: lib.Dither.PaletteId = .spectra6_epdopt,
-    dither_strength: f32 = 0.9,
-    dither_chroma: f32 = 0.5,
-    prism_size: f32 = 1.0,
-    rainbow_spread: f32 = 1.0,
-    background_enabled: bool = false,
-};
-
-fn parseArgs() ?Args {
+fn parseInterval() ?u32 {
     var arguments = std.process.args();
 
     _ = arguments.next(); // skip program name
 
-    var args = Args{};
+    var interval: u32 = 1;
 
     while (arguments.next()) |arg| {
         if (std.mem.eql(u8, arg, "--interval")) {
             const value = arguments.next() orelse return null;
 
-            args.interval = std.fmt.parseInt(u32, value, 10) catch return null;
+            interval = std.fmt.parseInt(u32, value, 10) catch return null;
 
-            if (args.interval == 0 or args.interval > 60 or 60 % args.interval != 0) return null;
-        } else if (std.mem.eql(u8, arg, "--rainbow-palette")) {
-            const value = arguments.next() orelse return null;
-
-            args.rainbow_palette_id = std.meta.stringToEnum(lib.Rainbow.PaletteId, value) orelse return null;
-        } else if (std.mem.eql(u8, arg, "--dither-palette")) {
-            const value = arguments.next() orelse return null;
-
-            args.dither_palette_id = std.meta.stringToEnum(lib.Dither.PaletteId, value) orelse return null;
-        } else if (std.mem.eql(u8, arg, "--dither-strength")) {
-            const value = arguments.next() orelse return null;
-
-            args.dither_strength = std.fmt.parseFloat(f32, value) catch return null;
-
-            if (args.dither_strength < 0.0 or args.dither_strength > 1.0) return null;
-        } else if (std.mem.eql(u8, arg, "--dither-chroma")) {
-            const value = arguments.next() orelse return null;
-
-            args.dither_chroma = std.fmt.parseFloat(f32, value) catch return null;
-
-            if (args.dither_chroma < 0.0 or args.dither_chroma > 1.0) return null;
-        } else if (std.mem.eql(u8, arg, "--rainbow-spread")) {
-            const value = arguments.next() orelse return null;
-
-            args.rainbow_spread = std.fmt.parseFloat(f32, value) catch return null;
-
-            if (args.rainbow_spread < 0.0 or args.rainbow_spread > 1.0) return null;
-        } else if (std.mem.eql(u8, arg, "--prism-size")) {
-            const value = arguments.next() orelse return null;
-
-            args.prism_size = std.fmt.parseFloat(f32, value) catch return null;
-
-            if (args.prism_size < 0.0 or args.prism_size > 1.0) return null;
-        } else if (std.mem.eql(u8, arg, "--background")) {
-            args.background_enabled = true;
+            if (interval == 0 or interval > 60 or 60 % interval != 0) return null;
         } else {
             return null;
         }
     }
 
-    return args;
+    return interval;
 }
 
 fn printUsage() void {
     std.debug.print(
         \\Usage: inky [options]
         \\
-        \\  --interval <minutes>    Update interval (default: 1)
-        \\                          Must evenly divide 60 (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
-        \\  --rainbow-palette <id>  Rainbow palette (default: spectra6)
-        \\                          oklch_balanced, spectral, spectra6
-        \\  --dither-palette <id>   Dither palette (default: spectra6_epdopt)
-        \\                          ideal, spectra6_inky, spectra6_epdopt, spectra6_trmnl
-        \\  --dither-strength <n>   Dither strength 0.0-1.0 (default: 0.9)
-        \\  --dither-chroma <n>     Dither chroma emphasis 0.0-1.0 (default: 0.5)
-        \\  --rainbow-spread <n>    Rainbow spread 0.0-1.0 (default: 1.0)
-        \\  --prism-size <n>        Prism size 0.0-1.0 (default: 1.0)
-        \\  --background            Enable circular crop with white background
+        \\  --interval <minutes>  Update interval (default: 1)
+        \\                        Must evenly divide 60 (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
         \\
     , .{});
 }
