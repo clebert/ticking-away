@@ -53,7 +53,7 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
     const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_hand.get(.green).end);
     const hour_intersection = clock.prism.intersect(hour_ray) orelse unreachable;
 
-    spectrum.render(band, viewport, clock.prism, rainbow, .{
+    spectrum.render(band, viewport, rainbow, .{
         .normalized_distance = hour_intersection.distance,
         .falloff = self.hand_length_falloff,
     });

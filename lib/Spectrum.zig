@@ -3,7 +3,6 @@ const std = @import("std");
 const Image = @import("Image.zig");
 const intensity = @import("intensity.zig");
 const Linear = @import("Linear.zig");
-const Prism = @import("Prism.zig");
 const Rainbow = @import("Rainbow.zig");
 const util = @import("util.zig");
 const vector = @import("vector.zig");
@@ -60,7 +59,6 @@ pub fn render(
     self: Self,
     band: Image.Band(Linear),
     viewport: anytype,
-    prism: Prism,
     rainbow: Rainbow,
     attenuation: intensity.Attenuation,
 ) void {
@@ -126,11 +124,7 @@ pub fn render(
             const spectrum_position =
                 if (self.reverse) 1.0 - spectrum_position_raw else spectrum_position_raw;
 
-            const rainbow_color = rainbow.interpolate(spectrum_position);
-
-            const color =
-                if (prism.containsPoint(point)) rainbow_color.toGrayscale() else rainbow_color;
-
+            const color = rainbow.interpolate(spectrum_position);
             const pixel = band.colorAt(x, local_y);
 
             pixel.vec = pixel.vec + color.vec * @as(@Vector(4, f32), @splat(attenuation_value));
@@ -194,7 +188,7 @@ test "render produces spectrum with rotated viewport" {
     const band = try image.band(Linear, &buffer, 64, 0);
     const spectrum = Self.init(.{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 });
 
-    spectrum.render(band, viewport, Prism.init(0.8), rainbow, .{
+    spectrum.render(band, viewport, rainbow, .{
         .normalized_distance = 0.5,
         .falloff = .cubic,
     });
@@ -225,7 +219,7 @@ test "attenuation reduces brightness near origin" {
 
     // Sector pointing right, centered on x-axis
     const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.2 }, .{ 1, -0.2 });
-    spectrum.render(band, viewport, Prism.init(0.8), rainbow, .{ .normalized_distance = 0.5, .falloff = .cubic });
+    spectrum.render(band, viewport, rainbow, .{ .normalized_distance = 0.5, .falloff = .cubic });
 
     // Sum brightness in the near zone (5-15% radius) and far zone (50-75% radius)
     // across multiple rows to average out angular color differences.
