@@ -50,3 +50,8 @@ zig-out/bin/png <height> <hour> <minute> <output.png>
 zig build png -Doptimize=ReleaseFast && \
 zig-out/bin/png 2234 7 14 prism.png
 ```
+
+## Disclaimer
+
+This project is built with [Claude Code](https://claude.com/claude-code) (Opus). Every line is
+written by hand or at minimum reviewed and curated — no AI slop here.
