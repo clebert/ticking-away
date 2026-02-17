@@ -1,5 +1,6 @@
 /.zig-cache/
 /bin/*/*
+!/bin/*/*.ld
 !/bin/*/*.md
 !/bin/*/*.zig
 /dist/

@@ -1,4 +1,4 @@
-# Pi Zero 2 W Setup
+# Raspberry Pi Zero 2 W Setup
 
 Setup guide for running the watchface on a Raspberry Pi Zero 2 W with an Inky Impression display.
 
@@ -116,8 +116,8 @@ cd ticking-away
 ## Build and Run
 
 ```sh
-zig build inky -Doptimize=ReleaseFast
-sudo zig-out/bin/inky --interval 5
+zig build inky-zero -Doptimize=ReleaseFast
+sudo zig-out/bin/inky-zero --interval 5
 ```
 
 The `--interval` flag sets the update interval in minutes (must evenly divide 60). Default: 1.
