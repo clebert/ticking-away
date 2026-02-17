@@ -23,8 +23,8 @@ e-ink panel in a wall-clock form factor, driven by one of two Raspberry Pi board
 
 - **[Pebble Round 2](https://repebble.com/watch)** — smartwatch (planned)
 
-A **web demo** is also available, powered by WebAssembly, for trying different settings and as a
-quick preview.
+A [**web demo**](https://clebert.github.io/ticking-away/) is also available, powered by WebAssembly,
+for trying different settings and as a quick preview.
 
 ## Concept
 
