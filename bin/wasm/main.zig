@@ -140,7 +140,10 @@ export fn render(
     }
 
     if (config.background_enabled) {
-        const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
+        const crop = lib.Crop{
+            .outside_color = lib.Srgb.transparent,
+            .antialias = !config.dither_enabled,
+        };
 
         crop.apply(srgb_band, viewport);
     }

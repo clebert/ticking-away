@@ -68,7 +68,7 @@ pub fn main() !void {
         grain.apply(srgb_band);
 
         if (config.background_enabled) {
-            const crop = lib.Crop{ .outside_color = lib.Srgb.transparent };
+            const crop = lib.Crop{ .outside_color = lib.Srgb.transparent, .antialias = true };
 
             crop.apply(srgb_band, viewport);
         }

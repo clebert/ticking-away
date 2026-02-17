@@ -6,6 +6,7 @@ const Srgb = @import("Srgb.zig");
 const Self = @This();
 
 outside_color: Srgb,
+antialias: bool = false,
 
 pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
     const radius = viewport.scale - 1.0;
@@ -22,6 +23,10 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
 
         if (dx_max_squared < 0.0) {
             @memset(row, self.outside_color);
+
+            if (self.antialias) {
+                self.antialiasNearEdge(row, center_x, dy, radius);
+            }
 
             continue;
         }
@@ -45,7 +50,85 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
         if (x_end < band.width) {
             @memset(row[x_end..band.width], self.outside_color);
         }
+
+        if (self.antialias) {
+            self.antialiasAtBoundary(row, center_x, dy, radius, x_start, x_end);
+        }
     }
+}
+
+fn antialiasAtBoundary(
+    self: Self,
+    row: []Srgb,
+    center_x: f32,
+    dy: f32,
+    radius: f32,
+    x_start: usize,
+    x_end: usize,
+) void {
+    // Blend the ~2 boundary pixels on each side of the circle edge.
+    const left_from = if (x_start > 1) x_start - 1 else 0;
+    const left_to = @min(x_start + 1, row.len);
+
+    for (left_from..left_to) |x| {
+        self.blendPixel(&row[x], pixelCoverage(center_x, dy, radius, x));
+    }
+
+    const right_from = if (x_end > 1) x_end - 1 else 0;
+    const right_to = @min(x_end + 1, row.len);
+
+    for (right_from..right_to) |x| {
+        if (x >= left_from and x < left_to) continue;
+
+        self.blendPixel(&row[x], pixelCoverage(center_x, dy, radius, x));
+    }
+}
+
+fn antialiasNearEdge(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) void {
+    // For rows just outside the circle, find the horizontal range where
+    // pixels have partial coverage (top/bottom of the circle).
+    const outer = radius + 0.5;
+    const dx_max_squared = outer * outer - dy * dy;
+    if (dx_max_squared < 0.0) return;
+
+    const dx_max = @sqrt(dx_max_squared);
+    const x_lo = center_x - 0.5 - dx_max;
+    const x_hi = center_x - 0.5 + dx_max;
+
+    const from: usize = if (x_lo < 0) 0 else @intFromFloat(@floor(x_lo));
+
+    const to: usize =
+        @min(if (x_hi < 0) 0 else @as(usize, @intFromFloat(@ceil(x_hi))) + 1, row.len);
+
+    for (from..to) |x| {
+        self.blendPixel(&row[x], pixelCoverage(center_x, dy, radius, x));
+    }
+}
+
+fn pixelCoverage(center_x: f32, dy: f32, radius: f32, x: usize) f32 {
+    const dx = @as(f32, @floatFromInt(x)) + 0.5 - center_x;
+    const distance = @sqrt(dx * dx + dy * dy);
+
+    return std.math.clamp(radius - distance + 0.5, 0.0, 1.0);
+}
+
+fn blendPixel(self: Self, pixel: *Srgb, coverage: f32) void {
+    if (coverage >= 1.0 or coverage <= 0.0) return;
+
+    const inv = 1.0 - coverage;
+
+    pixel.* = .{
+        .r = lerpByte(self.outside_color.r, pixel.r, coverage, inv),
+        .g = lerpByte(self.outside_color.g, pixel.g, coverage, inv),
+        .b = lerpByte(self.outside_color.b, pixel.b, coverage, inv),
+        .a = lerpByte(self.outside_color.a, pixel.a, coverage, inv),
+    };
+}
+
+fn lerpByte(a: u8, b: u8, t: f32, inv_t: f32) u8 {
+    return @intFromFloat(@round(
+        @as(f32, @floatFromInt(a)) * inv_t + @as(f32, @floatFromInt(b)) * t,
+    ));
 }
 
 test "apply sets pixels outside circle to outside color" {
@@ -159,28 +242,107 @@ test "multi-band crop matches single-band crop" {
             const y = i / width;
             const x = i % width;
 
-            std.testing.expectEqual(ref.r, actual.r) catch {
+            std.testing.expectEqual(ref, actual) catch {
                 std.debug.print(
-                    "band_height={d}: mismatch at ({d},{d}) r: expected {d}, got {d}\n",
-                    .{ band_height, x, y, ref.r, actual.r },
+                    "band_height={d}: mismatch at ({d},{d}) expected ({d},{d},{d},{d}), got ({d},{d},{d},{d})\n",
+                    .{ band_height, x, y, ref.r, ref.g, ref.b, ref.a, actual.r, actual.g, actual.b, actual.a },
                 );
 
                 return error.TestUnexpectedResult;
             };
+        }
+    }
+}
 
-            std.testing.expectEqual(ref.g, actual.g) catch {
+test "antialias produces intermediate alpha at circle edge" {
+    const image = Image.init(20, 20);
+    const viewport = image.viewport();
+
+    var buffer = [_]Srgb{Srgb.white} ** 400;
+
+    const band = try image.band(Srgb, &buffer, 20, 0);
+    const crop = Self{ .outside_color = Srgb.transparent, .antialias = true };
+
+    crop.apply(band, viewport);
+
+    // Center pixel should remain fully opaque
+    try std.testing.expectEqual(@as(u8, 255), buffer[10 * 20 + 10].a);
+
+    // Corner pixel should be fully transparent
+    try std.testing.expectEqual(@as(u8, 0), buffer[0].a);
+
+    // Find an edge pixel with intermediate alpha (proves AA is working).
+    // Scan the middle row for a pixel with 0 < alpha < 255.
+    var found_intermediate = false;
+
+    for (0..20) |x| {
+        const a = buffer[10 * 20 + x].a;
+
+        if (a > 0 and a < 255) {
+            found_intermediate = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(found_intermediate);
+}
+
+test "multi-band antialias crop matches single-band" {
+    const width = 16;
+    const height = 48;
+    const image = Image.init(width, height);
+    const viewport = image.viewport();
+    const pixel_count = width * height;
+
+    var input: [pixel_count]Srgb = undefined;
+
+    for (0..height) |y| {
+        const t: u8 = @intCast(y * 255 / (height - 1));
+
+        for (0..width) |x| {
+            const s: u8 = @intCast(x * 255 / (width - 1));
+
+            input[y * width + x] = .{ .r = t, .g = s, .b = 128 };
+        }
+    }
+
+    const crop = Self{ .outside_color = Srgb.transparent, .antialias = true };
+
+    var reference = input;
+
+    const full_band = try image.band(Srgb, &reference, height, 0);
+
+    crop.apply(full_band, viewport);
+
+    const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
+
+    for (band_heights) |band_height| {
+        const band_count = height / band_height;
+
+        var banded_output = input;
+
+        for (0..band_count) |band_index| {
+            const row_start = band_index * band_height * width;
+            const band_pixels = band_height * width;
+
+            const narrow_band = try image.band(
+                Srgb,
+                banded_output[row_start..][0..band_pixels],
+                band_height,
+                band_index,
+            );
+
+            crop.apply(narrow_band, viewport);
+        }
+
+        for (&reference, &banded_output, 0..) |ref, actual, i| {
+            const y = i / width;
+            const x = i % width;
+
+            std.testing.expectEqual(ref, actual) catch {
                 std.debug.print(
-                    "band_height={d}: mismatch at ({d},{d}) g: expected {d}, got {d}\n",
-                    .{ band_height, x, y, ref.g, actual.g },
-                );
-
-                return error.TestUnexpectedResult;
-            };
-
-            std.testing.expectEqual(ref.b, actual.b) catch {
-                std.debug.print(
-                    "band_height={d}: mismatch at ({d},{d}) b: expected {d}, got {d}\n",
-                    .{ band_height, x, y, ref.b, actual.b },
+                    "band_height={d}: mismatch at ({d},{d}) expected ({d},{d},{d},{d}), got ({d},{d},{d},{d})\n",
+                    .{ band_height, x, y, ref.r, ref.g, ref.b, ref.a, actual.r, actual.g, actual.b, actual.a },
                 );
 
                 return error.TestUnexpectedResult;
