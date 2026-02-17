@@ -7,6 +7,16 @@
 A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover, featuring a prism that
 refracts light into a rainbow. The name comes from the opening line of "Time".
 
+## Overview
+
+The watchface runs as a **web application** powered by WebAssembly, viewable in any modern browser.
+
+### Hardware Targets
+
+- **Raspberry Pi Zero 2 W** + **Raspberry Pi Pico 2** + **Inky Impression 13.3" (Spectra 6)** e-ink
+  display — a wall-clock form factor
+- **[Pebble Round 2](https://repebble.com/watch)** — smartwatch support (planned)
+
 ## Concept
 
 The minute hand acts as a **light source** firing a white ray toward the watch center. The ray
