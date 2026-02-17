@@ -7,14 +7,31 @@ import { useRenderer } from "./renderer.ts";
 import { SettingsProvider } from "./settings.tsx";
 import { initWasm } from "./wasm.ts";
 
+const isFullscreen = new URLSearchParams(window.location.search).has("fullscreen");
+
+function FullscreenContent(): JSX.Element {
+  useRenderer();
+
+  return (
+    <div id="canvas-container" class="fullscreen">
+      <canvas id="canvas" />
+    </div>
+  );
+}
+
 function AppContent(): JSX.Element {
   useRenderer();
+
+  const fullscreenUrl = `${window.location.pathname}?fullscreen`;
 
   return (
     <>
       <header>
         <h1>Ticking Away</h1>
         <span class="subtitle">the moments that make up a dull day.</span>
+        <a href={fullscreenUrl} target="_blank" rel="noopener" class="fullscreen-link">
+          Fullscreen
+        </a>
       </header>
 
       <main>
@@ -34,7 +51,7 @@ function App(): JSX.Element {
     <SettingsProvider>
       <ConfigProvider>
         <AnimationProvider>
-          <AppContent />
+          {isFullscreen ? <FullscreenContent /> : <AppContent />}
         </AnimationProvider>
       </ConfigProvider>
     </SettingsProvider>
