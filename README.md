@@ -1,21 +1,30 @@
 # Ticking Away
 
-> _Ticking away the moments that make up a dull day._
+> _[Ticking away the moments that make up a dull day.][time-song]_
+
+[time-song]: https://en.wikipedia.org/wiki/Time_(Pink_Floyd_song)
 
 <img src="logo.png" alt="Ticking Away" width="512">
 
 A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover, featuring a prism that
-refracts light into a rainbow. The name comes from the opening line of "Time".
+refracts light into a rainbow.
 
-## Overview
+## Hardware Targets
 
-The watchface runs as a **web application** powered by WebAssembly, viewable in any modern browser.
+The primary display is an
+**[Inky Impression 13.3" (Spectra 6)](https://shop.pimoroni.com/products/inky-impression?variant=55186435277179)**
+e-ink panel in a wall-clock form factor, driven by one of two Raspberry Pi boards:
 
-### Hardware Targets
+- **Raspberry Pi Pico 2** — bare-metal embedded target running without an OS. Low power draw makes
+  this suitable for battery operation. ([Setup guide](docs/pi-pico-2-setup.md))
 
-- **Raspberry Pi Zero 2 W** + **Raspberry Pi Pico 2** + **Inky Impression 13.3" (Spectra 6)** e-ink
-  display — a wall-clock form factor
-- **[Pebble Round 2](https://repebble.com/watch)** — smartwatch support (planned)
+- **Raspberry Pi Zero 2 W** — Linux-based target. Easier to get started with but requires wall
+  power. ([Setup guide](docs/pi-zero-2-w-setup.md))
+
+- **[Pebble Round 2](https://repebble.com/watch)** — smartwatch (planned)
+
+A **web demo** is also available, powered by WebAssembly, for trying different settings and as a
+quick preview.
 
 ## Concept
 
