@@ -325,7 +325,21 @@ function DitheringSection(): JSX.Element {
         />
       </div>
       <div class="control-group">
-        <label>Palette</label>
+        <label>Rainbow Palette</label>
+        <select
+          value={config.dither_rainbow_palette_id}
+          onChange={(e) =>
+            updateConfig("dither_rainbow_palette_id", selectValue("dither_rainbow_palette_id", e))
+          }
+          disabled={!config.dither_enabled}
+        >
+          <option value="oklch_balanced">OkLCH Balanced</option>
+          <option value="spectral">Spectral</option>
+          <option value="spectra6">Spectra 6</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Dither Palette</label>
         <select
           value={config.dither_palette_id}
           onChange={(e) => updateConfig("dither_palette_id", selectValue("dither_palette_id", e))}

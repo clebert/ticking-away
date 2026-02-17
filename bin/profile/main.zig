@@ -26,6 +26,7 @@ pub fn main() !void {
 
     const image = lib.Image.init(width, height);
     const viewport = image.viewport();
+
     const watchface = lib.Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .hand_glow_falloff = config.hand_glow_falloff,
@@ -33,7 +34,7 @@ pub fn main() !void {
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
         .prism_glow_falloff = config.prism_glow_falloff,
         .prism_glow_color = lib.Linear.init(0.5, 0.5, 0.5, 1.0),
-        .rainbow_palette_id = config.rainbow_palette_id,
+        .rainbow_palette_id = config.dither_rainbow_palette_id,
     };
 
     const dither = lib.Dither{

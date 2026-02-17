@@ -17,6 +17,7 @@ const ConfigSchema = z.object({
   hand_glow_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
   hand_length_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
   rainbow_palette_id: z.enum(["oklch_balanced", "spectral", "spectra6"]),
+  dither_rainbow_palette_id: z.enum(["oklch_balanced", "spectral", "spectra6"]),
   grain_enabled: z.boolean(),
   grain_normalized_deviation: z.number(),
   dither_enabled: z.boolean(),
