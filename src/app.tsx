@@ -13,9 +13,9 @@ function FullscreenContent(): JSX.Element {
   useRenderer();
 
   return (
-    <div id="canvas-container" class="fullscreen">
+    <a id="canvas-container" class="fullscreen" href={window.location.pathname}>
       <canvas id="canvas" />
-    </div>
+    </a>
   );
 }
 
@@ -29,15 +29,15 @@ function AppContent(): JSX.Element {
       <header>
         <h1>Ticking Away</h1>
         <span class="subtitle">the moments that make up a dull day.</span>
-        <a href={fullscreenUrl} target="_blank" rel="noopener" class="fullscreen-link">
+        <a href={fullscreenUrl} class="fullscreen-link">
           Fullscreen
         </a>
       </header>
 
       <main>
-        <div id="canvas-container">
+        <a id="canvas-container" href={fullscreenUrl}>
           <canvas id="canvas" />
-        </div>
+        </a>
         <aside id="controls">
           <Controls />
         </aside>
