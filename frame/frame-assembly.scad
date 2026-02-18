@@ -35,6 +35,8 @@
 // - Backplate thickness assumed 3mm — measure original IKEA hardboard
 
 // --- IKEA Frame ---
+// LOMVIKEN 32x32 cm, black
+// https://www.ikea.com/de/de/p/lomviken-rahmen-schwarz-00335852/
 frame_size = 320.00;
 frame_thickness = 3.00; // must match original hardboard for metal clips
 
