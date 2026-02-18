@@ -4,6 +4,7 @@
 !/bin/*/*.md
 !/bin/*/*.zig
 /dist/
+/frame/*.png
 /node_modules/
 /public/*.wasm
 /TODO.md
