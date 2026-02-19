@@ -19,24 +19,28 @@
 //   - Print front-face down.
 //
 // Part 2: Corner brackets (4 pieces, glued to plate back)
-//   - Each bracket has a flat base (3mm, glues to plate back) and a stepped
-//     lip (3mm tall) that fits into the through-hole corner.
-//   - The step self-aligns the bracket during gluing (registration feature)
-//     and provides the ledge the board sits on (flush with plate front face).
-//   - Knobs (ø1.9mm, 1.2mm tall) project from the step into the board's
-//     mounting holes for alignment.
-//   - Print base-down, step builds up on top — no support needed.
+//   - Each bracket has a flat base (3mm, glues to plate back) that overlaps
+//     the through-hole corner, forming the ledge the board sits on.
+//   - Board drops into the through-hole and rests on the base; its front
+//     face is flush with the plate front face (both 3mm thick).
+//   - Knobs (ø1.9mm, 1.2mm tall) project from the base top into the board's
+//     mounting holes for board alignment.
+//   - Registration pins: 2 knobs on the plate back + 2 matching holes in each
+//     bracket base align the bracket for gluing without the board in place.
+//   - Print base-down — no support needed.
 //   - Each bracket fits the 180x180mm print bed individually.
 //
 // Cross-section at a corner:
 //
 //   mat / front face (top)
 //   ────────────┐         ┌────── plate front face
-//               │ plate   │ step  (flush with front, board sits here)
-//   ────────────┘ 3mm     │ 3mm
-//               ┌─────────┤
-//               │ bracket base (glued to plate back)
-//               └─────────┘
+//               │ plate   │ board (3mm, flush with plate front)
+//   ──────●─────┘ 3mm   ● │ ← knob (into board mounting hole)
+//         ○ ┌─────────────┤
+//           │ bracket base (glued to plate back)
+//           └─────────────┘
+//   ● = registration pin (plate knob into bracket hole)
+//   ○ = registration hole in bracket
 //
 // === Print constraints ===
 // Printer: Bambu Lab A1 Mini, build volume 180x180x180mm.
@@ -102,13 +106,21 @@ board_y = mat_center - viewable_center_y; // 55.00
 
 // --- Corner brackets ---
 bracket_base = 3.0;            // base thickness (glued to plate back)
-bracket_step = plate_thickness; // step height (flush with plate front)
-bracket_pad  = 14.0;           // step overlap onto board area
-bracket_rim  = 10.0;           // base overlap onto plate area
+bracket_pad  = 14.0;           // base overlap onto board area (through-hole)
+bracket_rim  = 10.0;           // base overlap onto plate area (glue surface)
 
-// Alignment knobs
+// Alignment knobs (board mounting holes)
 knob_diameter = 1.9;
 knob_height   = 1.2;
+
+// Registration pins (plate-to-bracket alignment for gluing)
+// Two pins per corner, one in each arm of the L-shaped rim area.
+function reg_pin_positions(cx, cy) = [
+    [(cx == 0) ? bracket_rim / 2 : bracket_pad + bracket_rim / 2,
+     (cy == 0) ? bracket_rim + bracket_pad / 2 : bracket_pad / 2],
+    [(cx == 0) ? bracket_rim + bracket_pad / 2 : bracket_pad / 2,
+     (cy == 0) ? bracket_rim / 2 : bracket_pad + bracket_rim / 2]
+];
 
 // --- Dovetail interlock ---
 // Trapezoidal (dovetail) tabs: narrower at the base, wider at the tip.
@@ -267,6 +279,16 @@ module backplate_plate() {
         translate([board_x, board_y, -0.1])
             cube([board_width, board_height, plate_thickness + 0.2]);
     }
+
+    // Registration knobs on plate back face (received by bracket holes)
+    for (i = [0:3]) {
+        cx = corner_grid[i][0];
+        cy = corner_grid[i][1];
+        origin = bracket_origin(cx, cy);
+        for (pos = reg_pin_positions(cx, cy))
+            translate([origin[0] + pos[0], origin[1] + pos[1], -knob_height])
+                cylinder(h = knob_height, r = knob_diameter / 2, $fn = 24);
+    }
 }
 
 // --- Plate quadrant: slice with dovetail tab edges ---
@@ -274,7 +296,8 @@ module backplate_plate() {
 module plate_quadrant(qx, qy) {
     intersection() {
         backplate_plate();
-        linear_extrude(height = plate_thickness + 1)
+        translate([0, 0, -knob_height - 1])
+            linear_extrude(height = plate_thickness + knob_height + 2)
             quadrant_2d(qx, qy);
     }
 }
@@ -286,21 +309,25 @@ module plate_quadrant(qx, qy) {
 module corner_bracket(cx, cy) {
     base_w = bracket_pad + bracket_rim;
     base_h = bracket_pad + bracket_rim;
+    reg_hole_r = (knob_diameter + 2 * joint_clearance) / 2;
 
-    // Base (glued to plate back)
-    cube([base_w, base_h, bracket_base]);
+    difference() {
+        union() {
+            // Base (glued to plate back)
+            cube([base_w, base_h, bracket_base]);
 
-    // Step (fits into through-hole, flush with plate front)
-    step_x = (cx == 0) ? bracket_rim : 0;
-    step_y = (cy == 0) ? bracket_rim : 0;
-    translate([step_x, step_y, bracket_base])
-        cube([bracket_pad, bracket_pad, bracket_step]);
+            // Alignment knob (projects from base top into board mounting hole)
+            knob_x = (cx == 0) ? bracket_rim + hole_inset : bracket_pad - hole_inset;
+            knob_y = (cy == 0) ? bracket_rim + hole_inset : bracket_pad - hole_inset;
+            translate([knob_x, knob_y, bracket_base])
+                cylinder(h = knob_height, r = knob_diameter / 2, $fn = 24);
+        }
 
-    // Alignment knob (projects into board mounting hole)
-    knob_x = (cx == 0) ? bracket_rim + hole_inset : bracket_pad - hole_inset;
-    knob_y = (cy == 0) ? bracket_rim + hole_inset : bracket_pad - hole_inset;
-    translate([knob_x, knob_y, bracket_base + bracket_step])
-        cylinder(h = knob_height, r = knob_diameter / 2, $fn = 24);
+        // Registration holes (receive plate knobs for alignment during gluing)
+        for (pos = reg_pin_positions(cx, cy))
+            translate([pos[0], pos[1], bracket_base - knob_height - 0.1])
+                cylinder(h = knob_height + 0.2, r = reg_hole_r, $fn = 24);
+    }
 }
 
 // Bracket world-space origin for assembly placement
