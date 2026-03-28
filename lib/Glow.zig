@@ -37,6 +37,11 @@ pub fn renderLine(
     const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
     const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
 
+    // Guard: on ARM ReleaseFast, for(a..b) compiles as do-while that runs
+    // ~4 billion iterations when a >= b. Bounds can be equal when the
+    // bounding box falls entirely outside the band.
+    if (x_start >= x_end or y_start >= y_end) return;
+
     // Attenuation fades the line along its length: full brightness before
     // normalized_distance, then falls off to zero at the endpoint.
     const attenuation_length = @max(1.0 - attenuation.normalized_distance, std.math.floatEps(f32));
@@ -100,6 +105,8 @@ pub fn renderPrismEdges(
     const x_end = util.ceilClamped(max_pixel[0], band.width);
     const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
     const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
+
+    if (x_start >= x_end or y_start >= y_end) return;
 
     for (y_start..y_end) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;

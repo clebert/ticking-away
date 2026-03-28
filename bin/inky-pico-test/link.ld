@@ -8,14 +8,14 @@ MEMORY
 
 SECTIONS
 {
-    .vector_table :
-    {
-        KEEP(*(.vector_table))
-    } > FLASH
-
     .image_def :
     {
         KEEP(*(.image_def))
+    } > FLASH
+
+    .vector_table ALIGN(256) :
+    {
+        KEEP(*(.vector_table))
     } > FLASH
 
     .text :
@@ -27,6 +27,12 @@ SECTIONS
     {
         *(.rodata .rodata.*)
     } > FLASH
+
+    /DISCARD/ :
+    {
+        *(.ARM.exidx .ARM.exidx.*)
+        *(.ARM.extab .ARM.extab.*)
+    }
 
     .data :
     {

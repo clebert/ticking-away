@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) void {
     buildProfileBinary(b, target, optimize, check_step);
     buildPngBinary(b, target, optimize, check_step);
     buildInkyZeroBinary(b, target, optimize, check_step);
-    buildInkyPicoBinary(b, optimize, check_step);
+    buildInkyPicoTestBinary(b, optimize, check_step);
     buildTests(b, target, optimize);
 }
 
@@ -220,7 +220,7 @@ fn buildInkyZeroBinary(
     check_step.dependOn(&check.step);
 }
 
-fn buildInkyPicoBinary(
+fn buildInkyPicoTestBinary(
     b: *std.Build,
     optimize: std.builtin.OptimizeMode,
     check_step: *std.Build.Step,
@@ -230,39 +230,23 @@ fn buildInkyPicoBinary(
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m33 },
         .os_tag = .freestanding,
         .abi = .eabihf,
+        .cpu_features_add = std.Target.arm.featureSet(&.{.fp_armv8d16sp}),
     });
 
-    // Capture host system time + 90s buffer for the Pico's initial clock
-    const initial_utc_time_ms: u64 = @intCast((std.time.timestamp() + 90) * 1000);
-
-    const build_options = b.addOptions();
-
-    build_options.addOption(u64, "initial_utc_time_ms", initial_utc_time_ms);
-    build_options.addOption(i64, "utc_offset_ms", @as(i64, detectUtcOffset(b.allocator)) * 1000);
-
     const exe = b.addExecutable(.{
-        .name = "inky-pico",
+        .name = "inky-pico-test",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/inky-pico/main.zig"),
+            .root_source_file = b.path("bin/inky-pico-test/main.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = &.{
-                .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/root.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                }) },
-                .{ .name = "build_options", .module = build_options.createModule() },
-            },
         }),
     });
 
     exe.entry = .disabled;
-    exe.setLinkerScript(b.path("bin/inky-pico/link.ld"));
+    exe.setLinkerScript(b.path("bin/inky-pico-test/link.ld"));
 
     const exe_install = b.addInstallArtifact(exe, .{});
 
-    // UF2 conversion (native build tool, runs as post-link step)
     const elf2uf2 = b.addExecutable(.{
         .name = "elf2uf2",
         .root_module = b.createModule(.{
@@ -272,42 +256,30 @@ fn buildInkyPicoBinary(
     });
 
     const run_elf2uf2 = b.addRunArtifact(elf2uf2);
-
     run_elf2uf2.addArtifactArg(exe);
-
-    const uf2_output_file = run_elf2uf2.addOutputFileArg("inky-pico.uf2");
+    const uf2_output_file = run_elf2uf2.addOutputFileArg("inky-pico-test.uf2");
 
     const uf2_install = b.addInstallFileWithDir(
         uf2_output_file,
         .prefix,
-        "inky-pico.uf2",
+        "inky-pico-test.uf2",
     );
 
-    const step = b.step("inky-pico", "Build the Inky Pico binary");
-
+    const step = b.step("inky-pico-test", "Build the Inky Pico display test binary");
     step.dependOn(&exe_install.step);
     step.dependOn(&uf2_install.step);
 
     const check = b.addExecutable(.{
-        .name = "inky-pico",
+        .name = "inky-pico-test",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/inky-pico/main.zig"),
+            .root_source_file = b.path("bin/inky-pico-test/main.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = &.{
-                .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/root.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                }) },
-                .{ .name = "build_options", .module = build_options.createModule() },
-            },
         }),
     });
 
     check.entry = .disabled;
-    check.setLinkerScript(b.path("bin/inky-pico/link.ld"));
-
+    check.setLinkerScript(b.path("bin/inky-pico-test/link.ld"));
     check_step.dependOn(&check.step);
 }
 
@@ -329,26 +301,4 @@ fn buildTests(
     const step = b.step("test", "Build and run all tests");
 
     step.dependOn(&run.step);
-}
-
-fn detectUtcOffset(allocator: std.mem.Allocator) i32 {
-    const file = std.fs.openFileAbsolute("/etc/localtime", .{}) catch return 0;
-
-    defer file.close();
-
-    const data = file.readToEndAlloc(allocator, 1 << 16) catch return 0;
-
-    var stream = std.io.fixedBufferStream(data);
-
-    const tz = std.Tz.parse(allocator, stream.reader()) catch return 0;
-    const utc_seconds = std.time.timestamp();
-
-    var offset: i32 = 0;
-
-    for (tz.transitions) |transition| {
-        if (transition.ts > utc_seconds) break;
-        offset = transition.timetype.offset;
-    }
-
-    return offset;
 }

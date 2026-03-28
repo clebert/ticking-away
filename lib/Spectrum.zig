@@ -83,6 +83,8 @@ pub fn render(
     const y_min = util.floorClamped(min_pixel[1] - y_offset, band_height);
     const y_max = util.ceilClamped(max_pixel[1] - y_offset, band_height);
 
+    if (x_min >= x_max or y_min >= y_max) return;
+
     for (y_min..y_max) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
 

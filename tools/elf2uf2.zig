@@ -100,7 +100,7 @@ pub fn main() !void {
             std.mem.writeInt(u32, block[4..8], uf2_magic_second, .little);
             std.mem.writeInt(u32, block[8..12], uf2_flag_family_id, .little);
             std.mem.writeInt(u32, block[12..16], segment.physical_address + offset, .little);
-            std.mem.writeInt(u32, block[16..20], payload_size, .little);
+            std.mem.writeInt(u32, block[16..20], chunk_size, .little);
             std.mem.writeInt(u32, block[20..24], block_number, .little);
             std.mem.writeInt(u32, block[24..28], total_blocks, .little);
             std.mem.writeInt(u32, block[28..32], rp2350_arm_s_family_id, .little);
