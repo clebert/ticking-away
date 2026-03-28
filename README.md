@@ -15,11 +15,11 @@ The primary display is an
 **[Inky Impression 13.3" (Spectra 6)](https://shop.pimoroni.com/products/inky-impression?variant=55186435277179)**
 e-ink panel in a wall-clock form factor, driven by one of two Raspberry Pi boards:
 
-- **Raspberry Pi Pico 2** — bare-metal embedded target running without an OS. Low power draw makes
-  this suitable for battery operation. ([Setup guide](docs/pi-pico-2-setup.md))
-
 - **Raspberry Pi Zero 2 W** — Linux-based target. Easier to get started with but requires wall
   power. ([Setup guide](docs/pi-zero-2-w-setup.md))
+
+- **Raspberry Pi Pico 2** — bare-metal embedded target running without an OS. Low power draw makes
+  this suitable for battery operation. (planned)
 
 - **[Pebble Round 2](https://repebble.com/watch)** — smartwatch (planned)
 
