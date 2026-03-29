@@ -29,9 +29,10 @@ function AppContent(): JSX.Element {
       <header>
         <h1>Ticking Away</h1>
         <span class="subtitle">the moments that make up a dull day.</span>
-        <a href={fullscreenUrl} class="fullscreen-link">
-          Fullscreen
+        <a href="https://github.com/clebert/ticking-away" class="fullscreen-link">
+          GitHub
         </a>
+        <a href={fullscreenUrl}>Fullscreen</a>
       </header>
 
       <main>
