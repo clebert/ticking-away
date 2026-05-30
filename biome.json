@@ -13,11 +13,8 @@
   },
   "linter": {
     "rules": {
-      "a11y": {
-        "noLabelWithoutControl": "off"
-      },
+      "a11y": "off",
       "complexity": {
-        "noImportantStyles": "off",
         "useLiteralKeys": "off"
       }
     }

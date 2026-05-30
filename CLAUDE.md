@@ -21,6 +21,12 @@ npm run ci
 | `npm run lint:fix` | Run linters with auto-fix                   |
 | `npm test`         | Run tests                                   |
 
+### Finding the Zig Binary
+
+Zig is not installed system-wide; the `ziglang.vscode-zig` VSCode extension provides version
+`0.16.0` under `~/Library/Application Support/Code/User/globalStorage/ziglang.vscode-zig/zig`
+(macOS). Quote the path when invoking it — it contains spaces.
+
 ## Zig Code Style
 
 Follow the [Zig style guide](https://ziglang.org/documentation/0.16.0/#Style-Guide):
