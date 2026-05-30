@@ -204,12 +204,19 @@ correct on-watch colour.
 The work, kept in the Zig library so the Oklab Floyd–Steinberg and band error-diffusion stay
 on-device:
 
-- Make `color_count` a parameter (comptime palette size) or add a parallel palette type, so a
-  palette larger than 6 entries is representable.
+- Make `color_count` a parameter (comptime palette size) or add a parallel palette type. **Not a
+  one-line bump:** `Palette.color_count` is a shared constant baked into `Dither.findClosest`'s
+  param type (`lib/Dither.zig`), `Grain.findClosest` (`lib/Grain.zig`), and `frame.zig`'s test
+  error-buffer sizing. Raising it in place would force the four existing 6-colour palettes to
+  64-wide — parameterize or split instead.
 - Add a `pebble64` palette generated from the `GColor8` cube. Each entry carries its Oklab and sRGB
   values (for nearest-colour search and error diffusion) **and** its pre-computed `GColor8` byte, so
   the band loop can write palette indices straight into the framebuffer with no per-pixel
-  quantization.
+  quantization. Keep **index 0 = the darkest entry**: `Dither.apply`'s background fast-path and
+  `Palette.black()` both assume `srgb_colors[0]` is black/background.
+- Derive the Oklab anchors with the **standard sRGB EOTF** (the existing `fromSrgb` path). This is
+  correct as a first cut and exactly emulator-accurate — on-hardware tuning is a later, data-only
+  refinement, see [Panel gamma](#panel-gamma).
 - Wire it into the config alongside the existing `dither_palette_id` / `dither_rainbow_palette_id`
   selection so the Pebble shell selects `pebble64`.
 
@@ -458,8 +465,17 @@ band-by-band and `pebble screenshot` to compare against the PNG export.
   duplicate `__aeabi_*` symbols.
 - **Manifest.** Confirm the exact `sdkVersion` string and `targetPlatforms` list the appstore
   accepts for a 4.9.x watchface; re-read per-app heap numbers from PebbleOS headers.
-- **Panel gamma.** Verify the colour e-paper shares `GColor8` gamma with `basalt`/`chalk`, or
-  whether a panel-specific gamma shifts the optimal Oklab dither palette.
+- <a id="panel-gamma"></a>**Panel gamma — mostly resolved; not a blocker.** `GColor8` is a _nominal_
+  colour space: levels expand linearly to {0, 85, 170, 255} (no gamma), and the QEMU emulator
+  renders them linearly (`* 255 / 3`, no curve), so an sRGB-derived palette is **exactly**
+  emulator-accurate. PebbleOS adds **no** gamma/colour-correction LUT for `getafix`/`obelix` — the
+  SiFli driver (`src/fw/drivers/display/sf32lb/display_jdi.c`) only does a mechanical 222→332
+  bit-repack (its LCDC layer is `RGB332`); the `GColor8`/ARGB2222 model is identical to
+  `basalt`/`chalk`. The **only** residual unknown is the physical reflective JDI panel + the closed
+  SiFli vendor HAL (`bf0_hal_lcdc.c`), measurable only on real hardware. If its response diverges
+  from sRGB it degrades dither **quality** (mis-ranked nearest-colour, drifted error diffusion —
+  most visible on the rainbow gradient), never output validity; the fix re-derives only the 64 Oklab
+  anchors over the same verbatim `srgb_colors`. So it cannot gate pre-hardware work.
 - **Shipping reality.** Confirm Round 2 hardware actually ships before relying on anything beyond
   the emulator.
 
