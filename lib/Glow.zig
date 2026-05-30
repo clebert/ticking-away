@@ -20,7 +20,9 @@ pub fn renderLine(
     line: Segment,
     attenuation: intensity.Attenuation,
 ) void {
-    std.debug.assert(self.normalized_width > 0.0 and self.normalized_width <= 1.0);
+    // width == 0 is a valid "no glow" value: every pixel early-outs below before
+    // any divide by normalized_width.
+    std.debug.assert(self.normalized_width >= 0.0 and self.normalized_width <= 1.0);
 
     const width_squared = self.normalized_width * self.normalized_width;
     const band_height = band.bandHeight();
@@ -83,7 +85,9 @@ pub fn renderPrismEdges(
     viewport: anytype,
     prism: Prism,
 ) void {
-    std.debug.assert(self.normalized_width > 0.0 and self.normalized_width <= 1.0);
+    // width == 0 is a valid "no glow" value: every pixel early-outs below before
+    // any divide by normalized_width.
+    std.debug.assert(self.normalized_width >= 0.0 and self.normalized_width <= 1.0);
 
     const width = self.normalized_width;
     const smooth_k = width * 0.5;
@@ -310,4 +314,40 @@ test "renderPrismEdges uses additive blending" {
     }
 
     try std.testing.expect(found_additive);
+}
+
+test "renderLine with zero width produces no glow" {
+    const size = 64;
+    const image = Image.init(size, size);
+    const viewport = image.viewport();
+
+    var buffer = [_]Linear{Linear.black} ** (size * size);
+
+    const band = try image.band(Linear, &buffer, size, 0);
+    const glow = Self{ .normalized_width = 0.0, .falloff = .linear, .color = Linear.white };
+    const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
+
+    glow.renderLine(band, viewport, line, .{ .normalized_distance = 0.0, .falloff = .linear });
+
+    for (&buffer) |pixel| {
+        try std.testing.expectEqual(Linear.black.vec, pixel.vec);
+    }
+}
+
+test "renderPrismEdges with zero width produces no glow" {
+    const prism = Prism.init(0.8);
+    const size = 64;
+    const image = Image.init(size, size);
+    const viewport = image.viewport();
+
+    var buffer = [_]Linear{Linear.black} ** (size * size);
+
+    const band = try image.band(Linear, &buffer, size, 0);
+    const glow = Self{ .normalized_width = 0.0, .falloff = .linear, .color = Linear.white };
+
+    glow.renderPrismEdges(band, viewport, prism);
+
+    for (&buffer) |pixel| {
+        try std.testing.expectEqual(Linear.black.vec, pixel.vec);
+    }
 }

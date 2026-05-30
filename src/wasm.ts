@@ -1,6 +1,8 @@
 export interface WasmModule {
   getConfigJsonBufferPtr(): number;
 
+  getConfigJsonBufferSize(): number;
+
   render(
     width: number,
     height: number,

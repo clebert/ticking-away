@@ -17,10 +17,4 @@ export function resizeCanvas(): void {
 
   canvas.width = newWidth;
   canvas.height = newHeight;
-  canvas.style.width = "100%";
-  canvas.style.height = "100%";
-  canvas.style.position = "absolute";
-  canvas.style.top = "0";
-  canvas.style.left = "0";
-  canvas.style.transform = "";
 }

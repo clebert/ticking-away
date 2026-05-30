@@ -3,6 +3,20 @@ const allocator = std.heap.wasm_allocator;
 
 const lib = @import("lib");
 
+comptime {
+    // render() returns a pointer that JS reinterprets as a flat RGBA byte buffer
+    // (a Uint8ClampedArray over WASM memory; see src/renderer.ts). That contract
+    // requires lib.Srgb to be exactly 4 bytes laid out as r, g, b, a with no
+    // padding. lib.Srgb has the default (auto) layout, which the language does
+    // not guarantee — pin the assumption here so a layout change fails the build
+    // instead of silently producing garbled pixels.
+    std.debug.assert(@sizeOf(lib.Srgb) == 4);
+    std.debug.assert(@offsetOf(lib.Srgb, "r") == 0);
+    std.debug.assert(@offsetOf(lib.Srgb, "g") == 1);
+    std.debug.assert(@offsetOf(lib.Srgb, "b") == 2);
+    std.debug.assert(@offsetOf(lib.Srgb, "a") == 3);
+}
+
 var config_json_buffer: [1024]u8 = undefined;
 var parse_buffer: [4096]u8 = undefined;
 var cached_config: ?lib.Config = null;
@@ -11,7 +25,14 @@ export fn getConfigJsonBufferPtr() [*]u8 {
     return &config_json_buffer;
 }
 
+export fn getConfigJsonBufferSize() u32 {
+    return config_json_buffer.len;
+}
+
 fn getConfig(config_json_byte_length: u32) ?lib.Config {
+    // A length of 0 is the "config unchanged, reuse cache" signal that
+    // writeConfigJson (src/config.tsx) emits when neither the config nor the
+    // WASM memory buffer has changed since the last write.
     if (config_json_byte_length == 0) return cached_config;
 
     var fixed_buffer = std.heap.FixedBufferAllocator.init(&parse_buffer);
@@ -78,75 +99,16 @@ export fn render(
 
     ensureBuffers(@intCast(width), @intCast(height)) catch return null;
 
-    const clock = lib.Clock.init(
-        lib.Time.init(hour, minute),
-        config.prism_normalized_size,
-        config.rainbow_normalized_spread,
-    );
-
     const image = lib.Image.init(@intCast(width), @intCast(height));
 
-    @memset(
+    _ = lib.frame.render(
+        config,
+        lib.Time.init(hour, minute),
+        image,
         linear_buffer.?,
-        if (config.background_enabled) lib.Linear.black else lib.Linear.transparent,
-    );
-
-    var linear_band =
-        image.band(lib.Linear, linear_buffer.?, @intCast(height), 0) catch return null;
-
-    const viewport = image.viewport();
-
-    const watchface = lib.Watchface{
-        .hand_glow_normalized_width = config.hand_glow_normalized_width,
-        .hand_glow_falloff = config.hand_glow_falloff,
-        .hand_length_falloff = config.hand_length_falloff,
-        .prism_glow_normalized_width = config.prism_glow_normalized_width,
-        .prism_glow_falloff = config.prism_glow_falloff,
-        .prism_glow_color = lib.Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
-        .rainbow_palette_id = if (config.dither_enabled)
-            config.dither_rainbow_palette_id
-        else
-            config.rainbow_palette_id,
-    };
-
-    watchface.render(linear_band, viewport, clock);
-
-    const srgb_band = if (config.dither_enabled) blk: {
-        const dither = lib.Dither{
-            .normalized_strength = config.dither_normalized_strength,
-            .normalized_chroma_emphasis = config.dither_normalized_chroma_emphasis,
-            .palette = config.dither_palette_id.palette(),
-        };
-
-        break :blk dither.apply(
-            linear_band,
-            srgb_buffer.?,
-            dither_error_buffer.?,
-        ) catch return null;
-    } else blk: {
-        break :blk linear_band.toSrgb(srgb_buffer.?) catch return null;
-    };
-
-    if (config.grain_enabled) {
-        const grain = lib.Grain{
-            .normalized_deviation = config.grain_normalized_deviation,
-            .dither_palette = if (config.dither_enabled)
-                config.dither_palette_id.palette()
-            else
-                null,
-        };
-
-        grain.apply(srgb_band);
-    }
-
-    if (config.background_enabled) {
-        const crop = lib.Crop{
-            .outside_color = lib.Srgb.transparent,
-            .antialias = !config.dither_enabled,
-        };
-
-        crop.apply(srgb_band, viewport);
-    }
+        srgb_buffer.?,
+        dither_error_buffer.?,
+    ) catch return null;
 
     return @ptrCast(srgb_buffer.?.ptr);
 }

@@ -4,6 +4,7 @@ pub const Clock = @import("Clock.zig");
 pub const Config = @import("Config.zig");
 pub const Crop = @import("Crop.zig");
 pub const Dither = @import("Dither.zig");
+pub const frame = @import("frame.zig");
 pub const Glow = @import("Glow.zig");
 pub const Grain = @import("Grain.zig");
 pub const Image = @import("Image.zig");

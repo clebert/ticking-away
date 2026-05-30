@@ -27,15 +27,15 @@ Build and run the PNG export binary to render the watchface to a PNG file:
 
 ```bash
 zig build png -Doptimize=ReleaseFast
-zig-out/bin/png <height> <hour> <minute> <output.png>
+zig-out/bin/png <size> <hour> <minute> <output.png>
 ```
 
-- `height`: image size in pixels (square, diameter of the unit circle)
+- `size`: image size in pixels (square, diameter of the unit circle)
 - `hour`: hour (0-23)
 - `minute`: minute (0-59)
 - `output.png`: output file path
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 2234 7 14 prism.png
+zig-out/bin/png 1024 7 14 logo.png
 ```

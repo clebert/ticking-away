@@ -66,11 +66,6 @@ fn buildWasmModule(b: *std.Build, check_step: *std.Build.Step) *std.Build.Step {
         }),
     });
 
-    check.entry = .disabled;
-    check.rdynamic = true;
-    check.import_memory = true;
-    check.lto = .full;
-
     check_step.dependOn(&check.step);
 
     return step;

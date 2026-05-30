@@ -66,7 +66,7 @@ function ModeSection(): JSX.Element {
 function TimeSection(): JSX.Element | null {
   const { $settings } = useSettings();
   const { mode_live } = $settings.value;
-  const { $hour, $minute, $second } = useAnimation();
+  const { $hour, $minute } = useAnimation();
 
   if (mode_live) return null;
 
@@ -109,7 +109,6 @@ function TimeSection(): JSX.Element | null {
             const now = new Date();
             $hour.value = now.getHours() % 12;
             $minute.value = now.getMinutes();
-            $second.value = now.getSeconds();
           }}
         >
           Set to Now
@@ -347,7 +346,7 @@ function DitheringSection(): JSX.Element {
         >
           <option value="ideal">Ideal (Pure RGB)</option>
           <option value="spectra6_inky">Spectra 6 (Pimoroni Inky)</option>
-          <option value="spectra6_epdopt">Spectra 6 (EDP Optimize)</option>
+          <option value="spectra6_epdopt">Spectra 6 (EPD Optimized)</option>
           <option value="spectra6_trmnl">Spectra 6 (TRMNL)</option>
         </select>
       </div>

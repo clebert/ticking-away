@@ -14,7 +14,6 @@ import { useSettings } from "./settings.tsx";
 interface AnimationState {
   $hour: Signal<number>;
   $minute: Signal<number>;
-  $second: Signal<number>;
   $fps: ReadonlySignal<number>;
 }
 
@@ -25,7 +24,6 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
   const now = new Date();
   const $hour = useSignal(now.getHours() % 12);
   const $minute = useSignal(now.getMinutes());
-  const $second = useSignal(now.getSeconds());
   const $frameDuration = useSignal(0);
 
   const $fps = useComputed(() => {
@@ -71,7 +69,6 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
         batch(() => {
           $hour.value = Math.floor(wrappedMinutes / 60);
           $minute.value = newMinute;
-          $second.value = (newMinute % 1) * 60;
         });
 
         animationFrameId = requestAnimationFrame(animate);
@@ -89,13 +86,11 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
         lastFrameTime = timestamp;
 
         const currentTime = new Date();
-        const fractionalSecond = currentTime.getSeconds();
-        const fractionalMinute = currentTime.getMinutes() + fractionalSecond / 60;
+        const fractionalMinute = currentTime.getMinutes() + currentTime.getSeconds() / 60;
 
         batch(() => {
           $hour.value = currentTime.getHours() % 12;
           $minute.value = fractionalMinute;
-          $second.value = fractionalSecond;
         });
       };
 
@@ -111,7 +106,7 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
   });
 
   return (
-    <AnimationContext.Provider value={{ $hour, $minute, $second, $fps }}>
+    <AnimationContext.Provider value={{ $hour, $minute, $fps }}>
       {children}
     </AnimationContext.Provider>
   );

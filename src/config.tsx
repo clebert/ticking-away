@@ -30,9 +30,11 @@ export type Config = z.infer<typeof ConfigSchema>;
 
 const typedDefaultConfig: Config = ConfigSchema.parse(defaultConfig);
 
+const storageKey = "config";
+
 function loadConfig(): Config {
   try {
-    const item = localStorage.getItem("config");
+    const item = localStorage.getItem(storageKey);
 
     if (item) {
       const result = z.partial(ConfigSchema).safeParse(JSON.parse(item));
@@ -46,12 +48,12 @@ function loadConfig(): Config {
     // Ignore localStorage errors
   }
 
-  return typedDefaultConfig;
+  return { ...typedDefaultConfig };
 }
 
 function saveConfig(config: Config): void {
   try {
-    localStorage.setItem("config", JSON.stringify(config));
+    localStorage.setItem(storageKey, JSON.stringify(config));
   } catch {
     // Ignore localStorage errors
   }
@@ -94,14 +96,25 @@ export function resetConfig($config: Signal<Config>): void {
 // --- WASM config serialization ---
 
 const encoder = new TextEncoder();
-const configJsonBufferSize = 1024;
+
+// Read once from WASM so the overflow guard below can never diverge from the
+// actual config_json_buffer size declared in bin/wasm/main.zig.
+let cachedBufferSize = 0;
+
+function configJsonBufferSize(): number {
+  if (cachedBufferSize === 0) {
+    cachedBufferSize = getWasmModule().getConfigJsonBufferSize();
+  }
+
+  return cachedBufferSize;
+}
 
 // Cached alongside the config signal so writeConfigJson can do a cheap reference
 // check instead of re-stringifying on every render frame.
 let cachedConfigJson = "";
 let cachedConfig: Config | undefined;
 
-export function configToJson(config: Config): string {
+function configToJson(config: Config): string {
   if (config === cachedConfig) return cachedConfigJson;
 
   cachedConfigJson = JSON.stringify(config);
@@ -122,11 +135,10 @@ export function writeConfigJson(config: Config): number {
   }
 
   const bytes = encoder.encode(json);
+  const bufferSize = configJsonBufferSize();
 
-  if (bytes.length > configJsonBufferSize) {
-    throw new Error(
-      `Config JSON exceeds WASM buffer: ${bytes.length} > ${configJsonBufferSize} bytes`,
-    );
+  if (bytes.length > bufferSize) {
+    throw new Error(`Config JSON exceeds WASM buffer: ${bytes.length} > ${bufferSize} bytes`);
   }
 
   new Uint8Array(buffer, getWasmModule().getConfigJsonBufferPtr(), bytes.length).set(bytes);

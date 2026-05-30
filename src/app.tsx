@@ -59,6 +59,11 @@ function App(): JSX.Element {
   );
 }
 
-initWasm().then(() => {
-  preactRender(<App />, document.body);
-});
+initWasm()
+  .then(() => {
+    preactRender(<App />, document.body);
+  })
+  .catch((error: unknown) => {
+    document.body.textContent = `Failed to load watchface: ${error}`;
+    console.error(error);
+  });
