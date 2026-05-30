@@ -152,7 +152,7 @@ test "interpolate at color center returns that color" {
     const expected_red = spectral.oklab_colors[0].toLinear();
     const expected_violet = spectral.oklab_colors[6].toLinear();
 
-    for (0..3) |i| {
+    inline for (0..3) |i| {
         try std.testing.expectApproxEqAbs(expected_red.vec[i], red_center.vec[i], 1e-5);
         try std.testing.expectApproxEqAbs(expected_violet.vec[i], violet_center.vec[i], 1e-5);
     }

@@ -9,22 +9,11 @@
 A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover, featuring a prism that
 refracts light into a rainbow.
 
-## Hardware Targets
+## Targets
 
-The primary display is an
-**[Inky Impression 13.3" (Spectra 6)](https://shop.pimoroni.com/products/inky-impression?variant=55186435277179)**
-e-ink panel in a wall-clock form factor, driven by one of two Raspberry Pi boards:
-
-- **Raspberry Pi Zero 2 W** — Linux-based target. Easier to get started with but requires wall
-  power. ([Setup guide](docs/pi-zero-2-w-setup.md))
-
-- **Raspberry Pi Pico 2** — bare-metal embedded target running without an OS. Low power draw makes
-  this suitable for battery operation. (planned)
-
+- **[Web demo](https://clebert.github.io/ticking-away/)** — runs in the browser via WebAssembly; try
+  different settings and preview the watchface.
 - **[Pebble Round 2](https://repebble.com/watch)** — smartwatch (planned)
-
-A [**web demo**](https://clebert.github.io/ticking-away/) is also available, powered by WebAssembly,
-for trying different settings and as a quick preview.
 
 ## Concept
 
@@ -50,8 +39,3 @@ zig-out/bin/png <height> <hour> <minute> <output.png>
 zig build png -Doptimize=ReleaseFast && \
 zig-out/bin/png 2234 7 14 prism.png
 ```
-
-## Disclaimer
-
-This project is built with [Claude Code](https://claude.com/claude-code) (Opus). Every line is
-written by hand or at minimum reviewed and curated — no AI slop here.

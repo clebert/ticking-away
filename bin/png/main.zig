@@ -4,14 +4,11 @@ const lib = @import("lib");
 
 const png = @import("png.zig");
 
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.arena.allocator();
+    const io = init.io;
 
-    defer arena.deinit();
-
-    const allocator = arena.allocator();
-
-    const args = parseArgs() orelse {
+    const args = parseArgs(init.minimal.args) orelse {
         printUsage();
         std.process.exit(1);
     };
@@ -66,7 +63,7 @@ pub fn main() !void {
         crop.apply(srgb_band, viewport);
     }
 
-    try png.write(allocator, args.output_path, size, size, srgb_buffer);
+    try png.write(io, allocator, args.output_path, size, size, srgb_buffer);
 
     std.debug.print("{d}x{d} -> {s}\n", .{ size, size, args.output_path });
 }
@@ -78,8 +75,8 @@ const Args = struct {
     output_path: []const u8,
 };
 
-fn parseArgs() ?Args {
-    var arguments = std.process.args();
+fn parseArgs(process_args: std.process.Args) ?Args {
+    var arguments = process_args.iterate();
 
     _ = arguments.next(); // skip program name
 

@@ -1,7 +1,5 @@
-// PNG encoder using stored (uncompressed) deflate blocks.
-//
-// Zig 0.15.2's std.compress.flate.Compress has incomplete implementations,
-// so we use the simplest valid deflate encoding: stored blocks (BTYPE=00).
+// PNG encoder that compresses the image data with std.compress.flate.Compress,
+// the deflate compressor introduced in Zig 0.16.0, at its best level.
 
 const std = @import("std");
 
@@ -10,6 +8,7 @@ const lib = @import("lib");
 const signature = [_]u8{ 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n' };
 
 pub fn write(
+    io: std.Io,
     allocator: std.mem.Allocator,
     path: []const u8,
     width: usize,
@@ -20,16 +19,16 @@ pub fn write(
 
     defer allocator.free(scanlines);
 
-    const compressed = try zlibStored(allocator, scanlines);
+    const compressed = try zlibDeflate(allocator, scanlines);
 
     defer allocator.free(compressed);
 
-    const file = try std.fs.cwd().createFile(path, .{});
+    const file = try std.Io.Dir.cwd().createFile(io, path, .{});
 
-    defer file.close();
+    defer file.close(io);
 
     var buffer: [8192]u8 = undefined;
-    var buffered = file.writer(&buffer);
+    var buffered = file.writer(io, &buffer);
 
     const writer = &buffered.interface;
 
@@ -70,61 +69,23 @@ fn filterScanlines(
     return data;
 }
 
-/// Wraps data in a zlib stream using stored (uncompressed) deflate blocks.
-/// Each stored block: 1-byte header + 2-byte LEN + 2-byte NLEN + up to 65535 bytes of data.
-fn zlibStored(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
-    const max_block_size = 65535;
-    const block_count = if (data.len == 0) 1 else (data.len + max_block_size - 1) / max_block_size;
-    const total_size = 2 + block_count * 5 + data.len + 4;
+/// Compresses data into a zlib stream (RFC 1950) using deflate at the best
+/// compression level. The returned slice is owned by the caller.
+fn zlibDeflate(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
+    const window = try allocator.alloc(u8, std.compress.flate.max_window_len);
 
-    const output = try allocator.alloc(u8, total_size);
+    defer allocator.free(window);
 
-    var position: usize = 0;
+    var output: std.Io.Writer.Allocating = try .initCapacity(allocator, data.len / 2 + 64);
 
-    // CMF=0x78 (deflate, window=32K), FLG=0x01 (fastest, checksum valid)
-    output[position] = 0x78;
-    output[position + 1] = 0x01;
-    position += 2;
+    errdefer output.deinit();
 
-    if (data.len == 0) {
-        output[position] = 0x01;
-        position += 1;
-        std.mem.writeInt(u16, output[position..][0..2], 0, .little);
-        position += 2;
-        std.mem.writeInt(u16, output[position..][0..2], 0xFFFF, .little);
-        position += 2;
-    } else {
-        var remaining = data.len;
-        var offset: usize = 0;
+    var compress = try std.compress.flate.Compress.init(&output.writer, window, .zlib, .best);
 
-        while (remaining > 0) {
-            const block_size: u16 = @intCast(@min(remaining, max_block_size));
-            const is_final = remaining <= max_block_size;
+    try compress.writer.writeAll(data);
+    try compress.finish();
 
-            output[position] = if (is_final) 0x01 else 0x00;
-            position += 1;
-
-            std.mem.writeInt(u16, output[position..][0..2], block_size, .little);
-            position += 2;
-
-            std.mem.writeInt(u16, output[position..][0..2], ~block_size, .little);
-            position += 2;
-
-            @memcpy(output[position..][0..block_size], data[offset..][0..block_size]);
-            position += block_size;
-
-            offset += block_size;
-            remaining -= block_size;
-        }
-    }
-
-    var adler: std.hash.Adler32 = .{};
-
-    adler.update(data);
-    std.mem.writeInt(u32, output[position..][0..4], adler.adler, .big);
-    position += 4;
-
-    return output[0..position];
+    return output.toOwnedSlice();
 }
 
 fn writeChunk(writer: *std.Io.Writer, chunk_type: *const [4]u8, data: []const u8) !void {

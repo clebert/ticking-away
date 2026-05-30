@@ -1,11 +1,7 @@
 /.zig-cache/
 /bin/*/*
-!/bin/*/*.ld
-!/bin/*/*.md
 !/bin/*/*.zig
 /dist/
-/frame/*
-!/frame/*.scad
 /node_modules/
 /public/*.wasm
 /TODO.md

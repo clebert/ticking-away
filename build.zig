@@ -8,10 +8,7 @@ pub fn build(b: *std.Build) void {
     b.default_step.dependOn(check_step);
     b.default_step.dependOn(buildWasmModule(b, check_step));
 
-    buildProfileBinary(b, target, optimize, check_step);
     buildPngBinary(b, target, optimize, check_step);
-    buildInkyZeroBinary(b, target, optimize, check_step);
-    buildInkyPicoTestBinary(b, optimize, check_step);
     buildTests(b, target, optimize);
 }
 
@@ -79,53 +76,6 @@ fn buildWasmModule(b: *std.Build, check_step: *std.Build.Step) *std.Build.Step {
     return step;
 }
 
-fn buildProfileBinary(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    check_step: *std.Build.Step,
-) void {
-    const exe = b.addExecutable(.{
-        .name = "profile",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/profile/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/root.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                }) },
-            },
-        }),
-    });
-
-    const exe_install = b.addInstallArtifact(exe, .{});
-
-    const step = b.step("profile", "Build the Profile binary");
-
-    step.dependOn(&exe_install.step);
-
-    const check = b.addExecutable(.{
-        .name = "profile",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/profile/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/root.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                }) },
-            },
-        }),
-    });
-
-    check_step.dependOn(&check.step);
-}
-
 fn buildPngBinary(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
@@ -170,116 +120,6 @@ fn buildPngBinary(
         }),
     });
 
-    check_step.dependOn(&check.step);
-}
-
-fn buildInkyZeroBinary(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    check_step: *std.Build.Step,
-) void {
-    const exe = b.addExecutable(.{
-        .name = "inky-zero",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/inky-zero/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/root.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                }) },
-            },
-        }),
-    });
-
-    const exe_install = b.addInstallArtifact(exe, .{});
-
-    const step = b.step("inky-zero", "Build the Inky Zero binary");
-
-    step.dependOn(&exe_install.step);
-
-    const check = b.addExecutable(.{
-        .name = "inky-zero",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/inky-zero/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "lib", .module = b.createModule(.{
-                    .root_source_file = b.path("lib/root.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                }) },
-            },
-        }),
-    });
-
-    check_step.dependOn(&check.step);
-}
-
-fn buildInkyPicoTestBinary(
-    b: *std.Build,
-    optimize: std.builtin.OptimizeMode,
-    check_step: *std.Build.Step,
-) void {
-    const target = b.resolveTargetQuery(.{
-        .cpu_arch = .thumb,
-        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m33 },
-        .os_tag = .freestanding,
-        .abi = .eabihf,
-        .cpu_features_add = std.Target.arm.featureSet(&.{.fp_armv8d16sp}),
-    });
-
-    const exe = b.addExecutable(.{
-        .name = "inky-pico-test",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/inky-pico-test/main.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-
-    exe.entry = .disabled;
-    exe.setLinkerScript(b.path("bin/inky-pico-test/link.ld"));
-
-    const exe_install = b.addInstallArtifact(exe, .{});
-
-    const elf2uf2 = b.addExecutable(.{
-        .name = "elf2uf2",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tools/elf2uf2.zig"),
-            .target = b.graph.host,
-        }),
-    });
-
-    const run_elf2uf2 = b.addRunArtifact(elf2uf2);
-    run_elf2uf2.addArtifactArg(exe);
-    const uf2_output_file = run_elf2uf2.addOutputFileArg("inky-pico-test.uf2");
-
-    const uf2_install = b.addInstallFileWithDir(
-        uf2_output_file,
-        .prefix,
-        "inky-pico-test.uf2",
-    );
-
-    const step = b.step("inky-pico-test", "Build the Inky Pico display test binary");
-    step.dependOn(&exe_install.step);
-    step.dependOn(&uf2_install.step);
-
-    const check = b.addExecutable(.{
-        .name = "inky-pico-test",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("bin/inky-pico-test/main.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-
-    check.entry = .disabled;
-    check.setLinkerScript(b.path("bin/inky-pico-test/link.ld"));
     check_step.dependOn(&check.step);
 }
 

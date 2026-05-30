@@ -52,7 +52,7 @@ test "lerp at t=1 returns second color" {
     const b: Self = .{ .vec = .{ 0.8, -0.1, 0.2, 1.0 } };
     const result = lerp(a, b, 1.0);
 
-    for (0..4) |i| {
+    inline for (0..4) |i| {
         try std.testing.expectApproxEqAbs(b.vec[i], result.vec[i], 1e-6);
     }
 }
