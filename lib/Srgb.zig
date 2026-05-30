@@ -34,6 +34,11 @@ fn srgbByteToLinear(byte: u8) f32 {
     return std.math.pow(f32, (normalized + 0.055) / 1.055, 2.4);
 }
 
+/// Rounds a value already in 0–255 sRGB scale and clamps it to a valid byte.
+pub fn clampedByte(value: f32) u8 {
+    return @intFromFloat(@round(std.math.clamp(value, 0.0, 255.0)));
+}
+
 test "toLinear converts black correctly" {
     const linear = black.toLinear();
 
@@ -97,4 +102,11 @@ test "round-trip Srgb to Linear and back preserves values" {
     try std.testing.expectEqual(original.g, back.g);
     try std.testing.expectEqual(original.b, back.b);
     try std.testing.expectEqual(original.a, back.a);
+}
+
+test "clampedByte rounds and clamps to 0-255" {
+    try std.testing.expectEqual(@as(u8, 0), clampedByte(-10.0));
+    try std.testing.expectEqual(@as(u8, 255), clampedByte(300.0));
+    try std.testing.expectEqual(@as(u8, 128), clampedByte(127.6));
+    try std.testing.expectEqual(@as(u8, 127), clampedByte(127.4));
 }

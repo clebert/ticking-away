@@ -16,7 +16,7 @@ pub fn init(origin: @Vector(2, f32), target: @Vector(2, f32)) Self {
 }
 
 pub const Intersection = struct {
-    distance: f32, // distance from ray start to hit
+    distance: f32,
     hit: @Vector(2, f32),
 
     pub fn closest(a: ?Intersection, b: ?Intersection) ?Intersection {
@@ -53,37 +53,6 @@ pub fn intersectSegment(self: Self, segment: Segment) ?Intersection {
 
     const normalized_position = std.math.clamp(normalized_position_unclamped, 0.0, 1.0);
     const hit = segment.start + start_to_end * @as(@Vector(2, f32), @splat(normalized_position));
-
-    return .{ .distance = distance, .hit = hit };
-}
-
-/// Intersects the ray with the unit circle centered at the origin.
-pub fn intersectCircle(self: Self) ?Intersection {
-    std.debug.assert(vector.isNormalized(self.direction));
-
-    const origin_dot_direction = vector.dot(self.origin, self.direction);
-
-    // Using half the linear coefficient for simplified quadratic formula.
-    const discriminant_quarter = origin_dot_direction * origin_dot_direction -
-        (vector.lengthSquared(self.origin) - 1.0);
-
-    if (discriminant_quarter < 0.0) return null;
-
-    const discriminant_quarter_sqrt = @sqrt(discriminant_quarter);
-
-    // Two potential solutions: -half_b ± sqrt(discriminant/4)
-    // We want the nearest positive intersection.
-    const distance_near = -origin_dot_direction - discriminant_quarter_sqrt;
-    const distance_far = -origin_dot_direction + discriminant_quarter_sqrt;
-
-    const distance = if (distance_near > vector.tolerance)
-        distance_near
-    else if (distance_far > vector.tolerance)
-        distance_far
-    else
-        return null;
-
-    const hit = self.origin + self.direction * @as(@Vector(2, f32), @splat(distance));
 
     return .{ .distance = distance, .hit = hit };
 }
@@ -165,51 +134,4 @@ test "intersectSegment returns null when ray origin is on segment" {
     const intersection = ray.intersectSegment(segment);
 
     try std.testing.expectEqual(null, intersection);
-}
-
-test "intersectCircle returns intersection from outside" {
-    const ray = Self.init(.{ -1.5, 0.0 }, .{ 0.0, 0.0 });
-
-    const intersection = ray.intersectCircle().?;
-
-    try std.testing.expectApproxEqAbs(0.5, intersection.distance, vector.tolerance);
-    try std.testing.expectApproxEqAbs(-1.0, intersection.hit[0], vector.tolerance);
-    try std.testing.expectApproxEqAbs(0.0, intersection.hit[1], vector.tolerance);
-}
-
-test "intersectCircle returns intersection from inside" {
-    const ray = Self.init(.{ 0.0, 0.0 }, .{ 1.0, 0.0 });
-
-    const intersection = ray.intersectCircle().?;
-
-    try std.testing.expectApproxEqAbs(1.0, intersection.distance, vector.tolerance);
-    try std.testing.expectApproxEqAbs(1.0, intersection.hit[0], vector.tolerance);
-    try std.testing.expectApproxEqAbs(0.0, intersection.hit[1], vector.tolerance);
-}
-
-test "intersectCircle returns null when ray misses" {
-    const ray = Self.init(.{ -1.5, 1.2 }, .{ 1.5, 1.2 });
-
-    const intersection = ray.intersectCircle();
-
-    try std.testing.expectEqual(null, intersection);
-}
-
-test "intersectCircle returns null when ray points away" {
-    const ray = Self.init(.{ 1.5, 0.0 }, .{ 2.0, 0.0 });
-
-    const intersection = ray.intersectCircle();
-
-    try std.testing.expectEqual(null, intersection);
-}
-
-test "intersectCircle handles diagonal ray" {
-    const ray = Self.init(.{ -1.5, -1.5 }, .{ 0.0, 0.0 });
-
-    const intersection = ray.intersectCircle().?;
-    const expected_distance = @sqrt(1.5 * 1.5 + 1.5 * 1.5) - 1.0;
-    const center_to_hit_length = vector.length(intersection.hit);
-
-    try std.testing.expectApproxEqAbs(expected_distance, intersection.distance, vector.tolerance);
-    try std.testing.expectApproxEqAbs(1.0, center_to_hit_length, vector.tolerance);
 }

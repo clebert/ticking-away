@@ -57,16 +57,16 @@ pub fn init(normalized_size: f32) Self {
 }
 
 pub fn containsPoint(self: Self, point: @Vector(2, f32)) bool {
-    const v0 = self.vertices.get(.apex);
-    const v1 = self.vertices.get(.bottom_right);
-    const v2 = self.vertices.get(.bottom_left);
+    const apex = self.vertices.get(.apex);
+    const bottom_right = self.vertices.get(.bottom_right);
+    const bottom_left = self.vertices.get(.bottom_left);
 
-    const d0 = vector.cross2d(v1 - v0, point - v0);
-    const d1 = vector.cross2d(v2 - v1, point - v1);
-    const d2 = vector.cross2d(v0 - v2, point - v2);
+    const cross_right = vector.cross2d(bottom_right - apex, point - apex);
+    const cross_bottom = vector.cross2d(bottom_left - bottom_right, point - bottom_right);
+    const cross_left = vector.cross2d(apex - bottom_left, point - bottom_left);
 
-    const has_neg = (d0 < 0) or (d1 < 0) or (d2 < 0);
-    const has_pos = (d0 > 0) or (d1 > 0) or (d2 > 0);
+    const has_neg = (cross_right < 0) or (cross_bottom < 0) or (cross_left < 0);
+    const has_pos = (cross_right > 0) or (cross_bottom > 0) or (cross_left > 0);
 
     return !(has_neg and has_pos);
 }

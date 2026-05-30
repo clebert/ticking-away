@@ -120,6 +120,8 @@ pub fn render(
             const cross_end_exact =
                 self.direction_end_exact[0] * dy - self.direction_end_exact[1] * dx;
 
+            // Origin pixel: cross_start_exact == cross_end_exact == 0 → 0/0 = NaN, but
+            // clamp() yields a finite value and attenuation_value == 0 here, so it adds nothing.
             const spectrum_position_raw =
                 std.math.clamp(cross_start_exact / (cross_start_exact - cross_end_exact), 0, 1);
 

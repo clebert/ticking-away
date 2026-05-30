@@ -16,8 +16,10 @@ pub fn project(self: Self, point: @Vector(2, f32)) Projection {
     const start_to_end = self.end - self.start;
     const start_to_point = point - self.start;
 
-    const length_squared = @reduce(.Add, start_to_end * start_to_end);
+    const length_squared = vector.lengthSquared(start_to_end);
 
+    // floatEps here is a numerical floor that keeps 1/length_squared bounded — not a
+    // geometric cutoff like vector.tolerance. Real callers never pass degenerate segments.
     // When called in a loop with a fixed segment (e.g. Glow.renderLine), LLVM hoists
     // start_to_end and inverse_length_squared out of the loop via LICM.
     const inverse_length_squared =

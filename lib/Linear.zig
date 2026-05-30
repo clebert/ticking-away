@@ -50,6 +50,8 @@ pub fn toOklab(self: Self) Oklab {
 }
 
 pub fn toSrgb(self: Self) Srgb {
+    // Fast path for the common fully-black / fully-transparent background pixels;
+    // both return exactly what the general conversion below would produce.
     if (@reduce(.And, self.vec == black.vec)) return .black;
     if (@reduce(.And, self.vec == transparent.vec)) return .transparent;
 
@@ -57,11 +59,11 @@ pub fn toSrgb(self: Self) Srgb {
         .r = linearToSrgbByte(self.vec[0]),
         .g = linearToSrgbByte(self.vec[1]),
         .b = linearToSrgbByte(self.vec[2]),
-        .a = @intFromFloat(@round(std.math.clamp(self.vec[3], 0.0, 1.0) * 255.0)),
+        .a = Srgb.clampedByte(self.vec[3] * 255.0),
     };
 }
 
-const srgb_lut: [4096]u8 = blk: {
+const srgb_lookup_table: [4096]u8 = blk: {
     @setEvalBranchQuota(100_000);
 
     var table: [4096]u8 = undefined;
@@ -79,7 +81,7 @@ fn linearToSrgbByte(linear: f32) u8 {
     const clamped = std.math.clamp(linear, 0.0, 1.0);
     const index: usize = @intFromFloat(@round(clamped * 4095.0));
 
-    return srgb_lut[index];
+    return srgb_lookup_table[index];
 }
 
 fn linearToSrgbComponent(linear: f32) f32 {
@@ -106,8 +108,8 @@ fn cubeRoot(x: f32) f32 {
 
     if (x == 0.0) return 0.0;
 
-    // Initial approximation using IEEE 754 bit manipulation
-    // https://en.wikipedia.org/wiki/Fast_inverse_square_root
+    // Initial guess via IEEE-754 bit manipulation (cube-root nth-root trick),
+    // refined by Newton iterations on f(y) = y^3 - x.
     var y: f32 = @bitCast(@as(u32, @bitCast(x)) / 3 + 709921077);
 
     y = (2.0 * y + x / (y * y)) / 3.0;

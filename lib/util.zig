@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub fn floorClamped(value: f32, max: usize) usize {
+    if (std.math.isNan(value)) return 0;
     if (value <= 0) return 0;
 
     const upper: f32 = @floatFromInt(max);
@@ -11,6 +12,7 @@ pub fn floorClamped(value: f32, max: usize) usize {
 }
 
 pub fn ceilClamped(value: f32, max: usize) usize {
+    if (std.math.isNan(value)) return 0;
     if (value <= 0) return 0;
 
     const upper: f32 = @floatFromInt(max);
@@ -40,6 +42,10 @@ test "floorClamped clamps to max" {
     try std.testing.expectEqual(10, floorClamped(15.0, 10));
 }
 
+test "floorClamped returns zero for NaN" {
+    try std.testing.expectEqual(0, floorClamped(std.math.nan(f32), 10));
+}
+
 test "ceilClamped returns zero for negative values" {
     try std.testing.expectEqual(0, ceilClamped(-1.0, 10));
     try std.testing.expectEqual(0, ceilClamped(-100.5, 10));
@@ -58,4 +64,8 @@ test "ceilClamped ceils a value in range" {
 test "ceilClamped clamps to max" {
     try std.testing.expectEqual(10, ceilClamped(10.0, 10));
     try std.testing.expectEqual(10, ceilClamped(15.0, 10));
+}
+
+test "ceilClamped returns zero for NaN" {
+    try std.testing.expectEqual(0, ceilClamped(std.math.nan(f32), 10));
 }

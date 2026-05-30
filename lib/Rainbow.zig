@@ -18,21 +18,18 @@ pub const ColorId = enum {
 
 pub const color_count: usize = @typeInfo(ColorId).@"enum".fields.len;
 
-linear_colors: [color_count]Linear,
 oklab_colors: [color_count]Oklab,
 
 fn init(srgb_colors: [color_count]Srgb) Self {
     @setEvalBranchQuota(10000);
 
-    var linear_colors: [color_count]Linear = undefined;
     var oklab_colors: [color_count]Oklab = undefined;
 
     for (srgb_colors, 0..) |srgb, i| {
-        linear_colors[i] = srgb.toLinear();
-        oklab_colors[i] = linear_colors[i].toOklab();
+        oklab_colors[i] = srgb.toLinear().toOklab();
     }
 
-    return .{ .linear_colors = linear_colors, .oklab_colors = oklab_colors };
+    return .{ .oklab_colors = oklab_colors };
 }
 
 /// Perceptually balanced colors tuned in OkLCH
@@ -82,24 +79,18 @@ pub fn get(palette_id: PaletteId) Self {
     };
 }
 
-pub fn color(self: Self, color_id: ColorId) Linear {
-    return self.linear_colors[@intFromEnum(color_id)];
-}
-
 pub fn reversed(self: Self) Self {
-    var linear_colors = self.linear_colors;
     var oklab_colors = self.oklab_colors;
 
-    std.mem.reverse(Linear, &linear_colors);
     std.mem.reverse(Oklab, &oklab_colors);
 
-    return .{ .linear_colors = linear_colors, .oklab_colors = oklab_colors };
+    return .{ .oklab_colors = oklab_colors };
 }
 
 const edge_fade: Oklab = .{ .vec = .{ 0, 0, 0, 1 } };
 
-/// Maps normalized_position [0,1] so each color gets an equal-width band.
-/// Edge bands fade toward black for wider red and violet.
+/// Places each palette color at its center (i + 0.5) / N and interpolates between
+/// adjacent centers in Oklab. Edge bands fade toward black for wider red and violet.
 pub fn interpolate(self: Self, normalized_position: f32) Linear {
     std.debug.assert(normalized_position >= 0.0 and normalized_position <= 1.0);
 
@@ -107,8 +98,8 @@ pub fn interpolate(self: Self, normalized_position: f32) Linear {
     const color_position = (normalized_position * color_count_f - 0.5) / (color_count_f - 1.0);
     const clamped_color_position = std.math.clamp(color_position, 0.0, 1.0);
 
-    const scaled_index = clamped_color_position * @as(f32, color_count - 1);
-    const index: usize = @intFromFloat(@min(@floor(scaled_index), color_count - 2));
+    const scaled_index = clamped_color_position * (color_count_f - 1.0);
+    const index: usize = @intFromFloat(@min(@floor(scaled_index), color_count_f - 2.0));
     const fraction = scaled_index - @as(f32, @floatFromInt(index));
 
     const base = Oklab.lerp(self.oklab_colors[index], self.oklab_colors[index + 1], fraction);
@@ -117,30 +108,29 @@ pub fn interpolate(self: Self, normalized_position: f32) Linear {
 }
 
 test "get returns matching rainbow" {
-    try std.testing.expectEqual(oklch_balanced.linear_colors, (get(.oklch_balanced)).linear_colors);
-    try std.testing.expectEqual(spectral.linear_colors, (get(.spectral)).linear_colors);
-    try std.testing.expectEqual(spectra6.linear_colors, (get(.spectra6)).linear_colors);
+    try std.testing.expectEqual(oklch_balanced.oklab_colors, (get(.oklch_balanced)).oklab_colors);
+    try std.testing.expectEqual(spectral.oklab_colors, (get(.spectral)).oklab_colors);
+    try std.testing.expectEqual(spectra6.oklab_colors, (get(.spectra6)).oklab_colors);
 }
 
-test "color returns correct entry by ColorId" {
-    const rainbow = oklch_balanced;
+test "init converts sRGB through to Oklab" {
+    // spectral red is pure sRGB red; round-tripping its stored Oklab back to
+    // linear should recover (1, 0, 0).
+    const red = spectral.oklab_colors[0].toLinear();
 
-    try std.testing.expectEqual(rainbow.linear_colors[0].vec, rainbow.color(.red).vec);
-    try std.testing.expectEqual(rainbow.linear_colors[3].vec, rainbow.color(.green).vec);
-    try std.testing.expectEqual(rainbow.linear_colors[6].vec, rainbow.color(.violet).vec);
-}
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[0], 1e-4);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), red.vec[1], 1e-4);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.0), red.vec[2], 1e-4);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[3], 1e-4);
 
-test "init converts sRGB to linear" {
-    const red = spectral.color(.red);
+    // Direct sRGB -> linear check, independent of the Oklab round-trip above.
+    const red_linear = (Srgb{ .r = 255, .g = 0, .b = 0 }).toLinear();
 
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[0], 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), red.vec[1], 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), red.vec[2], 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[3], 1e-6);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.0), red_linear.vec[0], 1e-6);
 }
 
 test "init sets alpha to 1" {
-    for (oklch_balanced.linear_colors) |c| {
+    for (oklch_balanced.oklab_colors) |c| {
         try std.testing.expectApproxEqAbs(@as(f32, 1.0), c.vec[3], 1e-6);
     }
 }
@@ -149,9 +139,9 @@ test "reversed swaps first and last colors" {
     const rainbow = spectral;
     const reversed_rainbow = rainbow.reversed();
 
-    try std.testing.expectEqual(rainbow.color(.red).vec, reversed_rainbow.color(.violet).vec);
-    try std.testing.expectEqual(rainbow.color(.violet).vec, reversed_rainbow.color(.red).vec);
-    try std.testing.expectEqual(rainbow.color(.green).vec, reversed_rainbow.color(.green).vec);
+    try std.testing.expectEqual(rainbow.oklab_colors[0].vec, reversed_rainbow.oklab_colors[6].vec);
+    try std.testing.expectEqual(rainbow.oklab_colors[6].vec, reversed_rainbow.oklab_colors[0].vec);
+    try std.testing.expectEqual(rainbow.oklab_colors[3].vec, reversed_rainbow.oklab_colors[3].vec);
 }
 
 test "interpolate at color center returns that color" {
@@ -159,9 +149,12 @@ test "interpolate at color center returns that color" {
     const red_center = spectral.interpolate(0.5 / 7.0);
     const violet_center = spectral.interpolate(6.5 / 7.0);
 
+    const expected_red = spectral.oklab_colors[0].toLinear();
+    const expected_violet = spectral.oklab_colors[6].toLinear();
+
     for (0..3) |i| {
-        try std.testing.expectApproxEqAbs(spectral.linear_colors[0].vec[i], red_center.vec[i], 1e-5);
-        try std.testing.expectApproxEqAbs(spectral.linear_colors[6].vec[i], violet_center.vec[i], 1e-5);
+        try std.testing.expectApproxEqAbs(expected_red.vec[i], red_center.vec[i], 1e-5);
+        try std.testing.expectApproxEqAbs(expected_violet.vec[i], violet_center.vec[i], 1e-5);
     }
 }
 
@@ -169,9 +162,12 @@ test "interpolate at edges fades toward dark" {
     const at_zero = spectral.interpolate(0.0);
     const at_one = spectral.interpolate(1.0);
 
+    const red = spectral.oklab_colors[0].toLinear();
+    const violet = spectral.oklab_colors[6].toLinear();
+
     // At 0, red shifts toward dark (lower red channel)
-    try std.testing.expect(at_zero.vec[0] < spectral.linear_colors[0].vec[0]);
+    try std.testing.expect(at_zero.vec[0] < red.vec[0]);
 
     // At 1, violet shifts toward dark (lower blue channel)
-    try std.testing.expect(at_one.vec[2] < spectral.linear_colors[6].vec[2]);
+    try std.testing.expect(at_one.vec[2] < violet.vec[2]);
 }

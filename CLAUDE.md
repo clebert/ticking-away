@@ -46,6 +46,11 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.15.2/#Style-Gui
   (`foo.Bar`) directly.
 - **No re-exports**: Don't re-export imports (`pub const foo = @import("foo.zig")`). Exception:
   `root.zig` may re-export for the public API.
-- **No fake `pub`**: Don't mark unused code as `pub` to suppress warnings. Remove it instead.
+- **No fake `pub`**: Don't mark unused code as `pub` to suppress warnings. Remove it instead. A
+  symbol whose only references are the tests that exist to exercise it is still dead — remove it
+  together with those tests. But a `pub` symbol is legitimate API when something else consumes it,
+  including tests in _other_ modules that use it as a helper (e.g. `Srgb.white` used by the
+  Image/Crop tests). Keep such API and its symmetric constants; don't inline a named constant into
+  multiple test call sites.
 - **Const slices**: Use `[]const T` for slice parameters that are only read from; use `[]T` only for
   output buffers that are written to.

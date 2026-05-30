@@ -117,21 +117,25 @@ pub fn renderPrismEdges(
 
             if (!prism.containsPoint(point)) continue;
 
-            const proj0 = prism.edges.get(.right).project(point);
-            const proj1 = prism.edges.get(.bottom).project(point);
-            const proj2 = prism.edges.get(.left).project(point);
+            const projection_right = prism.edges.get(.right).project(point);
+            const projection_bottom = prism.edges.get(.bottom).project(point);
+            const projection_left = prism.edges.get(.left).project(point);
 
             const min_distance_squared = @min(
-                proj0.distance_squared,
-                @min(proj1.distance_squared, proj2.distance_squared),
+                projection_right.distance_squared,
+                @min(projection_bottom.distance_squared, projection_left.distance_squared),
             );
 
             if (min_distance_squared >= early_out_threshold_squared) continue;
 
-            const d0 = @sqrt(proj0.distance_squared);
-            const d1 = @sqrt(proj1.distance_squared);
-            const d2 = @sqrt(proj2.distance_squared);
-            const distance = smoothMin(smoothMin(d0, d1, smooth_k), d2, smooth_k);
+            const distance_right = @sqrt(projection_right.distance_squared);
+            const distance_bottom = @sqrt(projection_bottom.distance_squared);
+            const distance_left = @sqrt(projection_left.distance_squared);
+            const distance = smoothMin(
+                smoothMin(distance_right, distance_bottom, smooth_k),
+                distance_left,
+                smooth_k,
+            );
 
             if (distance >= width) continue;
 

@@ -31,7 +31,6 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
         .color = Linear.white,
     };
 
-    // Minute hand (white line from circle boundary, fading at prism)
     const minute_ray = Ray.init(clock.minute_hand.start, clock.minute_hand.end);
     const minute_intersection = clock.prism.intersect(minute_ray) orelse unreachable;
 
@@ -43,7 +42,6 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
         .falloff = self.hand_length_falloff,
     });
 
-    // Spectrum fill (rainbow gradient between rays)
     const spectrum = Spectrum.init(
         .{ 0, 0 },
         clock.hour_hand.get(.red).end,

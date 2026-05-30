@@ -51,8 +51,19 @@ fn validateRanges(config: Self) !void {
             if (value < 0.0 or value > 1.0) return error.OutOfRange;
         }
     }
+
+    // Prism.init requires a strictly positive size; a zero-size prism is degenerate.
+    if (config.prism_normalized_size <= 0.0) return error.OutOfRange;
 }
 
 test "init returns valid config from defaults" {
     _ = try init(std.testing.allocator);
+}
+
+test "validateRanges rejects zero-size prism" {
+    var config = try init(std.testing.allocator);
+
+    config.prism_normalized_size = 0.0;
+
+    try std.testing.expectError(error.OutOfRange, validateRanges(config));
 }

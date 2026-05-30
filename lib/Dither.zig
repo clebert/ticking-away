@@ -62,7 +62,7 @@ pub fn apply(
             const step: i32 = if (serpentine) -1 else 1;
 
             const linear = band.colorAt(x, y).*;
-            const alpha: u8 = @intFromFloat(@round(std.math.clamp(linear.vec[3], 0.0, 1.0) * 255.0));
+            const alpha: u8 = Srgb.clampedByte(linear.vec[3] * 255.0);
             const error_offset = x * channels;
 
             // Background pixels (never rendered to): output palette black directly
@@ -89,7 +89,7 @@ pub fn apply(
 
             const quantized = self.palette.oklab_colors[index];
 
-            const err = [channels]f32{
+            const quantization_error = [channels]f32{
                 (adjusted_l - quantized.vec[0]) * self.normalized_strength,
                 (adjusted_a - quantized.vec[1]) * self.normalized_strength,
                 (adjusted_b - quantized.vec[2]) * self.normalized_strength,
@@ -110,22 +110,22 @@ pub fn apply(
             if (forward >= 0 and forward < signed_width) {
                 const forward_offset = @as(usize, @intCast(forward)) * channels;
 
-                inline for (0..channels) |c| {
-                    current[forward_offset + c] += err[c] * (7.0 / 16.0);
-                    next[forward_offset + c] += err[c] * (1.0 / 16.0);
+                inline for (0..channels) |channel| {
+                    current[forward_offset + channel] += quantization_error[channel] * (7.0 / 16.0);
+                    next[forward_offset + channel] += quantization_error[channel] * (1.0 / 16.0);
                 }
             }
 
             if (back >= 0 and back < signed_width) {
                 const back_offset = @as(usize, @intCast(back)) * channels;
 
-                inline for (0..channels) |c| {
-                    next[back_offset + c] += err[c] * (3.0 / 16.0);
+                inline for (0..channels) |channel| {
+                    next[back_offset + channel] += quantization_error[channel] * (3.0 / 16.0);
                 }
             }
 
-            inline for (0..channels) |c| {
-                next[error_offset + c] += err[c] * (5.0 / 16.0);
+            inline for (0..channels) |channel| {
+                next[error_offset + channel] += quantization_error[channel] * (5.0 / 16.0);
             }
         }
 
@@ -156,7 +156,7 @@ fn findClosest(
     var best_distance: f32 = std.math.floatMax(f32);
 
     for (palette, 0..) |color, i| {
-        // Weighted Oklab distance: (2/cw)*dL² + cw*(da²+db²)
+        // Weighted squared Oklab distance: lw*dL² + cw*(da²+db²), lw = 2(1-emphasis), cw = 2*emphasis
         const delta_l = l - color.vec[0];
         const delta_a = a - color.vec[1];
         const delta_b = b - color.vec[2];

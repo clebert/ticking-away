@@ -110,12 +110,16 @@ pub fn band(
     band_height: usize,
     band_index: usize,
 ) !Band(Color) {
-    if (self.height % band_height != 0) {
+    if (band_height == 0 or self.height % band_height != 0) {
         return error.InvalidBandHeight;
     }
 
     if (buffer.len != self.width * band_height) {
         return error.BufferSizeMismatch;
+    }
+
+    if (band_index >= self.height / band_height) {
+        return error.InvalidBandIndex;
     }
 
     return .{ .buffer = buffer, .width = self.width, .y_offset = band_index * band_height };
@@ -246,6 +250,27 @@ test "band returns error for wrong buffer size" {
     const result = image.band(Linear, &linear_buffer, 5, 0);
 
     try std.testing.expectError(error.BufferSizeMismatch, result);
+}
+
+test "band returns error for zero band height" {
+    const image = Self.init(10, 100);
+
+    var linear_buffer: [10]Linear = undefined;
+
+    const result = image.band(Linear, &linear_buffer, 0, 0);
+
+    try std.testing.expectError(error.InvalidBandHeight, result);
+}
+
+test "band returns error for out-of-range band index" {
+    const image = Self.init(10, 100);
+
+    var linear_buffer: [50]Linear = undefined;
+
+    // 100 / 5 = 20 bands, so index 20 is one past the last valid band.
+    const result = image.band(Linear, &linear_buffer, 5, 20);
+
+    try std.testing.expectError(error.InvalidBandIndex, result);
 }
 
 test "bandHeight returns buffer rows" {

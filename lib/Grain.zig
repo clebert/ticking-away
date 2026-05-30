@@ -7,7 +7,7 @@ const Srgb = @import("Srgb.zig");
 const Self = @This();
 
 /// Maximum per-pixel deviation as a fraction of the sRGB range (0.0–1.0).
-/// At 1.0, each pixel can shift by up to ±127.5 sRGB units.
+/// At 1.0, each pixel can shift by up to ±255 sRGB units.
 normalized_deviation: f32,
 dither_palette: ?Dither.Palette = null,
 
@@ -16,7 +16,7 @@ pub fn apply(self: Self, band: Image.Band(Srgb)) void {
 
     if (self.normalized_deviation == 0.0) return;
 
-    // noise_raw ∈ [-0.5, 0.5], so multiply by 2 to scale to peak-to-peak
+    // noise_raw ∈ [-0.5, 0.5]; ×255×2 maps deviation 1.0 to a full ±255 swing.
     const strength = self.normalized_deviation * 255.0 * 2.0;
 
     const black = if (self.dither_palette) |dither_palette| dither_palette.black() else Srgb.black;
@@ -48,22 +48,22 @@ pub fn apply(self: Self, band: Image.Band(Srgb)) void {
             const grain = (hash_f * (1.0 / 16777215.0) - 0.5) * strength;
 
             if (self.dither_palette) |dither_palette| {
-                srgb.* = findNearest(dither_palette.srgb_colors, r + grain, g + grain, b + grain);
+                srgb.* = findClosest(dither_palette.srgb_colors, r + grain, g + grain, b + grain);
             } else {
-                srgb.r = @intFromFloat(@min(@max(r + grain, 0.0), 255.0));
-                srgb.g = @intFromFloat(@min(@max(g + grain, 0.0), 255.0));
-                srgb.b = @intFromFloat(@min(@max(b + grain, 0.0), 255.0));
+                srgb.r = Srgb.clampedByte(r + grain);
+                srgb.g = Srgb.clampedByte(g + grain);
+                srgb.b = Srgb.clampedByte(b + grain);
             }
         }
     }
 }
 
 // sRGB euclidean distance (not perceptual Oklab) — sufficient for small grain deltas
-fn findNearest(colors: [Dither.Palette.color_count]Srgb, r: f32, g: f32, b: f32) Srgb {
+fn findClosest(palette: [Dither.Palette.color_count]Srgb, r: f32, g: f32, b: f32) Srgb {
     var best_index: usize = 0;
     var best_distance: f32 = std.math.floatMax(f32);
 
-    for (colors, 0..) |color, index| {
+    for (palette, 0..) |color, index| {
         const delta_r = r - @as(f32, @floatFromInt(color.r));
         const delta_g = g - @as(f32, @floatFromInt(color.g));
         const delta_b = b - @as(f32, @floatFromInt(color.b));
@@ -75,7 +75,7 @@ fn findNearest(colors: [Dither.Palette.color_count]Srgb, r: f32, g: f32, b: f32)
         }
     }
 
-    return colors[best_index];
+    return palette[best_index];
 }
 
 test "apply modifies non-black pixels" {

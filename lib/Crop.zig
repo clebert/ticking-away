@@ -32,14 +32,14 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
         }
 
         const dx_max = @sqrt(dx_max_squared);
-        const x_lo = center_x - 0.5 - dx_max;
-        const x_hi = center_x - 0.5 + dx_max;
+        const x_low = center_x - 0.5 - dx_max;
+        const x_high = center_x - 0.5 + dx_max;
 
         // Use @ceil (not @intFromFloat truncation) so left/right margins are symmetric.
-        const x_start: usize = if (x_lo < 0) 0 else @intFromFloat(@ceil(x_lo));
+        const x_start: usize = if (x_low < 0) 0 else @intFromFloat(@ceil(x_low));
 
         const x_end: usize = @min(
-            if (x_hi < 0) 0 else @as(usize, @intFromFloat(x_hi)) + 1,
+            if (x_high < 0) 0 else @as(usize, @intFromFloat(x_high)) + 1,
             band.width,
         );
 
@@ -92,13 +92,13 @@ fn antialiasNearEdge(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f3
     if (dx_max_squared < 0.0) return;
 
     const dx_max = @sqrt(dx_max_squared);
-    const x_lo = center_x - 0.5 - dx_max;
-    const x_hi = center_x - 0.5 + dx_max;
+    const x_low = center_x - 0.5 - dx_max;
+    const x_high = center_x - 0.5 + dx_max;
 
-    const from: usize = if (x_lo < 0) 0 else @intFromFloat(@floor(x_lo));
+    const from: usize = if (x_low < 0) 0 else @intFromFloat(@floor(x_low));
 
     const to: usize =
-        @min(if (x_hi < 0) 0 else @as(usize, @intFromFloat(@ceil(x_hi))) + 1, row.len);
+        @min(if (x_high < 0) 0 else @as(usize, @intFromFloat(@ceil(x_high))) + 1, row.len);
 
     for (from..to) |x| {
         self.blendPixel(&row[x], pixelCoverage(center_x, dy, radius, x));
@@ -115,19 +115,19 @@ fn pixelCoverage(center_x: f32, dy: f32, radius: f32, x: usize) f32 {
 fn blendPixel(self: Self, pixel: *Srgb, coverage: f32) void {
     if (coverage >= 1.0 or coverage <= 0.0) return;
 
-    const inv = 1.0 - coverage;
+    const inverse_coverage = 1.0 - coverage;
 
     pixel.* = .{
-        .r = lerpByte(self.outside_color.r, pixel.r, coverage, inv),
-        .g = lerpByte(self.outside_color.g, pixel.g, coverage, inv),
-        .b = lerpByte(self.outside_color.b, pixel.b, coverage, inv),
-        .a = lerpByte(self.outside_color.a, pixel.a, coverage, inv),
+        .r = lerpByte(self.outside_color.r, pixel.r, coverage, inverse_coverage),
+        .g = lerpByte(self.outside_color.g, pixel.g, coverage, inverse_coverage),
+        .b = lerpByte(self.outside_color.b, pixel.b, coverage, inverse_coverage),
+        .a = lerpByte(self.outside_color.a, pixel.a, coverage, inverse_coverage),
     };
 }
 
-fn lerpByte(a: u8, b: u8, t: f32, inv_t: f32) u8 {
+fn lerpByte(a: u8, b: u8, t: f32, inverse_t: f32) u8 {
     return @intFromFloat(@round(
-        @as(f32, @floatFromInt(a)) * inv_t + @as(f32, @floatFromInt(b)) * t,
+        @as(f32, @floatFromInt(a)) * inverse_t + @as(f32, @floatFromInt(b)) * t,
     ));
 }
 
