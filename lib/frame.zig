@@ -3,7 +3,7 @@ const std = @import("std");
 const Clock = @import("Clock.zig");
 const Config = @import("Config.zig");
 const Crop = @import("Crop.zig");
-const Dither = @import("Dither.zig");
+const dither = @import("dither.zig");
 const Grain = @import("Grain.zig");
 const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
@@ -15,19 +15,15 @@ const Watchface = @import("Watchface.zig");
 /// the resulting sRGB band. `linear_buffer` and `srgb_buffer` must each hold
 /// exactly `image.width * image.height` pixels.
 ///
-/// Dithering (the palette-quantizing path) is applied only when `config.dither_enabled`
-/// is true AND a `dither_error_buffer` is supplied; passing `null` forces full-color
-/// output regardless of config.
+/// When `config.dither_enabled` is true the output is quantized to the Pebble cube
+/// with ordered blue-noise dithering; otherwise full-color sRGB is emitted.
 pub fn render(
     config: Config,
     time: Time,
     image: Image,
     linear_buffer: []Linear,
     srgb_buffer: []Srgb,
-    dither_error_buffer: ?[]f32,
 ) !Image.Band(Srgb) {
-    const dithering = config.dither_enabled and dither_error_buffer != null;
-
     const clock = Clock.init(
         time,
         config.prism_normalized_size,
@@ -55,19 +51,16 @@ pub fn render(
 
     watchface.render(linear_band, viewport, clock);
 
-    // Grain is a full-color analog texture. When dithering it must run on the
-    // continuous image before quantization, so the dither diffuses it into the
-    // output pattern; run on the quantized output it would instead snap noise to
-    // neighbouring palette entries and break up the dither. When not dithering it
-    // runs on the full-color output directly.
+    // Grain is a full-color analog texture. When dithering it runs on the continuous
+    // image before quantization so it is dithered along with the image (and so its
+    // shadow-suppressed jitter never snaps to a neighbouring cube level); otherwise
+    // it runs on the full-color output directly.
     const grain = Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-    const srgb_band = if (dithering) blk: {
+    const srgb_band = if (config.dither_enabled) blk: {
         if (config.grain_enabled) grain.applyLinear(linear_band);
 
-        const dither = Dither{ .palette = Dither.pebble64 };
-
-        break :blk try dither.apply(linear_band, srgb_buffer, dither_error_buffer.?);
+        break :blk try dither.apply(linear_band, srgb_buffer);
     } else blk: {
         const continuous = try linear_band.toSrgb(srgb_buffer);
 
@@ -77,7 +70,7 @@ pub fn render(
     };
 
     if (config.background_enabled) {
-        const crop = Crop{ .outside_color = Srgb.transparent, .antialias = !dithering };
+        const crop = Crop{ .outside_color = Srgb.transparent, .antialias = !config.dither_enabled };
 
         crop.apply(srgb_band, viewport);
     }
@@ -95,7 +88,7 @@ test "render produces visible non-black output with defaults" {
     var srgb_buffer: [test_size * test_size]Srgb = undefined;
 
     const image = Image.init(test_size, test_size);
-    const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, null);
+    const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer);
 
     var sum: u64 = 0;
 
@@ -104,60 +97,49 @@ test "render produces visible non-black output with defaults" {
     try std.testing.expect(sum > 0);
 }
 
-test "render quantizes to palette when dithering is enabled" {
+test "render quantizes to the cube when dithering is enabled" {
     var config = try Config.init(std.testing.allocator);
 
     config.dither_enabled = true;
 
     var linear_buffer: [test_size * test_size]Linear = undefined;
     var srgb_buffer: [test_size * test_size]Srgb = undefined;
-    var error_buffer: [Dither.errorBufferSize(test_size)]f32 = undefined;
 
     const image = Image.init(test_size, test_size);
-    const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, &error_buffer);
-
-    const palette = Dither.pebble64;
+    const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer);
 
     for (band.buffer) |pixel| {
         if (pixel.a == 0) continue;
 
-        var found = false;
-
-        for (palette.srgb_colors) |color| {
-            if (pixel.r == color.r and pixel.g == color.g and pixel.b == color.b) {
-                found = true;
-                break;
-            }
-        }
-
-        try std.testing.expect(found);
+        try std.testing.expect(dither.isCubeChannel(pixel.r));
+        try std.testing.expect(dither.isCubeChannel(pixel.g));
+        try std.testing.expect(dither.isCubeChannel(pixel.b));
     }
 }
 
-test "render ignores dithering when error buffer is null" {
-    var dithered_config = try Config.init(std.testing.allocator);
+test "render leaves the output full-color when dithering is disabled" {
+    var config = try Config.init(std.testing.allocator);
 
-    dithered_config.dither_enabled = true;
+    config.dither_enabled = false;
+    config.grain_enabled = false;
 
-    var full_color_config = dithered_config;
-
-    full_color_config.dither_enabled = false;
+    var linear_buffer: [test_size * test_size]Linear = undefined;
+    var srgb_buffer: [test_size * test_size]Srgb = undefined;
 
     const image = Image.init(test_size, test_size);
+    const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer);
 
-    // dither_enabled = true but no error buffer => forced full-color.
-    var linear_forced: [test_size * test_size]Linear = undefined;
-    var srgb_forced: [test_size * test_size]Srgb = undefined;
+    // A continuous render of the rainbow keeps off-cube channel values; if every pixel
+    // happened to land on a cube level the dither and non-dither paths would be
+    // indistinguishable, so assert at least one pixel is genuinely full-color.
+    var has_off_cube = false;
 
-    const forced = try render(dithered_config, test_time, image, &linear_forced, &srgb_forced, null);
+    for (band.buffer) |pixel| {
+        if (!dither.isCubeChannel(pixel.r) or !dither.isCubeChannel(pixel.g) or !dither.isCubeChannel(pixel.b)) {
+            has_off_cube = true;
+            break;
+        }
+    }
 
-    // dither_enabled = false with an error buffer => also full-color.
-    var linear_disabled: [test_size * test_size]Linear = undefined;
-    var srgb_disabled: [test_size * test_size]Srgb = undefined;
-    var error_buffer: [Dither.errorBufferSize(test_size)]f32 = undefined;
-
-    const disabled =
-        try render(full_color_config, test_time, image, &linear_disabled, &srgb_disabled, &error_buffer);
-
-    try std.testing.expectEqualSlices(Srgb, disabled.buffer, forced.buffer);
+    try std.testing.expect(has_off_cube);
 }

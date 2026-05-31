@@ -47,7 +47,6 @@ fn getConfig(config_json_byte_length: u32) ?lib.Config {
 
 var linear_buffer: ?[]lib.Linear = null;
 var srgb_buffer: ?[]lib.Srgb = null;
-var dither_error_buffer: ?[]f32 = null;
 var last_width: usize = 0;
 var last_height: usize = 0;
 
@@ -55,16 +54,13 @@ fn ensureBuffers(width: usize, height: usize) error{OutOfMemory}!void {
     if (width == last_width and
         height == last_height and
         linear_buffer != null and
-        srgb_buffer != null and
-        dither_error_buffer != null) return;
+        srgb_buffer != null) return;
 
     if (linear_buffer) |buffer| allocator.free(buffer);
     if (srgb_buffer) |buffer| allocator.free(buffer);
-    if (dither_error_buffer) |buffer| allocator.free(buffer);
 
     linear_buffer = null;
     srgb_buffer = null;
-    dither_error_buffer = null;
 
     const pixel_count = width * height;
 
@@ -81,8 +77,6 @@ fn ensureBuffers(width: usize, height: usize) error{OutOfMemory}!void {
         allocator.free(srgb_buffer.?);
         srgb_buffer = null;
     }
-
-    dither_error_buffer = try allocator.alloc(f32, lib.Dither.errorBufferSize(width));
 
     last_width = width;
     last_height = height;
@@ -107,7 +101,6 @@ export fn render(
         image,
         linear_buffer.?,
         srgb_buffer.?,
-        dither_error_buffer.?,
     ) catch return null;
 
     return @ptrCast(srgb_buffer.?.ptr);

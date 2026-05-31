@@ -33,7 +33,7 @@ zig-out/bin/png <size> <hour> <minute> <output.png> [--dither]
 - `hour`: hour (0-23)
 - `minute`: minute (0-59)
 - `output.png`: output file path
-- `--dither`: quantize the output to the Pebble 64-colour palette
+- `--dither`: quantize the output to the Pebble 64-colour cube
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \

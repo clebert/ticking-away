@@ -24,7 +24,6 @@ pub fn main(init: std.process.Init) !void {
     config.dither_enabled = args.dither;
 
     const image = lib.Image.init(size, size);
-    const dither_error_buffer = try allocator.alloc(f32, lib.Dither.errorBufferSize(size));
 
     _ = try lib.frame.render(
         config,
@@ -32,7 +31,6 @@ pub fn main(init: std.process.Init) !void {
         image,
         linear_buffer,
         srgb_buffer,
-        dither_error_buffer,
     );
 
     try png.write(io, allocator, args.output_path, size, size, srgb_buffer);
@@ -103,7 +101,7 @@ fn printUsage() void {
         \\  hour        Hour (0-23)
         \\  minute      Minute (0-59)
         \\  output.png  Output file path
-        \\  --dither    Quantize the output to the Pebble 64-colour palette
+        \\  --dither    Quantize the output to the Pebble 64-colour cube
         \\
     , .{});
 }
