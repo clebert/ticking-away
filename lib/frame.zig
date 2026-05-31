@@ -15,7 +15,7 @@ const Watchface = @import("Watchface.zig");
 /// the resulting sRGB band. `linear_buffer` and `srgb_buffer` must each hold
 /// exactly `image.width * image.height` pixels.
 ///
-/// Dithering (the 6-color e-ink path) is applied only when `config.dither_enabled`
+/// Dithering (the palette-quantizing path) is applied only when `config.dither_enabled`
 /// is true AND a `dither_error_buffer` is supplied. Passing `null` forces
 /// full-color output regardless of config — the PNG export does this because it
 /// is a full-color renderer (see bin/png/main.zig).
@@ -59,7 +59,16 @@ pub fn render(
 
     watchface.render(linear_band, viewport, clock);
 
+    // Grain is a full-color analog texture. When dithering it must run on the
+    // continuous image before quantization, so the dither diffuses it into the
+    // output pattern; run on the quantized output it would instead snap noise to
+    // neighbouring palette entries and break up the dither. When not dithering it
+    // runs on the full-color output directly.
+    const grain = Grain{ .normalized_deviation = config.grain_normalized_deviation };
+
     const srgb_band = if (dithering) blk: {
+        if (config.grain_enabled) grain.applyLinear(linear_band);
+
         const dither = Dither{
             .normalized_strength = config.dither_normalized_strength,
             .normalized_chroma_emphasis = config.dither_normalized_chroma_emphasis,
@@ -67,16 +76,13 @@ pub fn render(
         };
 
         break :blk try dither.apply(linear_band, srgb_buffer, dither_error_buffer.?);
-    } else try linear_band.toSrgb(srgb_buffer);
+    } else blk: {
+        const continuous = try linear_band.toSrgb(srgb_buffer);
 
-    if (config.grain_enabled) {
-        const grain = Grain{
-            .normalized_deviation = config.grain_normalized_deviation,
-            .dither_palette = if (dithering) config.dither_palette_id.palette() else null,
-        };
+        if (config.grain_enabled) grain.apply(continuous);
 
-        grain.apply(srgb_band);
-    }
+        break :blk continuous;
+    };
 
     if (config.background_enabled) {
         const crop = Crop{ .outside_color = Srgb.transparent, .antialias = !dithering };
@@ -113,7 +119,7 @@ test "render quantizes to palette when dithering is enabled" {
 
     var linear_buffer: [test_size * test_size]Linear = undefined;
     var srgb_buffer: [test_size * test_size]Srgb = undefined;
-    var error_buffer: [test_size * Dither.Palette.color_count * 2]f32 = undefined;
+    var error_buffer: [Dither.errorBufferSize(test_size)]f32 = undefined;
 
     const image = Image.init(test_size, test_size);
     const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, &error_buffer);
@@ -156,7 +162,7 @@ test "render ignores dithering when error buffer is null" {
     // dither_enabled = false with an error buffer => also full-color.
     var linear_disabled: [test_size * test_size]Linear = undefined;
     var srgb_disabled: [test_size * test_size]Srgb = undefined;
-    var error_buffer: [test_size * Dither.Palette.color_count * 2]f32 = undefined;
+    var error_buffer: [Dither.errorBufferSize(test_size)]f32 = undefined;
 
     const disabled =
         try render(full_color_config, test_time, image, &linear_disabled, &srgb_disabled, &error_buffer);

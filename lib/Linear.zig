@@ -84,7 +84,7 @@ fn linearToSrgbByte(linear: f32) u8 {
     return srgb_lookup_table[index];
 }
 
-fn linearToSrgbComponent(linear: f32) f32 {
+pub fn linearToSrgbComponent(linear: f32) f32 {
     if (linear <= 0.0031308) {
         return linear * 12.92;
     }

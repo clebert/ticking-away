@@ -21,7 +21,13 @@ const ConfigSchema = z.object({
   grain_enabled: z.boolean(),
   grain_normalized_deviation: z.number(),
   dither_enabled: z.boolean(),
-  dither_palette_id: z.enum(["ideal", "spectra6_inky", "spectra6_epdopt", "spectra6_trmnl"]),
+  dither_palette_id: z.enum([
+    "ideal",
+    "spectra6_inky",
+    "spectra6_epdopt",
+    "spectra6_trmnl",
+    "pebble64",
+  ]),
   dither_normalized_strength: z.number(),
   dither_normalized_chroma_emphasis: z.number(),
 });

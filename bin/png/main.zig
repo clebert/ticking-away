@@ -22,8 +22,8 @@ pub fn main(init: std.process.Init) !void {
     const config = try lib.Config.init(allocator);
     const image = lib.Image.init(size, size);
 
-    // The PNG export is a full-color renderer; dithering (the 6-color e-ink
-    // feature) is intentionally never applied, so no error buffer is passed.
+    // The PNG export is a full-color renderer; the palette-quantizing dither
+    // is intentionally never applied, so no error buffer is passed.
     _ = try lib.frame.render(
         config,
         lib.Time.init(args.hour, @floatFromInt(args.minute)),

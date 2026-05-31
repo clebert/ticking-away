@@ -299,7 +299,7 @@ function DitheringSection(): JSX.Element {
 
   return (
     <>
-      <div class="section-title">Dithering (6-Color E-Ink)</div>
+      <div class="section-title">Dithering (E-Ink / Pebble)</div>
       <div class="control-group">
         <label>
           <input
@@ -348,6 +348,7 @@ function DitheringSection(): JSX.Element {
           <option value="spectra6_inky">Spectra 6 (Pimoroni Inky)</option>
           <option value="spectra6_epdopt">Spectra 6 (EPD Optimized)</option>
           <option value="spectra6_trmnl">Spectra 6 (TRMNL)</option>
+          <option value="pebble64">Pebble (64-Color)</option>
         </select>
       </div>
       <div class="control-group">

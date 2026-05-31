@@ -51,3 +51,8 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.16.0/#Style-Gui
   multiple test call sites.
 - **Const slices**: Use `[]const T` for slice parameters that are only read from; use `[]T` only for
   output buffers that are written to.
+- **Optional captures**: Don't accept a meaningless capture name forced by shadowing
+  (`if (grain) |g|`). If the value is cheap, construct it unconditionally and guard its _use_ with a
+  boolean so the clean name stays free (`const grain = ...; if (enabled) grain.apply(...)`).
+  Otherwise name the optional `maybe_foo` so the capture can be the clean `foo`
+  (`if (maybe_grain) |grain|`).

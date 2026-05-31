@@ -145,7 +145,7 @@ pub fn apply(
 }
 
 fn findClosest(
-    palette: [Palette.color_count]Oklab,
+    palette: []const Oklab,
     l: f32,
     a: f32,
     b: f32,
@@ -174,10 +174,8 @@ fn findClosest(
 }
 
 pub const Palette = struct {
-    pub const color_count = 6;
-
-    oklab_colors: [color_count]Oklab,
-    srgb_colors: [color_count]Srgb,
+    oklab_colors: []const Oklab,
+    srgb_colors: []const Srgb,
 
     pub fn black(self: Palette) Srgb {
         return self.srgb_colors[0];
@@ -187,20 +185,27 @@ pub const Palette = struct {
         return self.srgb_colors[1];
     }
 
-    fn fromSrgb(comptime srgb_colors: [color_count]Srgb) Palette {
-        @setEvalBranchQuota(10_000);
+    // The returned slices point at comptime-promoted static data, so the palette
+    // outlives every caller. srgb_colors are stored verbatim; oklab_colors are
+    // derived from them via the standard sRGB transfer function (srgb.toLinear).
+    fn fromSrgb(comptime srgb_colors: []const Srgb) Palette {
+        @setEvalBranchQuota(1_000_000);
 
-        var oklab_colors: [color_count]Oklab = undefined;
+        const oklab_colors = comptime blk: {
+            var result: [srgb_colors.len]Oklab = undefined;
 
-        for (srgb_colors, 0..) |srgb, i| {
-            oklab_colors[i] = srgb.toLinear().toOklab();
-        }
+            for (srgb_colors, 0..) |srgb, i| {
+                result[i] = srgb.toLinear().toOklab();
+            }
 
-        return .{ .oklab_colors = oklab_colors, .srgb_colors = srgb_colors };
+            break :blk result;
+        };
+
+        return .{ .oklab_colors = &oklab_colors, .srgb_colors = srgb_colors };
     }
 };
 
-const ideal_palette = Palette.fromSrgb(.{
+const ideal_palette = Palette.fromSrgb(&.{
     .{ .r = 0, .g = 0, .b = 0 },
     .{ .r = 255, .g = 255, .b = 255 },
     .{ .r = 255, .g = 255, .b = 0 },
@@ -209,7 +214,7 @@ const ideal_palette = Palette.fromSrgb(.{
     .{ .r = 0, .g = 255, .b = 0 },
 });
 
-const spectra6_inky_palette = Palette.fromSrgb(.{
+const spectra6_inky_palette = Palette.fromSrgb(&.{
     .{ .r = 0, .g = 0, .b = 0 },
     .{ .r = 161, .g = 164, .b = 165 },
     .{ .r = 208, .g = 190, .b = 71 },
@@ -218,7 +223,7 @@ const spectra6_inky_palette = Palette.fromSrgb(.{
     .{ .r = 58, .g = 91, .b = 70 },
 });
 
-const spectra6_epdopt_palette = Palette.fromSrgb(.{
+const spectra6_epdopt_palette = Palette.fromSrgb(&.{
     .{ .r = 25, .g = 30, .b = 33 },
     .{ .r = 232, .g = 232, .b = 232 },
     .{ .r = 239, .g = 222, .b = 68 },
@@ -227,7 +232,7 @@ const spectra6_epdopt_palette = Palette.fromSrgb(.{
     .{ .r = 18, .g = 95, .b = 32 },
 });
 
-const spectra6_trmnl_palette = Palette.fromSrgb(.{
+const spectra6_trmnl_palette = Palette.fromSrgb(&.{
     .{ .r = 0, .g = 0, .b = 0 },
     .{ .r = 192, .g = 192, .b = 192 },
     .{ .r = 192, .g = 192, .b = 0 },
@@ -236,11 +241,38 @@ const spectra6_trmnl_palette = Palette.fromSrgb(.{
     .{ .r = 0, .g = 192, .b = 0 },
 });
 
+const pebble64_palette = Palette.fromSrgb(&pebble64_srgb_colors);
+
+// The full GColor8 gamut: the 4×4×4 cube of {0, 85, 170, 255} per channel.
+// black()/white() and the background fast-path index by position, so index 0
+// must be black and index 1 white. Natural cube order already places black at
+// index 0 and white at index 63, so fill in order then move white to index 1.
+const pebble64_srgb_colors = blk: {
+    const levels = [_]u8{ 0, 85, 170, 255 };
+
+    var colors: [64]Srgb = undefined;
+    var index: usize = 0;
+
+    for (levels) |r| {
+        for (levels) |g| {
+            for (levels) |b| {
+                colors[index] = .{ .r = r, .g = g, .b = b };
+                index += 1;
+            }
+        }
+    }
+
+    std.mem.swap(Srgb, &colors[1], &colors[63]);
+
+    break :blk colors;
+};
+
 pub const PaletteId = enum {
     ideal,
     spectra6_inky,
     spectra6_epdopt,
     spectra6_trmnl,
+    pebble64,
 
     pub fn palette(self: PaletteId) Palette {
         return switch (self) {
@@ -248,6 +280,7 @@ pub const PaletteId = enum {
             .spectra6_inky => spectra6_inky_palette,
             .spectra6_epdopt => spectra6_epdopt_palette,
             .spectra6_trmnl => spectra6_trmnl_palette,
+            .pebble64 => pebble64_palette,
         };
     }
 };
@@ -399,6 +432,31 @@ test "all palettes have black as first color and white as second" {
         try std.testing.expect(white.r >= 150);
         try std.testing.expect(white.g >= 150);
         try std.testing.expect(white.b >= 150);
+    }
+}
+
+test "pebble64 is the 64-colour GColor8 cube with black and white first" {
+    const pebble64 = PaletteId.pebble64.palette();
+
+    try std.testing.expectEqual(@as(usize, 64), pebble64.srgb_colors.len);
+    try std.testing.expectEqual(@as(usize, 64), pebble64.oklab_colors.len);
+
+    // Positional contract: black at index 0, white at index 1.
+    try std.testing.expectEqual(Srgb.black, pebble64.black());
+    try std.testing.expectEqual(Srgb.white, pebble64.white());
+
+    for (pebble64.srgb_colors, 0..) |color, i| {
+        // Every channel is one of the four GColor8 levels.
+        for ([_]u8{ color.r, color.g, color.b }) |channel| {
+            try std.testing.expect(
+                channel == 0 or channel == 85 or channel == 170 or channel == 255,
+            );
+        }
+
+        // All entries are distinct.
+        for (pebble64.srgb_colors[i + 1 ..]) |other| {
+            try std.testing.expect(color.r != other.r or color.g != other.g or color.b != other.b);
+        }
     }
 }
 
