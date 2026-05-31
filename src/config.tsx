@@ -16,20 +16,10 @@ const ConfigSchema = z.object({
   hand_glow_normalized_width: z.number(),
   hand_glow_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
   hand_length_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
-  rainbow_palette_id: z.enum(["oklch_balanced", "spectral", "spectra6"]),
-  dither_rainbow_palette_id: z.enum(["oklch_balanced", "spectral", "spectra6"]),
+  rainbow_palette_id: z.enum(["oklch_balanced", "spectral"]),
   grain_enabled: z.boolean(),
   grain_normalized_deviation: z.number(),
   dither_enabled: z.boolean(),
-  dither_palette_id: z.enum([
-    "ideal",
-    "spectra6_inky",
-    "spectra6_epdopt",
-    "spectra6_trmnl",
-    "pebble64",
-  ]),
-  dither_normalized_strength: z.number(),
-  dither_normalized_chroma_emphasis: z.number(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

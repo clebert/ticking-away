@@ -51,10 +51,7 @@ pub fn render(
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
         .prism_glow_falloff = config.prism_glow_falloff,
         .prism_glow_color = Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
-        .rainbow_palette_id = if (dithering)
-            config.dither_rainbow_palette_id
-        else
-            config.rainbow_palette_id,
+        .rainbow_palette_id = config.rainbow_palette_id,
     };
 
     watchface.render(linear_band, viewport, clock);
@@ -69,11 +66,7 @@ pub fn render(
     const srgb_band = if (dithering) blk: {
         if (config.grain_enabled) grain.applyLinear(linear_band);
 
-        const dither = Dither{
-            .normalized_strength = config.dither_normalized_strength,
-            .normalized_chroma_emphasis = config.dither_normalized_chroma_emphasis,
-            .palette = config.dither_palette_id.palette(),
-        };
+        const dither = Dither{ .palette = Dither.pebble64 };
 
         break :blk try dither.apply(linear_band, srgb_buffer, dither_error_buffer.?);
     } else blk: {
@@ -124,7 +117,7 @@ test "render quantizes to palette when dithering is enabled" {
     const image = Image.init(test_size, test_size);
     const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, &error_buffer);
 
-    const palette = config.dither_palette_id.palette();
+    const palette = Dither.pebble64;
 
     for (band.buffer) |pixel| {
         if (pixel.a == 0) continue;

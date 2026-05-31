@@ -16,9 +16,8 @@ export** binary (`bin/png/`). Two properties of the library make a Pebble port r
   `Dither.apply` / `Crop.apply`, renders horizontal strips and carries Floyd–Steinberg error across
   band boundaries. This bounds peak memory, which is exactly what a Pebble port needs — see
   [Memory budget](#memory-budget).
-- **Quantizing dither.** `lib/Dither.zig` already maps a continuous image to a small palette in
-  Oklab space with serpentine error diffusion. The machinery is right; it needs a Pebble palette
-  added — see [the Dither palette task](#dither-palette).
+- **Quantizing dither.** `lib/Dither.zig` maps a continuous image to the 64-colour Pebble palette in
+  Oklab space with serpentine error diffusion; see [the Dither palette](#dither-palette).
 
 `lib/frame.zig`'s `render()` renders the **full image as a single band**
 (`image.band(Linear, buffer, image.height, 0)`), and both shells call it that way. Driving the
@@ -35,8 +34,8 @@ approach has direct prior art.
 1. **A new `bin/pebble/` shell** — the standard Pebble C watchface lifecycle plus a small Zig C-ABI
    export wrapper (`callconv(.c)`), since the library exposes no C symbols today, only WASM
    `export fn`s.
-2. **A Pebble palette in the dither path** — extend `lib/Dither.zig` to support Pebble's fixed
-   64-colour `GColor8` cube. See [the Dither palette task](#dither-palette).
+2. **The Pebble dither palette** — `lib/Dither.zig` dithers to the fixed 64-colour `GColor8` cube.
+   See [the Dither palette](#dither-palette).
 3. **A Pebble-specific build of the library** — freestanding Thumb Cortex-M, **soft-float ABI**,
    position-independent code, linked into the Pebble app. See
    [Build integration](#build-integration).
@@ -189,38 +188,32 @@ fn toGColor8(pixel: lib.Srgb) u8 {
 }
 ```
 
-With dithering active you don't quantize per pixel at all — palette indices map **directly** to
-pre-computed `GColor8` bytes (see next section).
+With dithering active the output is already exact cube colours, so this mapping is lossless — each
+channel is one of {0, 85, 170, 255}, i.e. `>> 6` yields the 0–3 level directly.
 
 <a id="dither-palette"></a>
 
-### To-do: a 64-colour Pebble palette in `Dither`
+### The Pebble dither palette
 
-`lib/Dither.zig` is currently fixed to **6 colours** (`Palette.color_count = 6`) with the
-`spectra6_*` palettes — tuned for Spectra 6 e-ink. Pebble's gamut is a **fixed 64-colour cube**
-(every channel ∈ {0, 85, 170, 255}), so the dither path needs a Pebble palette before it can produce
-correct on-watch colour.
+`lib/Dither.zig` dithers to **`pebble64`**: the fixed 64-colour `GColor8` cube (every channel ∈ {0,
+85, 170, 255}). The Oklab Floyd–Steinberg and band error-diffusion run on-device as-is. The dither
+path is exactly what the watchface needs:
 
-The work, kept in the Zig library so the Oklab Floyd–Steinberg and band error-diffusion stay
-on-device:
+- A single built-in palette (`pebble64`), so there is no palette selection — the renderer uses
+  `Dither{ .palette = Dither.pebble64 }`. Index 0 is black, which `Dither.apply`'s background
+  fast-path and `Palette.black()` rely on.
+- Plain Euclidean Oklab nearest-colour and full Floyd–Steinberg error diffusion — no strength or
+  chroma-emphasis knobs (with 64 colours those tunables made no useful visual difference).
+- Oklab anchors derived from the palette's sRGB values via the standard sRGB transfer function. This
+  is exactly emulator-accurate; on-hardware tuning would be a later, data-only refinement (see
+  [Panel gamma](#panel-gamma)).
+- Grain composes with the dither: it runs on the continuous image _before_ quantization
+  (`Grain.applyLinear`), so the analog texture diffuses into the dither pattern.
 
-- Make `color_count` a parameter (comptime palette size) or add a parallel palette type. **Not a
-  one-line bump:** `Palette.color_count` is a shared constant baked into `Dither.findClosest`'s
-  param type (`lib/Dither.zig`), `Grain.findClosest` (`lib/Grain.zig`), and `frame.zig`'s test
-  error-buffer sizing. Raising it in place would force the four existing 6-colour palettes to
-  64-wide — parameterize or split instead.
-- Add a `pebble64` palette generated from the `GColor8` cube. Each entry carries its Oklab and sRGB
-  values (for nearest-colour search and error diffusion) **and** its pre-computed `GColor8` byte, so
-  the band loop can write palette indices straight into the framebuffer with no per-pixel
-  quantization. Keep **index 0 = the darkest entry**: `Dither.apply`'s background fast-path and
-  `Palette.black()` both assume `srgb_colors[0]` is black/background.
-- Derive the Oklab anchors with the **standard sRGB EOTF** (the existing `fromSrgb` path). This is
-  correct as a first cut and exactly emulator-accurate — on-hardware tuning is a later, data-only
-  refinement, see [Panel gamma](#panel-gamma).
-- Wire it into the config alongside the existing `dither_palette_id` / `dither_rainbow_palette_id`
-  selection so the Pebble shell selects `pebble64`.
-
-This is the one substantial library change the port requires; everything else is shell and build.
+The library emits `Srgb`, not `GColor8`. Mapping each dithered pixel to its `GColor8` byte is the
+one remaining dither-side step and belongs in the Pebble shell's band loop — for the cube it is just
+`>> 6` per channel (`0/85/170/255 → 0/1/2/3`) packed as `AARRGGBB`. The remaining port work is the
+shell and the build.
 
 ## Framebuffer access
 
@@ -272,7 +265,7 @@ Dither.apply()      →  Image.Band(Srgb)      [u8 RGBA, quantized to the pebble
         ↓
 Crop.apply()        →  circular mask (optional; cosmetic on gabbro — bezel already masks)
         ↓
-palette index / sRGB  →  GColor8 byte (AARRGGBB, 1 byte/pixel)
+sRGB pixel  →  GColor8 byte (>> 6 per channel, AARRGGBB, 1 byte/pixel)
         ↓
 write into framebuffer row via gbitmap_get_data_row_info()
 ```
@@ -307,7 +300,7 @@ export fn pebbleRenderBand(
     minute: u8,
 ) callconv(.c) void {
     // image.band(.., band_height, band_index) → Watchface.render
-    // → Dither.apply (pebble64 palette) → map indices to GColor8 → out
+    // → Dither.apply (pebble64) → map each sRGB pixel to its GColor8 byte → out
 }
 ```
 

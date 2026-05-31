@@ -1,6 +1,5 @@
 const std = @import("std");
 
-const Dither = @import("Dither.zig");
 const intensity = @import("intensity.zig");
 const Rainbow = @import("Rainbow.zig");
 
@@ -16,13 +15,9 @@ hand_glow_normalized_width: f32,
 hand_glow_falloff: intensity.Falloff,
 hand_length_falloff: intensity.Falloff,
 rainbow_palette_id: Rainbow.PaletteId,
-dither_rainbow_palette_id: Rainbow.PaletteId,
 grain_enabled: bool,
 grain_normalized_deviation: f32,
 dither_enabled: bool,
-dither_palette_id: Dither.PaletteId,
-dither_normalized_strength: f32,
-dither_normalized_chroma_emphasis: f32,
 
 const json_source = @embedFile("config.json");
 

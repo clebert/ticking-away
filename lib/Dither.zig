@@ -7,8 +7,6 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
-normalized_strength: f32,
-normalized_chroma_emphasis: f32,
 palette: Palette,
 
 const channels = 3;
@@ -31,11 +29,6 @@ pub fn apply(
     const stride = width * channels;
 
     std.debug.assert(error_buffer.len >= stride * 2);
-    std.debug.assert(self.normalized_strength >= 0.0 and self.normalized_strength <= 1.0);
-
-    std.debug.assert(
-        self.normalized_chroma_emphasis >= 0.0 and self.normalized_chroma_emphasis <= 1.0,
-    );
 
     // Zero the entire buffer for the first band of each frame.
     // Subsequent bands carry forward pending errors in slot 0.
@@ -46,9 +39,6 @@ pub fn apply(
     // Between bands, apply() maintains the invariant: pending errors in
     // slot 0, slot 1 zeroed. Assert slot 1 is clean as a partial check.
     std.debug.assert(std.mem.allEqual(f32, error_buffer[stride..][0..stride], 0));
-
-    const chroma_weight = self.normalized_chroma_emphasis * 2.0;
-    const lightness_weight = (1.0 - self.normalized_chroma_emphasis) * 2.0;
 
     var current_row: usize = 0;
 
@@ -66,7 +56,7 @@ pub fn apply(
             const error_offset = x * channels;
 
             // Background pixels (never rendered to): output palette black directly
-            // without error diffusion to prevent color bleeding at circle boundary
+            // without error diffusion to prevent color bleeding at the circle boundary.
             if (linear.vec[0] == 0 and linear.vec[1] == 0 and linear.vec[2] == 0) {
                 const black = self.palette.black();
 
@@ -85,14 +75,14 @@ pub fn apply(
             const adjusted_a = oklab.vec[1] + current[error_offset + 1];
             const adjusted_b = oklab.vec[2] + current[error_offset + 2];
 
-            const index = findClosest(self.palette.oklab_colors, adjusted_l, adjusted_a, adjusted_b, lightness_weight, chroma_weight);
+            const index = findClosest(self.palette.oklab_colors, adjusted_l, adjusted_a, adjusted_b);
 
             const quantized = self.palette.oklab_colors[index];
 
             const quantization_error = [channels]f32{
-                (adjusted_l - quantized.vec[0]) * self.normalized_strength,
-                (adjusted_a - quantized.vec[1]) * self.normalized_strength,
-                (adjusted_b - quantized.vec[2]) * self.normalized_strength,
+                adjusted_l - quantized.vec[0],
+                adjusted_a - quantized.vec[1],
+                adjusted_b - quantized.vec[2],
             };
 
             srgb_buffer[y * width + x] = .{
@@ -144,25 +134,15 @@ pub fn apply(
     return .{ .buffer = srgb_buffer, .width = width, .y_offset = band.y_offset };
 }
 
-fn findClosest(
-    palette: []const Oklab,
-    l: f32,
-    a: f32,
-    b: f32,
-    lightness_weight: f32,
-    chroma_weight: f32,
-) usize {
+fn findClosest(palette: []const Oklab, l: f32, a: f32, b: f32) usize {
     var best_index: usize = 0;
     var best_distance: f32 = std.math.floatMax(f32);
 
     for (palette, 0..) |color, i| {
-        // Weighted squared Oklab distance: lw*dL² + cw*(da²+db²), lw = 2(1-emphasis), cw = 2*emphasis
         const delta_l = l - color.vec[0];
         const delta_a = a - color.vec[1];
         const delta_b = b - color.vec[2];
-
-        const distance = lightness_weight * delta_l * delta_l +
-            chroma_weight * (delta_a * delta_a + delta_b * delta_b);
+        const distance = delta_l * delta_l + delta_a * delta_a + delta_b * delta_b;
 
         if (distance < best_distance) {
             best_distance = distance;
@@ -179,10 +159,6 @@ pub const Palette = struct {
 
     pub fn black(self: Palette) Srgb {
         return self.srgb_colors[0];
-    }
-
-    pub fn white(self: Palette) Srgb {
-        return self.srgb_colors[1];
     }
 
     // The returned slices point at comptime-promoted static data, so the palette
@@ -205,48 +181,11 @@ pub const Palette = struct {
     }
 };
 
-const ideal_palette = Palette.fromSrgb(&.{
-    .{ .r = 0, .g = 0, .b = 0 },
-    .{ .r = 255, .g = 255, .b = 255 },
-    .{ .r = 255, .g = 255, .b = 0 },
-    .{ .r = 255, .g = 0, .b = 0 },
-    .{ .r = 0, .g = 0, .b = 255 },
-    .{ .r = 0, .g = 255, .b = 0 },
-});
+// The Pebble colour gamut: the 4x4x4 cube of {0, 85, 170, 255} per channel.
+// Natural cube order places black at index 0, which black() and the background
+// fast-path depend on.
+pub const pebble64 = Palette.fromSrgb(&pebble64_srgb_colors);
 
-const spectra6_inky_palette = Palette.fromSrgb(&.{
-    .{ .r = 0, .g = 0, .b = 0 },
-    .{ .r = 161, .g = 164, .b = 165 },
-    .{ .r = 208, .g = 190, .b = 71 },
-    .{ .r = 156, .g = 72, .b = 75 },
-    .{ .r = 61, .g = 59, .b = 94 },
-    .{ .r = 58, .g = 91, .b = 70 },
-});
-
-const spectra6_epdopt_palette = Palette.fromSrgb(&.{
-    .{ .r = 25, .g = 30, .b = 33 },
-    .{ .r = 232, .g = 232, .b = 232 },
-    .{ .r = 239, .g = 222, .b = 68 },
-    .{ .r = 178, .g = 19, .b = 24 },
-    .{ .r = 33, .g = 87, .b = 186 },
-    .{ .r = 18, .g = 95, .b = 32 },
-});
-
-const spectra6_trmnl_palette = Palette.fromSrgb(&.{
-    .{ .r = 0, .g = 0, .b = 0 },
-    .{ .r = 192, .g = 192, .b = 192 },
-    .{ .r = 192, .g = 192, .b = 0 },
-    .{ .r = 192, .g = 0, .b = 0 },
-    .{ .r = 0, .g = 0, .b = 192 },
-    .{ .r = 0, .g = 192, .b = 0 },
-});
-
-const pebble64_palette = Palette.fromSrgb(&pebble64_srgb_colors);
-
-// The full GColor8 gamut: the 4×4×4 cube of {0, 85, 170, 255} per channel.
-// black()/white() and the background fast-path index by position, so index 0
-// must be black and index 1 white. Natural cube order already places black at
-// index 0 and white at index 63, so fill in order then move white to index 1.
 const pebble64_srgb_colors = blk: {
     const levels = [_]u8{ 0, 85, 170, 255 };
 
@@ -262,27 +201,7 @@ const pebble64_srgb_colors = blk: {
         }
     }
 
-    std.mem.swap(Srgb, &colors[1], &colors[63]);
-
     break :blk colors;
-};
-
-pub const PaletteId = enum {
-    ideal,
-    spectra6_inky,
-    spectra6_epdopt,
-    spectra6_trmnl,
-    pebble64,
-
-    pub fn palette(self: PaletteId) Palette {
-        return switch (self) {
-            .ideal => ideal_palette,
-            .spectra6_inky => spectra6_inky_palette,
-            .spectra6_epdopt => spectra6_epdopt_palette,
-            .spectra6_trmnl => spectra6_trmnl_palette,
-            .pebble64 => pebble64_palette,
-        };
-    }
 };
 
 test "apply produces only palette colors" {
@@ -290,22 +209,16 @@ test "apply produces only palette colors" {
 
     var linear_buffer = [_]Linear{Linear.init(0.5, 0.2, 0.1, 1.0)} ** 16;
     var srgb_buffer: [16]Srgb = undefined;
-    var error_buffer: [4 * channels * 2]f32 = undefined;
+    var error_buffer: [errorBufferSize(4)]f32 = undefined;
 
     const linear_band = try image.band(Linear, &linear_buffer, 4, 0);
-
-    const dither = Self{
-        .normalized_strength = 1.0,
-        .normalized_chroma_emphasis = 0.667,
-        .palette = PaletteId.ideal.palette(),
-    };
-
+    const dither = Self{ .palette = pebble64 };
     const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
     for (srgb_band.buffer) |pixel| {
         var found = false;
 
-        for (dither.palette.srgb_colors) |palette_color| {
+        for (pebble64.srgb_colors) |palette_color| {
             if (pixel.r == palette_color.r and
                 pixel.g == palette_color.g and
                 pixel.b == palette_color.b)
@@ -324,16 +237,10 @@ test "apply preserves alpha channel" {
 
     var linear_buffer = [_]Linear{Linear.init(0.5, 0.5, 0.5, 0.75)} ** 4;
     var srgb_buffer: [4]Srgb = undefined;
-    var error_buffer: [2 * channels * 2]f32 = undefined;
+    var error_buffer: [errorBufferSize(2)]f32 = undefined;
 
     const linear_band = try image.band(Linear, &linear_buffer, 2, 0);
-
-    const dither = Self{
-        .normalized_strength = 1.0,
-        .normalized_chroma_emphasis = 0.667,
-        .palette = PaletteId.ideal.palette(),
-    };
-
+    const dither = Self{ .palette = pebble64 };
     const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
     for (srgb_band.buffer) |pixel| {
@@ -341,69 +248,22 @@ test "apply preserves alpha channel" {
     }
 }
 
-test "apply with zero strength still quantizes to palette" {
-    const image = Image.init(4, 4);
-
-    var linear_buffer = [_]Linear{Linear.init(0.3, 0.6, 0.1, 1.0)} ** 16;
-    var srgb_buffer: [16]Srgb = undefined;
-    var error_buffer: [4 * channels * 2]f32 = undefined;
-
-    const linear_band = try image.band(Linear, &linear_buffer, 4, 0);
-
-    const dither = Self{
-        .normalized_strength = 0.0,
-        .normalized_chroma_emphasis = 0.667,
-        .palette = PaletteId.ideal.palette(),
-    };
-
-    const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
-
-    for (srgb_band.buffer) |pixel| {
-        var found = false;
-
-        for (dither.palette.srgb_colors) |palette_color| {
-            if (pixel.r == palette_color.r and
-                pixel.g == palette_color.g and
-                pixel.b == palette_color.b)
-            {
-                found = true;
-                break;
-            }
-        }
-
-        try std.testing.expect(found);
-    }
-}
-
 test "apply outputs palette black for background pixels without color bleeding" {
     const image = Image.init(4, 2);
 
-    // Row of bright red pixels followed by row of black (background) pixels
     var linear_buffer: [8]Linear = undefined;
 
-    for (0..4) |i| {
-        linear_buffer[i] = Linear.init(1.0, 0.0, 0.0, 1.0);
-    }
-
-    for (4..8) |i| {
-        linear_buffer[i] = Linear.init(0.0, 0.0, 0.0, 1.0);
-    }
+    for (0..4) |i| linear_buffer[i] = Linear.init(1.0, 0.0, 0.0, 1.0);
+    for (4..8) |i| linear_buffer[i] = Linear.init(0.0, 0.0, 0.0, 1.0);
 
     var srgb_buffer: [8]Srgb = undefined;
-    var error_buffer: [4 * channels * 2]f32 = undefined;
+    var error_buffer: [errorBufferSize(4)]f32 = undefined;
 
     const linear_band = try image.band(Linear, &linear_buffer, 2, 0);
-
-    const dither = Self{
-        .normalized_strength = 1.0,
-        .normalized_chroma_emphasis = 0.667,
-        .palette = PaletteId.ideal.palette(),
-    };
-
+    const dither = Self{ .palette = pebble64 };
     const srgb_band = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
-    // Background pixels must be exactly palette black with no color bleeding
-    const palette_black = dither.palette.black();
+    const palette_black = pebble64.black();
 
     for (4..8) |i| {
         const pixel = srgb_band.buffer[i];
@@ -415,113 +275,46 @@ test "apply outputs palette black for background pixels without color bleeding" 
     }
 }
 
-test "all palettes have black as first color and white as second" {
-    const palette_ids = std.enums.values(PaletteId);
-
-    for (palette_ids) |id| {
-        const palette = id.palette();
-        const black = palette.black();
-        const white = palette.white();
-
-        // Black must be dark: all RGB channels <= 35
-        try std.testing.expect(black.r <= 35);
-        try std.testing.expect(black.g <= 35);
-        try std.testing.expect(black.b <= 35);
-
-        // White must be bright: all RGB channels >= 150
-        try std.testing.expect(white.r >= 150);
-        try std.testing.expect(white.g >= 150);
-        try std.testing.expect(white.b >= 150);
-    }
-}
-
-test "pebble64 is the 64-colour GColor8 cube with black and white first" {
-    const pebble64 = PaletteId.pebble64.palette();
-
-    try std.testing.expectEqual(@as(usize, 64), pebble64.srgb_colors.len);
-    try std.testing.expectEqual(@as(usize, 64), pebble64.oklab_colors.len);
-
-    // Positional contract: black at index 0, white at index 1.
-    try std.testing.expectEqual(Srgb.black, pebble64.black());
-    try std.testing.expectEqual(Srgb.white, pebble64.white());
-
-    for (pebble64.srgb_colors, 0..) |color, i| {
-        // Every channel is one of the four GColor8 levels.
-        for ([_]u8{ color.r, color.g, color.b }) |channel| {
-            try std.testing.expect(
-                channel == 0 or channel == 85 or channel == 170 or channel == 255,
-            );
-        }
-
-        // All entries are distinct.
-        for (pebble64.srgb_colors[i + 1 ..]) |other| {
-            try std.testing.expect(color.r != other.r or color.g != other.g or color.b != other.b);
-        }
-    }
-}
-
 test "findClosest returns black for dark colors" {
-    const palette = PaletteId.ideal.palette();
     const black_oklab = (Srgb{ .r = 10, .g = 10, .b = 10 }).toLinear().toOklab();
 
     const index = findClosest(
-        palette.oklab_colors,
+        pebble64.oklab_colors,
         black_oklab.vec[0],
         black_oklab.vec[1],
         black_oklab.vec[2],
-        1.0,
-        2.0,
     );
 
     try std.testing.expectEqual(@as(usize, 0), index);
 }
 
-test "error diffusion propagates to subsequent rows" {
+test "error diffusion creates variation across a flat mid-tone" {
     const width = 8;
     const height = 4;
     const image = Image.init(width, height);
     const pixel_count = width * height;
 
-    // Mid-gray: falls between black and white palette entries, generating error every pixel
+    // Mid-gray falls between cube levels, so diffusion must spread error and
+    // mix at least two palette colours rather than producing a flat block.
     var linear_buffer = [_]Linear{Linear.init(0.2, 0.2, 0.2, 1.0)} ** pixel_count;
-
-    const dither = Self{
-        .normalized_strength = 1.0,
-        .normalized_chroma_emphasis = 0.667,
-        .palette = PaletteId.ideal.palette(),
-    };
-
-    // With error diffusion (strength=1): errors propagate row-to-row
-    var srgb_diffused: [pixel_count]Srgb = undefined;
-    var error_buffer: [width * channels * 2]f32 = undefined;
+    var srgb_buffer: [pixel_count]Srgb = undefined;
+    var error_buffer: [errorBufferSize(width)]f32 = undefined;
 
     const linear_band = try image.band(Linear, &linear_buffer, height, 0);
+    const dither = Self{ .palette = pebble64 };
 
-    _ = try dither.apply(linear_band, &srgb_diffused, &error_buffer);
+    _ = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
 
-    // Without error diffusion (strength=0): each pixel quantized independently
-    const no_diffusion = Self{
-        .normalized_strength = 0.0,
-        .normalized_chroma_emphasis = 0.667,
-        .palette = PaletteId.ideal.palette(),
-    };
+    var varies = false;
 
-    var srgb_independent: [pixel_count]Srgb = undefined;
-
-    _ = try no_diffusion.apply(linear_band, &srgb_independent, &error_buffer);
-
-    // With strength=0, all pixels map to the same nearest color (no variation).
-    // With strength=1, error diffusion should cause at least some pixels to differ.
-    var differs = false;
-
-    for (&srgb_diffused, &srgb_independent) |d, i| {
-        if (d.r != i.r or d.g != i.g or d.b != i.b) {
-            differs = true;
+    for (srgb_buffer[1..]) |pixel| {
+        if (pixel.r != srgb_buffer[0].r or pixel.g != srgb_buffer[0].g or pixel.b != srgb_buffer[0].b) {
+            varies = true;
             break;
         }
     }
 
-    try std.testing.expect(differs);
+    try std.testing.expect(varies);
 }
 
 test "multi-band dithering matches single-band dithering" {
@@ -530,7 +323,7 @@ test "multi-band dithering matches single-band dithering" {
     const image = Image.init(width, height);
     const pixel_count = width * height;
 
-    // Vertical gradient: varies per row so error diffusion is meaningful across bands
+    // Vertical gradient: varies per row so error diffusion is meaningful across bands.
     var linear_buffer: [pixel_count]Linear = undefined;
 
     for (0..height) |y| {
@@ -541,21 +334,16 @@ test "multi-band dithering matches single-band dithering" {
         }
     }
 
-    const dither = Self{
-        .normalized_strength = 1.0,
-        .normalized_chroma_emphasis = 0.667,
-        .palette = PaletteId.ideal.palette(),
-    };
+    const dither = Self{ .palette = pebble64 };
 
-    // Reference: single-band (full height)
+    // Reference: single-band (full height).
     var reference: [pixel_count]Srgb = undefined;
-    var error_buffer: [width * channels * 2]f32 = undefined;
+    var error_buffer: [errorBufferSize(width)]f32 = undefined;
 
     const full_band = try image.band(Linear, &linear_buffer, height, 0);
 
     _ = try dither.apply(full_band, &reference, &error_buffer);
 
-    // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
     for (band_heights) |band_height| {
@@ -609,6 +397,26 @@ test "multi-band dithering matches single-band dithering" {
 
                 return error.TestUnexpectedResult;
             };
+        }
+    }
+}
+
+test "pebble64 is the 64-colour GColor8 cube with black first" {
+    try std.testing.expectEqual(@as(usize, 64), pebble64.srgb_colors.len);
+    try std.testing.expectEqual(@as(usize, 64), pebble64.oklab_colors.len);
+    try std.testing.expectEqual(Srgb.black, pebble64.black());
+
+    for (pebble64.srgb_colors, 0..) |color, i| {
+        // Every channel is one of the four GColor8 levels.
+        for ([_]u8{ color.r, color.g, color.b }) |channel| {
+            try std.testing.expect(
+                channel == 0 or channel == 85 or channel == 170 or channel == 255,
+            );
+        }
+
+        // All entries are distinct.
+        for (pebble64.srgb_colors[i + 1 ..]) |other| {
+            try std.testing.expect(color.r != other.r or color.g != other.g or color.b != other.b);
         }
     }
 }

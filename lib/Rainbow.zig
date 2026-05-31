@@ -54,28 +54,15 @@ const spectral: Self = init(.{
     .{ .r = 139, .g = 0, .b = 255 },
 });
 
-/// Colors matched to Spectra 6 e-ink display gamut
-const spectra6: Self = init(.{
-    .{ .r = 178, .g = 19, .b = 24 },
-    .{ .r = 220, .g = 130, .b = 35 },
-    .{ .r = 240, .g = 220, .b = 60 },
-    .{ .r = 70, .g = 145, .b = 55 },
-    .{ .r = 0, .g = 140, .b = 200 },
-    .{ .r = 30, .g = 70, .b = 160 },
-    .{ .r = 100, .g = 30, .b = 160 },
-});
-
 pub const PaletteId = enum {
     oklch_balanced,
     spectral,
-    spectra6,
 };
 
 pub fn get(palette_id: PaletteId) Self {
     return switch (palette_id) {
         .oklch_balanced => oklch_balanced,
         .spectral => spectral,
-        .spectra6 => spectra6,
     };
 }
 
@@ -110,7 +97,6 @@ pub fn interpolate(self: Self, normalized_position: f32) Linear {
 test "get returns matching rainbow" {
     try std.testing.expectEqual(oklch_balanced.oklab_colors, (get(.oklch_balanced)).oklab_colors);
     try std.testing.expectEqual(spectral.oklab_colors, (get(.spectral)).oklab_colors);
-    try std.testing.expectEqual(spectra6.oklab_colors, (get(.spectra6)).oklab_colors);
 }
 
 test "init converts sRGB through to Oklab" {

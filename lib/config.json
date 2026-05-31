@@ -9,11 +9,7 @@
   "hand_glow_falloff": "exponential",
   "hand_length_falloff": "linear",
   "rainbow_palette_id": "oklch_balanced",
-  "dither_rainbow_palette_id": "spectra6",
   "grain_enabled": true,
   "grain_normalized_deviation": 0.1,
-  "dither_enabled": false,
-  "dither_palette_id": "spectra6_epdopt",
-  "dither_normalized_strength": 0.9,
-  "dither_normalized_chroma_emphasis": 0.5
+  "dither_enabled": false
 }
