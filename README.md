@@ -1,13 +1,12 @@
 # Ticking Away
 
-> _Ticking away the moments that make up a dull day. [(Time - Pink Floyd song)][time-song]_
+> [Ticking away the moments that make up a dull day.][time-song]
 
 [time-song]: https://en.wikipedia.org/wiki/Time_(Pink_Floyd_song)
 
 <img src="logo.png" alt="Ticking Away" width="512">
 
-A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover, featuring a prism that
-refracts light into a rainbow.
+A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover.
 
 ## Targets
 

@@ -27,12 +27,17 @@ function AppContent(): JSX.Element {
   return (
     <>
       <header>
-        <h1>Ticking Away</h1>
-        <span class="subtitle">the moments that make up a dull day.</span>
-        <a href="https://github.com/clebert/ticking-away" class="fullscreen-link">
-          GitHub
-        </a>
-        <a href={fullscreenUrl}>Fullscreen</a>
+        <div class="brand">
+          <svg class="prism" width="20" height="18" viewBox="0 0 20 18" aria-hidden="true">
+            <path d="M10 1.4 L18.6 16.6 L1.4 16.6 Z" />
+          </svg>
+          <h1>Ticking Away</h1>
+          <span class="subtitle">the moments that make up a dull day.</span>
+        </div>
+        <nav class="header-links">
+          <a href="https://github.com/clebert/ticking-away">GitHub</a>
+          <a href={fullscreenUrl}>Fullscreen</a>
+        </nav>
       </header>
 
       <main>
