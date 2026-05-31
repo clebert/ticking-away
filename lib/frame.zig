@@ -16,9 +16,8 @@ const Watchface = @import("Watchface.zig");
 /// exactly `image.width * image.height` pixels.
 ///
 /// Dithering (the palette-quantizing path) is applied only when `config.dither_enabled`
-/// is true AND a `dither_error_buffer` is supplied. Passing `null` forces
-/// full-color output regardless of config — the PNG export does this because it
-/// is a full-color renderer (see bin/png/main.zig).
+/// is true AND a `dither_error_buffer` is supplied; passing `null` forces full-color
+/// output regardless of config.
 pub fn render(
     config: Config,
     time: Time,

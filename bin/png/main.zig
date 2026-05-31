@@ -19,23 +19,27 @@ pub fn main(init: std.process.Init) !void {
     const linear_buffer = try allocator.alloc(lib.Linear, pixel_count);
     const srgb_buffer = try allocator.alloc(lib.Srgb, pixel_count);
 
-    const config = try lib.Config.init(allocator);
-    const image = lib.Image.init(size, size);
+    var config = try lib.Config.init(allocator);
 
-    // The PNG export is a full-color renderer; the palette-quantizing dither
-    // is intentionally never applied, so no error buffer is passed.
+    config.dither_enabled = args.dither;
+
+    const image = lib.Image.init(size, size);
+    const dither_error_buffer = try allocator.alloc(f32, lib.Dither.errorBufferSize(size));
+
     _ = try lib.frame.render(
         config,
         lib.Time.init(args.hour, @floatFromInt(args.minute)),
         image,
         linear_buffer,
         srgb_buffer,
-        null,
+        dither_error_buffer,
     );
 
     try png.write(io, allocator, args.output_path, size, size, srgb_buffer);
 
-    std.debug.print("{d}x{d} -> {s}\n", .{ size, size, args.output_path });
+    const dither_note = if (args.dither) " (dithered)" else "";
+
+    std.debug.print("{d}x{d}{s} -> {s}\n", .{ size, size, dither_note, args.output_path });
 }
 
 const Args = struct {
@@ -43,6 +47,7 @@ const Args = struct {
     hour: u32,
     minute: u32,
     output_path: []const u8,
+    dither: bool,
 };
 
 fn parseArgs(process_args: std.process.Args) ?Args {
@@ -50,33 +55,55 @@ fn parseArgs(process_args: std.process.Args) ?Args {
 
     _ = arguments.next(); // skip program name
 
-    const size_str = arguments.next() orelse return null;
-    const hour_str = arguments.next() orelse return null;
-    const minute_str = arguments.next() orelse return null;
-    const output_path = arguments.next() orelse return null;
+    var positional: [4][]const u8 = undefined;
+    var positional_count: usize = 0;
+    var dither = false;
+    var options_ended = false;
 
-    const size = std.fmt.parseInt(usize, size_str, 10) catch return null;
-    const hour = std.fmt.parseInt(u32, hour_str, 10) catch return null;
-    const minute = std.fmt.parseInt(u32, minute_str, 10) catch return null;
+    while (arguments.next()) |arg| {
+        if (!options_ended and std.mem.eql(u8, arg, "--")) {
+            options_ended = true;
+        } else if (!options_ended and std.mem.eql(u8, arg, "--dither")) {
+            dither = true;
+        } else if (!options_ended and std.mem.startsWith(u8, arg, "--")) {
+            return null;
+        } else {
+            if (positional_count == positional.len) return null;
+
+            positional[positional_count] = arg;
+            positional_count += 1;
+        }
+    }
+
+    if (positional_count != positional.len) return null;
+
+    const size = std.fmt.parseInt(usize, positional[0], 10) catch return null;
+    const hour = std.fmt.parseInt(u32, positional[1], 10) catch return null;
+    const minute = std.fmt.parseInt(u32, positional[2], 10) catch return null;
 
     if (size == 0 or hour > 23 or minute > 59) return null;
+
+    // Reject sizes whose pixel count (size * size) would overflow usize.
+    if (@mulWithOverflow(size, size)[1] != 0) return null;
 
     return .{
         .size = size,
         .hour = hour,
         .minute = minute,
-        .output_path = output_path,
+        .output_path = positional[3],
+        .dither = dither,
     };
 }
 
 fn printUsage() void {
     std.debug.print(
-        \\Usage: png <size> <hour> <minute> <output.png>
+        \\Usage: png <size> <hour> <minute> <output.png> [--dither]
         \\
         \\  size        Image size in pixels (square, diameter of the unit circle)
         \\  hour        Hour (0-23)
         \\  minute      Minute (0-59)
         \\  output.png  Output file path
+        \\  --dither    Quantize the output to the Pebble 64-colour palette
         \\
     , .{});
 }
