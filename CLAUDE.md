@@ -27,6 +27,10 @@ Zig is not installed system-wide; the `ziglang.vscode-zig` VSCode extension prov
 `0.16.0` under `~/Library/Application Support/Code/User/globalStorage/ziglang.vscode-zig/zig`
 (macOS). Quote the path when invoking it — it contains spaces.
 
+## Git
+
+Commit to `main` directly — do not create a new branch for a commit unless I explicitly ask for one.
+
 ## Zig Code Style
 
 Follow the [Zig style guide](https://ziglang.org/documentation/0.16.0/#Style-Guide):

@@ -11,6 +11,11 @@ palette: Palette,
 
 const channels = 3;
 
+// Oklab a/b above which a colour (or pixel) counts as warm; see shadowWarmLimit.
+const warm_chroma = 0.03;
+// Lightness below which a cool pixel drops warm cube colours from its search.
+const shadow_lightness = 0.5;
+
 pub fn errorBufferSize(width: usize) usize {
     return width * channels * 2;
 }
@@ -75,7 +80,13 @@ pub fn apply(
             const adjusted_a = oklab.vec[1] + current[error_offset + 1];
             const adjusted_b = oklab.vec[2] + current[error_offset + 2];
 
-            const index = findClosest(self.palette.oklab_colors, adjusted_l, adjusted_a, adjusted_b);
+            const index = findClosest(
+                self.palette.oklab_colors,
+                adjusted_l,
+                adjusted_a,
+                adjusted_b,
+                shadowWarmLimit(oklab),
+            );
 
             const quantized = self.palette.oklab_colors[index];
 
@@ -134,11 +145,32 @@ pub fn apply(
     return .{ .buffer = srgb_buffer, .width = width, .y_offset = band.y_offset };
 }
 
-fn findClosest(palette: []const Oklab, l: f32, a: f32, b: f32) usize {
+/// The warm-chroma limit `findClosest` should use for a pixel of colour `oklab`.
+///
+/// The cube's darkest non-black tones are the saturated primaries — red sits at
+/// Oklab L≈0.28 with no neutral dark counterpart — so error diffusion that nudges
+/// a deep-shadow cool pixel toward neutral can let a primary win the nearest-colour
+/// search once the accumulated error tilts its a/b that way, scattering a warm seam
+/// through the prism glow's fade to black. For a cool pixel in shadow, return
+/// `warm_chroma` so the search keeps only the cool/neutral corner of the cube
+/// (a, b <= warm_chroma) — black, blues, cyans, the neutral grays and white — and
+/// drops the reds (high a) along with the yellows and greens (both yellow-leaning,
+/// high b). Bright or already-warm pixels (the rainbow) keep the full palette.
+fn shadowWarmLimit(oklab: Oklab) f32 {
+    const cool = oklab.vec[1] <= warm_chroma and oklab.vec[2] <= warm_chroma;
+
+    return if (oklab.vec[0] < shadow_lightness and cool) warm_chroma else std.math.inf(f32);
+}
+
+/// Index of the nearest palette colour to `(l, a, b)` in Oklab, skipping colours
+/// whose a or b exceeds `warm_limit` (pass `inf` to consider the whole palette).
+fn findClosest(palette: []const Oklab, l: f32, a: f32, b: f32, warm_limit: f32) usize {
     var best_index: usize = 0;
     var best_distance: f32 = std.math.floatMax(f32);
 
     for (palette, 0..) |color, i| {
+        if (color.vec[1] > warm_limit or color.vec[2] > warm_limit) continue;
+
         const delta_l = l - color.vec[0];
         const delta_a = a - color.vec[1];
         const delta_b = b - color.vec[2];
@@ -283,9 +315,114 @@ test "findClosest returns black for dark colors" {
         black_oklab.vec[0],
         black_oklab.vec[1],
         black_oklab.vec[2],
+        std.math.inf(f32),
     );
 
     try std.testing.expectEqual(@as(usize, 0), index);
+}
+
+test "findClosest skips colours above the warm limit" {
+    // A near-neutral dark target whose closest cube colour is red (85,0,0); with
+    // the warm limit it must instead pick a cool colour (red is excluded).
+    const red = (Srgb{ .r = 85, .g = 0, .b = 0 }).toLinear().toOklab();
+
+    const unrestricted = findClosest(
+        pebble64.oklab_colors,
+        red.vec[0],
+        red.vec[1],
+        red.vec[2],
+        std.math.inf(f32),
+    );
+    const restricted = findClosest(pebble64.oklab_colors, red.vec[0], red.vec[1], red.vec[2], warm_chroma);
+
+    try std.testing.expect(pebble64.oklab_colors[unrestricted].vec[1] > warm_chroma);
+    try std.testing.expect(pebble64.oklab_colors[restricted].vec[1] <= warm_chroma);
+    try std.testing.expect(pebble64.oklab_colors[restricted].vec[2] <= warm_chroma);
+}
+
+test "shadowWarmLimit restricts only cool pixels in shadow" {
+    const dark_cyan = Linear.init(0.02, 0.06, 0.08, 1.0).toOklab();
+    const bright_cyan = Linear.init(0.2, 0.6, 0.8, 1.0).toOklab();
+    const dark_red = Linear.init(0.08, 0.0, 0.0, 1.0).toOklab();
+
+    // Cool and in shadow: warm colours are excluded.
+    try std.testing.expectEqual(warm_chroma, shadowWarmLimit(dark_cyan));
+    // Bright cool, or dark warm: the whole palette stays available.
+    try std.testing.expect(std.math.isInf(shadowWarmLimit(bright_cyan)));
+    try std.testing.expect(std.math.isInf(shadowWarmLimit(dark_red)));
+}
+
+test "shadowWarmLimit boundary conditions pin its comparisons" {
+    // Lightness is a strict `<`: a cool pixel exactly at shadow_lightness keeps the
+    // full palette.
+    try std.testing.expect(std.math.isInf(shadowWarmLimit(.{
+        .vec = .{ shadow_lightness, 0.0, 0.0, 1.0 },
+    })));
+
+    // Chroma is a non-strict `<=`: a dark pixel with a or b exactly at warm_chroma
+    // still counts as cool and is restricted.
+    try std.testing.expectEqual(warm_chroma, shadowWarmLimit(.{
+        .vec = .{ 0.3, warm_chroma, 0.0, 1.0 },
+    }));
+    try std.testing.expectEqual(warm_chroma, shadowWarmLimit(.{
+        .vec = .{ 0.3, 0.0, warm_chroma, 1.0 },
+    }));
+
+    // Both chroma terms are checked: a dark pixel warm on either axis alone keeps
+    // the full palette.
+    try std.testing.expect(std.math.isInf(shadowWarmLimit(.{
+        .vec = .{ 0.3, warm_chroma + 0.01, 0.0, 1.0 },
+    })));
+    try std.testing.expect(std.math.isInf(shadowWarmLimit(.{
+        .vec = .{ 0.3, 0.0, warm_chroma + 0.01, 1.0 },
+    })));
+}
+
+test "dithering a dark cyan field produces no warm pixels" {
+    const width = 32;
+    const height = 32;
+    const image = Image.init(width, height);
+    const pixel_count = width * height;
+
+    // A cyan glow fading to black, like the prism's inner glow. Baseline error
+    // diffusion scatters warm specks here; shadowWarmLimit forbids them, so every
+    // output stays cool in Oklab (a, b <= warm_chroma).
+    var linear_buffer: [pixel_count]Linear = undefined;
+
+    for (0..height) |y| {
+        const t: f32 = @as(f32, @floatFromInt(y)) / @as(f32, @floatFromInt(height - 1));
+
+        for (0..width) |x| {
+            linear_buffer[y * width + x] = Linear.init(0.01 * t, 0.075 * t, 0.1 * t, 1.0);
+        }
+    }
+
+    var srgb_buffer: [pixel_count]Srgb = undefined;
+    var error_buffer: [errorBufferSize(width)]f32 = undefined;
+
+    const linear_band = try image.band(Linear, &linear_buffer, height, 0);
+    const dither = Self{ .palette = pebble64 };
+
+    _ = try dither.apply(linear_band, &srgb_buffer, &error_buffer);
+
+    var varies = false;
+
+    for (srgb_buffer) |pixel| {
+        const oklab = pixel.toLinear().toOklab();
+
+        try std.testing.expect(oklab.vec[1] <= warm_chroma and oklab.vec[2] <= warm_chroma);
+
+        if (pixel.r != srgb_buffer[0].r or
+            pixel.g != srgb_buffer[0].g or
+            pixel.b != srgb_buffer[0].b)
+        {
+            varies = true;
+        }
+    }
+
+    // A uniform field (all black or all gray) would also satisfy the cool check,
+    // so require the gradient to produce more than one palette colour.
+    try std.testing.expect(varies);
 }
 
 test "error diffusion creates variation across a flat mid-tone" {
