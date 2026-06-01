@@ -21,7 +21,9 @@ pub fn main(init: std.process.Init) !void {
 
     var config = try lib.Config.init(allocator);
 
-    config.dither_enabled = args.dither;
+    // The config default may enable grain; the PNG tool ignores it and applies a
+    // texture only when explicitly requested via --grain or --dither.
+    config.texture = if (args.dither) .dither else if (args.grain) .grain else .none;
 
     const image = lib.Image.init(size, size);
 
@@ -35,9 +37,9 @@ pub fn main(init: std.process.Init) !void {
 
     try png.write(io, allocator, args.output_path, size, size, srgb_buffer);
 
-    const dither_note = if (args.dither) " (dithered)" else "";
+    const texture_note = if (args.dither) " (dithered)" else if (args.grain) " (grain)" else "";
 
-    std.debug.print("{d}x{d}{s} -> {s}\n", .{ size, size, dither_note, args.output_path });
+    std.debug.print("{d}x{d}{s} -> {s}\n", .{ size, size, texture_note, args.output_path });
 }
 
 const Args = struct {
@@ -45,6 +47,7 @@ const Args = struct {
     hour: u32,
     minute: u32,
     output_path: []const u8,
+    grain: bool,
     dither: bool,
 };
 
@@ -55,12 +58,15 @@ fn parseArgs(process_args: std.process.Args) ?Args {
 
     var positional: [4][]const u8 = undefined;
     var positional_count: usize = 0;
+    var grain = false;
     var dither = false;
     var options_ended = false;
 
     while (arguments.next()) |arg| {
         if (!options_ended and std.mem.eql(u8, arg, "--")) {
             options_ended = true;
+        } else if (!options_ended and std.mem.eql(u8, arg, "--grain")) {
+            grain = true;
         } else if (!options_ended and std.mem.eql(u8, arg, "--dither")) {
             dither = true;
         } else if (!options_ended and std.mem.startsWith(u8, arg, "--")) {
@@ -74,6 +80,8 @@ fn parseArgs(process_args: std.process.Args) ?Args {
     }
 
     if (positional_count != positional.len) return null;
+
+    if (grain and dither) return null;
 
     const size = std.fmt.parseInt(usize, positional[0], 10) catch return null;
     const hour = std.fmt.parseInt(u32, positional[1], 10) catch return null;
@@ -89,19 +97,23 @@ fn parseArgs(process_args: std.process.Args) ?Args {
         .hour = hour,
         .minute = minute,
         .output_path = positional[3],
+        .grain = grain,
         .dither = dither,
     };
 }
 
 fn printUsage() void {
     std.debug.print(
-        \\Usage: png <size> <hour> <minute> <output.png> [--dither]
+        \\Usage: png <size> <hour> <minute> <output.png> [--grain | --dither]
         \\
         \\  size        Image size in pixels (square, diameter of the unit circle)
         \\  hour        Hour (0-23)
         \\  minute      Minute (0-59)
         \\  output.png  Output file path
+        \\  --grain     Add film grain to the full-colour output
         \\  --dither    Quantize the output to the Pebble 64-colour cube
+        \\
+        \\--grain and --dither are mutually exclusive; without either, no texture is applied.
         \\
     , .{});
 }

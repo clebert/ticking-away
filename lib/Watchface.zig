@@ -3,7 +3,6 @@ const std = @import("std");
 const Clock = @import("Clock.zig");
 const Glow = @import("Glow.zig");
 const Image = @import("Image.zig");
-const intensity = @import("intensity.zig");
 const Linear = @import("Linear.zig");
 const Rainbow = @import("Rainbow.zig");
 const Ray = @import("Ray.zig");
@@ -13,10 +12,7 @@ const Time = @import("Time.zig");
 const Self = @This();
 
 hand_glow_normalized_width: f32,
-hand_glow_falloff: intensity.Falloff,
-hand_length_falloff: intensity.Falloff,
 prism_glow_normalized_width: f32,
-prism_glow_falloff: intensity.Falloff,
 prism_glow_color: Linear,
 rainbow_palette_id: Rainbow.PaletteId,
 
@@ -27,7 +23,6 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
 
     const hand_glow = Glow{
         .normalized_width = self.hand_glow_normalized_width,
-        .falloff = self.hand_glow_falloff,
         .color = Linear.white,
     };
 
@@ -37,10 +32,7 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
     const attenuation_origin =
         clock.minute_hand.project(minute_intersection.hit).normalized_position;
 
-    hand_glow.renderLine(band, viewport, clock.minute_hand, .{
-        .normalized_distance = attenuation_origin,
-        .falloff = self.hand_length_falloff,
-    });
+    hand_glow.renderLine(band, viewport, clock.minute_hand, attenuation_origin);
 
     const spectrum = Spectrum.init(
         .{ 0, 0 },
@@ -51,14 +43,10 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
     const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_hand.get(.green).end);
     const hour_intersection = clock.prism.intersect(hour_ray) orelse unreachable;
 
-    spectrum.render(band, viewport, rainbow, .{
-        .normalized_distance = hour_intersection.distance,
-        .falloff = self.hand_length_falloff,
-    });
+    spectrum.render(band, viewport, rainbow, hour_intersection.distance);
 
     const prism_glow = Glow{
         .normalized_width = self.prism_glow_normalized_width,
-        .falloff = self.prism_glow_falloff,
         .color = self.prism_glow_color,
     };
 
@@ -73,10 +61,7 @@ const test_prism_normalized_size: f32 = 0.8;
 
 const test_watchface = Self{
     .hand_glow_normalized_width = 0.005,
-    .hand_glow_falloff = .quadratic,
-    .hand_length_falloff = .cubic,
     .prism_glow_normalized_width = 0.15,
-    .prism_glow_falloff = .quadratic,
     .prism_glow_color = Linear.init(0.1, 0.75, 1.0, 1.0),
     .rainbow_palette_id = .oklch_balanced,
 };

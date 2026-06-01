@@ -10,7 +10,6 @@ const util = @import("util.zig");
 const Self = @This();
 
 normalized_width: f32,
-falloff: intensity.Falloff,
 color: Linear,
 
 pub fn renderLine(
@@ -18,7 +17,7 @@ pub fn renderLine(
     band: Image.Band(Linear),
     viewport: anytype,
     line: Segment,
-    attenuation: intensity.Attenuation,
+    attenuation_normalized_distance: f32,
 ) void {
     // width == 0 is a valid "no glow" value: every pixel early-outs below before
     // any divide by normalized_width.
@@ -46,7 +45,7 @@ pub fn renderLine(
 
     // Attenuation fades the line along its length: full brightness before
     // normalized_distance, then falls off to zero at the endpoint.
-    const attenuation_length = @max(1.0 - attenuation.normalized_distance, std.math.floatEps(f32));
+    const attenuation_length = @max(1.0 - attenuation_normalized_distance, std.math.floatEps(f32));
 
     for (y_start..y_end) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
@@ -62,16 +61,16 @@ pub fn renderLine(
             if (projection.distance_squared >= width_squared) continue;
 
             const radial =
-                self.falloff.apply(@sqrt(projection.distance_squared) / self.normalized_width);
+                intensity.falloff(@sqrt(projection.distance_squared) / self.normalized_width);
 
             const attenuation_proximity = std.math.clamp(
-                1.0 - (projection.normalized_position - attenuation.normalized_distance) / attenuation_length,
+                1.0 - (projection.normalized_position - attenuation_normalized_distance) / attenuation_length,
                 0.0,
                 1.0,
             );
 
             const pixel = band.colorAt(x, local_y);
-            const brightness = radial * attenuation.falloff.apply(1.0 - attenuation_proximity);
+            const brightness = radial * intensity.falloff(1.0 - attenuation_proximity);
             const contribution = self.color.vec * @as(@Vector(4, f32), @splat(brightness));
 
             pixel.vec = @max(pixel.vec, contribution);
@@ -145,7 +144,7 @@ pub fn renderPrismEdges(
 
             const pixel = band.colorAt(x, local_y);
             const normalized_distance = @max(distance / width, 0.0);
-            const brightness = self.falloff.apply(normalized_distance);
+            const brightness = intensity.falloff(normalized_distance);
             const blended_color = Linear.lerp(Linear.white, self.color, @sqrt(normalized_distance));
             const contribution = blended_color.vec * @as(@Vector(4, f32), @splat(brightness));
 
@@ -182,12 +181,12 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
     var buffer = [_]Linear{Linear.black} ** pixel_count;
 
     const band = try image.band(Linear, &buffer, size, 0);
-    const glow = Self{ .normalized_width = 0.1, .falloff = .linear, .color = Linear.white };
+    const glow = Self{ .normalized_width = 0.1, .color = Linear.white };
 
     // Horizontal line from left edge to origin, attenuation starts at 40% along the line
     const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
 
-    glow.renderLine(band, viewport, line, .{ .normalized_distance = 0.4, .falloff = .cubic });
+    glow.renderLine(band, viewport, line, 0.4);
 
     // Sample brightness in the bright zone (10-30% along line) and the attenuated zone (60-90%)
     var bright_sum: f64 = 0;
@@ -232,7 +231,7 @@ test "renderPrismEdges produces glow inside prism" {
     var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
 
     const band = try image.band(Linear, &buffer, image_size, 0);
-    const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
+    const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
     glow.renderPrismEdges(band, viewport, prism);
 
@@ -257,7 +256,7 @@ test "renderPrismEdges produces glow with rotated viewport" {
     var buffer = [_]Linear{Linear.black} ** pixel_count;
 
     const band = try image.band(Linear, &buffer, 64, 0);
-    const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
+    const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
     glow.renderPrismEdges(band, viewport, prism);
 
@@ -282,7 +281,7 @@ test "renderPrismEdges does not write outside prism" {
     var buffer = [_]Linear{Linear.black} ** (image_size * image_size);
 
     const band = try image.band(Linear, &buffer, image_size, 0);
-    const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
+    const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
     glow.renderPrismEdges(band, viewport, prism);
 
@@ -300,7 +299,7 @@ test "renderPrismEdges uses additive blending" {
     var buffer = [_]Linear{base} ** (image_size * image_size);
 
     const band = try image.band(Linear, &buffer, image_size, 0);
-    const glow = Self{ .normalized_width = 0.15, .falloff = .linear, .color = Linear.white };
+    const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
     glow.renderPrismEdges(band, viewport, prism);
 
@@ -324,10 +323,10 @@ test "renderLine with zero width produces no glow" {
     var buffer = [_]Linear{Linear.black} ** (size * size);
 
     const band = try image.band(Linear, &buffer, size, 0);
-    const glow = Self{ .normalized_width = 0.0, .falloff = .linear, .color = Linear.white };
+    const glow = Self{ .normalized_width = 0.0, .color = Linear.white };
     const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
 
-    glow.renderLine(band, viewport, line, .{ .normalized_distance = 0.0, .falloff = .linear });
+    glow.renderLine(band, viewport, line, 0.0);
 
     for (&buffer) |pixel| {
         try std.testing.expectEqual(Linear.black.vec, pixel.vec);
@@ -343,7 +342,7 @@ test "renderPrismEdges with zero width produces no glow" {
     var buffer = [_]Linear{Linear.black} ** (size * size);
 
     const band = try image.band(Linear, &buffer, size, 0);
-    const glow = Self{ .normalized_width = 0.0, .falloff = .linear, .color = Linear.white };
+    const glow = Self{ .normalized_width = 0.0, .color = Linear.white };
 
     glow.renderPrismEdges(band, viewport, prism);
 

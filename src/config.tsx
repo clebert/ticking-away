@@ -11,15 +11,11 @@ const ConfigSchema = z.object({
   prism_normalized_size: z.number(),
   prism_glow_linear_green: z.number(),
   prism_glow_normalized_width: z.number(),
-  prism_glow_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
   rainbow_normalized_spread: z.number(),
   hand_glow_normalized_width: z.number(),
-  hand_glow_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
-  hand_length_falloff: z.enum(["linear", "quadratic", "cubic", "exponential"]),
   rainbow_palette_id: z.enum(["oklch_balanced", "spectral"]),
-  grain_enabled: z.boolean(),
+  texture: z.enum(["none", "grain", "dither"]),
   grain_normalized_deviation: z.number(),
-  dither_enabled: z.boolean(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

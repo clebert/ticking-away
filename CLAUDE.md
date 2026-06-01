@@ -36,27 +36,21 @@ Commit to `main` directly — do not create a new branch for a commit unless I e
 Follow the [Zig style guide](https://ziglang.org/documentation/0.16.0/#Style-Guide):
 
 - **Types**: `PascalCase`, acronyms as single words (`Rgb`, not `RGB`)
-- **File names**: `PascalCase.zig` for struct modules (file IS a struct via `@This()`),
-  `snake_case.zig` for namespace modules (only functions/constants, no struct fields)
+- **File names**: `PascalCase.zig` for struct modules (file is a struct via `@This()`),
+  `snake_case.zig` for namespace modules (functions/constants only, no struct fields)
 - **Functions**: `camelCase`
 - **Variables**: `snake_case`
-- **Comments**: Only for math formulas or non-obvious algorithms; avoid trivial comments
-- **SIMD**: Use `@Vector` types for calculations to leverage hardware acceleration
-- **No abbreviations**: Use full names (`distance`, not `dist`)
-- **No aliases**: Don't create aliases like `const FooBar = foo.Bar`. Use the qualified name
-  (`foo.Bar`) directly.
-- **No re-exports**: Don't re-export imports (`pub const foo = @import("foo.zig")`). Exception:
-  `root.zig` may re-export for the public API.
-- **No fake `pub`**: Don't mark unused code as `pub` to suppress warnings. Remove it instead. A
-  symbol whose only references are the tests that exist to exercise it is still dead — remove it
-  together with those tests. But a `pub` symbol is legitimate API when something else consumes it,
-  including tests in _other_ modules that use it as a helper (e.g. `Srgb.white` used by the
-  Image/Crop tests). Keep such API and its symmetric constants; don't inline a named constant into
-  multiple test call sites.
-- **Const slices**: Use `[]const T` for slice parameters that are only read from; use `[]T` only for
-  output buffers that are written to.
-- **Optional captures**: Don't accept a meaningless capture name forced by shadowing
-  (`if (grain) |g|`). If the value is cheap, construct it unconditionally and guard its _use_ with a
-  boolean so the clean name stays free (`const grain = ...; if (enabled) grain.apply(...)`).
-  Otherwise name the optional `maybe_foo` so the capture can be the clean `foo`
-  (`if (maybe_grain) |grain|`).
+- **Comments**: only for math formulas or non-obvious algorithms — no trivial comments
+- **SIMD**: `@Vector` types for hardware-accelerated calculations
+- **No abbreviations**: full names (`distance`, not `dist`)
+- **No aliases**: use the qualified name (`foo.Bar`) directly, never `const FooBar = foo.Bar`
+- **No re-exports**: don't re-export imports (`pub const foo = @import("foo.zig")`); only `root.zig`
+  may, for the public API
+- **No fake `pub`**: don't mark unused code `pub` to silence warnings — remove it, along with any
+  tests that exist only to exercise it; a symbol consumed elsewhere (including tests in _other_
+  modules, e.g. `Srgb.white`) is real API, so keep it and its symmetric constants
+- **Const slices**: `[]const T` for read-only slice parameters, `[]T` only for output buffers
+- **Optional captures**: never accept a shadow-forced capture name (`if (grain) |g|`) — if the value
+  is cheap, build it unconditionally and guard its _use_ with a boolean
+  (`const grain = ...; if (enabled) grain.apply(...)`), otherwise name the optional `maybe_foo` so
+  the capture stays clean (`if (maybe_grain) |grain|`)

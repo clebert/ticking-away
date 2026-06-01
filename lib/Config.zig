@@ -1,23 +1,20 @@
 const std = @import("std");
 
-const intensity = @import("intensity.zig");
 const Rainbow = @import("Rainbow.zig");
 
 const Self = @This();
+
+pub const Texture = enum { none, grain, dither };
 
 background_enabled: bool,
 prism_normalized_size: f32,
 prism_glow_linear_green: f32,
 prism_glow_normalized_width: f32,
-prism_glow_falloff: intensity.Falloff,
 rainbow_normalized_spread: f32,
 hand_glow_normalized_width: f32,
-hand_glow_falloff: intensity.Falloff,
-hand_length_falloff: intensity.Falloff,
 rainbow_palette_id: Rainbow.PaletteId,
-grain_enabled: bool,
+texture: Texture,
 grain_normalized_deviation: f32,
-dither_enabled: bool,
 
 const json_source = @embedFile("config.json");
 

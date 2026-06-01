@@ -15,8 +15,10 @@ const Watchface = @import("Watchface.zig");
 /// the resulting sRGB band. `linear_buffer` and `srgb_buffer` must each hold
 /// exactly `image.width * image.height` pixels.
 ///
-/// When `config.dither_enabled` is true the output is quantized to the Pebble cube
-/// with ordered blue-noise dithering; otherwise full-color sRGB is emitted.
+/// `config.texture` selects a single, mutually exclusive post-process: `.dither`
+/// quantizes the output to the Pebble cube with ordered blue-noise dithering,
+/// `.grain` adds film grain to the full-color output, and `.none` emits full-color
+/// sRGB unmodified.
 pub fn render(
     config: Config,
     time: Time,
@@ -41,36 +43,29 @@ pub fn render(
 
     const watchface = Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
-        .hand_glow_falloff = config.hand_glow_falloff,
-        .hand_length_falloff = config.hand_length_falloff,
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
-        .prism_glow_falloff = config.prism_glow_falloff,
         .prism_glow_color = Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
         .rainbow_palette_id = config.rainbow_palette_id,
     };
 
     watchface.render(linear_band, viewport, clock);
 
-    // Grain is a full-color analog texture. When dithering it runs on the continuous
-    // image before quantization so it is dithered along with the image (and so its
-    // shadow-suppressed jitter never snaps to a neighbouring cube level); otherwise
-    // it runs on the full-color output directly.
+    // Grain textures the 8-bit sRGB output, whereas dither replaces the sRGB
+    // conversion entirely by quantizing the continuous linear image to the cube.
     const grain = Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-    const srgb_band = if (config.dither_enabled) blk: {
-        if (config.grain_enabled) grain.applyLinear(linear_band);
-
-        break :blk try dither.apply(linear_band, srgb_buffer);
-    } else blk: {
+    const srgb_band = if (config.texture == .dither)
+        try dither.apply(linear_band, srgb_buffer)
+    else blk: {
         const continuous = try linear_band.toSrgb(srgb_buffer);
 
-        if (config.grain_enabled) grain.apply(continuous);
+        if (config.texture == .grain) grain.apply(continuous);
 
         break :blk continuous;
     };
 
     if (config.background_enabled) {
-        const crop = Crop{ .outside_color = Srgb.transparent, .antialias = !config.dither_enabled };
+        const crop = Crop{ .outside_color = Srgb.transparent, .antialias = config.texture != .dither };
 
         crop.apply(srgb_band, viewport);
     }
@@ -100,7 +95,7 @@ test "render produces visible non-black output with defaults" {
 test "render quantizes to the cube when dithering is enabled" {
     var config = try Config.init(std.testing.allocator);
 
-    config.dither_enabled = true;
+    config.texture = .dither;
 
     var linear_buffer: [test_size * test_size]Linear = undefined;
     var srgb_buffer: [test_size * test_size]Srgb = undefined;
@@ -120,8 +115,7 @@ test "render quantizes to the cube when dithering is enabled" {
 test "render leaves the output full-color when dithering is disabled" {
     var config = try Config.init(std.testing.allocator);
 
-    config.dither_enabled = false;
-    config.grain_enabled = false;
+    config.texture = .none;
 
     var linear_buffer: [test_size * test_size]Linear = undefined;
     var srgb_buffer: [test_size * test_size]Srgb = undefined;
@@ -142,4 +136,37 @@ test "render leaves the output full-color when dithering is disabled" {
     }
 
     try std.testing.expect(has_off_cube);
+}
+
+test "render perturbs the sRGB output when texture is grain" {
+    var config = try Config.init(std.testing.allocator);
+
+    config.grain_normalized_deviation = 0.1;
+
+    var linear_buffer: [test_size * test_size]Linear = undefined;
+    var plain_buffer: [test_size * test_size]Srgb = undefined;
+    var grain_buffer: [test_size * test_size]Srgb = undefined;
+
+    const image = Image.init(test_size, test_size);
+
+    config.texture = .none;
+
+    const plain = try render(config, test_time, image, &linear_buffer, &plain_buffer);
+
+    config.texture = .grain;
+
+    const grained = try render(config, test_time, image, &linear_buffer, &grain_buffer);
+
+    // The only difference between the two renders is the grain pass, so any divergence
+    // proves the texture == .grain branch actually applies it.
+    var differs = false;
+
+    for (plain.buffer, grained.buffer) |a, b| {
+        if (a.r != b.r or a.g != b.g or a.b != b.b) {
+            differs = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(differs);
 }

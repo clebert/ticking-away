@@ -60,7 +60,7 @@ pub fn render(
     band: Image.Band(Linear),
     viewport: anytype,
     rainbow: Rainbow,
-    attenuation: intensity.Attenuation,
+    attenuation_normalized_distance: f32,
 ) void {
     // Skip degenerate sectors: near-zero span (directions identical) or
     // near-π span (directions antiparallel) where cross-product interpolation breaks down.
@@ -106,12 +106,12 @@ pub fn render(
 
             // Attenuation: fade brightness from origin to attenuation distance
             const attenuation_distance =
-                @max(attenuation.normalized_distance, std.math.floatEps(f32));
+                @max(attenuation_normalized_distance, std.math.floatEps(f32));
 
             const attenuation_linear =
                 std.math.clamp(@sqrt(distance_squared) / attenuation_distance, 0.0, 1.0);
 
-            const attenuation_value = attenuation.falloff.apply(1.0 - attenuation_linear);
+            const attenuation_value = intensity.falloff(1.0 - attenuation_linear);
 
             // Cross-product ratio for spectrum position (replaces atan2)
             const cross_start_exact =
@@ -192,10 +192,7 @@ test "render produces spectrum with rotated viewport" {
     const band = try image.band(Linear, &buffer, 64, 0);
     const spectrum = Self.init(.{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 });
 
-    spectrum.render(band, viewport, rainbow, .{
-        .normalized_distance = 0.5,
-        .falloff = .cubic,
-    });
+    spectrum.render(band, viewport, rainbow, 0.5);
 
     var found_color = false;
 
@@ -223,7 +220,7 @@ test "attenuation reduces brightness near origin" {
 
     // Sector pointing right, centered on x-axis
     const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.2 }, .{ 1, -0.2 });
-    spectrum.render(band, viewport, rainbow, .{ .normalized_distance = 0.5, .falloff = .cubic });
+    spectrum.render(band, viewport, rainbow, 0.5);
 
     // Sum brightness in the near zone (5-15% radius) and far zone (50-75% radius)
     // across multiple rows to average out angular color differences.

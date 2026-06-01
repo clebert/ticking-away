@@ -1,22 +1,7 @@
-pub const Falloff = enum {
-    linear,
-    quadratic,
-    cubic,
-    exponential,
+/// Cubic distance falloff: fades a contribution from full intensity at
+/// `normalized_distance` 0 to zero at 1, with `proximity³` shaping.
+pub fn falloff(normalized_distance: f32) f32 {
+    const proximity = 1 - normalized_distance;
 
-    pub fn apply(self: Falloff, normalized_distance: f32) f32 {
-        const proximity = 1 - normalized_distance;
-
-        return switch (self) {
-            .linear => proximity,
-            .quadratic => proximity * proximity,
-            .cubic => proximity * proximity * proximity,
-            .exponential => @exp(-3 * normalized_distance) * proximity,
-        };
-    }
-};
-
-pub const Attenuation = struct {
-    normalized_distance: f32,
-    falloff: Falloff,
-};
+    return proximity * proximity * proximity;
+}

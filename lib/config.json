@@ -3,13 +3,9 @@
   "prism_normalized_size": 0.9,
   "prism_glow_linear_green": 0.75,
   "prism_glow_normalized_width": 0.07,
-  "prism_glow_falloff": "exponential",
   "rainbow_normalized_spread": 0.5,
-  "hand_glow_normalized_width": 0.005,
-  "hand_glow_falloff": "exponential",
-  "hand_length_falloff": "exponential",
+  "hand_glow_normalized_width": 0.01,
   "rainbow_palette_id": "oklch_balanced",
-  "grain_enabled": true,
-  "grain_normalized_deviation": 0.1,
-  "dither_enabled": false
+  "texture": "grain",
+  "grain_normalized_deviation": 0.1
 }

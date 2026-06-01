@@ -163,9 +163,8 @@ few `band_height` values and pick the smallest that renders fast enough.
 
 The dither's only static cost is the blue-noise tile: a 64×64 `u8` mask (4 KB) committed as
 `lib/blue_noise.bin` and embedded via `@embedFile`. The same tile serves both the web build and
-Pebble — 64 shows no periodicity at 260 px and is small enough for the RAM budget, and on larger
-browser canvases the grain masks its tiling. Regenerate it (from the repo root) with
-`zig run tools/blue_noise_generator.zig`.
+Pebble — 64 shows no periodicity at 260 px and is small enough for the RAM budget. Regenerate it
+(from the repo root) with `zig run tools/blue_noise_generator.zig`.
 
 ## Pixel format: `GColor8`
 
@@ -216,9 +215,8 @@ the watchface well:
 - **Quantizes in the sRGB domain**, where the four cube levels are evenly spaced (85 apart). This is
   exactly emulator-accurate; on-hardware tuning would be a later, data-only refinement (see
   [Panel gamma](#panel-gamma)).
-- Grain composes with the dither: it runs on the continuous image _before_ quantization
-  (`Grain.applyLinear`, brightness-scaled so shadows stay clean), so the analog texture is dithered
-  along with the image.
+- **Untextured.** Grain is a full-colour-only effect, mutually exclusive with dither
+  (`config.texture` selects one), so the Pebble cube renders clean.
 
 The library emits `Srgb`, not `GColor8`. Mapping each dithered pixel to its `GColor8` byte is the
 one remaining dither-side step and belongs in the Pebble shell's band loop — for the cube it is just

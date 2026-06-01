@@ -161,18 +161,6 @@ function PrismSection(): JSX.Element {
           onInput={(e) => updateConfig("prism_glow_normalized_width", intValue(e) / 100)}
         />
       </div>
-      <div class="control-group">
-        <label>Glow Falloff</label>
-        <select
-          value={config.prism_glow_falloff}
-          onChange={(e) => updateConfig("prism_glow_falloff", selectValue("prism_glow_falloff", e))}
-        >
-          <option value="linear">Linear</option>
-          <option value="quadratic">Quadratic</option>
-          <option value="cubic">Cubic</option>
-          <option value="exponential">Exponential</option>
-        </select>
-      </div>
     </>
   );
 }
@@ -209,32 +197,6 @@ function RainbowSection(): JSX.Element {
         />
       </div>
       <div class="control-group">
-        <label>Hand Glow Falloff</label>
-        <select
-          value={config.hand_glow_falloff}
-          onChange={(e) => updateConfig("hand_glow_falloff", selectValue("hand_glow_falloff", e))}
-        >
-          <option value="linear">Linear</option>
-          <option value="quadratic">Quadratic</option>
-          <option value="cubic">Cubic</option>
-          <option value="exponential">Exponential</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label>Hand Length Falloff</label>
-        <select
-          value={config.hand_length_falloff}
-          onChange={(e) =>
-            updateConfig("hand_length_falloff", selectValue("hand_length_falloff", e))
-          }
-        >
-          <option value="linear">Linear</option>
-          <option value="quadratic">Quadratic</option>
-          <option value="cubic">Cubic</option>
-          <option value="exponential">Exponential</option>
-        </select>
-      </div>
-      <div class="control-group">
         <label>Color Palette</label>
         <select
           value={config.rainbow_palette_id}
@@ -266,49 +228,30 @@ function EffectsSection(): JSX.Element {
         </label>
       </div>
       <div class="control-group">
-        <label>
+        <label>Texture</label>
+        <select
+          value={config.texture}
+          onChange={(e) => updateConfig("texture", selectValue("texture", e))}
+        >
+          <option value="none">None</option>
+          <option value="grain">Grain</option>
+          <option value="dither">Dither</option>
+        </select>
+      </div>
+      {config.texture === "grain" && (
+        <div class="control-group">
+          <label>
+            Grain: <span>{Math.round(config.grain_normalized_deviation * 100)}</span>%
+          </label>
           <input
-            type="checkbox"
-            checked={config.grain_enabled}
-            onChange={() => updateConfig("grain_enabled", !config.grain_enabled)}
-          />{" "}
-          Enable Grain
-        </label>
-      </div>
-      <div class="control-group">
-        <label>
-          Grain: <span>{Math.round(config.grain_normalized_deviation * 100)}</span>%
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={Math.round(config.grain_normalized_deviation * 100)}
-          onInput={(e) => updateConfig("grain_normalized_deviation", intValue(e) / 100)}
-          disabled={!config.grain_enabled}
-        />
-      </div>
-    </>
-  );
-}
-
-function DitheringSection(): JSX.Element {
-  const { $config, updateConfig } = useConfig();
-  const config = $config.value;
-
-  return (
-    <>
-      <div class="section-title">Dithering</div>
-      <div class="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={config.dither_enabled}
-            onChange={() => updateConfig("dither_enabled", !config.dither_enabled)}
-          />{" "}
-          Enable Dithering
-        </label>
-      </div>
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(config.grain_normalized_deviation * 100)}
+            onInput={(e) => updateConfig("grain_normalized_deviation", intValue(e) / 100)}
+          />
+        </div>
+      )}
     </>
   );
 }
@@ -344,7 +287,6 @@ export function Controls(): JSX.Element {
       <PrismSection />
       <RainbowSection />
       <EffectsSection />
-      <DitheringSection />
       <ResetSection />
     </div>
   );

@@ -6,7 +6,8 @@
 
 <img src="logo.png" alt="Ticking Away" width="512">
 
-A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover.
+A watchface inspired by Pink Floyd's "Dark Side of the Moon" album cover, featuring a prism that
+refracts light into a rainbow.
 
 ## Targets
 
@@ -26,16 +27,19 @@ Build and run the PNG export binary to render the watchface to a PNG file:
 
 ```bash
 zig build png -Doptimize=ReleaseFast
-zig-out/bin/png <size> <hour> <minute> <output.png> [--dither]
+zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither]
 ```
 
 - `size`: image size in pixels (square, diameter of the unit circle)
 - `hour`: hour (0-23)
 - `minute`: minute (0-59)
 - `output.png`: output file path
+- `--grain`: add film grain to the full-colour output
 - `--dither`: quantize the output to the Pebble 64-colour cube
+
+`--grain` and `--dither` are mutually exclusive; without either, no texture is applied.
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 1024 7 14 logo.png
+zig-out/bin/png 1024 7 14 logo.png --grain
 ```
