@@ -74,8 +74,8 @@ pub fn reversed(self: Self) Self {
 
 const edge_fade: Oklab = .{ .vec = .{ 0, 0, 0, 1 } };
 
-/// Colors sit at centers (i + 0.5) / N; interpolates adjacent centers in Oklab and
-/// fades the out-of-range edges toward black.
+/// Colors sit at centers (i + 0.5) / N and interpolate in Oklab; out-of-range
+/// positions fade toward edge_fade.
 pub fn interpolate(self: Self, normalized_position: f32) Linear {
     std.debug.assert(normalized_position >= 0.0 and normalized_position <= 1.0);
 

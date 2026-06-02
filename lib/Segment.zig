@@ -78,7 +78,6 @@ test "project onto zero-length segment returns zero position" {
 test "project onto diagonal segment" {
     const segment = Self{ .start = .{ 0.0, 0.0 }, .end = .{ 3.0, 4.0 } };
 
-    // Point (4, 3) projects onto the midpoint of a (3,4) segment:
     // t = dot((4,3),(3,4)) / dot((3,4),(3,4)) = 24/25 = 0.96
     const result = segment.project(.{ 4.0, 3.0 });
 

@@ -20,12 +20,12 @@ pub fn normalize(v: @Vector(2, f32)) @Vector(2, f32) {
     return v / @as(@Vector(2, f32), @splat(magnitude));
 }
 
-/// True if length is 1 within tolerance.
+/// Length is 1 within tolerance, not exactly.
 pub fn isNormalized(v: @Vector(2, f32)) bool {
     return @abs(length(v) - 1.0) < tolerance;
 }
 
-/// 2D cross product: gives signed area of parallelogram formed by the two vectors.
+/// Signed area of the parallelogram formed by the two vectors.
 pub fn cross2d(a: @Vector(2, f32), b: @Vector(2, f32)) f32 {
     return a[0] * b[1] - a[1] * b[0];
 }

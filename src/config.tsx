@@ -33,7 +33,6 @@ function loadConfig(): Config {
       const result = z.partial(ConfigSchema).safeParse(JSON.parse(item));
 
       if (result.success) {
-        // Defaults + validated partial = complete Config
         return Object.assign({ ...typedDefaultConfig }, result.data);
       }
     }
@@ -47,8 +46,6 @@ function saveConfig(config: Config): void {
     localStorage.setItem(storageKey, JSON.stringify(config));
   } catch {}
 }
-
-// --- Context & Provider ---
 
 const ConfigContext = createContext(undefined as unknown as Signal<Config>);
 
@@ -81,8 +78,6 @@ export function useConfig(): Readonly<{
 export function resetConfig($config: Signal<Config>): void {
   $config.value = { ...typedDefaultConfig };
 }
-
-// --- WASM config serialization ---
 
 const encoder = new TextEncoder();
 

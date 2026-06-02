@@ -35,7 +35,7 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
         const x_low = center_x - 0.5 - dx_max;
         const x_high = center_x - 0.5 + dx_max;
 
-        // Use @ceil (not @intFromFloat truncation) so left/right margins are symmetric.
+        // @ceil keeps the left/right margins symmetric.
         const x_start: usize = if (x_low < 0) 0 else @intFromFloat(@ceil(x_low));
 
         const x_end: usize = @min(
@@ -66,7 +66,6 @@ fn antialiasAtBoundary(
     x_start: usize,
     x_end: usize,
 ) void {
-    // Blend the ~2 boundary pixels on each side of the circle edge.
     const left_from = if (x_start > 1) x_start - 1 else 0;
     const left_to = @min(x_start + 1, row.len);
 
@@ -141,10 +140,8 @@ test "apply sets pixels outside circle to outside color" {
 
     crop.apply(band, viewport);
 
-    // Corner pixel (0,0) is outside the crop circle — should be white
     try std.testing.expectEqual(Srgb.white, buffer[0]);
 
-    // Center pixel (5,5) is inside the crop circle — should stay black
     try std.testing.expectEqual(Srgb.black, buffer[5 * 10 + 5]);
 }
 
@@ -175,7 +172,6 @@ test "apply handles wide image" {
 
     crop.apply(band, viewport);
 
-    // Far left pixel (0,5) is outside the crop circle in this wide image
     try std.testing.expectEqual(Srgb.white, buffer[5 * 20 + 0]);
 
     try std.testing.expectEqual(Srgb.white, buffer[5 * 20 + 19]);
@@ -263,7 +259,6 @@ test "antialias produces intermediate alpha at circle edge" {
 
     try std.testing.expectEqual(@as(u8, 0), buffer[0].a);
 
-    // An edge pixel with 0 < alpha < 255 proves antialiasing ran.
     var found_intermediate = false;
 
     for (0..20) |x| {

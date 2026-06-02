@@ -44,7 +44,7 @@ fn noiseAt(x: usize, image_y: usize) f32 {
     h = (h ^ (h >> 13)) *% 1274126177;
     h ^= h >> 16;
 
-    // Upper 24 bits (>> 8) give smoother noise than 8 bits would.
+    // Upper 24 bits (>> 8) pair with the 2^24-1 divisor below.
     const hash_f: f32 = @floatFromInt(h >> 8);
 
     return hash_f * (1.0 / 16777215.0) - 0.5;

@@ -213,8 +213,8 @@ test "rotated viewport applies 90 degree clockwise rotation" {
     const image = Self.init(120, 160);
     const test_viewport = image.viewportRotated(.clockwise_90);
 
-    // Pixel at center-right (120, 80) should map to normalized (0, -1) (top of circle)
-    // centered = (60/60, 0/60) = (1, 0), rotated 90° CW: (0, -1)
+    // (120, 80) is center-right (top of circle): centered = (60/60, 0/60) = (1, 0),
+    // rotated 90° CW gives (0, -1).
     const point = test_viewport.toNormalized(.{ 120, 80 });
 
     try std.testing.expectApproxEqAbs(@as(f32, 0.0), point[0], 1e-5);

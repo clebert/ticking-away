@@ -218,8 +218,7 @@ test "attenuation reduces brightness near origin" {
     const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.2 }, .{ 1, -0.2 });
     spectrum.render(band, viewport, rainbow, 0.5);
 
-    // Sum brightness in the near zone (5-15% radius) and far zone (50-75% radius)
-    // across multiple rows to average out angular color differences.
+    // Sum across multiple rows to average out angular color differences.
     var near_sum: f64 = 0;
     var near_count: u32 = 0;
     var far_sum: f64 = 0;
@@ -256,7 +255,7 @@ test "attenuation reduces brightness near origin" {
     const near_avg = near_sum / @as(f64, @floatFromInt(near_count));
     const far_avg = far_sum / @as(f64, @floatFromInt(far_count));
 
-    // Far zone should be at least 3x brighter than near zone due to cubic attenuation
+    // Cubic attenuation makes the far zone much brighter than the near zone.
     try std.testing.expect(far_avg > near_avg * 3.0);
 }
 

@@ -40,7 +40,18 @@ Follow the [Zig style guide](https://ziglang.org/documentation/0.16.0/#Style-Gui
   `snake_case.zig` for namespace modules (functions/constants only, no struct fields)
 - **Functions**: `camelCase`
 - **Variables**: `snake_case`
-- **Comments**: only for math formulas or non-obvious algorithms — no trivial comments
+- **Comments**: default to none — write one only when code, signature, and names can't carry the
+  meaning, then in the fewest words that add a fact they don't. Worth it: a math/algorithm
+  derivation, a cited magic constant (its canonical source URL allowed only here), a gotcha that
+  breaks silently if violated, a non-obvious rationale, or a contract the signature can't state
+  (ownership, sizing, pre/postconditions). Not worth it: restating the next line (test assertions,
+  name-echoing doc-comments), generic links, prose padded around one fact, or pointers to docs,
+  tickets, or conversations — though another source file is fine.
+  - **Present-only**: say what the code is and why it must be so now — never its past. No removed
+    code, prior versions, provenance, rejected alternatives, decision history, or future/deferred
+    plans (`replaces`, `previously`, `for now`, `TODO`); such notes get read back later as
+    requirements and drive changes nobody asked for. Comparing two things both present is fine.
+  - **On edit**: re-read adjacent comments and delete or rewrite any that no longer fit the present.
 - **SIMD**: `@Vector` types for hardware-accelerated calculations
 - **No abbreviations**: full names (`distance`, not `dist`)
 - **No aliases**: use the qualified name (`foo.Bar`) directly, never `const FooBar = foo.Bar`

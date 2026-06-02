@@ -1,5 +1,3 @@
-// PNG encoder; compresses image data with deflate at its best level.
-
 const std = @import("std");
 
 const lib = @import("lib");

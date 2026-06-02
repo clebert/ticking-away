@@ -25,7 +25,7 @@ pub fn init(allocator: std.mem.Allocator) !Self {
 
 /// Safe to return `parsed.value` after `deinit` because `Self` contains only
 /// value types (f32, bool, enums) — no heap-allocated fields that reference
-/// the parsed arena. Adding a slice or pointer field would require rethinking.
+/// the parsed arena.
 pub fn parse(allocator: std.mem.Allocator, json_text: []const u8) !Self {
     const parsed = try std.json.parseFromSlice(Self, allocator, json_text, .{});
 
@@ -45,7 +45,7 @@ fn validateRanges(config: Self) !void {
         }
     }
 
-    // Prism.init requires a strictly positive size; a zero-size prism is degenerate.
+    // Prism.init requires a strictly positive size.
     if (config.prism_normalized_size <= 0.0) return error.OutOfRange;
 }
 

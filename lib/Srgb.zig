@@ -29,7 +29,6 @@ fn srgbByteToLinear(byte: u8) f32 {
 }
 
 /// Inverse sRGB transfer function: a gamma-encoded component in 0–1 to linear light.
-/// https://en.wikipedia.org/wiki/SRGB
 pub fn srgbToLinearComponent(normalized: f32) f32 {
     if (normalized <= 0.04045) {
         return normalized / 12.92;
