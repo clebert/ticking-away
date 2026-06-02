@@ -1,6 +1,6 @@
 # Ticking Away
 
-> [Ticking away the moments that make up a dull day.][time-song]
+[...the moments that make up a dull day.][time-song]
 
 [time-song]: https://en.wikipedia.org/wiki/Time_(Pink_Floyd_song)
 
