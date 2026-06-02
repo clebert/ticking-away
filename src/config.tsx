@@ -16,6 +16,7 @@ const ConfigSchema = z.object({
   rainbow_palette_id: z.enum(["oklch_balanced", "spectral"]),
   texture: z.enum(["none", "grain", "dither"]),
   grain_normalized_deviation: z.number(),
+  supersample_enabled: z.boolean(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

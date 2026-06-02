@@ -10,27 +10,6 @@ pub fn build(b: *std.Build) void {
 
     buildPngBinary(b, target, optimize, check_step);
     buildTests(b, target, optimize);
-    checkToolCompiles(b, target, optimize, check_step);
-}
-
-// The blue-noise generator is an offline tool, not installed; compile-check it so a std
-// API change can't silently break the only way to regenerate lib/blue_noise.bin.
-fn checkToolCompiles(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    check_step: *std.Build.Step,
-) void {
-    const check = b.addExecutable(.{
-        .name = "blue_noise_generator",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tools/blue_noise_generator.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-
-    check_step.dependOn(&check.step);
 }
 
 fn buildWasmModule(b: *std.Build, check_step: *std.Build.Step) *std.Build.Step {

@@ -137,7 +137,9 @@
         left: 0;
         width: 100%;
         height: 100%;
-        image-rendering: pixelated;
+        /* The backing store is antialiased at device resolution; "pixelated" would
+           nearest-neighbor fractional-DPI/zoom scaling and reintroduce aliasing. */
+        image-rendering: auto;
       }
 
       #controls {

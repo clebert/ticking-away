@@ -1,13 +1,16 @@
-//! Ordered blue-noise dithering to the 64-colour Pebble cube (every channel in
-//! {0, 85, 170, 255}). Each channel is independently rounded to the nearest cube
-//! level after a shared per-pixel blue-noise threshold offset.
+//! Floyd–Steinberg error-diffusion dithering to the 64-colour Pebble cube (every
+//! channel in {0, 85, 170, 255}). Each channel is quantized in the gamma-encoded
+//! sRGB domain — where the four cube levels are evenly spaced 85 apart — and its
+//! rounding error is diffused to neighbouring pixels with the standard 7/3/5/1
+//! weights along a serpentine scan, the texture that lets the four-level cube
+//! resolve a smooth gradient.
 //!
-//! The dither is purely local — no error diffusion and no cross-band state — so
-//! bands render independently (the threshold depends only on the absolute pixel
-//! position) and the output can never drift into an off-hue cube colour. Blue
-//! noise spreads the sparse dots of the fade-to-black evenly, which is the
-//! smoothest gradient the four-level cube allows. The threshold tile is generated
-//! offline and embedded at build time; see tools/blue_noise_generator.zig.
+//! The only state is a two-row error buffer the caller owns and sizes with
+//! `errorBufferSize(width)`. Pending row errors are carried forward between bands,
+//! so a frame can be dithered in a single full-height call or streamed
+//! strip-by-strip — the buffer is zeroed on the first band (`y_offset == 0`) and
+//! left with the invariant "pending errors in row 0, row 1 clean" between calls.
+//! Diffusion runs top-to-bottom, so bands must be applied in increasing y order.
 
 const std = @import("std");
 
@@ -15,92 +18,123 @@ const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
 const Srgb = @import("Srgb.zig");
 
-// Square void-and-cluster blue-noise threshold tile, one byte per pixel. Regenerate with:
-// zig run tools/blue_noise_generator.zig
-const tile = @embedFile("blue_noise.bin");
-const tile_size = blk: {
-    var n: usize = 1;
-
-    while (n * n < tile.len) n += 1;
-
-    break :blk n;
-};
-
-comptime {
-    std.debug.assert(tile_size * tile_size == tile.len);
-
-    // apply()'s black fast-path relies on a pure-black pixel rounding to cube level 0 for every
-    // threshold, which holds only while |threshold| < 0.5. The tile's extreme thresholds are at
-    // bytes 0 and 255; assert both stay inside the bound so a future change to thresholdFromByte
-    // cannot silently desync the fast-path from the general path.
-    std.debug.assert(@abs(thresholdFromByte(0)) < 0.5 and @abs(thresholdFromByte(255)) < 0.5);
-}
+const channels = 3;
 
 // The cube's four levels are spaced 85 sRGB units apart: 0, 85, 170, 255.
 const level_step = 85.0;
 const max_level = 3.0;
 
-pub fn apply(band: Image.Band(Linear), srgb_buffer: []Srgb) !Image.Band(Srgb) {
+/// f32 count for `apply`'s two-row error buffer.
+pub fn errorBufferSize(width: usize) usize {
+    return width * channels * 2;
+}
+
+pub fn apply(
+    band: Image.Band(Linear),
+    srgb_buffer: []Srgb,
+    error_buffer: []f32,
+) !Image.Band(Srgb) {
     const width = band.width;
     const height = band.bandHeight();
 
     if (srgb_buffer.len != band.buffer.len) return error.BufferSizeMismatch;
 
-    for (0..height) |y| {
-        const threshold_y = band.imageY(y);
+    const stride = width * channels;
 
-        for (0..width) |x| {
+    if (error_buffer.len < stride * 2) return error.BufferSizeMismatch;
+
+    // Zero both rows for the first band of each frame; later bands carry pending
+    // errors forward in row 0 (row 1 is left clean by the previous band).
+    if (band.y_offset == 0) {
+        @memset(error_buffer[0 .. stride * 2], 0);
+    }
+
+    var current_row_index: usize = 0;
+
+    for (0..height) |y| {
+        const right_to_left = (band.imageY(y) % 2) == 1;
+        const current = error_buffer[current_row_index * stride ..][0..stride];
+        const next = error_buffer[(1 - current_row_index) * stride ..][0..stride];
+
+        for (0..width) |scan_index| {
+            const x = if (right_to_left) width - 1 - scan_index else scan_index;
+
             const linear = band.colorAt(x, y).*;
             const alpha = Srgb.clampedByte(linear.vec[3] * 255.0);
+            const error_offset = x * channels;
 
-            // Fast-path the black background, which dominates the frame: it quantizes to
-            // cube black for every threshold, so skip the three per-channel gamma encodes.
+            // The black background dominates the frame and must not accrue a diffused
+            // halo, so quantize it straight to cube black and diffuse nothing.
             if (linear.vec[0] == 0 and linear.vec[1] == 0 and linear.vec[2] == 0) {
                 srgb_buffer[y * width + x] = .{ .r = 0, .g = 0, .b = 0, .a = alpha };
                 continue;
             }
 
-            const threshold = thresholdAt(x, threshold_y);
+            var quantized: [channels]u8 = undefined;
+            var quantization_error: [channels]f32 = undefined;
+
+            inline for (0..channels) |channel| {
+                const encoded = Linear.linearToSrgbComponent(linear.vec[channel]) * 255.0;
+                const adjusted = encoded + current[error_offset + channel];
+                const level = std.math.clamp(@round(adjusted / level_step), 0.0, max_level);
+                const value = level * level_step;
+
+                quantized[channel] = @intFromFloat(value);
+                quantization_error[channel] = adjusted - value;
+            }
 
             srgb_buffer[y * width + x] = .{
-                .r = quantizeChannel(linear.vec[0], threshold),
-                .g = quantizeChannel(linear.vec[1], threshold),
-                .b = quantizeChannel(linear.vec[2], threshold),
+                .r = quantized[0],
+                .g = quantized[1],
+                .b = quantized[2],
                 .a = alpha,
             };
+
+            const ahead_valid = if (right_to_left) x > 0 else x + 1 < width;
+            const behind_valid = if (right_to_left) x + 1 < width else x > 0;
+
+            if (ahead_valid) {
+                const ahead_offset = (if (right_to_left) x - 1 else x + 1) * channels;
+
+                inline for (0..channels) |channel| {
+                    current[ahead_offset + channel] += quantization_error[channel] * (7.0 / 16.0);
+                    next[ahead_offset + channel] += quantization_error[channel] * (1.0 / 16.0);
+                }
+            }
+
+            if (behind_valid) {
+                const behind_offset = (if (right_to_left) x + 1 else x - 1) * channels;
+
+                inline for (0..channels) |channel| {
+                    next[behind_offset + channel] += quantization_error[channel] * (3.0 / 16.0);
+                }
+            }
+
+            inline for (0..channels) |channel| {
+                next[error_offset + channel] += quantization_error[channel] * (5.0 / 16.0);
+            }
         }
+
+        @memset(current, 0);
+
+        current_row_index = 1 - current_row_index;
+    }
+
+    // Restore the invariant (pending errors in row 0) after an odd-height band.
+    if (current_row_index != 0) {
+        @memcpy(error_buffer[0..stride], error_buffer[stride..][0..stride]);
+        @memset(error_buffer[stride..][0..stride], 0);
     }
 
     return .{ .buffer = srgb_buffer, .width = width, .y_offset = band.y_offset };
 }
 
-/// Rounds one linear-light channel to a cube level after offsetting by the pixel's
-/// blue-noise threshold, in the gamma-encoded sRGB domain where the levels are
-/// evenly spaced.
-fn quantizeChannel(linear_value: f32, threshold: f32) u8 {
-    const encoded = Linear.linearToSrgbComponent(linear_value) * 255.0;
-    const level = std.math.clamp(
-        @round((encoded + threshold * level_step) / level_step),
-        0.0,
-        max_level,
-    );
-
-    return @intFromFloat(level * level_step);
-}
-
-/// The pixel's blue-noise threshold, sampled from the build-time threshold tile.
-fn thresholdAt(x: usize, image_y: usize) f32 {
-    return thresholdFromByte(tile[(image_y % tile_size) * tile_size + (x % tile_size)]);
-}
-
-/// Maps a stored tile byte to a threshold in (-0.5, 0.5), symmetric about 0: the rank index
-/// centred on its bucket midpoint so the rounding stays unbiased.
-fn thresholdFromByte(value: u8) f32 {
-    return (@as(f32, @floatFromInt(value)) + 0.5) / 256.0 - 0.5;
-}
-
 pub fn isCubeChannel(channel: u8) bool {
     return channel == 0 or channel == 85 or channel == 170 or channel == 255;
+}
+
+test "errorBufferSize covers two rows of per-channel error" {
+    try std.testing.expectEqual(@as(usize, 10 * 3 * 2), errorBufferSize(10));
 }
 
 test "apply quantizes every channel to a cube level" {
@@ -119,9 +153,10 @@ test "apply quantizes every channel to a cube level" {
     }
 
     var srgb_buffer: [pixel_count]Srgb = undefined;
+    var error_buffer: [errorBufferSize(8)]f32 = undefined;
 
     const band = try image.band(Linear, &linear_buffer, 8, 0);
-    const result = try apply(band, &srgb_buffer);
+    const result = try apply(band, &srgb_buffer, &error_buffer);
 
     for (result.buffer) |pixel| {
         try std.testing.expect(isCubeChannel(pixel.r));
@@ -135,9 +170,10 @@ test "apply preserves alpha" {
 
     var linear_buffer = [_]Linear{Linear.init(0.5, 0.5, 0.5, 0.75)} ** 4;
     var srgb_buffer: [4]Srgb = undefined;
+    var error_buffer: [errorBufferSize(2)]f32 = undefined;
 
     const band = try image.band(Linear, &linear_buffer, 2, 0);
-    const result = try apply(band, &srgb_buffer);
+    const result = try apply(band, &srgb_buffer, &error_buffer);
 
     for (result.buffer) |pixel| {
         try std.testing.expectEqual(@as(u8, 191), pixel.a);
@@ -149,9 +185,10 @@ test "apply maps pure black to cube black" {
 
     var linear_buffer = [_]Linear{Linear.black} ** 16;
     var srgb_buffer: [16]Srgb = undefined;
+    var error_buffer: [errorBufferSize(4)]f32 = undefined;
 
     const band = try image.band(Linear, &linear_buffer, 4, 0);
-    const result = try apply(band, &srgb_buffer);
+    const result = try apply(band, &srgb_buffer, &error_buffer);
 
     for (result.buffer) |pixel| {
         try std.testing.expectEqual(@as(u8, 0), pixel.r);
@@ -166,15 +203,16 @@ test "apply dithers a between-levels mid-tone to more than one level" {
     const image = Image.init(width, height);
     const pixel_count = width * height;
 
-    // sRGB ~42 sits halfway between cube levels 0 and 85, so the blue-noise threshold
-    // must split the field between the two rather than snapping it all one way.
+    // sRGB ~42 sits halfway between cube levels 0 and 85, so error diffusion must
+    // split the field between the two rather than snapping it all one way.
     const mid = Srgb.srgbToLinearComponent(42.0 / 255.0);
 
     var linear_buffer = [_]Linear{Linear.init(mid, mid, mid, 1.0)} ** pixel_count;
     var srgb_buffer: [pixel_count]Srgb = undefined;
+    var error_buffer: [errorBufferSize(width)]f32 = undefined;
 
     const band = try image.band(Linear, &linear_buffer, height, 0);
-    const result = try apply(band, &srgb_buffer);
+    const result = try apply(band, &srgb_buffer, &error_buffer);
 
     var has_low = false;
     var has_high = false;
@@ -199,15 +237,21 @@ test "multi-band apply matches single-band apply" {
         const t: f32 = @as(f32, @floatFromInt(y)) / @as(f32, @floatFromInt(height - 1));
 
         for (0..width) |x| {
-            linear_buffer[y * width + x] = Linear.init(t * 0.8, t * 0.3, (1.0 - t) * 0.5, 1.0);
+            // Rows 16-31 are pure black so a band seam lands inside the fast-path region,
+            // exercising that its error-drop is band-invariant.
+            linear_buffer[y * width + x] = if (y >= 16 and y < 32)
+                Linear.black
+            else
+                Linear.init(t * 0.8, t * 0.3, (1.0 - t) * 0.5, 1.0);
         }
     }
 
     var reference: [pixel_count]Srgb = undefined;
+    var reference_error: [errorBufferSize(width)]f32 = undefined;
 
     const full_band = try image.band(Linear, &linear_buffer, height, 0);
 
-    _ = try apply(full_band, &reference);
+    _ = try apply(full_band, &reference, &reference_error);
 
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
@@ -216,6 +260,7 @@ test "multi-band apply matches single-band apply" {
 
         var banded_output: [pixel_count]Srgb = undefined;
         var band_srgb_buffer: [pixel_count]Srgb = undefined;
+        var band_error: [errorBufferSize(width)]f32 = undefined;
 
         for (0..band_count) |band_index| {
             const row_start = band_index * band_height * width;
@@ -223,7 +268,7 @@ test "multi-band apply matches single-band apply" {
             const band_linear = linear_buffer[row_start..][0..band_pixels];
             const narrow_band = try image.band(Linear, band_linear, band_height, band_index);
 
-            const srgb_band = try apply(narrow_band, band_srgb_buffer[0..band_pixels]);
+            const srgb_band = try apply(narrow_band, band_srgb_buffer[0..band_pixels], &band_error);
 
             @memcpy(banded_output[row_start..][0..band_pixels], srgb_band.buffer);
         }

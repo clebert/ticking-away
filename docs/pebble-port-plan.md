@@ -16,8 +16,8 @@ export** binary (`bin/png/`). Two properties of the library make a Pebble port r
   `dither.apply` / `Crop.apply`, renders horizontal strips. This bounds peak memory, which is
   exactly what a Pebble port needs — see [Memory budget](#memory-budget).
 - **Quantizing dither.** `lib/dither.zig` maps a continuous image to the 64-colour Pebble cube with
-  ordered blue-noise dithering — purely local, so it needs no error buffer and no cross-band state;
-  see [the Pebble dither](#dither-palette).
+  Floyd–Steinberg error diffusion — its only state is a small two-row error buffer carried forward
+  between strips; see [the Pebble dither](#dither-palette).
 
 `lib/frame.zig`'s `render()` renders the **full image as a single band**
 (`image.band(Linear, buffer, image.height, 0)`), and both shells call it that way. Driving the
@@ -34,8 +34,8 @@ approach has direct prior art.
 1. **A new `bin/pebble/` shell** — the standard Pebble C watchface lifecycle plus a small Zig C-ABI
    export wrapper (`callconv(.c)`), since the library exposes no C symbols today, only WASM
    `export fn`s.
-2. **The Pebble dither** — `lib/dither.zig` dithers to the fixed 64-colour `GColor8` cube with an
-   ordered blue-noise mask. See [the Pebble dither](#dither-palette).
+2. **The Pebble dither** — `lib/dither.zig` dithers to the fixed 64-colour `GColor8` cube with
+   Floyd–Steinberg error diffusion. See [the Pebble dither](#dither-palette).
 3. **A Pebble-specific build of the library** — freestanding Thumb Cortex-M, **soft-float ABI**,
    position-independent code, linked into the Pebble app. See
    [Build integration](#build-integration).
@@ -149,22 +149,29 @@ run strip-by-strip. With `band_height = 1` at 260 px wide, the per-band scratch 
 | Linear band (`lib.Linear`, f32) | `width × 16 B` | ~4.1 KB     |
 | sRGB band (`lib.Srgb`, u8)      | `width × 4 B`  | ~1.0 KB     |
 
-The ordered dither needs no error buffer; its only static cost is the blue-noise threshold tile (see
-below).
+The Floyd–Steinberg dither's only extra scratch is a two-row error buffer
+(`dither.errorBufferSize(width)` = `width × 3 × 2` f32; ~6 KB at 260 px), carried forward between
+strips (see below).
+
+Supersampling (`config.supersample_enabled`; factor `N = 2` via `frame.supersampleFactor`) renders
+the continuous image at `N×` and box-averages it down in linear light before quantizing, which
+antialiases the prism, hand, and rainbow edges. The downsample is purely local — each output pixel
+reads only its own `N × N` source block — so it stays band-compatible: a `band_height = 1` strip
+needs `N` supersampled rows of `N × width` linear scratch (`N² × width × 16 B`; ~16 KB at `N = 2`,
+260 px wide), still far under budget. The cost is render time, which grows with `N²` — measure it on
+the emulator against the once-a-minute redraw before enabling it.
 
 The **framebuffer itself is owned by the firmware** — `graphics_capture_frame_buffer` hands you the
 real 8-bit `GColor8` buffer (~66 KB for 260×260), which the OS already allocated. The app only pays
 for the band scratch above, comfortably within budget.
 
-The ordered dither is stateless: each pixel's threshold depends only on its absolute position in the
-tiled blue-noise mask, so strip rendering reproduces single-pass output bit-for-bit with no
-cross-band bookkeeping (proven by the `multi-band apply matches single-band apply` test). Drive a
-few `band_height` values and pick the smallest that renders fast enough.
-
-The dither's only static cost is the blue-noise tile: a 64×64 `u8` mask (4 KB) committed as
-`lib/blue_noise.bin` and embedded via `@embedFile`. The same tile serves both the web build and
-Pebble — 64 shows no periodicity at 260 px and is small enough for the RAM budget. Regenerate it
-(from the repo root) with `zig run tools/blue_noise_generator.zig`.
+The Floyd–Steinberg dither carries error between rows, so it is **order-dependent**: strips must be
+applied top-to-bottom and the caller must persist the two-row error buffer across `dither.apply`
+calls (it is zeroed on the first band, where `y_offset == 0`). Done that way, strip rendering
+reproduces the single-pass output bit-for-bit (proven by the
+`multi-band apply matches single-band apply` test). This is the one cross-band dependency the
+renderer has; everything else is per-pixel. Drive a few `band_height` values and pick the smallest
+that renders fast enough.
 
 ## Pixel format: `GColor8`
 
@@ -203,18 +210,23 @@ channel is one of {0, 85, 170, 255}, i.e. `>> 6` yields the 0–3 level directly
 ### The Pebble dither
 
 `lib/dither.zig` quantizes to the fixed 64-colour `GColor8` cube (every channel ∈ {0, 85, 170, 255})
-with **ordered blue-noise dithering**: each channel is rounded to the nearest cube level after a
-shared per-pixel threshold sampled from a tiled blue-noise mask. It runs on-device as-is and suits
-the watchface well:
+with **Floyd–Steinberg error diffusion**: each channel is rounded to the nearest cube level in the
+sRGB domain and its rounding error is pushed to neighbouring pixels with the standard 7/3/5/1
+weights on a serpentine scan. The four-level cube is coarse, and error diffusion is what lets it
+resolve the rainbow as a smooth gradient rather than coarse colour blocks (supersampling first, via
+`config.supersample_enabled`, further softens the residual chroma speckle on the near-neutral prism
+glow). It suits the watchface well:
 
-- **Purely local** — no error diffusion, no nearest-colour search, no palette struct. Each pixel is
-  independent, so there is no per-band state to carry and bands render in any order.
-- **Stable and clean** — being local it can never accumulate error into an off-hue cube colour (the
-  warm-speckle failure mode of error diffusion on the cyan glow), and blue noise spreads the sparse
-  shadow dots evenly for the smoothest fade-to-black the cube allows.
+- **Bounded, streamable state.** The only state is a two-row error buffer the caller owns
+  (`dither.errorBufferSize(width)`); pending row errors are carried forward between bands, so a
+  frame can be dithered in one full-height call or streamed strip-by-strip. Diffusion runs
+  top-to-bottom, so bands must be applied in increasing `y` order (not arbitrary order) — the one
+  cross-band dependency on-device.
 - **Quantizes in the sRGB domain**, where the four cube levels are evenly spaced (85 apart). This is
   exactly emulator-accurate; on-hardware tuning would be a later, data-only refinement (see
   [Panel gamma](#panel-gamma)).
+- **Black-background fast path.** Pure-black pixels quantize straight to cube black and diffuse
+  nothing, so the dominant background never accrues a diffused halo at the circle boundary.
 - **Untextured.** Grain is a full-colour-only effect, mutually exclusive with dither
   (`config.texture` selects one), so the Pebble cube renders clean.
 
@@ -266,10 +278,12 @@ bytes-per-row stride, and don't special-case the shape in the renderer.
 The band pipeline maps cleanly onto framebuffer scanlines:
 
 ```
-Watchface.render()  →  Image.Band(Linear)   [f32 RGBA per pixel, one strip]
+Watchface.render()  →  Image.Band(Linear)   [f32 RGBA per pixel, one strip at N× width/height]
         ↓
-dither.apply()      →  Image.Band(Srgb)      [u8 RGBA, ordered blue-noise to the cube]
-   (or .toSrgb)         (stateless per strip — no error carried between bands)
+downsample()        →  Image.Band(Linear)   [box-average N×N → target strip; skipped when N = 1]
+        ↓
+dither.apply()      →  Image.Band(Srgb)      [u8 RGBA, Floyd–Steinberg to the cube]
+   (or .toSrgb)         (top-to-bottom; two-row error buffer carried between bands)
         ↓
 Crop.apply()        →  circular mask (optional; cosmetic on gabbro — bezel already masks)
         ↓
@@ -294,20 +308,31 @@ const lib = @import("lib");
 const width = 260;
 const band_height = 1;
 
-// Frame-scoped scratch. Sized for a single strip; reused across bands.
-var linear_buffer: [width * band_height]lib.Linear = undefined;
+// Mirrors frame.supersampleFactor when config.supersample_enabled is set (the Pebble
+// build enables it); sizes the static scratch below at comptime.
+const supersample = 2;
+
+// Frame-scoped scratch, reused across bands. The linear scratch is the supersampled
+// render target, so it holds supersample² × the strip; srgb_buffer holds the
+// downsampled strip that gets blitted (see Memory budget).
+var linear_buffer: [width * band_height * supersample * supersample]lib.Linear = undefined;
 var srgb_buffer: [width * band_height]lib.Srgb = undefined;
 
+// Persists across band calls: Floyd–Steinberg carries pending row errors forward.
+// dither.apply zeroes it when band_index 0 (y_offset == 0) is rendered.
+var dither_error_buffer: [lib.dither.errorBufferSize(width)]f32 = undefined;
+
 /// Renders strip `band_index` of the frame into `out` as GColor8 bytes.
-/// Bands may be rendered in any order — the ordered dither is stateless per strip.
+/// Bands must be rendered top-to-bottom (band_index 0, 1, 2, …): the dither
+/// diffuses error downward and keeps it in `dither_error_buffer` between calls.
 export fn pebbleRenderBand(
     out: [*]u8, // GColor8, width * band_height bytes
     band_index: u16,
     hour: u8,
     minute: u8,
 ) callconv(.c) void {
-    // image.band(.., band_height, band_index) → Watchface.render
-    // → dither.apply → map each sRGB pixel to its GColor8 byte → out
+    // image.band(.., band_height, band_index) → Watchface.render → downsample (N > 1)
+    // → dither.apply(.., dither_error_buffer) → map each sRGB pixel to its GColor8 byte → out
 }
 ```
 

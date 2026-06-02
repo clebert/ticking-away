@@ -1,5 +1,4 @@
 const std = @import("std");
-const allocator = std.heap.wasm_allocator;
 
 const lib = @import("lib");
 
@@ -45,41 +44,38 @@ fn getConfig(config_json_byte_length: u32) ?lib.Config {
     return cached_config;
 }
 
-var linear_buffer: ?[]lib.Linear = null;
-var srgb_buffer: ?[]lib.Srgb = null;
-var last_width: usize = 0;
-var last_height: usize = 0;
+// A single grow-only arena for the render buffers, backed directly by
+// @wasmMemoryGrow. Growing by exact page counts (rather than through the general
+// allocator, which rounds large allocations up to a power of two) lets a native
+// full-resolution frame fit tightly — e.g. a 6K canvas needs ~407 MB, not ~642 MB.
+// One contiguous region reused across frames means peak memory equals the largest
+// frame ever rendered, with no fragmentation or resize accumulation.
+var arena_base: usize = 0;
+var arena_bytes: usize = 0;
+var arena_initialized: bool = false;
 
-fn ensureBuffers(width: usize, height: usize) error{OutOfMemory}!void {
-    if (width == last_width and
-        height == last_height and
-        linear_buffer != null and
-        srgb_buffer != null) return;
+fn arenaReserve(bytes: usize) error{OutOfMemory}!void {
+    if (bytes <= arena_bytes) return;
 
-    if (linear_buffer) |buffer| allocator.free(buffer);
-    if (srgb_buffer) |buffer| allocator.free(buffer);
+    const grow_pages = (bytes - arena_bytes + std.wasm.page_size - 1) / std.wasm.page_size;
+    const previous = @wasmMemoryGrow(0, grow_pages);
 
-    linear_buffer = null;
-    srgb_buffer = null;
+    if (previous < 0) return error.OutOfMemory;
 
-    const pixel_count = width * height;
-
-    linear_buffer = try allocator.alloc(lib.Linear, pixel_count);
-
-    errdefer {
-        allocator.free(linear_buffer.?);
-        linear_buffer = null;
+    // We own every growable page (nothing else grows memory), so the arena starts at
+    // the first grown page and stays contiguous as it grows.
+    if (!arena_initialized) {
+        arena_base = @as(usize, @intCast(previous)) * std.wasm.page_size;
+        arena_initialized = true;
     }
 
-    srgb_buffer = try allocator.alloc(lib.Srgb, pixel_count);
+    arena_bytes += grow_pages * std.wasm.page_size;
+}
 
-    errdefer {
-        allocator.free(srgb_buffer.?);
-        srgb_buffer = null;
-    }
+fn arenaSlice(comptime T: type, offset: usize, count: usize) []T {
+    const pointer: [*]T = @ptrFromInt(arena_base + offset);
 
-    last_width = width;
-    last_height = height;
+    return pointer[0..count];
 }
 
 export fn render(
@@ -91,17 +87,46 @@ export fn render(
 ) ?[*]u8 {
     const config = getConfig(config_json_byte_length) orelse return null;
 
-    ensureBuffers(@intCast(width), @intCast(height)) catch return null;
+    const image_width: usize = @intCast(width);
+    const image_height: usize = @intCast(height);
 
-    const image = lib.Image.init(@intCast(width), @intCast(height));
+    const supersample_factor = lib.frame.supersampleFactor(config);
+
+    // usize is u32 on wasm32 and this module is built without runtime safety, so the
+    // buffer-size products below would wrap silently for an oversize frame, under-sizing
+    // the arena while the slices still span the true pixel count — a heap overflow. Reject
+    // any frame whose arena footprint does not fit usize; the JS caller treats a null return
+    // as "render failed, keep the previous frame".
+    const pixel_count = std.math.mul(usize, image_width, image_height) catch return null;
+    const supersampled_count = std.math.mul(usize, pixel_count, supersample_factor * supersample_factor) catch return null;
+    const error_count = lib.dither.errorBufferSize(image_width);
+
+    // Lay the three buffers out consecutively in the arena: Linear (16 B, the strictest
+    // alignment) first, then Srgb (4 B), then the f32 error rows — each offset is a multiple
+    // of the next type's size, so every slice stays naturally aligned. The Linear scratch
+    // holds the full supersampled render; downsampling rewrites its front in place.
+    const linear_bytes = std.math.mul(usize, supersampled_count, @sizeOf(lib.Linear)) catch return null;
+    const srgb_bytes = std.math.mul(usize, pixel_count, @sizeOf(lib.Srgb)) catch return null;
+    const error_bytes = std.math.mul(usize, error_count, @sizeOf(f32)) catch return null;
+    const error_offset = std.math.add(usize, linear_bytes, srgb_bytes) catch return null;
+    const total_bytes = std.math.add(usize, error_offset, error_bytes) catch return null;
+
+    arenaReserve(total_bytes) catch return null;
+
+    const linear_buffer = arenaSlice(lib.Linear, 0, supersampled_count);
+    const srgb_buffer = arenaSlice(lib.Srgb, linear_bytes, pixel_count);
+    const dither_error_buffer = arenaSlice(f32, error_offset, error_count);
+
+    const image = lib.Image.init(image_width, image_height);
 
     _ = lib.frame.render(
         config,
         lib.Time.init(hour, minute),
         image,
-        linear_buffer.?,
-        srgb_buffer.?,
+        linear_buffer,
+        srgb_buffer,
+        dither_error_buffer,
     ) catch return null;
 
-    return @ptrCast(srgb_buffer.?.ptr);
+    return @ptrCast(srgb_buffer.ptr);
 }

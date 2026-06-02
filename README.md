@@ -27,7 +27,7 @@ Build and run the PNG export binary to render the watchface to a PNG file:
 
 ```bash
 zig build png -Doptimize=ReleaseFast
-zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither]
+zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither] [--supersample]
 ```
 
 - `size`: image size in pixels (square, diameter of the unit circle)
@@ -35,11 +35,17 @@ zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither]
 - `minute`: minute (0-59)
 - `output.png`: output file path
 - `--grain`: add film grain to the full-colour output
-- `--dither`: quantize the output to the Pebble 64-colour cube
+- `--dither`: quantize the output to the Pebble 64-colour cube (Floyd–Steinberg)
+- `--supersample`: render 2×2 and box-average down to antialias edges (off by default)
 
 `--grain` and `--dither` are mutually exclusive; without either, no texture is applied.
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 1024 7 14 logo.png --grain
+zig-out/bin/png 1024 7 14 logo.png --grain --supersample
+```
+
+```bash
+zig build png -Doptimize=ReleaseFast && \
+zig-out/bin/png 260 7 14 pebble.png --dither --supersample
 ```

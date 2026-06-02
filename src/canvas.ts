@@ -8,13 +8,13 @@ export function resizeCanvas(): void {
   const containerRect = container.getBoundingClientRect();
   const devicePixelRatio = window.devicePixelRatio || 1;
 
-  const newWidth = Math.max(Math.floor(containerRect.width * devicePixelRatio), 100);
-  const newHeight = Math.max(Math.floor(containerRect.height * devicePixelRatio), 100);
+  const width = Math.max(Math.floor(containerRect.width * devicePixelRatio), 100);
+  const height = Math.max(Math.floor(containerRect.height * devicePixelRatio), 100);
 
-  if (canvas.width === newWidth && canvas.height === newHeight) {
+  if (canvas.width === width && canvas.height === height) {
     return;
   }
 
-  canvas.width = newWidth;
-  canvas.height = newHeight;
+  canvas.width = width;
+  canvas.height = height;
 }

@@ -36,7 +36,14 @@ function renderToCanvas(hour: number, minute: number, config: Config): void {
 
   const imageDataPtr = getWasmModule().render(width, height, hour, minute, writeConfigJson(config));
 
-  if (imageDataPtr === 0) return;
+  if (imageDataPtr === 0) {
+    console.error(
+      `Watchface render failed at ${width}×${height} — config rejected or WASM allocation failed. ` +
+        `Keeping the previous frame.`,
+    );
+
+    return;
+  }
 
   const imageData = new ImageData(
     new Uint8ClampedArray(getWasmMemory().buffer, imageDataPtr, width * height * 4),

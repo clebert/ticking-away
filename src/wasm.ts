@@ -13,7 +13,11 @@ export interface WasmModule {
 }
 
 const initialMemoryPages = 32;
-const maximumMemoryPages = 8192;
+// Grow on demand up to the wasm32 ceiling of 65536 pages (4 GiB) — the natural hardware
+// limit, not an arbitrary cap. `maximum` only reserves virtual address space; physical pages
+// are committed lazily as the render arena grows, so a small frame still costs a few MB, and a
+// frame too large to allocate simply fails the grow (render() then returns null).
+const maximumMemoryPages = 65536;
 
 let wasmModule: WasmModule | undefined;
 let wasmMemory: WebAssembly.Memory | undefined;
