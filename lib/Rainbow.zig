@@ -32,7 +32,6 @@ fn init(srgb_colors: [color_count]Srgb) Self {
     return .{ .oklab_colors = oklab_colors };
 }
 
-/// Perceptually balanced colors tuned in OkLCH
 const oklch_balanced: Self = init(.{
     .{ .r = 255, .g = 64, .b = 64 },
     .{ .r = 255, .g = 160, .b = 0 },
@@ -43,7 +42,6 @@ const oklch_balanced: Self = init(.{
     .{ .r = 180, .g = 80, .b = 255 },
 });
 
-/// Pure spectral rainbow colors
 const spectral: Self = init(.{
     .{ .r = 255, .g = 0, .b = 0 },
     .{ .r = 255, .g = 127, .b = 0 },
@@ -76,8 +74,8 @@ pub fn reversed(self: Self) Self {
 
 const edge_fade: Oklab = .{ .vec = .{ 0, 0, 0, 1 } };
 
-/// Places each palette color at its center (i + 0.5) / N and interpolates between
-/// adjacent centers in Oklab. Edge bands fade toward black for wider red and violet.
+/// Colors sit at centers (i + 0.5) / N; interpolates adjacent centers in Oklab and
+/// fades the out-of-range edges toward black.
 pub fn interpolate(self: Self, normalized_position: f32) Linear {
     std.debug.assert(normalized_position >= 0.0 and normalized_position <= 1.0);
 
@@ -100,8 +98,7 @@ test "get returns matching rainbow" {
 }
 
 test "init converts sRGB through to Oklab" {
-    // spectral red is pure sRGB red; round-tripping its stored Oklab back to
-    // linear should recover (1, 0, 0).
+    // spectral[0] is pure sRGB red; its Oklab must round-trip to linear (1, 0, 0).
     const red = spectral.oklab_colors[0].toLinear();
 
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[0], 1e-4);
@@ -109,7 +106,6 @@ test "init converts sRGB through to Oklab" {
     try std.testing.expectApproxEqAbs(@as(f32, 0.0), red.vec[2], 1e-4);
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), red.vec[3], 1e-4);
 
-    // Direct sRGB -> linear check, independent of the Oklab round-trip above.
     const red_linear = (Srgb{ .r = 255, .g = 0, .b = 0 }).toLinear();
 
     try std.testing.expectApproxEqAbs(@as(f32, 1.0), red_linear.vec[0], 1e-6);
@@ -131,7 +127,6 @@ test "reversed swaps first and last colors" {
 }
 
 test "interpolate at color center returns that color" {
-    // Color centers are at (i + 0.5) / color_count
     const red_center = spectral.interpolate(0.5 / 7.0);
     const violet_center = spectral.interpolate(6.5 / 7.0);
 
@@ -151,9 +146,7 @@ test "interpolate at edges fades toward dark" {
     const red = spectral.oklab_colors[0].toLinear();
     const violet = spectral.oklab_colors[6].toLinear();
 
-    // At 0, red shifts toward dark (lower red channel)
     try std.testing.expect(at_zero.vec[0] < red.vec[0]);
 
-    // At 1, violet shifts toward dark (lower blue channel)
     try std.testing.expect(at_one.vec[2] < violet.vec[2]);
 }

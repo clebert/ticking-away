@@ -19,10 +19,11 @@ export** binary (`bin/png/`). Two properties of the library make a Pebble port r
   Floyd–Steinberg error diffusion — its only state is a small two-row error buffer carried forward
   between strips; see [the Pebble dither](#dither-palette).
 
-`lib/frame.zig`'s `render()` renders the **full image as a single band**
-(`image.band(Linear, buffer, image.height, 0)`), and both shells call it that way. Driving the
-pipeline strip-by-strip on-device is therefore _new shell code_, not new library code — the banded
-primitives already exist and are tested.
+`lib/frame.zig`'s `render()` renders the whole frame in one shot: it builds a supersampled band
+(`supersampled.band(Linear, linear_buffer, supersampled.height, 0)`), runs `Watchface.render` into
+it, box-averages it down, then constructs the target-resolution band over the front of the same
+buffer. Driving the pipeline strip-by-strip on-device is therefore _new shell code_, not new library
+code — the banded primitives already exist and are tested.
 
 ## Feasibility
 
@@ -59,7 +60,7 @@ approach has direct prior art.
 1. Whether Zig 0.16 / LLVM emits relocations for `thumbv7m`/`thumbv7em` that the Pebble app loader
    applies correctly for any mutable globals/statics. Build a minimal Zig-on-Pebble proof first and
    keep global state at zero.
-2. Soft-float f32 plus scalarized `@Vector` SIMD (≈59 uses across `lib/`; neither Cortex-M4F nor
+2. Soft-float f32 plus scalarized `@Vector` SIMD (used throughout `lib/`; neither Cortex-M4F nor
    base Cortex-M33 has packed SIMD) — code size and render time within the budget. Fine in principle
    for a once-per-minute redraw, but must be measured on the emulator.
 3. `compiler_rt` soft-float routines linking against newlib-nano without duplicate `__aeabi_*`
@@ -85,13 +86,10 @@ rectangular 64-colour model is a straightforward second target.
 
 Notes:
 
-- The SoC is the **SiFli SF32LB52J**, a big.LITTLE pair of Cortex-M33 STAR-MC1 cores (240 MHz HCPU +
-  24 MHz LCPU, 512 KB SRAM). The 16 MB PSRAM exists on-chip but is **not enabled in PebbleOS**, so
-  don't count on it.
-- Round 2 is **real and pre-orderable** (shown at CES, January 2026) but **has not shipped to
-  customers**. Plan to validate entirely on the **emulator**.
-- **FPU:** the Cortex-M33 FPU is optional and not confirmed for the SF32LB52J from primary sources —
-  but it's **moot**, because the Pebble app ABI is soft-float regardless (see below).
+- The 16 MB PSRAM exists on-chip but is **not enabled in PebbleOS**, so don't count on it. Round 2
+  has not shipped to customers (2026-05-30); plan to validate entirely on the **emulator**.
+- **FPU:** the Cortex-M33 FPU is optional and unconfirmed for the SF32LB52J, but **moot** — the
+  Pebble app ABI is soft-float regardless (see below).
 
 ### Platform names vs. board codenames
 
@@ -153,25 +151,21 @@ The Floyd–Steinberg dither's only extra scratch is a two-row error buffer
 (`dither.errorBufferSize(width)` = `width × 3 × 2` f32; ~6 KB at 260 px), carried forward between
 strips (see below).
 
-Supersampling (`config.supersample_enabled`; factor `N = 2` via `frame.supersampleFactor`) renders
-the continuous image at `N×` and box-averages it down in linear light before quantizing, which
-antialiases the prism, hand, and rainbow edges. The downsample is purely local — each output pixel
-reads only its own `N × N` source block — so it stays band-compatible: a `band_height = 1` strip
-needs `N` supersampled rows of `N × width` linear scratch (`N² × width × 16 B`; ~16 KB at `N = 2`,
-260 px wide), still far under budget. The cost is render time, which grows with `N²` — measure it on
-the emulator against the once-a-minute redraw before enabling it.
+Supersampling (`config.supersample_enabled`; factor `N = 2` via `frame.supersampleFactor`)
+antialiases the prism, hand, and rainbow edges. It stays band-compatible because each output pixel
+reads only its own `N × N` source block, so a `band_height = 1` strip needs only `N² × width × 16 B`
+of linear scratch (~16 KB at `N = 2`, 260 px); the cost is render time, which grows with `N²` —
+measure it on the emulator.
 
 The **framebuffer itself is owned by the firmware** — `graphics_capture_frame_buffer` hands you the
 real 8-bit `GColor8` buffer (~66 KB for 260×260), which the OS already allocated. The app only pays
 for the band scratch above, comfortably within budget.
 
-The Floyd–Steinberg dither carries error between rows, so it is **order-dependent**: strips must be
-applied top-to-bottom and the caller must persist the two-row error buffer across `dither.apply`
-calls (it is zeroed on the first band, where `y_offset == 0`). Done that way, strip rendering
-reproduces the single-pass output bit-for-bit (proven by the
-`multi-band apply matches single-band apply` test). This is the one cross-band dependency the
-renderer has; everything else is per-pixel. Drive a few `band_height` values and pick the smallest
-that renders fast enough.
+The dither is the renderer's one cross-band dependency (top-to-bottom order, persisted error buffer;
+see [the Pebble dither](#dither-palette)); everything else is per-pixel. Driven that way, strip
+rendering reproduces the single-pass output bit-for-bit (the
+`multi-band apply matches single-band apply` test). Drive a few `band_height` values and pick the
+smallest that renders fast enough.
 
 ## Pixel format: `GColor8`
 
@@ -347,15 +341,13 @@ each strip into the framebuffer via `gbitmap_get_data_row_info`.
 
 ## C app shell
 
-Standard Pebble watchface lifecycle:
+Standard Pebble watchface lifecycle (`window_create` → a `Layer` with an update proc →
+`tick_timer_service_subscribe(MINUTE_UNIT, …)` whose handler calls `layer_mark_dirty` →
+`app_event_loop`); scaffold it from `pebble new-project`. The only port-specific part is the band
+loop in the update proc:
 
 ```c
-#include <pebble.h>
-
 extern void pebbleRenderBand(uint8_t *out, uint16_t band_index, uint8_t hour, uint8_t minute);
-
-static Window *s_window;
-static Layer  *s_canvas;
 
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
     GBitmap *fb = graphics_capture_frame_buffer(ctx);
@@ -375,30 +367,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     }
 
     graphics_release_frame_buffer(ctx, fb);
-}
-
-static void tick_handler(struct tm *tick_time, TimeUnits units) {
-    layer_mark_dirty(s_canvas);
-}
-
-static void window_load(Window *window) {
-    Layer *root = window_get_root_layer(window);
-    s_canvas = layer_create(layer_get_bounds(root));
-    layer_set_update_proc(s_canvas, canvas_update_proc);
-    layer_add_child(root, s_canvas);
-}
-
-static void window_unload(Window *window) { layer_destroy(s_canvas); }
-
-int main(void) {
-    s_window = window_create();
-    window_set_window_handlers(s_window, (WindowHandlers){
-        .load = window_load, .unload = window_unload,
-    });
-    window_stack_push(s_window, true);
-    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-    app_event_loop();
-    window_destroy(s_window);
 }
 ```
 
@@ -478,30 +446,21 @@ band-by-band and `pebble screenshot` to compare against the PNG export.
 
 ## Open questions
 
+The relocation, soft-float perf/size, and `compiler_rt` linker risks are tracked in
+[Risks to retire early](#feasibility). The remaining open questions:
+
 - **Exact app build flags.** Read the installed SDK `waftools` for the precise `-mcpu`, `-mthumb`,
   `-fPIC`/`-fPIE`, `-mfloat-abi=soft`, `-msingle-pic-base`/`-mpic-register` — don't infer the PIC
   model from ARM convention.
-- **Relocations.** Empirically confirm Zig 0.16/LLVM emits data relocations the Pebble loader
-  applies correctly for `thumbv7m`/`thumbv7em` under `relocation-model=pic`. Build a minimal proof
-  first.
-- **Performance & size.** Measure soft-float render time and `.pbw` code/heap size on the
-  `gabbro`/`emery` emulator with `@Vector` ops scalarized, against the ~128 KB budget.
-- **Linker hygiene.** Confirm `compiler_rt` soft-float routines link against newlib-nano with no
-  duplicate `__aeabi_*` symbols.
 - **Manifest.** Confirm the exact `sdkVersion` string and `targetPlatforms` list the appstore
   accepts for a 4.9.x watchface; re-read per-app heap numbers from PebbleOS headers.
 - <a id="panel-gamma"></a>**Panel gamma — mostly resolved; not a blocker.** `GColor8` is a _nominal_
-  colour space: levels expand linearly to {0, 85, 170, 255} (no gamma), and the QEMU emulator
-  renders them linearly (`* 255 / 3`, no curve), so the dither — which quantizes in the sRGB domain
-  assuming the four levels are evenly spaced — is **exactly** emulator-accurate. PebbleOS adds
-  **no** gamma/colour-correction LUT for `getafix`/`obelix` — the SiFli driver
-  (`src/fw/drivers/display/sf32lb/display_jdi.c`) only does a mechanical 222→332 bit-repack (its
-  LCDC layer is `RGB332`); the `GColor8`/ARGB2222 model is identical to `basalt`/`chalk`. The
-  **only** residual unknown is the physical reflective JDI panel + the closed SiFli vendor HAL
-  (`bf0_hal_lcdc.c`), measurable only on real hardware. If its response diverges from sRGB it
-  degrades dither **quality** (the threshold lands at slightly wrong brightnesses — most visible on
-  the rainbow gradient), never output validity; the fix applies a correction curve before
-  quantization. So it cannot gate pre-hardware work.
+  colour space (levels expand linearly to {0, 85, 170, 255}, no gamma) and QEMU renders them
+  linearly, so the sRGB-domain dither is **exactly** emulator-accurate; PebbleOS adds no
+  gamma/colour LUT for `getafix`/`obelix`. The only residual unknown is the physical reflective JDI
+  panel's response, measurable only on hardware — and a divergence degrades dither **quality**, not
+  validity (fixable with a correction curve before quantization), so it can't gate pre-hardware
+  work.
 - **Shipping reality.** Confirm Round 2 hardware actually ships before relying on anything beyond
   the emulator.
 

@@ -104,7 +104,6 @@ test "init creates equilateral triangle centered at origin" {
     const expected_bottom_offset = normalized_size * sqrt3 / 6.0;
     const expected_half_size = normalized_size / 2.0;
 
-    // Verify vertex positions
     const apex = prism.vertices.get(.apex);
     const bottom_right = prism.vertices.get(.bottom_right);
     const bottom_left = prism.vertices.get(.bottom_left);
@@ -118,7 +117,6 @@ test "init creates equilateral triangle centered at origin" {
     try std.testing.expectApproxEqAbs(-expected_half_size, bottom_left[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(expected_bottom_offset, bottom_left[1], vector.tolerance);
 
-    // Verify edges connect correct vertices
     const right = prism.edges.get(.right);
     const bottom = prism.edges.get(.bottom);
     const left = prism.edges.get(.left);
@@ -132,7 +130,6 @@ test "init creates equilateral triangle centered at origin" {
     try std.testing.expectEqual(bottom_left, left.start);
     try std.testing.expectEqual(apex, left.end);
 
-    // Verify triangle is equilateral by checking all edges have equal length
     const right_start_to_end = right.end - right.start;
     const bottom_start_to_end = bottom.end - bottom.start;
     const left_start_to_end = left.end - left.start;
@@ -162,11 +159,9 @@ test "bounds returns min/max of vertices" {
     const bottom_right = prism.vertices.get(.bottom_right);
     const bottom_left = prism.vertices.get(.bottom_left);
 
-    // min_x = bottom_left x, min_y = apex y
     try std.testing.expectApproxEqAbs(bottom_left[0], prism_bounds[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(apex[1], prism_bounds[1], vector.tolerance);
 
-    // max_x = bottom_right x, max_y = bottom_right y (== bottom_left y)
     try std.testing.expectApproxEqAbs(bottom_right[0], prism_bounds[2], vector.tolerance);
     try std.testing.expectApproxEqAbs(bottom_right[1], prism_bounds[3], vector.tolerance);
 }
@@ -174,12 +169,10 @@ test "bounds returns min/max of vertices" {
 test "containsPoint" {
     const prism = Self.init(0.8);
 
-    // Center (origin) is inside
     try std.testing.expect(prism.containsPoint(.{ 0, 0 }));
 
-    // Point far outside
     try std.testing.expect(!prism.containsPoint(.{ 1, 1 }));
 
-    // Vertex is on boundary (cross products are zero)
+    // Boundary vertex: zero cross products count as contained
     try std.testing.expect(prism.containsPoint(prism.vertices.get(.apex)));
 }

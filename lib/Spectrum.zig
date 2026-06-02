@@ -33,15 +33,13 @@ pub fn init(
 
     const reverse = span < 0;
 
-    // Sort by CCW order: start is CCW-earlier, end is CCW-later
     const ccw_earlier = if (reverse) direction_last else direction_first;
     const ccw_later = if (reverse) direction_first else direction_last;
 
-    // Apply edge margin: widen sector by rotating edges outward
+    // Widen sector: rotate edges outward by the margin
     const start_exact = rotateBy(ccw_earlier, cos_margin, -sin_margin);
     const end_exact = rotateBy(ccw_later, cos_margin, sin_margin);
 
-    // Apply angular epsilon for containment test
     const cos_epsilon = comptime @cos(@as(f32, 0.002));
     const sin_epsilon = comptime @sin(@as(f32, 0.002));
 
@@ -92,7 +90,7 @@ pub fn render(
             const pixel_x: f32 = @as(f32, @floatFromInt(x)) + 0.5;
             const point = viewport.toNormalized(.{ pixel_x, pixel_y });
 
-            // Cross-product sector containment (cheapest test first)
+            // Sector containment first (cheaper than the distance test)
             const dx = point[0] - self.origin[0];
             const dy = point[1] - self.origin[1];
             const cross_start = self.direction_start[0] * dy - self.direction_start[1] * dx;
@@ -104,7 +102,6 @@ pub fn render(
 
             if (distance_squared > 1.0) continue;
 
-            // Attenuation: fade brightness from origin to attenuation distance
             const attenuation_distance =
                 @max(attenuation_normalized_distance, std.math.floatEps(f32));
 
@@ -113,7 +110,7 @@ pub fn render(
 
             const attenuation_value = intensity.falloff(1.0 - attenuation_linear);
 
-            // Cross-product ratio for spectrum position (replaces atan2)
+            // Cross-product ratio gives angular position within the sector
             const cross_start_exact =
                 self.direction_start_exact[0] * dy - self.direction_start_exact[1] * dx;
 
@@ -218,7 +215,6 @@ test "attenuation reduces brightness near origin" {
 
     const band = try image.band(Linear, &buffer, size, 0);
 
-    // Sector pointing right, centered on x-axis
     const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.2 }, .{ 1, -0.2 });
     spectrum.render(band, viewport, rainbow, 0.5);
 

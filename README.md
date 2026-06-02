@@ -49,3 +49,13 @@ zig-out/bin/png 1024 7 14 logo.png --grain --supersample
 zig build png -Doptimize=ReleaseFast && \
 zig-out/bin/png 260 7 14 pebble.png --dither --supersample
 ```
+
+```bash
+zig build png -Doptimize=ReleaseFast && \
+zig-out/bin/png 1964 7 14 wallpaper-14-inch.png --grain --supersample
+```
+
+```bash
+zig build png -Doptimize=ReleaseFast && \
+zig-out/bin/png 2234 7 14 wallpaper-16-inch.png --grain --supersample
+```

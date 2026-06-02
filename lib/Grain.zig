@@ -6,11 +6,9 @@ const Srgb = @import("Srgb.zig");
 const Self = @This();
 
 /// Maximum per-pixel deviation as a fraction of the sRGB range (0.0–1.0).
-/// At 1.0, each pixel can shift by up to ±255 sRGB units.
 normalized_deviation: f32,
 
-/// Adds film-like grain to a full-color sRGB band: a uniform per-pixel
-/// luminance jitter applied directly to the 8-bit output.
+/// Adds film-like grain: a per-pixel luminance jitter applied to the 8-bit sRGB band.
 pub fn apply(self: Self, band: Image.Band(Srgb)) void {
     std.debug.assert(self.normalized_deviation >= 0.0 and self.normalized_deviation <= 1.0);
 
@@ -24,8 +22,7 @@ pub fn apply(self: Self, band: Image.Band(Srgb)) void {
         const row = band.buffer[local_y * band.width ..][0..band.width];
 
         for (row, 0..) |*srgb, x| {
-            // Leave pure black untextured so the dark background stays clean
-            // instead of being speckled with grain.
+            // Skip pure black so the dark background stays clean.
             if (srgb.r == 0 and srgb.g == 0 and srgb.b == 0) continue;
 
             const offset = noiseAt(x, image_y) * strength;
@@ -123,14 +120,12 @@ test "multi-band grain matches single-band grain" {
 
     const grain = Self{ .normalized_deviation = 0.1 };
 
-    // Reference: single-band (full height)
     var reference = input;
 
     const full_band = try image.band(Srgb, &reference, height, 0);
 
     grain.apply(full_band);
 
-    // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
     for (band_heights) |band_height| {

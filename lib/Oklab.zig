@@ -6,7 +6,6 @@ const Self = @This();
 
 vec: @Vector(4, f32),
 
-/// https://en.wikipedia.org/wiki/Linear_interpolation
 pub fn lerp(a: Self, b: Self, t: f32) Self {
     std.debug.assert(t >= 0.0 and t <= 1.0);
 

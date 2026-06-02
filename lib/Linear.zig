@@ -15,7 +15,6 @@ pub fn init(r: f32, g: f32, b: f32, a: f32) Self {
     return .{ .vec = .{ r, g, b, a } };
 }
 
-/// https://en.wikipedia.org/wiki/Linear_interpolation
 pub fn lerp(a: Self, b: Self, t: f32) Self {
     std.debug.assert(t >= 0.0 and t <= 1.0);
 
@@ -30,17 +29,17 @@ pub fn toOklab(self: Self) Oklab {
     const g = self.vec[1];
     const b = self.vec[2];
 
-    // Linear RGB → LMS
+    // to LMS
     const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
     const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
     const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
 
-    // LMS → LMS (cube roots)
+    // nonlinearity (cube roots)
     const lp = cubeRoot(l);
     const mp = cubeRoot(m);
     const sp = cubeRoot(s);
 
-    // LMS (cube roots) → Oklab
+    // to Oklab
     return .{ .vec = .{
         0.2104542553 * lp + 0.7936177850 * mp - 0.0040720468 * sp,
         1.9779984951 * lp - 2.4285922050 * mp + 0.4505937099 * sp,
@@ -50,8 +49,7 @@ pub fn toOklab(self: Self) Oklab {
 }
 
 pub fn toSrgb(self: Self) Srgb {
-    // Fast path for the common fully-black / fully-transparent background pixels;
-    // both return exactly what the general conversion below would produce.
+    // Exact fast path for the common black/transparent background pixels.
     if (@reduce(.And, self.vec == black.vec)) return .black;
     if (@reduce(.And, self.vec == transparent.vec)) return .transparent;
 
@@ -165,8 +163,7 @@ test "toSrgb converts white correctly" {
 }
 
 test "toSrgb rounds correctly near integer boundaries" {
-    // Test value that would truncate incorrectly without @round
-    // Linear 1.0 should produce sRGB 255, not 254
+    // Guards against truncation: 0.9999 must round to 255, not 254.
     const nearly_white = Self.init(0.9999, 0.9999, 0.9999, 0.9999);
     const srgb = nearly_white.toSrgb();
 
@@ -187,12 +184,11 @@ test "toSrgb clamps values outside 0-1 range" {
 }
 
 test "sRGB round-trip preserves values within tolerance" {
-    // Test that Linear -> Srgb -> Linear produces similar results
     const original = Self.init(0.5, 0.25, 0.75, 1.0);
     const srgb = original.toSrgb();
     const back = srgb.toLinear();
 
-    // Allow for quantization error (1/255 ≈ 0.004 in normalized space, amplified by gamma)
+    // 0.01 tolerance: 1/255 quantization amplified by gamma.
     try std.testing.expectApproxEqAbs(original.vec[0], back.vec[0], 0.01);
     try std.testing.expectApproxEqAbs(original.vec[1], back.vec[1], 0.01);
     try std.testing.expectApproxEqAbs(original.vec[2], back.vec[2], 0.01);
@@ -200,20 +196,16 @@ test "sRGB round-trip preserves values within tolerance" {
 }
 
 test "linearToSrgbComponent applies correct gamma curve" {
-    // Below threshold (0.0031308): linear * 12.92
     const low_value = linearToSrgbComponent(0.001);
 
     try std.testing.expectApproxEqAbs(@as(f32, 0.001 * 12.92), low_value, 1e-6);
 
-    // At threshold
     const at_threshold = linearToSrgbComponent(0.0031308);
 
     try std.testing.expectApproxEqAbs(@as(f32, 0.0031308 * 12.92), at_threshold, 1e-5);
 }
 
 test "pow512 computes x^(5/12) correctly" {
-    // x^(5/12) for known values
-    // 0.5^(5/12) ≈ 0.749
     const result = pow512(0.5);
     const expected = std.math.pow(f32, 0.5, 5.0 / 12.0);
 

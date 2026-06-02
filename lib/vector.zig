@@ -20,7 +20,7 @@ pub fn normalize(v: @Vector(2, f32)) @Vector(2, f32) {
     return v / @as(@Vector(2, f32), @splat(magnitude));
 }
 
-/// Returns true if the vector has unit length (with floating point tolerance).
+/// True if length is 1 within tolerance.
 pub fn isNormalized(v: @Vector(2, f32)) bool {
     return @abs(length(v) - 1.0) < tolerance;
 }

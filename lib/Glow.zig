@@ -43,8 +43,7 @@ pub fn renderLine(
     // bounding box falls entirely outside the band.
     if (x_start >= x_end or y_start >= y_end) return;
 
-    // Attenuation fades the line along its length: full brightness before
-    // normalized_distance, then falls off to zero at the endpoint.
+    // Full brightness up to normalized_distance, then fades to zero at the endpoint.
     const attenuation_length = @max(1.0 - attenuation_normalized_distance, std.math.floatEps(f32));
 
     for (y_start..y_end) |local_y| {
@@ -183,12 +182,10 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
     const band = try image.band(Linear, &buffer, size, 0);
     const glow = Self{ .normalized_width = 0.1, .color = Linear.white };
 
-    // Horizontal line from left edge to origin, attenuation starts at 40% along the line
     const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
 
     glow.renderLine(band, viewport, line, 0.4);
 
-    // Sample brightness in the bright zone (10-30% along line) and the attenuated zone (60-90%)
     var bright_sum: f64 = 0;
     var bright_count: u32 = 0;
     var dim_sum: f64 = 0;
@@ -200,7 +197,6 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
 
         if (brightness == 0) continue;
 
-        // normalized_position along line: x=0 is start (-1,0), x=center is end (0,0)
         const position = @as(f32, @floatFromInt(x)) / @as(f32, @floatFromInt(center));
 
         if (position >= 0.1 and position < 0.3) {
@@ -218,7 +214,6 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
     const bright_avg = bright_sum / @as(f64, @floatFromInt(bright_count));
     const dim_avg = dim_sum / @as(f64, @floatFromInt(dim_count));
 
-    // Bright zone (before attenuation) should be significantly brighter
     try std.testing.expect(bright_avg > dim_avg * 3.0);
 }
 

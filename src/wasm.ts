@@ -13,10 +13,8 @@ export interface WasmModule {
 }
 
 const initialMemoryPages = 32;
-// Grow on demand up to the wasm32 ceiling of 65536 pages (4 GiB) — the natural hardware
-// limit, not an arbitrary cap. `maximum` only reserves virtual address space; physical pages
-// are committed lazily as the render arena grows, so a small frame still costs a few MB, and a
-// frame too large to allocate simply fails the grow (render() then returns null).
+// wasm32 ceiling: 65536 pages (4 GiB). `maximum` only reserves address space; pages commit
+// lazily as the render arena grows, so an unallocatable frame fails the grow and render() returns null.
 const maximumMemoryPages = 65536;
 
 let wasmModule: WasmModule | undefined;

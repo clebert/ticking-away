@@ -1,5 +1,4 @@
-// PNG encoder that compresses the image data with std.compress.flate.Compress,
-// the deflate compressor introduced in Zig 0.16.0, at its best level.
+// PNG encoder; compresses image data with deflate at its best level.
 
 const std = @import("std");
 
@@ -69,8 +68,7 @@ fn filterScanlines(
     return data;
 }
 
-/// Compresses data into a zlib stream (RFC 1950) using deflate at the best
-/// compression level. The returned slice is owned by the caller.
+/// Compresses data into a zlib stream RFC 1950. Returned slice owned by caller.
 fn zlibDeflate(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
     const window = try allocator.alloc(u8, std.compress.flate.max_window_len);
 

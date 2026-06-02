@@ -16,17 +16,13 @@ const Watchface = @import("Watchface.zig");
 /// image.height` pixels; `linear_buffer` must hold `image.width * image.height *
 /// factor * factor` pixels, where `factor` is `supersampleFactor(config)`.
 ///
-/// When `config.supersample_enabled` is set, the continuous image is rendered at
-/// `factor × factor` and box-averaged back down in linear light before quantizing,
-/// so geometric edges (prism, hand, rainbow sector) are antialiased while
-/// quantization still lands on exact cube colours. The circle boundary is
-/// antialiased separately by `Crop`.
+/// When `config.supersample_enabled` is set, geometry is rendered at `factor ×
+/// factor` and box-averaged down in linear light before quantizing. The circle
+/// boundary is antialiased separately by `Crop`.
 ///
-/// `config.texture` selects a single, mutually exclusive post-process: `.dither`
-/// quantizes the output to the Pebble cube with Floyd–Steinberg error diffusion,
-/// `.grain` adds film grain to the full-color output, and `.none` emits full-color
-/// sRGB unmodified. Dithering requires `dither_error_buffer` (at least
-/// `dither.errorBufferSize(image.width)` f32); passing `null` falls back to
+/// `config.texture` selects one mutually-exclusive post-process (`.dither`,
+/// `.grain`, `.none`). Dithering needs `dither_error_buffer` (>=
+/// `dither.errorBufferSize(image.width)` f32); a `null` buffer falls back to
 /// full-color output regardless of `config.texture`.
 pub fn render(
     config: Config,
@@ -93,9 +89,8 @@ pub fn render(
     return srgb_band;
 }
 
-/// Supersample factor for `config`: 2 when supersampling is enabled, else 1. Callers
-/// size `linear_buffer` to `width * height * factor * factor`; `render` derives the
-/// same factor, so `config.supersample_enabled` is the single source of truth.
+/// Supersample factor: 2 when `config.supersample_enabled`, else 1. Callers size
+/// `linear_buffer` to `width * height * factor * factor`.
 pub fn supersampleFactor(config: Config) usize {
     return if (config.supersample_enabled) 2 else 1;
 }
@@ -186,9 +181,8 @@ test "render leaves the output full-color when dithering is disabled" {
     const image = Image.init(test_size, test_size);
     const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, null);
 
-    // A continuous render of the rainbow keeps off-cube channel values; if every pixel
-    // happened to land on a cube level the dither and non-dither paths would be
-    // indistinguishable, so assert at least one pixel is genuinely full-color.
+    // A continuous rainbow render keeps off-cube channels, so assert at least one
+    // pixel is genuinely full-color (otherwise dither/non-dither are indistinguishable).
     var has_off_cube = false;
 
     for (band.buffer) |pixel| {
@@ -270,7 +264,6 @@ test "render with supersampling changes edge pixels" {
 
     config.supersample_enabled = true;
 
-    // Supersampled scratch is supersampleFactor(config)^2 times larger than the target.
     var supersampled_linear: [test_size * test_size * 4]Linear = undefined;
     var supersampled_srgb: [test_size * test_size]Srgb = undefined;
 

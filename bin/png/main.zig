@@ -18,8 +18,7 @@ pub fn main(init: std.process.Init) !void {
 
     var config = try lib.Config.init(allocator);
 
-    // The config default may enable grain; the PNG tool ignores it and applies a
-    // texture only when explicitly requested via --grain or --dither.
+    // Ignore config default; apply texture only on --grain/--dither.
     config.texture = if (args.dither) .dither else if (args.grain) .grain else .none;
 
     config.supersample_enabled = args.supersample;
@@ -66,7 +65,7 @@ const Args = struct {
 fn parseArgs(process_args: std.process.Args) ?Args {
     var arguments = process_args.iterate();
 
-    _ = arguments.next(); // skip program name
+    _ = arguments.next();
 
     var positional: [4][]const u8 = undefined;
     var positional_count: usize = 0;

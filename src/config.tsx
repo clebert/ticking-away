@@ -33,13 +33,11 @@ function loadConfig(): Config {
       const result = z.partial(ConfigSchema).safeParse(JSON.parse(item));
 
       if (result.success) {
-        // Spread of full defaults + validated partial always produces a complete Config
+        // Defaults + validated partial = complete Config
         return Object.assign({ ...typedDefaultConfig }, result.data);
       }
     }
-  } catch {
-    // Ignore localStorage errors
-  }
+  } catch {}
 
   return { ...typedDefaultConfig };
 }
@@ -47,9 +45,7 @@ function loadConfig(): Config {
 function saveConfig(config: Config): void {
   try {
     localStorage.setItem(storageKey, JSON.stringify(config));
-  } catch {
-    // Ignore localStorage errors
-  }
+  } catch {}
 }
 
 // --- Context & Provider ---
@@ -90,8 +86,7 @@ export function resetConfig($config: Signal<Config>): void {
 
 const encoder = new TextEncoder();
 
-// Read once from WASM so the overflow guard below can never diverge from the
-// actual config_json_buffer size declared in bin/wasm/main.zig.
+// Source the size from WASM so the overflow guard can't diverge from config_json_buffer (bin/wasm/main.zig).
 let cachedBufferSize = 0;
 
 function configJsonBufferSize(): number {
@@ -102,8 +97,7 @@ function configJsonBufferSize(): number {
   return cachedBufferSize;
 }
 
-// Cached alongside the config signal so writeConfigJson can do a cheap reference
-// check instead of re-stringifying on every render frame.
+// Reference-equality cache so writeConfigJson skips re-stringifying unchanged config each frame.
 let cachedConfigJson = "";
 let cachedConfig: Config | undefined;
 

@@ -85,8 +85,7 @@ fn antialiasAtBoundary(
 }
 
 fn antialiasNearEdge(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) void {
-    // For rows just outside the circle, find the horizontal range where
-    // pixels have partial coverage (top/bottom of the circle).
+    // Rows just outside the circle still have partially covered pixels near the top/bottom arc.
     const outer = radius + 0.5;
     const dx_max_squared = outer * outer - dy * dy;
     if (dx_max_squared < 0.0) return;
@@ -142,10 +141,10 @@ test "apply sets pixels outside circle to outside color" {
 
     crop.apply(band, viewport);
 
-    // Corner pixel (0,0) is outside the unit circle — should be white
+    // Corner pixel (0,0) is outside the crop circle — should be white
     try std.testing.expectEqual(Srgb.white, buffer[0]);
 
-    // Center pixel (5,5) is inside the unit circle — should stay black
+    // Center pixel (5,5) is inside the crop circle — should stay black
     try std.testing.expectEqual(Srgb.black, buffer[5 * 10 + 5]);
 }
 
@@ -160,10 +159,8 @@ test "apply sets transparent outside color" {
 
     crop.apply(band, viewport);
 
-    // Corner pixel should be transparent
     try std.testing.expectEqual(@as(u8, 0), buffer[0].a);
 
-    // Center pixel should remain opaque (default alpha=255)
     try std.testing.expectEqual(@as(u8, 255), buffer[5 * 10 + 5].a);
 }
 
@@ -178,13 +175,11 @@ test "apply handles wide image" {
 
     crop.apply(band, viewport);
 
-    // Far left pixel (0,5) is outside circle in a wide image (circle radius = 5)
+    // Far left pixel (0,5) is outside the crop circle in this wide image
     try std.testing.expectEqual(Srgb.white, buffer[5 * 20 + 0]);
 
-    // Far right pixel (19,5) is also outside
     try std.testing.expectEqual(Srgb.white, buffer[5 * 20 + 19]);
 
-    // Center pixel (10,5) is inside
     try std.testing.expectEqual(Srgb.black, buffer[5 * 20 + 10]);
 }
 
@@ -209,14 +204,13 @@ test "multi-band crop matches single-band crop" {
 
     const crop = Self{ .outside_color = .{ .r = 20, .g = 30, .b = 40 } };
 
-    // Reference: single-band (full height)
     var reference = input;
 
     const full_band = try image.band(Srgb, &reference, height, 0);
 
     crop.apply(full_band, viewport);
 
-    // Test with band heights: 1 (extreme), 2 (even), 3 (odd), 4 (even), 8, 16
+    // Cover extreme (1), odd, and even band heights
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
     for (band_heights) |band_height| {
@@ -265,14 +259,11 @@ test "antialias produces intermediate alpha at circle edge" {
 
     crop.apply(band, viewport);
 
-    // Center pixel should remain fully opaque
     try std.testing.expectEqual(@as(u8, 255), buffer[10 * 20 + 10].a);
 
-    // Corner pixel should be fully transparent
     try std.testing.expectEqual(@as(u8, 0), buffer[0].a);
 
-    // Find an edge pixel with intermediate alpha (proves AA is working).
-    // Scan the middle row for a pixel with 0 < alpha < 255.
+    // An edge pixel with 0 < alpha < 255 proves antialiasing ran.
     var found_intermediate = false;
 
     for (0..20) |x| {

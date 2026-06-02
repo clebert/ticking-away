@@ -3,12 +3,9 @@ const std = @import("std");
 const lib = @import("lib");
 
 comptime {
-    // render() returns a pointer that JS reinterprets as a flat RGBA byte buffer
-    // (a Uint8ClampedArray over WASM memory; see src/renderer.ts). That contract
-    // requires lib.Srgb to be exactly 4 bytes laid out as r, g, b, a with no
-    // padding. lib.Srgb has the default (auto) layout, which the language does
-    // not guarantee — pin the assumption here so a layout change fails the build
-    // instead of silently producing garbled pixels.
+    // JS reads render()'s result as a flat RGBA Uint8ClampedArray (src/renderer.ts),
+    // so Srgb must be exactly r, g, b, a with no padding. Auto layout does not
+    // guarantee this, so pin it:
     std.debug.assert(@sizeOf(lib.Srgb) == 4);
     std.debug.assert(@offsetOf(lib.Srgb, "r") == 0);
     std.debug.assert(@offsetOf(lib.Srgb, "g") == 1);
@@ -44,12 +41,9 @@ fn getConfig(config_json_byte_length: u32) ?lib.Config {
     return cached_config;
 }
 
-// A single grow-only arena for the render buffers, backed directly by
-// @wasmMemoryGrow. Growing by exact page counts (rather than through the general
-// allocator, which rounds large allocations up to a power of two) lets a native
-// full-resolution frame fit tightly — e.g. a 6K canvas needs ~407 MB, not ~642 MB.
-// One contiguous region reused across frames means peak memory equals the largest
-// frame ever rendered, with no fragmentation or resize accumulation.
+// A single grow-only contiguous arena backed by @wasmMemoryGrow, reused across
+// frames. Exact page-count growth avoids the allocator's power-of-two rounding so a
+// native full-res frame fits tightly (a 6K canvas takes ~407 MB, not ~642 MB).
 var arena_base: usize = 0;
 var arena_bytes: usize = 0;
 var arena_initialized: bool = false;
@@ -92,19 +86,15 @@ export fn render(
 
     const supersample_factor = lib.frame.supersampleFactor(config);
 
-    // usize is u32 on wasm32 and this module is built without runtime safety, so the
-    // buffer-size products below would wrap silently for an oversize frame, under-sizing
-    // the arena while the slices still span the true pixel count — a heap overflow. Reject
-    // any frame whose arena footprint does not fit usize; the JS caller treats a null return
-    // as "render failed, keep the previous frame".
+    // usize is u32 on wasm32 and this module runs without runtime safety, so an oversize
+    // frame would wrap these size products silently and under-size the arena (a heap
+    // overflow). Use checked arithmetic and return null on overflow.
     const pixel_count = std.math.mul(usize, image_width, image_height) catch return null;
     const supersampled_count = std.math.mul(usize, pixel_count, supersample_factor * supersample_factor) catch return null;
     const error_count = lib.dither.errorBufferSize(image_width);
 
-    // Lay the three buffers out consecutively in the arena: Linear (16 B, the strictest
-    // alignment) first, then Srgb (4 B), then the f32 error rows — each offset is a multiple
-    // of the next type's size, so every slice stays naturally aligned. The Linear scratch
-    // holds the full supersampled render; downsampling rewrites its front in place.
+    // Lay the buffers out by descending alignment so every offset stays naturally
+    // aligned: Linear (16 B) first, then Srgb (4 B), then the f32 error rows.
     const linear_bytes = std.math.mul(usize, supersampled_count, @sizeOf(lib.Linear)) catch return null;
     const srgb_bytes = std.math.mul(usize, pixel_count, @sizeOf(lib.Srgb)) catch return null;
     const error_bytes = std.math.mul(usize, error_count, @sizeOf(f32)) catch return null;

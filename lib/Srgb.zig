@@ -38,7 +38,6 @@ pub fn srgbToLinearComponent(normalized: f32) f32 {
     return std.math.pow(f32, (normalized + 0.055) / 1.055, 2.4);
 }
 
-/// Rounds a value already in 0–255 sRGB scale and clamps it to a valid byte.
 pub fn clampedByte(value: f32) u8 {
     return @intFromFloat(@round(std.math.clamp(value, 0.0, 255.0)));
 }
@@ -62,7 +61,6 @@ test "toLinear converts white correctly" {
 }
 
 test "toLinear converts mid-gray correctly" {
-    // sRGB 188 should convert to approximately linear 0.5
     const gray: Self = .{ .r = 188, .g = 188, .b = 188, .a = 255 };
     const linear = gray.toLinear();
 
@@ -75,12 +73,10 @@ test "toLinear preserves alpha as normalized value" {
     const half_alpha: Self = .{ .r = 0, .g = 0, .b = 0, .a = 128 };
     const linear = half_alpha.toLinear();
 
-    // Alpha is linear, not gamma-corrected: 128/255 ≈ 0.502
     try std.testing.expectApproxEqAbs(@as(f32, 128.0 / 255.0), linear.vec[3], 1e-6);
 }
 
 test "srgbByteToLinear uses linear formula below threshold" {
-    // Values below threshold (0.04045 * 255 ≈ 10.3) use linear formula
     const result = srgbByteToLinear(10);
     const normalized = 10.0 / 255.0;
     const expected = normalized / 12.92;
@@ -89,7 +85,6 @@ test "srgbByteToLinear uses linear formula below threshold" {
 }
 
 test "srgbByteToLinear uses gamma formula above threshold" {
-    // Values above threshold use gamma formula
     const result = srgbByteToLinear(128);
     const normalized = 128.0 / 255.0;
     const expected = std.math.pow(f32, (normalized + 0.055) / 1.055, 2.4);

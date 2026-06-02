@@ -1,9 +1,7 @@
 //! Floyd–Steinberg error-diffusion dithering to the 64-colour Pebble cube (every
-//! channel in {0, 85, 170, 255}). Each channel is quantized in the gamma-encoded
-//! sRGB domain — where the four cube levels are evenly spaced 85 apart — and its
-//! rounding error is diffused to neighbouring pixels with the standard 7/3/5/1
-//! weights along a serpentine scan, the texture that lets the four-level cube
-//! resolve a smooth gradient.
+//! channel in {0, 85, 170, 255}). Channels are quantized in the gamma-encoded
+//! sRGB domain (cube levels evenly spaced 85 apart) and rounding error is
+//! diffused with the standard 7/3/5/1 weights along a serpentine scan.
 //!
 //! The only state is a two-row error buffer the caller owns and sizes with
 //! `errorBufferSize(width)`. Pending row errors are carried forward between bands,
@@ -43,8 +41,7 @@ pub fn apply(
 
     if (error_buffer.len < stride * 2) return error.BufferSizeMismatch;
 
-    // Zero both rows for the first band of each frame; later bands carry pending
-    // errors forward in row 0 (row 1 is left clean by the previous band).
+    // Zero both rows on the first band; later bands inherit pending errors in row 0.
     if (band.y_offset == 0) {
         @memset(error_buffer[0 .. stride * 2], 0);
     }

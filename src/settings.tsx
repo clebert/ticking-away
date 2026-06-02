@@ -67,9 +67,7 @@ function loadSettings(): Settings {
         return Object.assign({ ...defaults }, result.data);
       }
     }
-  } catch {
-    // Ignore localStorage errors
-  }
+  } catch {}
 
   return defaults;
 }
@@ -77,7 +75,5 @@ function loadSettings(): Settings {
 function saveSettings(settings: Settings): void {
   try {
     localStorage.setItem(storageKey, JSON.stringify(settings));
-  } catch {
-    // Ignore localStorage errors
-  }
+  } catch {}
 }

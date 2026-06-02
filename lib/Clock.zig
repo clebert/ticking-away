@@ -8,8 +8,8 @@ const vector = @import("vector.zig");
 
 const Self = @This();
 
-const hour_arc: f32 = std.math.pi / 6.0; // 2π/12 = π/6 ≈ 30° (one hour moves 30°)
-const apex_angle: f32 = -std.math.pi / 2.0; // −π/2 (−90°, 12 o'clock)
+const hour_arc: f32 = std.math.pi / 6.0; // 30° per hour-step on the dial
+const apex_angle: f32 = -std.math.pi / 2.0; // 12 o'clock (apex, top of dial)
 const rainbow_max_spread_radians: f32 = std.math.pi / 6.0;
 
 prism: Prism,
