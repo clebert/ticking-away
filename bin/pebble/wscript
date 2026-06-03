@@ -1,0 +1,44 @@
+# Pebble waf build. Mirrors `pebble new-project`'s default wscript, with one
+# port-specific line: the freestanding Thumb render core (libwatchface.a, built by
+# `zig build pebble-lib`) is appended to the link so the C shell can call
+# pebbleRenderBand. The SDK builds every platform's app objects for the ARMv7-M
+# baseline (-mcpu=cortex-m3), so the one archive serves them all.
+
+top = '.'
+out = 'build'
+
+
+def options(ctx):
+    ctx.load('pebble_sdk')
+
+
+def configure(ctx):
+    ctx.load('pebble_sdk')
+
+
+def build(ctx):
+    ctx.load('pebble_sdk')
+
+    binaries = []
+
+    watchface_lib = ctx.path.make_node('libwatchface.a').abspath()
+
+    cached_env = ctx.env
+    for platform in ctx.env.TARGET_PLATFORMS:
+        ctx.env = ctx.all_envs[platform]
+        ctx.set_group(ctx.env.PLATFORM_NAME)
+
+        # LINKFLAGS precede the app objects on the gcc command line, so the archive
+        # would be discarded before main.o references it; --whole-archive forces its
+        # members in regardless of order. Its __aeabi_*/libm refs still resolve from
+        # the libgcc/newlib gcc appends at the end.
+        ctx.env.append_value('LINKFLAGS', ['-Wl,--whole-archive', watchface_lib, '-Wl,--no-whole-archive'])
+
+        app_elf = '{}/pebble-app.elf'.format(ctx.env.BUILD_DIR)
+        ctx.pbl_build(source=ctx.path.ant_glob('*.c'), target=app_elf, bin_type='app')
+
+        binaries.append({'platform': platform, 'app_elf': app_elf})
+    ctx.env = cached_env
+
+    ctx.set_group('bundle')
+    ctx.pbl_bundle(binaries=binaries, js=[])

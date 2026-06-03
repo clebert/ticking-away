@@ -11,10 +11,23 @@ const Srgb = @import("Srgb.zig");
 const Time = @import("Time.zig");
 const Watchface = @import("Watchface.zig");
 
-/// Renders a single watchface frame from `config` into `srgb_buffer` and returns
-/// the resulting sRGB band. `srgb_buffer` must hold exactly `image.width *
-/// image.height` pixels; `linear_buffer` must hold `image.width * image.height *
-/// factor * factor` pixels, where `factor` is `supersampleFactor(config)`.
+/// Renders a whole watchface frame in one band; see `renderBand`.
+pub fn render(
+    config: Config,
+    time: Time,
+    image: Image,
+    linear_buffer: []Linear,
+    srgb_buffer: []Srgb,
+    dither_error_buffer: ?[]f32,
+) !Image.Band(Srgb) {
+    return renderBand(config, time, image, image.height, 0, linear_buffer, srgb_buffer, dither_error_buffer);
+}
+
+/// Renders strip `band_index` (height `band_height`) of the watchface from
+/// `config` into `srgb_buffer` and returns the resulting sRGB band.
+/// `srgb_buffer` must hold exactly `image.width * band_height` pixels;
+/// `linear_buffer` must hold `image.width * band_height * factor * factor`
+/// pixels, where `factor` is `supersampleFactor(config)`.
 ///
 /// When `config.supersample_enabled` is set, geometry is rendered at `factor ×
 /// factor` and box-averaged down in linear light before quantizing. The circle
@@ -23,11 +36,15 @@ const Watchface = @import("Watchface.zig");
 /// `config.texture` selects one mutually-exclusive post-process (`.dither`,
 /// `.grain`, `.none`). Dithering needs `dither_error_buffer` (>=
 /// `dither.errorBufferSize(image.width)` f32); a `null` buffer falls back to
-/// full-color output regardless of `config.texture`.
-pub fn render(
+/// full-color output regardless of `config.texture`. The dither carries error
+/// forward between bands, so strips must be rendered in increasing `band_index`
+/// order with the same `dither_error_buffer` (it is zeroed on `band_index` 0).
+pub fn renderBand(
     config: Config,
     time: Time,
     image: Image,
+    band_height: usize,
+    band_index: usize,
     linear_buffer: []Linear,
     srgb_buffer: []Srgb,
     dither_error_buffer: ?[]f32,
@@ -54,15 +71,15 @@ pub fn render(
         .rainbow_palette_id = config.rainbow_palette_id,
     };
 
-    const supersampled_band = try supersampled.band(Linear, linear_buffer, supersampled.height, 0);
+    const supersampled_band = try supersampled.band(Linear, linear_buffer, band_height * supersample, band_index);
 
     watchface.render(supersampled_band, supersampled.viewport(), clock);
 
     if (supersample > 1) {
-        downsample(linear_buffer, image.width, image.height, supersample);
+        downsample(linear_buffer, image.width, band_height, supersample);
     }
 
-    const linear_band = try image.band(Linear, linear_buffer[0 .. image.width * image.height], image.height, 0);
+    const linear_band = try image.band(Linear, linear_buffer[0 .. image.width * band_height], band_height, band_index);
 
     // Grain textures the 8-bit sRGB output, whereas dither replaces the sRGB
     // conversion entirely by quantizing the continuous linear image to the cube.
@@ -226,6 +243,37 @@ test "render perturbs the sRGB output when texture is grain" {
     }
 
     try std.testing.expect(differs);
+}
+
+test "renderBand strip-by-strip matches a single full-height render" {
+    var config = try Config.init(std.testing.allocator);
+
+    config.texture = .dither;
+    config.supersample_enabled = true;
+
+    const image = Image.init(test_size, test_size);
+
+    var reference_linear: [test_size * test_size * 4]Linear = undefined;
+    var reference_srgb: [test_size * test_size]Srgb = undefined;
+    var reference_error: [dither.errorBufferSize(test_size)]f32 = undefined;
+
+    const reference = try render(config, test_time, image, &reference_linear, &reference_srgb, &reference_error);
+    const reference_copy = reference.buffer[0 .. test_size * test_size].*;
+
+    const band_height = 1;
+
+    var band_linear: [test_size * band_height * 4]Linear = undefined;
+    var band_srgb: [test_size * band_height]Srgb = undefined;
+    var band_error: [dither.errorBufferSize(test_size)]f32 = undefined;
+    var banded: [test_size * test_size]Srgb = undefined;
+
+    for (0..test_size / band_height) |band_index| {
+        const strip = try renderBand(config, test_time, image, band_height, band_index, &band_linear, &band_srgb, &band_error);
+
+        @memcpy(banded[band_index * band_height * test_size ..][0 .. band_height * test_size], strip.buffer);
+    }
+
+    try std.testing.expectEqualSlices(Srgb, &reference_copy, &banded);
 }
 
 test "downsample averages each source block in place" {

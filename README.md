@@ -13,7 +13,8 @@ refracts light into a rainbow.
 
 - **[Web demo](https://clebert.github.io/ticking-away/)** — runs in the browser via WebAssembly; try
   different settings and preview the watchface.
-- **[Pebble Round 2](https://repebble.com/watch)** — smartwatch (planned)
+- **[Pebble Round 2](https://repebble.com/watch)** — smartwatch (`gabbro`, 260×260); see
+  [Pebble Watchface](#pebble-watchface)
 
 ## Concept
 
@@ -58,4 +59,29 @@ zig-out/bin/png 1964 7 14 wallpaper-14-inch.png --grain --supersample
 ```bash
 zig build png -Doptimize=ReleaseFast && \
 zig-out/bin/png 2234 7 14 wallpaper-16-inch.png --grain --supersample
+```
+
+## Pebble Watchface
+
+The watchface also runs on the **Pebble Round 2** (`gabbro`, 260×260). The Zig render core in `lib/`
+is cross-compiled to a freestanding Thumb static library and linked into a thin C app shell under
+[`bin/pebble`](bin/pebble).
+
+Install the Pebble SDK once — it provides the `pebble` CLI, the arm-none-eabi toolchain, and the
+QEMU emulator:
+
+```bash
+uv tool install pebble-tool --python 3.13
+pebble sdk install latest
+```
+
+Then cross-compile the render core, link the `.pbw`, and run it in the emulator:
+
+```bash
+zig build pebble-lib              # cross-compile bin/pebble/libwatchface.a
+cd bin/pebble
+pebble build                      # link the .pbw
+pebble install --emulator gabbro  # boot QEMU and install; re-run if the first
+                                  # call times out while the firmware boots
+pebble screenshot watchface.png   # capture the rendered frame
 ```

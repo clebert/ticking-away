@@ -1,6 +1,9 @@
 /.zig-cache/
 /bin/*/*
 !/bin/*/*.zig
+!/bin/*/*.c
+!/bin/pebble/package.json
+!/bin/pebble/wscript
 /dist/
 /node_modules/
 /public/*.wasm

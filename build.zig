@@ -9,7 +9,64 @@ pub fn build(b: *std.Build) void {
     b.default_step.dependOn(buildWasmModule(b, check_step));
 
     buildPngBinary(b, target, optimize, check_step);
+    buildPebbleLibrary(b, check_step);
     buildTests(b, target, optimize);
+}
+
+/// Builds the render core plus its C-ABI wrapper as a freestanding Thumb static
+/// library that bin/pebble/wscript links into the Pebble app. The Pebble app ABI
+/// is soft-float, so the target is `eabi` (not `eabihf`) and the `@Vector` math
+/// scalarizes; PIC matches the app loader's relocatable model. compiler_rt is
+/// left out so the `__aeabi_*` soft-float helpers resolve from the SDK's libgcc
+/// at the final link rather than clashing with it.
+///
+/// The SDK compiles app objects for the ARMv7-M baseline (`-mcpu=cortex-m3`, the
+/// FPU-less floor across all Pebble platforms), so this archive must match it or
+/// the ELF architecture attributes conflict at link time.
+fn buildPebbleLibrary(b: *std.Build, check_step: *std.Build.Step) void {
+    const target = b.resolveTargetQuery(.{
+        .cpu_arch = .thumb,
+        .os_tag = .freestanding,
+        .abi = .eabi,
+        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m3 },
+    });
+
+    const optimize: std.builtin.OptimizeMode = .ReleaseSmall;
+
+    const lib = b.addLibrary(.{
+        .name = "watchface",
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bin/pebble/render.zig"),
+            .target = target,
+            .optimize = optimize,
+            .strip = true,
+            .pic = true,
+            .unwind_tables = .none,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                    .strip = true,
+                    .pic = true,
+                    .unwind_tables = .none,
+                }) },
+            },
+        }),
+    });
+
+    lib.bundle_compiler_rt = false;
+
+    const lib_install = b.addInstallArtifact(lib, .{
+        .dest_dir = .{ .override = .{ .custom = "../bin/pebble" } },
+    });
+
+    const step = b.step("pebble-lib", "Build the Pebble watchface static library");
+
+    step.dependOn(&lib_install.step);
+
+    check_step.dependOn(&lib.step);
 }
 
 fn buildWasmModule(b: *std.Build, check_step: *std.Build.Step) *std.Build.Step {

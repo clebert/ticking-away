@@ -1,0 +1,27 @@
+{
+  "name": "ticking-away",
+  "author": "Clemens Akens",
+  "version": "1.0.0",
+  "private": true,
+  "keywords": [
+    "pebble-app"
+  ],
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Ticking Away",
+    "uuid": "496f4ff3-81c4-47d6-9817-fc56f60ed216",
+    "sdkVersion": "3",
+    "enableMultiJS": false,
+    "targetPlatforms": [
+      "gabbro"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "resources": {
+      "media": []
+    },
+    "messageKeys": [],
+    "capabilities": []
+  }
+}
