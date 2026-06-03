@@ -15,16 +15,13 @@ const width = 260;
 const band_height = 1;
 const supersample = 2;
 
-// The Pebble profile mirrors lib/config.json's geometry but forces dither (the
-// 64-colour cube is the panel's native palette) and supersampling (it softens the
-// residual chroma speckle the coarse cube leaves on the near-neutral prism glow).
 const config = lib.Config{
-    .background_enabled = true,
+    .background_enabled = false,
     .prism_normalized_size = 0.9,
     .prism_glow_linear_green = 0.75,
     .prism_glow_normalized_width = 0.07,
     .rainbow_normalized_spread = 0.5,
-    .hand_glow_normalized_width = 0.01,
+    .hand_glow_normalized_width = 0.02,
     .rainbow_palette_id = .oklch_balanced,
     .texture = .dither,
     .grain_normalized_deviation = 0.1,
