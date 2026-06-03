@@ -10,96 +10,124 @@ antialias: bool = false,
 
 pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
     const radius = viewport.scale - 1.0;
-    const radius_squared = radius * radius;
     const center_x = viewport.center[0];
     const center_y = viewport.center[1];
 
     for (0..band.bandHeight()) |local_y| {
         const y: f32 = @floatFromInt(band.imageY(local_y));
         const dy = y + 0.5 - center_y;
-        const dx_max_squared = radius_squared - dy * dy;
-
         const row = band.buffer[local_y * band.width ..][0..band.width];
 
-        if (dx_max_squared < 0.0) {
-            @memset(row, self.outside_color);
-
-            if (self.antialias) {
-                self.antialiasNearEdge(row, center_x, dy, radius);
-            }
-
-            continue;
-        }
-
-        const dx_max = @sqrt(dx_max_squared);
-        const x_low = center_x - 0.5 - dx_max;
-        const x_high = center_x - 0.5 + dx_max;
-
-        // @ceil keeps the left/right margins symmetric.
-        const x_start: usize = if (x_low < 0) 0 else @intFromFloat(@ceil(x_low));
-
-        const x_end: usize = @min(
-            if (x_high < 0) 0 else @as(usize, @intFromFloat(x_high)) + 1,
-            band.width,
-        );
-
-        if (x_start > 0) {
-            @memset(row[0..x_start], self.outside_color);
-        }
-
-        if (x_end < band.width) {
-            @memset(row[x_end..band.width], self.outside_color);
-        }
-
         if (self.antialias) {
-            self.antialiasAtBoundary(row, center_x, dy, radius, x_start, x_end);
+            self.applyAntialiasedRow(row, center_x, dy, radius);
+        } else {
+            self.applyHardRow(row, center_x, dy, radius);
         }
     }
 }
 
-fn antialiasAtBoundary(
-    self: Self,
-    row: []Srgb,
-    center_x: f32,
-    dy: f32,
-    radius: f32,
-    x_start: usize,
-    x_end: usize,
-) void {
-    const left_from = if (x_start > 1) x_start - 1 else 0;
-    const left_to = @min(x_start + 1, row.len);
+fn applyHardRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) void {
+    const dx_max_squared = radius * radius - dy * dy;
 
-    for (left_from..left_to) |x| {
-        self.blendPixel(&row[x], pixelCoverage(center_x, dy, radius, x));
+    if (dx_max_squared < 0.0) {
+        @memset(row, self.outside_color);
+
+        return;
     }
-
-    const right_from = if (x_end > 1) x_end - 1 else 0;
-    const right_to = @min(x_end + 1, row.len);
-
-    for (right_from..right_to) |x| {
-        if (x >= left_from and x < left_to) continue;
-
-        self.blendPixel(&row[x], pixelCoverage(center_x, dy, radius, x));
-    }
-}
-
-fn antialiasNearEdge(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) void {
-    // Rows just outside the circle still have partially covered pixels near the top/bottom arc.
-    const outer = radius + 0.5;
-    const dx_max_squared = outer * outer - dy * dy;
-    if (dx_max_squared < 0.0) return;
 
     const dx_max = @sqrt(dx_max_squared);
     const x_low = center_x - 0.5 - dx_max;
     const x_high = center_x - 0.5 + dx_max;
 
-    const from: usize = if (x_low < 0) 0 else @intFromFloat(@floor(x_low));
+    // @ceil keeps the left/right margins symmetric.
+    const x_start: usize = if (x_low < 0) 0 else @intFromFloat(@ceil(x_low));
 
-    const to: usize =
-        @min(if (x_high < 0) 0 else @as(usize, @intFromFloat(@ceil(x_high))) + 1, row.len);
+    const x_end: usize = @min(
+        if (x_high < 0) 0 else @as(usize, @intFromFloat(x_high)) + 1,
+        row.len,
+    );
 
+    if (x_start > 0) {
+        @memset(row[0..x_start], self.outside_color);
+    }
+
+    if (x_end < row.len) {
+        @memset(row[x_end..row.len], self.outside_color);
+    }
+}
+
+// A pixel is fully covered within radius - 0.5 of the centre and fully outside beyond
+// radius + 0.5; the one-pixel band between is the antialiased rim. Grading every covered
+// pixel by its own coverage smooths the whole rim: along the near-horizontal top and bottom
+// arcs the partially covered pixels span the middle of a row, not only its edges.
+fn applyAntialiasedRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) void {
+    const outer = radius + 0.5;
+    const outer_squared = outer * outer - dy * dy;
+
+    if (outer_squared <= 0.0) {
+        @memset(row, self.outside_color);
+
+        return;
+    }
+
+    const outer_dx = @sqrt(outer_squared);
+    const covered_low = center_x - 0.5 - outer_dx;
+    const covered_high = center_x - 0.5 + outer_dx;
+
+    const covered_start: usize = if (covered_low < 0) 0 else @intFromFloat(@floor(covered_low));
+
+    const covered_end: usize = @min(
+        if (covered_high < 0) 0 else @as(usize, @intFromFloat(@floor(covered_high))) + 1,
+        row.len,
+    );
+
+    if (covered_start > 0) {
+        @memset(row[0..covered_start], self.outside_color);
+    }
+
+    if (covered_end < row.len) {
+        @memset(row[covered_end..row.len], self.outside_color);
+    }
+
+    const inner = radius - 0.5;
+    const inner_squared = inner * inner - dy * dy;
+
+    if (inner_squared <= 0.0) {
+        // Near the top and bottom of the circle the rim spans the whole covered run with no
+        // fully opaque core, so every covered pixel belongs to the antialiased arc.
+        self.blendRim(row, center_x, dy, radius, covered_start, covered_end);
+
+        return;
+    }
+
+    const inner_dx = @sqrt(inner_squared);
+    const core_low = center_x - 0.5 - inner_dx;
+    const core_high = center_x - 0.5 + inner_dx;
+
+    const core_start: usize = if (core_low < 0) 0 else @intFromFloat(@ceil(core_low));
+
+    const core_end: usize = @min(
+        if (core_high < 0) 0 else @as(usize, @intFromFloat(@floor(core_high))) + 1,
+        row.len,
+    );
+
+    self.blendRim(row, center_x, dy, radius, covered_start, @min(core_start, covered_end));
+    self.blendRim(row, center_x, dy, radius, @max(core_end, covered_start), covered_end);
+}
+
+fn blendRim(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32, from: usize, to: usize) void {
     for (from..to) |x| {
-        self.blendPixel(&row[x], pixelCoverage(center_x, dy, radius, x));
+        const coverage = pixelCoverage(center_x, dy, radius, x);
+
+        if (coverage >= 1.0) continue;
+
+        if (coverage <= 0.0) {
+            row[x] = self.outside_color;
+
+            continue;
+        }
+
+        self.blendPixel(&row[x], coverage);
     }
 }
 
@@ -111,8 +139,6 @@ fn pixelCoverage(center_x: f32, dy: f32, radius: f32, x: usize) f32 {
 }
 
 fn blendPixel(self: Self, pixel: *Srgb, coverage: f32) void {
-    if (coverage >= 1.0 or coverage <= 0.0) return;
-
     const inverse_coverage = 1.0 - coverage;
 
     pixel.* = .{
@@ -271,6 +297,47 @@ test "antialias produces intermediate alpha at circle edge" {
     }
 
     try std.testing.expect(found_intermediate);
+}
+
+test "antialias grades the entire near-horizontal top arc" {
+    const size = 128;
+    const image = Image.init(size, size);
+    const viewport = image.viewport();
+
+    var buffer = [_]Srgb{Srgb.white} ** (size * size);
+
+    const band = try image.band(Srgb, &buffer, size, 0);
+    const crop = Self{ .outside_color = Srgb.transparent, .antialias = true };
+
+    crop.apply(band, viewport);
+
+    var y_top: usize = 0;
+
+    outer: while (y_top < size) : (y_top += 1) {
+        for (0..size) |x| {
+            if (buffer[y_top * size + x].a != 0) break :outer;
+        }
+    }
+
+    var graded_count: usize = 0;
+    var opaque_count: usize = 0;
+
+    for (0..size) |x| {
+        const alpha = buffer[y_top * size + x].a;
+
+        if (alpha == 0) continue;
+
+        if (alpha == 255) {
+            opaque_count += 1;
+        } else {
+            graded_count += 1;
+        }
+    }
+
+    // The topmost covered row is a graded arc: nearly every covered pixel is partially
+    // transparent, and only the apex can round to full opacity (at most a couple of pixels).
+    try std.testing.expect(graded_count > 4);
+    try std.testing.expect(opaque_count <= 2);
 }
 
 test "multi-band antialias crop matches single-band" {
