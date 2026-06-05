@@ -15,6 +15,8 @@ refracts light into a rainbow.
   different settings and preview the watchface.
 - **[Pebble Round 2](https://repebble.com/watch)** — smartwatch (`gabbro`, 260×260); see
   [Pebble Watchface](#pebble-watchface)
+- **[TRMNL OG](https://usetrmnl.com/)** — 7.5″ 800×480 e-ink display driven bare-metal on an
+  ESP32-C3; see [TRMNL Watchface](#trmnl-watchface)
 
 ## Concept
 
@@ -85,3 +87,57 @@ pebble install --emulator gabbro  # boot QEMU and install; re-run if the first
                                   # call times out while the firmware boots
 pebble screenshot watchface.png   # capture the rendered frame
 ```
+
+## TRMNL Watchface
+
+The watchface also runs on the **[TRMNL OG](https://usetrmnl.com/)** — a 7.5″ 800×480 UC8179 e-ink
+panel driven by an ESP32-C3. The Zig render core in `lib/` is cross-compiled to a bare-metal RV32IMC
+firmware under [`bin/trmnl`](bin/trmnl) that bit-bangs the panel directly: no ESP-IDF, no
+second-stage bootloader. The prism and rainbow are dithered to the panel's four greyscale levels
+with the same Floyd–Steinberg core the Pebble target uses.
+
+The image is RAM-resident — a custom linker script lays it entirely into SRAM, and the ESP32-C3 ROM
+first-stage loader copies it in and jumps to the entry point (Espressif "Simple Boot"), so the flash
+holds nothing but the raw image at offset `0x0`.
+
+Flashing uses **[espflash](https://github.com/esp-rs/espflash)**:
+
+```bash
+brew install espflash
+```
+
+### Enter download mode
+
+The TRMNL has two controls: a power slide switch and a circular **boot button** below it. The
+ESP32-C3 has no auto-reset wired to USB, so download mode is entered by hand:
+
+1. Plug a data USB-C cable into the TRMNL — it enumerates as `/dev/cu.usbmodem*`, the ESP32-C3's
+   native USB-Serial-JTAG (no driver, no external adapter).
+2. Slide the power switch **off**.
+3. **Hold the boot button** while sliding the switch **on**, then release.
+
+Confirm it is listening with `espflash list-ports` (look for an "Espressif USB JTAG/serial debug
+unit"). Re-run this sequence before each flash: once the firmware's render loop takes over the chip
+leaves download mode.
+
+### Build and flash
+
+The image is bare-metal (not an ESP-IDF app) and is reached without a reset, so every device-facing
+espflash call needs `--before no-reset` (talk to the manually-entered ROM loader, don't toggle
+DTR/RTS) and `--ignore-app-descriptor` (skip the ESP-IDF app-header check):
+
+```bash
+zig build trmnl                                                   # build zig-out/bin/trmnl
+
+# Run once from RAM — volatile, reverts to the stock firmware on reset (best for iterating):
+espflash flash --chip esp32c3 --ram --no-stub --before no-reset --after no-reset \
+  --ignore-app-descriptor zig-out/bin/trmnl
+
+# Or install persistently to flash offset 0x0 (no bootloader, no partition table), then power-cycle:
+espflash save-image --chip esp32c3 --ignore-app-descriptor zig-out/bin/trmnl zig-out/bin/trmnl.bin
+espflash write-bin --chip esp32c3 --before no-reset 0x0 zig-out/bin/trmnl.bin
+```
+
+A full e-ink refresh takes a few seconds; the watchface then holds on screen with no power. Writing
+to flash overwrites the stock firmware — restore it any time via
+[trmnl.com/flash](https://trmnl.com/flash).

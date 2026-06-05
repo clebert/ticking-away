@@ -2,6 +2,7 @@
 /bin/*/*
 !/bin/*/*.zig
 !/bin/*/*.c
+!/bin/*/*.ld
 !/bin/pebble/package.json
 !/bin/pebble/wscript
 /dist/
