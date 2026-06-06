@@ -41,9 +41,6 @@ const width = 800;
 const height = 480;
 const plane_bytes = width * height / 8;
 const band_height = 1;
-// No supersampling: with software floats it would quadruple the render time, and the
-// Floyd–Steinberg dither already hides the aliased edges on the panel.
-const supersample = 1;
 
 // Calibration: draw the four solid levels as equal vertical bars (black .. white, left
 // to right) instead of the watchface, to photograph the panel and measure each shade's
@@ -60,8 +57,13 @@ const config = lib.Config{
     .rainbow_palette_id = .oklch_balanced,
     .texture = .dither_trmnl,
     .grain_normalized_deviation = 0.1,
+    // No supersampling: with software floats it would quadruple the render time, and
+    // the Floyd–Steinberg dither already hides the aliased edges on the panel.
     .supersample_enabled = false,
 };
+
+// Derived from config so linear_buffer's size always matches the factor renderBand uses.
+const supersample = lib.frame.supersampleFactor(config);
 
 const image = lib.Image.init(width, height);
 

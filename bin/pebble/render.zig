@@ -13,7 +13,6 @@ pub const panic = std.debug.FullPanic(struct {
 
 const width = 260;
 const band_height = 1;
-const supersample = 2;
 
 const config = lib.Config{
     .background_enabled = false,
@@ -27,6 +26,9 @@ const config = lib.Config{
     .grain_normalized_deviation = 0.1,
     .supersample_enabled = true,
 };
+
+// Derived from config so linear_buffer's size always matches the factor renderBand uses.
+const supersample = lib.frame.supersampleFactor(config);
 
 const image = lib.Image.init(width, width);
 
