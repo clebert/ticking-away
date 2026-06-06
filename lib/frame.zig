@@ -3,7 +3,8 @@ const std = @import("std");
 const Clock = @import("Clock.zig");
 const Config = @import("Config.zig");
 const Crop = @import("Crop.zig");
-const dither = @import("dither.zig");
+const dither_pebble = @import("dither_pebble.zig");
+const dither_trmnl = @import("dither_trmnl.zig");
 const Grain = @import("Grain.zig");
 const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
@@ -33,12 +34,14 @@ pub fn render(
 /// factor` and box-averaged down in linear light before quantizing. The circle
 /// boundary is antialiased separately by `Crop`.
 ///
-/// `config.texture` selects one mutually-exclusive post-process (`.dither`,
-/// `.grain`, `.none`). Dithering needs `dither_error_buffer` (>=
-/// `dither.errorBufferSize(image.width)` f32); a `null` buffer falls back to
-/// full-color output regardless of `config.texture`. The dither carries error
-/// forward between bands, so strips must be rendered in increasing `band_index`
-/// order with the same `dither_error_buffer` (it is zeroed on `band_index` 0).
+/// `config.texture` selects one mutually-exclusive post-process
+/// (`.dither_pebble`, `.dither_trmnl`, `.grain`, `.none`). Both dithers need
+/// `dither_error_buffer` (>= the active module's `errorBufferSize(image.width)`
+/// f32; size it for `dither_pebble`, the larger, when the texture can change at
+/// runtime); a `null` buffer falls back to full-color output regardless of
+/// `config.texture`. The dither carries error forward between bands, so strips
+/// must be rendered in increasing `band_index` order with the same
+/// `dither_error_buffer` (it is zeroed on `band_index` 0).
 pub fn renderBand(
     config: Config,
     time: Time,
@@ -81,15 +84,20 @@ pub fn renderBand(
 
     const linear_band = try image.band(Linear, linear_buffer[0 .. image.width * band_height], band_height, band_index);
 
-    // Grain textures the 8-bit sRGB output, whereas dither replaces the sRGB
-    // conversion entirely by quantizing the continuous linear image to the cube.
+    // Grain textures the 8-bit sRGB output, whereas the dithers replace the sRGB
+    // conversion entirely: dither_pebble quantizes to the 64-colour cube,
+    // dither_trmnl to the e-ink panel's four greyscale levels.
     const grain = Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-    const dithering = config.texture == .dither and dither_error_buffer != null;
+    const srgb_band = blk: {
+        if (dither_error_buffer != null) {
+            switch (config.texture) {
+                .dither_pebble => break :blk try dither_pebble.apply(linear_band, srgb_buffer, dither_error_buffer.?),
+                .dither_trmnl => break :blk try dither_trmnl.apply(linear_band, srgb_buffer, dither_error_buffer.?),
+                else => {},
+            }
+        }
 
-    const srgb_band = if (dithering)
-        try dither.apply(linear_band, srgb_buffer, dither_error_buffer.?)
-    else blk: {
         const continuous = try linear_band.toSrgb(srgb_buffer);
 
         if (config.texture == .grain) grain.apply(continuous);
@@ -164,14 +172,14 @@ test "render produces visible non-black output with defaults" {
     try std.testing.expect(sum > 0);
 }
 
-test "render quantizes to the cube when dithering is enabled" {
+test "render quantizes to the cube when pebble dithering is enabled" {
     var config = try Config.init(std.testing.allocator);
 
-    config.texture = .dither;
+    config.texture = .dither_pebble;
 
     var linear_buffer: [test_size * test_size]Linear = undefined;
     var srgb_buffer: [test_size * test_size]Srgb = undefined;
-    var error_buffer: [dither.errorBufferSize(test_size)]f32 = undefined;
+    var error_buffer: [dither_pebble.errorBufferSize(test_size)]f32 = undefined;
 
     const image = Image.init(test_size, test_size);
     const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, &error_buffer);
@@ -181,9 +189,32 @@ test "render quantizes to the cube when dithering is enabled" {
         // only fully-opaque interior pixels are guaranteed to be exact cube colours.
         if (pixel.a != 255) continue;
 
-        try std.testing.expect(dither.isCubeChannel(pixel.r));
-        try std.testing.expect(dither.isCubeChannel(pixel.g));
-        try std.testing.expect(dither.isCubeChannel(pixel.b));
+        try std.testing.expect(dither_pebble.isCubeChannel(pixel.r));
+        try std.testing.expect(dither_pebble.isCubeChannel(pixel.g));
+        try std.testing.expect(dither_pebble.isCubeChannel(pixel.b));
+    }
+}
+
+test "render quantizes to neutral greys when trmnl dithering is enabled" {
+    var config = try Config.init(std.testing.allocator);
+
+    config.texture = .dither_trmnl;
+
+    var linear_buffer: [test_size * test_size]Linear = undefined;
+    var srgb_buffer: [test_size * test_size]Srgb = undefined;
+    var error_buffer: [dither_trmnl.errorBufferSize(test_size)]f32 = undefined;
+
+    const image = Image.init(test_size, test_size);
+    const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, &error_buffer);
+
+    for (band.buffer) |pixel| {
+        // Only fully-opaque interior pixels are guaranteed exact grey levels; the
+        // antialiased rim blends toward the transparent outside colour.
+        if (pixel.a != 255) continue;
+
+        try std.testing.expect(dither_trmnl.isGreyLevel(pixel.r));
+        try std.testing.expectEqual(pixel.r, pixel.g);
+        try std.testing.expectEqual(pixel.r, pixel.b);
     }
 }
 
@@ -203,7 +234,7 @@ test "render leaves the output full-color when dithering is disabled" {
     var has_off_cube = false;
 
     for (band.buffer) |pixel| {
-        if (!dither.isCubeChannel(pixel.r) or !dither.isCubeChannel(pixel.g) or !dither.isCubeChannel(pixel.b)) {
+        if (!dither_pebble.isCubeChannel(pixel.r) or !dither_pebble.isCubeChannel(pixel.g) or !dither_pebble.isCubeChannel(pixel.b)) {
             has_off_cube = true;
             break;
         }
@@ -248,14 +279,14 @@ test "render perturbs the sRGB output when texture is grain" {
 test "renderBand strip-by-strip matches a single full-height render" {
     var config = try Config.init(std.testing.allocator);
 
-    config.texture = .dither;
+    config.texture = .dither_pebble;
     config.supersample_enabled = true;
 
     const image = Image.init(test_size, test_size);
 
     var reference_linear: [test_size * test_size * 4]Linear = undefined;
     var reference_srgb: [test_size * test_size]Srgb = undefined;
-    var reference_error: [dither.errorBufferSize(test_size)]f32 = undefined;
+    var reference_error: [dither_pebble.errorBufferSize(test_size)]f32 = undefined;
 
     const reference = try render(config, test_time, image, &reference_linear, &reference_srgb, &reference_error);
     const reference_copy = reference.buffer[0 .. test_size * test_size].*;
@@ -264,7 +295,7 @@ test "renderBand strip-by-strip matches a single full-height render" {
 
     var band_linear: [test_size * band_height * 4]Linear = undefined;
     var band_srgb: [test_size * band_height]Srgb = undefined;
-    var band_error: [dither.errorBufferSize(test_size)]f32 = undefined;
+    var band_error: [dither_pebble.errorBufferSize(test_size)]f32 = undefined;
     var banded: [test_size * test_size]Srgb = undefined;
 
     for (0..test_size / band_height) |band_index| {

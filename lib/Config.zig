@@ -4,7 +4,7 @@ const Rainbow = @import("Rainbow.zig");
 
 const Self = @This();
 
-pub const Texture = enum { none, grain, dither };
+pub const Texture = enum { none, grain, dither_pebble, dither_trmnl };
 
 background_enabled: bool,
 prism_normalized_size: f32,

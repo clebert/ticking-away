@@ -245,7 +245,8 @@ function EffectsSection(): JSX.Element {
         >
           <option value="none">None</option>
           <option value="grain">Grain</option>
-          <option value="dither">Dither</option>
+          <option value="dither_pebble">Dither (Pebble)</option>
+          <option value="dither_trmnl">Dither (TRMNL)</option>
         </select>
       </div>
       {config.texture === "grain" && (

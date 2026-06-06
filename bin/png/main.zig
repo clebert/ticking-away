@@ -19,7 +19,7 @@ pub fn main(init: std.process.Init) !void {
     var config = try lib.Config.init(allocator);
 
     // CLI flags override the config-default texture.
-    config.texture = if (args.dither) .dither else if (args.grain) .grain else .none;
+    config.texture = args.texture;
 
     config.supersample_enabled = args.supersample;
 
@@ -27,10 +27,11 @@ pub fn main(init: std.process.Init) !void {
     const linear_buffer = try allocator.alloc(lib.Linear, pixel_count * supersample_factor * supersample_factor);
     const srgb_buffer = try allocator.alloc(lib.Srgb, pixel_count);
 
-    const error_buffer: ?[]f32 = if (config.texture == .dither)
-        try allocator.alloc(f32, lib.dither.errorBufferSize(size))
-    else
-        null;
+    const error_buffer: ?[]f32 = switch (config.texture) {
+        .dither_pebble => try allocator.alloc(f32, lib.dither_pebble.errorBufferSize(size)),
+        .dither_trmnl => try allocator.alloc(f32, lib.dither_trmnl.errorBufferSize(size)),
+        .grain, .none => null,
+    };
 
     const image = lib.Image.init(size, size);
 
@@ -45,7 +46,12 @@ pub fn main(init: std.process.Init) !void {
 
     try png.write(io, allocator, args.output_path, size, size, srgb_buffer);
 
-    const texture_note = if (args.dither) " (dithered)" else if (args.grain) " (grain)" else "";
+    const texture_note = switch (args.texture) {
+        .dither_pebble => " (pebble dither)",
+        .dither_trmnl => " (trmnl dither)",
+        .grain => " (grain)",
+        .none => "",
+    };
 
     std.debug.print("{d}x{d}{s} supersample={d}x -> {s}\n", .{
         size, size, texture_note, supersample_factor, args.output_path,
@@ -57,8 +63,7 @@ const Args = struct {
     hour: u32,
     minute: u32,
     output_path: []const u8,
-    grain: bool,
-    dither: bool,
+    texture: lib.Config.Texture,
     supersample: bool,
 };
 
@@ -69,8 +74,7 @@ fn parseArgs(process_args: std.process.Args) ?Args {
 
     var positional: [4][]const u8 = undefined;
     var positional_count: usize = 0;
-    var grain = false;
-    var dither = false;
+    var texture: ?lib.Config.Texture = null;
     var supersample = false;
     var options_ended = false;
 
@@ -78,9 +82,14 @@ fn parseArgs(process_args: std.process.Args) ?Args {
         if (!options_ended and std.mem.eql(u8, arg, "--")) {
             options_ended = true;
         } else if (!options_ended and std.mem.eql(u8, arg, "--grain")) {
-            grain = true;
-        } else if (!options_ended and std.mem.eql(u8, arg, "--dither")) {
-            dither = true;
+            if (texture != null) return null;
+            texture = .grain;
+        } else if (!options_ended and std.mem.eql(u8, arg, "--dither-pebble")) {
+            if (texture != null) return null;
+            texture = .dither_pebble;
+        } else if (!options_ended and std.mem.eql(u8, arg, "--dither-trmnl")) {
+            if (texture != null) return null;
+            texture = .dither_trmnl;
         } else if (!options_ended and std.mem.eql(u8, arg, "--supersample")) {
             supersample = true;
         } else if (!options_ended and std.mem.startsWith(u8, arg, "--")) {
@@ -94,8 +103,6 @@ fn parseArgs(process_args: std.process.Args) ?Args {
     }
 
     if (positional_count != positional.len) return null;
-
-    if (grain and dither) return null;
 
     const size = std.fmt.parseInt(usize, positional[0], 10) catch return null;
     const hour = std.fmt.parseInt(u32, positional[1], 10) catch return null;
@@ -111,25 +118,25 @@ fn parseArgs(process_args: std.process.Args) ?Args {
         .hour = hour,
         .minute = minute,
         .output_path = positional[3],
-        .grain = grain,
-        .dither = dither,
+        .texture = texture orelse .none,
         .supersample = supersample,
     };
 }
 
 fn printUsage() void {
     std.debug.print(
-        \\Usage: png <size> <hour> <minute> <output.png> [--grain | --dither] [--supersample]
+        \\Usage: png <size> <hour> <minute> <output.png> [--grain | --dither-pebble | --dither-trmnl] [--supersample]
         \\
-        \\  size           Image size in pixels (square, diameter of the unit circle)
-        \\  hour           Hour (0-23)
-        \\  minute         Minute (0-59)
-        \\  output.png     Output file path
-        \\  --grain        Add film grain to the full-colour output
-        \\  --dither       Quantize the output to the Pebble 64-colour cube
-        \\  --supersample  Render 2x2 and box-average down to antialias edges (off by default)
+        \\  size            Image size in pixels (square, diameter of the unit circle)
+        \\  hour            Hour (0-23)
+        \\  minute          Minute (0-59)
+        \\  output.png      Output file path
+        \\  --grain         Add film grain to the full-colour output
+        \\  --dither-pebble Quantize the output to the Pebble 64-colour cube
+        \\  --dither-trmnl  Quantize the output to the TRMNL e-ink four greyscale levels
+        \\  --supersample   Render 2x2 and box-average down to antialias edges (off by default)
         \\
-        \\--grain and --dither are mutually exclusive; without either, no texture is applied.
+        \\The texture flags are mutually exclusive; without any, no texture is applied.
         \\
     , .{});
 }

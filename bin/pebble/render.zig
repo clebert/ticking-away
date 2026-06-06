@@ -23,7 +23,7 @@ const config = lib.Config{
     .rainbow_normalized_spread = 0.5,
     .hand_glow_normalized_width = 0.02,
     .rainbow_palette_id = .oklch_balanced,
-    .texture = .dither,
+    .texture = .dither_pebble,
     .grain_normalized_deviation = 0.1,
     .supersample_enabled = true,
 };
@@ -36,7 +36,7 @@ const image = lib.Image.init(width, width);
 // bands and is zeroed by renderBand when band_index 0 is rendered.
 var linear_buffer: [width * band_height * supersample * supersample]lib.Linear = undefined;
 var srgb_buffer: [width * band_height]lib.Srgb = undefined;
-var dither_error_buffer: [lib.dither.errorBufferSize(width)]f32 = undefined;
+var dither_error_buffer: [lib.dither_pebble.errorBufferSize(width)]f32 = undefined;
 
 /// Renders strip `band_index` of the frame into `out` as one GColor8 byte per pixel
 /// (`AARRGGBB`, opaque). Bands must be rendered top-to-bottom (0, 1, 2, …): the dither

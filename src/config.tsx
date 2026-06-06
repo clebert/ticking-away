@@ -14,7 +14,7 @@ const ConfigSchema = z.object({
   rainbow_normalized_spread: z.number(),
   hand_glow_normalized_width: z.number(),
   rainbow_palette_id: z.enum(["oklch_balanced", "spectral"]),
-  texture: z.enum(["none", "grain", "dither"]),
+  texture: z.enum(["none", "grain", "dither_pebble", "dither_trmnl"]),
   grain_normalized_deviation: z.number(),
   supersample_enabled: z.boolean(),
 });
