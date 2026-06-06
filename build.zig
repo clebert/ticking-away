@@ -182,9 +182,9 @@ fn buildPebbleLibrary(b: *std.Build, check_step: *std.Build.Step) void {
 /// TRMNL's ESP32-C3 — no libc, no ESP-IDF. bin/trmnl/link.ld lays the image into
 /// the chip's SRAM (code via the IRAM alias, data via the DRAM alias) with
 /// `_start` as the bare entry point; the program bit-bangs the UC8179 e-ink panel
-/// directly. ReleaseSmall keeps the image inside SRAM and strip drops the symbol
-/// table. `entry = .disabled` defers the entry address to the linker script's
-/// `ENTRY(_start)` instead of letting Zig synthesize a libc-style start.
+/// directly. `strip` drops the symbol table. `entry = .disabled` defers the entry
+/// address to the linker script's `ENTRY(_start)` instead of letting Zig synthesize
+/// a libc-style start.
 fn buildTrmnlBinary(b: *std.Build, check_step: *std.Build.Step) void {
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .riscv32,
@@ -194,7 +194,9 @@ fn buildTrmnlBinary(b: *std.Build, check_step: *std.Build.Step) void {
         .cpu_features_add = std.Target.riscv.featureSet(&.{ .m, .c }),
     });
 
-    const optimize: std.builtin.OptimizeMode = .ReleaseSmall;
+    // ReleaseFast, not ReleaseSmall: the float render runs in software (no FPU), so
+    // speed matters more than size — and the image still fits SRAM with room to spare.
+    const optimize: std.builtin.OptimizeMode = .ReleaseFast;
 
     const exe = b.addExecutable(.{
         .name = "trmnl",
@@ -204,9 +206,21 @@ fn buildTrmnlBinary(b: *std.Build, check_step: *std.Build.Step) void {
             .optimize = optimize,
             .strip = true,
             .unwind_tables = .none,
+            .imports = &.{
+                .{ .name = "lib", .module = b.createModule(.{
+                    .root_source_file = b.path("lib/root.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                    .strip = true,
+                    .unwind_tables = .none,
+                }) },
+            },
         }),
     });
 
+    // RV32IMC has no FPU, so the float-heavy render core needs compiler-rt's
+    // soft-float routines linked into the freestanding image.
+    exe.bundle_compiler_rt = true;
     exe.entry = .disabled;
     exe.setLinkerScript(b.path("bin/trmnl/link.ld"));
 
