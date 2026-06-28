@@ -18,7 +18,6 @@ pub fn main(init: std.process.Init) !void {
 
     var config = try lib.Config.init(allocator);
 
-    // CLI flags override the config-default texture.
     config.texture = args.texture;
 
     config.supersample_enabled = args.supersample;
@@ -110,7 +109,6 @@ fn parseArgs(process_args: std.process.Args) ?Args {
 
     if (size == 0 or hour > 23 or minute > 59) return null;
 
-    // Reject sizes whose pixel count (size * size) would overflow usize.
     if (@mulWithOverflow(size, size)[1] != 0) return null;
 
     return .{

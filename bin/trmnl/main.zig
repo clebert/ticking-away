@@ -9,14 +9,11 @@
 // reduces each pixel to one of {0, 85, 170, 255}, and packBand splits that into the
 // two 1-bit planes the UC8179 combines into 4 greys.
 //
-// Panel GPIOs from usetrmnl/trmnl-firmware src/DEV_Config.h (BOARD_TRMNL); the
-// panel is powered straight off 3V3, so there is no rail-enable pin to drive.
-// Register addresses and the watchdog unlock keys are from the ESP32-C3 TRM /
-// esp-idf soc headers; the 4-gray init, waveform LUTs, and per-level plane bits are
-// from the GoodDisplay GDEY075T7 demo (via GxEPD2_4G): a host-loaded custom waveform
-// (PSR 0x3F, LUTs into 0x20-0x25), because this panel's OTP carries no 4-gray waveform.
-// The CPU is taken from the ~40 MHz ROM boot clock to 160 MHz (BBPLL via REGI2C)
-// following esp-idf rtc_clk.c so the software-float render finishes in seconds.
+// BOARD_TRMNL panel GPIOs have no rail-enable pin: the panel is powered straight off 3V3.
+// The 4-gray path loads a custom waveform (PSR 0x3F, LUTs into 0x20-0x25) because
+// this panel's OTP carries no 4-gray waveform.
+// The CPU runs at 160 MHz from the BBPLL instead of the ~40 MHz ROM boot clock so
+// the software-float render finishes in seconds.
 
 const std = @import("std");
 
@@ -79,9 +76,9 @@ var linear_buffer: [width * band_height * supersample * supersample]lib.Linear =
 var srgb_buffer: [width * band_height]lib.Srgb = undefined;
 var dither_error_buffer: [lib.dither_trmnl.errorBufferSize(width)]f32 = undefined;
 
-// GDEY075T7 4-gray waveform LUTs (GoodDisplay demo, via GxEPD2_4G), loaded into the
-// UC8179's LUT registers. Each is 7 phase-groups of 6 bytes; the (old,new) plane pair
-// routes a pixel to LUTKK/WK/KW/WW for black/dark/light/white.
+// GDEY075T7 4-gray waveform LUTs loaded into the UC8179's LUT registers. Each is
+// 7 phase-groups of 6 bytes; the (old,new) plane pair routes a pixel to
+// LUTKK/WK/KW/WW for black/dark/light/white.
 const lut_vcom = [_]u8{
     0x00, 0x0A, 0x00, 0x00, 0x00, 0x01,
     0x60, 0x14, 0x14, 0x00, 0x00, 0x01,
@@ -157,8 +154,8 @@ export fn zigMain() noreturn {
     high(rst);
     delayMs(200);
 
-    // UC8179 4-gray power-on + init (GoodDisplay GDEY075T7 demo via GxEPD2_4G): load the
-    // custom waveform from the host (PSR 0x3F) since the panel OTP has no 4-gray LUT.
+    // UC8179 4-gray power-on + init: load the custom waveform from the host
+    // (PSR 0x3F) since the panel OTP has no 4-gray LUT.
     command(0x00, &[_]u8{0x1F}); // PSR (interim; KW mode)
     command(0x01, &[_]u8{ 0x07, 0x07, 0x3F, 0x3F, 0x09 }); // PWR: DC-DC on, gate/source rails
     command(0x06, &[_]u8{ 0x17, 0x17, 0x28, 0x17 }); // BTST: booster soft start
@@ -221,7 +218,7 @@ fn drawCalibrationBars() void {
         const row = y * (width / 8);
 
         for (0..width) |x| {
-            const level = x * 4 / width; // four equal bars: 0 black .. 3 white
+            const level = x * 4 / width;
 
             emitLevel(row, x, @intCast(level));
         }
@@ -241,7 +238,6 @@ inline fn emitLevel(row: usize, x: usize, level: u8) void {
     if (level & 0b01 != 0) plane1[byte_index] |= mask;
 }
 
-// Splits the dithered grey strip into the two RAM planes.
 fn packBand(band: lib.Image.Band(lib.Srgb)) void {
     for (0..band.bandHeight()) |y| {
         const row = band.imageY(y) * (width / 8);
@@ -295,9 +291,9 @@ fn delayMs(milliseconds: u32) void {
     while (spins < loops) : (spins += 1) asm volatile ("" ::: .{ .memory = true });
 }
 
-// ESP32-C3 mask-ROM REGI2C helpers (esp32c3.rom.ld); the analog BBPLL registers
-// are only reachable through this internal-I2C bridge. The first helper writes a whole
-// 8-bit analog register; the mask helper splices a bit-field.
+// ESP32-C3 mask-ROM REGI2C helpers. The analog BBPLL registers are only reachable
+// through this internal-I2C bridge. The first helper writes a whole 8-bit analog
+// register; the mask helper splices a bit-field.
 const rom_i2c_write_reg: *const fn (
     block: u32,
     host_id: u32,
@@ -314,9 +310,8 @@ const rom_i2c_write_reg_mask: *const fn (
     data: u32,
 ) callconv(.c) void = @ptrFromInt(0x40001960);
 
-// Bring the BBPLL up to 480 MHz and run the CPU off its /3 tap (160 MHz). Sequence
-// and analog constants are from esp-idf rtc_clk.c / clk_tree_ll.h (esp32c3), cross-
-// checked against esp-hal; it is idempotent whether or not the ROM left the PLL on.
+// Bring the BBPLL up to 480 MHz and run the CPU off its /3 tap (160 MHz). The
+// sequence is idempotent whether or not the ROM left the PLL on.
 fn setCpuClock160() void {
     // Open the REGI2C path to the BBPLL (clear ANA_I2C_BBPLL_M, bit 17).
     mmio(0x6000E044).* &= ~(@as(u32, 1) << 17);

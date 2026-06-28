@@ -23,23 +23,22 @@ pub fn lerp(a: Self, b: Self, t: f32) Self {
     return .{ .vec = a.vec + (b.vec - a.vec) * t_vec };
 }
 
-/// https://bottosson.github.io/posts/oklab/
 pub fn toOklab(self: Self) Oklab {
     const r = self.vec[0];
     const g = self.vec[1];
     const b = self.vec[2];
 
-    // to LMS
+    // Linear RGB → LMS
     const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
     const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
     const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
 
-    // nonlinearity (cube roots)
+    // LMS → LMS cube roots
     const lp = cubeRoot(l);
     const mp = cubeRoot(m);
     const sp = cubeRoot(s);
 
-    // to Oklab
+    // LMS cube roots → Oklab
     return .{ .vec = .{
         0.2104542553 * lp + 0.7936177850 * mp - 0.0040720468 * sp,
         1.9779984951 * lp - 2.4285922050 * mp + 0.4505937099 * sp,

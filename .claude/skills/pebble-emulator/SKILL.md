@@ -25,9 +25,9 @@ is reliably on `PATH`:
 PEBBLE="$(command -v pebble || echo "$HOME/.local/bin/pebble")"
 "$PEBBLE" --version            # e.g. "Pebble Tool v5.0.36 (active SDK: v4.9.169)"
 
-# Zig ships with the ziglang.vscode-zig extension, not system-wide. Glob the pinned
-# 0.16.0 directly (CLAUDE.md pins it); a lexical `sort | tail -1` over all installed
-# versions would mis-pick once any other version is cached (e.g. 0.9.x sorts after 0.16.0).
+# Zig ships with the ziglang.vscode-zig extension, not system-wide. Glob the exact
+# 0.16.0 version; a lexical `sort | tail -1` over all installed versions would
+# mis-pick once any other version is cached (e.g. 0.9.x sorts after 0.16.0).
 ZIG="$(ls "$HOME/Library/Application Support/Code/User/globalStorage/ziglang.vscode-zig/zig"/*-0.16.0/zig 2>/dev/null | head -1)"
 "$ZIG" version                 # expect 0.16.0
 ```
@@ -43,7 +43,7 @@ wait on.
 
 ```bash
 "$ZIG" build pebble-lib                                     # cross-compile bin/pebble/libwatchface.a
-( cd bin/pebble && "$PEBBLE" clean && "$PEBBLE" build )     # clean THEN build — see below; links the .pbw
+( cd bin/pebble && "$PEBBLE" clean && "$PEBBLE" build )     # clean before build; links the .pbw
 ( cd bin/pebble && "$PEBBLE" install --emulator gabbro )    # boots QEMU if needed
 ```
 

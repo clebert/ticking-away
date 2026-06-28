@@ -24,7 +24,7 @@ const level_step = 85.0;
 const max_level = 3.0;
 
 // Rec. 709 luminance weights, applied to the premultiplied linear colour (alpha
-// lane zeroed). https://www.itu.int/rec/R-REC-BT.709
+// lane zeroed).
 const luminance_weights: @Vector(4, f32) = .{ 0.2126, 0.7152, 0.0722, 0.0 };
 
 /// f32 count for `apply`'s two-row error buffer (one channel, so one f32 per pixel).

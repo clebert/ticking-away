@@ -14,7 +14,6 @@ pub fn lerp(a: Self, b: Self, t: f32) Self {
     return .{ .vec = a.vec + (b.vec - a.vec) * t_vec };
 }
 
-/// https://bottosson.github.io/posts/oklab/
 pub fn toLinear(self: Self) Linear {
     const l = self.vec[0];
     const a = self.vec[1];
