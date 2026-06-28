@@ -17,23 +17,20 @@ that a flaky emulator never blocks you. The Pebble target is the thin C shell in
 
 The one-time SDK install is documented in the **Pebble Watchface** section of
 [README.md](../../../README.md) (`uv tool install pebble-tool --python 3.13` then
-`pebble sdk install latest`). Assume it is installed; just locate the two binaries, neither of which
-is reliably on `PATH`:
+`pebble sdk install latest`). Assume it is installed. Locate `pebble` if it is not on `PATH`; Zig
+must be available on `PATH`:
 
 ```bash
 # pebble CLI (rebble pebble-tool), installed via uv
 PEBBLE="$(command -v pebble || echo "$HOME/.local/bin/pebble")"
 "$PEBBLE" --version            # e.g. "Pebble Tool v5.0.36 (active SDK: v4.9.169)"
 
-# Zig ships with the ziglang.vscode-zig extension, not system-wide. Glob the exact
-# 0.16.0 version; a lexical `sort | tail -1` over all installed versions would
-# mis-pick once any other version is cached (e.g. 0.9.x sorts after 0.16.0).
-ZIG="$(ls "$HOME/Library/Application Support/Code/User/globalStorage/ziglang.vscode-zig/zig"/*-0.16.0/zig 2>/dev/null | head -1)"
-"$ZIG" version                 # expect 0.16.0
+zig version                    # expect 0.16.0
 ```
 
 If `pebble` is missing entirely, stop and point the user at the README install block rather than
-guessing install commands.
+guessing install commands. If `zig` is missing or the version is not `0.16.0`, stop and ask the user
+to make the project Zig available on `PATH`.
 
 ## Build → run → show (the loop)
 
@@ -42,7 +39,7 @@ Run from the repo root. After any code change, repeat all of it. The emulator st
 wait on.
 
 ```bash
-"$ZIG" build pebble-lib                                     # cross-compile bin/pebble/libwatchface.a
+zig build pebble-lib                                        # cross-compile bin/pebble/libwatchface.a
 ( cd bin/pebble && "$PEBBLE" clean && "$PEBBLE" build )     # clean before build; links the .pbw
 ( cd bin/pebble && "$PEBBLE" install --emulator gabbro )    # boots QEMU if needed
 ```

@@ -83,10 +83,10 @@ Then cross-compile the render core, link the `.pbw`, and run it in the emulator:
 ```bash
 zig build pebble-lib              # cross-compile bin/pebble/libwatchface.a
 cd bin/pebble
-pebble build                      # link the .pbw
+pebble clean && pebble build      # clean first so waf relinks the current library
 pebble install --emulator gabbro  # boot QEMU and install; re-run if the first
                                   # call times out while the firmware boots
-pebble screenshot watchface.png   # capture the rendered frame
+pebble screenshot watchface.png   # capture after the face has painted
 ```
 
 ## TRMNL Watchface
@@ -139,6 +139,6 @@ espflash save-image --chip esp32c3 --ignore-app-descriptor zig-out/bin/trmnl zig
 espflash write-bin --chip esp32c3 --before no-reset 0x0 zig-out/bin/trmnl.bin
 ```
 
-A full e-ink refresh takes a few seconds; the watchface then holds on screen with no power. Writing
-to flash overwrites the stock firmware — restore it any time via
-[trmnl.com/flash](https://trmnl.com/flash).
+A full e-ink refresh takes a few seconds; the firmware renders the built-in 7:14 frame once, then
+holds it on screen with no power. Writing to flash overwrites the stock firmware — restore it any
+time via [trmnl.com/flash](https://trmnl.com/flash).
