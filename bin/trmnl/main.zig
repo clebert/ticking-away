@@ -296,10 +296,23 @@ fn delayMs(milliseconds: u32) void {
 }
 
 // ESP32-C3 mask-ROM REGI2C helpers (esp32c3.rom.ld); the analog BBPLL registers
-// are only reachable through this internal-I2C bridge. writeReg writes a whole
-// 8-bit analog register, writeReg_Mask splices a [msb:lsb] sub-field.
-const rom_i2c_writeReg: *const fn (block: u32, host_id: u32, reg_add: u32, data: u32) callconv(.c) void = @ptrFromInt(0x4000195C);
-const rom_i2c_writeReg_Mask: *const fn (block: u32, host_id: u32, reg_add: u32, msb: u32, lsb: u32, data: u32) callconv(.c) void = @ptrFromInt(0x40001960);
+// are only reachable through this internal-I2C bridge. The first helper writes a whole
+// 8-bit analog register; the mask helper splices a bit-field.
+const rom_i2c_write_reg: *const fn (
+    block: u32,
+    host_id: u32,
+    register_address: u32,
+    data: u32,
+) callconv(.c) void = @ptrFromInt(0x4000195C);
+
+const rom_i2c_write_reg_mask: *const fn (
+    block: u32,
+    host_id: u32,
+    register_address: u32,
+    most_significant_bit: u32,
+    least_significant_bit: u32,
+    data: u32,
+) callconv(.c) void = @ptrFromInt(0x40001960);
 
 // Bring the BBPLL up to 480 MHz and run the CPU off its /3 tap (160 MHz). Sequence
 // and analog constants are from esp-idf rtc_clk.c / clk_tree_ll.h (esp32c3), cross-
@@ -319,15 +332,15 @@ fn setCpuClock160() void {
     mmio(0x6000E040).* |= @as(u32, 1) << 3;
 
     // 40 MHz XTAL -> 480 MHz analog config, REGI2C block 0x66 (I2C_BBPLL), host 0.
-    rom_i2c_writeReg(0x66, 0, 4, 0x6B); // MODE_HF
-    rom_i2c_writeReg(0x66, 0, 2, 0x50); // OC_REF_DIV: (dchgp<<4)|div_ref
-    rom_i2c_writeReg(0x66, 0, 3, 0x08); // OC_DIV_7_0
-    rom_i2c_writeReg_Mask(0x66, 0, 5, 2, 0, 0); // OC_DR1
-    rom_i2c_writeReg_Mask(0x66, 0, 5, 6, 4, 0); // OC_DR3
-    rom_i2c_writeReg(0x66, 0, 6, 0x93); // OC_DCUR: (2<<6)|(1<<4)|dcur
-    rom_i2c_writeReg_Mask(0x66, 0, 9, 1, 0, 2); // OC_VCO_DBIAS
-    rom_i2c_writeReg_Mask(0x66, 0, 6, 5, 4, 2); // OC_DHREF_SEL
-    rom_i2c_writeReg_Mask(0x66, 0, 6, 7, 6, 1); // OC_DLREF_SEL
+    rom_i2c_write_reg(0x66, 0, 4, 0x6B); // MODE_HF
+    rom_i2c_write_reg(0x66, 0, 2, 0x50); // OC_REF_DIV: (dchgp<<4)|div_ref
+    rom_i2c_write_reg(0x66, 0, 3, 0x08); // OC_DIV_7_0
+    rom_i2c_write_reg_mask(0x66, 0, 5, 2, 0, 0); // OC_DR1
+    rom_i2c_write_reg_mask(0x66, 0, 5, 6, 4, 0); // OC_DR3
+    rom_i2c_write_reg(0x66, 0, 6, 0x93); // OC_DCUR: (2<<6)|(1<<4)|dcur
+    rom_i2c_write_reg_mask(0x66, 0, 9, 1, 0, 2); // OC_VCO_DBIAS
+    rom_i2c_write_reg_mask(0x66, 0, 6, 5, 4, 2); // OC_DHREF_SEL
+    rom_i2c_write_reg_mask(0x66, 0, 6, 7, 6, 1); // OC_DLREF_SEL
 
     // Let the PLL lock before the CPU is switched onto it.
     var settle: u32 = 0;

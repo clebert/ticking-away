@@ -1,3 +1,4 @@
+/.pi-sessions/
 /.zig-cache/
 /bin/*/*
 !/bin/*/*.zig
