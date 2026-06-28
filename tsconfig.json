@@ -1,14 +1,13 @@
 {
-  "include": ["vite.config.js", "src/**/*.ts", "src/**/*.tsx"],
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "preact",
     "allowImportingTsExtensions": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "checkJs": true,
     "erasableSyntaxOnly": true,
     "exactOptionalPropertyTypes": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "moduleResolution": "bundler",
     "noEmit": true,
     "noErrorTruncation": true,
@@ -25,5 +24,6 @@
     "target": "esnext",
     "types": ["vite/client"],
     "verbatimModuleSyntax": true
-  }
+  },
+  "include": ["vite.config.js", "src/**/*.ts", "src/**/*.tsx"]
 }
