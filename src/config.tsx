@@ -4,9 +4,9 @@ import type { PropsWithChildren } from "preact/compat";
 import { useContext, useMemo } from "preact/hooks";
 import { z } from "zod/mini";
 import defaultConfig from "../lib/config.json";
-import { getWasmMemory, getWasmModule } from "./wasm.ts";
+import { getWebAssemblyMemory, getWebAssemblyModule } from "./wasm.ts";
 
-const ConfigSchema = z.object({
+const configSchema = z.object({
   background_enabled: z.boolean(),
   prism_normalized_size: z.number(),
   prism_glow_linear_green: z.number(),
@@ -19,9 +19,9 @@ const ConfigSchema = z.object({
   supersample_enabled: z.boolean(),
 });
 
-export type Config = z.infer<typeof ConfigSchema>;
+export type Config = z.infer<typeof configSchema>;
 
-const typedDefaultConfig: Config = ConfigSchema.parse(defaultConfig);
+const typedDefaultConfig: Config = configSchema.parse(defaultConfig);
 
 const storageKey = "config";
 
@@ -30,7 +30,7 @@ function loadConfig(): Config {
     const item = localStorage.getItem(storageKey);
 
     if (item) {
-      const result = z.partial(ConfigSchema).safeParse(JSON.parse(item));
+      const result = z.partial(configSchema).safeParse(JSON.parse(item));
 
       if (result.success) {
         return Object.assign({ ...typedDefaultConfig }, result.data);
@@ -47,46 +47,51 @@ function saveConfig(config: Config): void {
   } catch {}
 }
 
-const ConfigContext = createContext(undefined as unknown as Signal<Config>);
+const configContext = createContext<Signal<Config> | undefined>(undefined);
 
 export function ConfigProvider({ children }: PropsWithChildren): JSX.Element {
-  const $config = useSignal<Config>(loadConfig());
+  const configSignal = useSignal<Config>(loadConfig());
 
-  useSignalEffect(() => saveConfig($config.value));
+  useSignalEffect(() => saveConfig(configSignal.value));
 
-  return <ConfigContext.Provider value={$config}>{children}</ConfigContext.Provider>;
+  return <configContext.Provider value={configSignal}>{children}</configContext.Provider>;
 }
 
 export function useConfig(): Readonly<{
-  $config: Signal<Config>;
-  updateConfig: <K extends keyof Config>(key: K, value: Config[K]) => void;
+  configSignal: Signal<Config>;
+  updateConfig: <ConfigKey extends keyof Config>(key: ConfigKey, value: Config[ConfigKey]) => void;
 }> {
-  const $config = useContext(ConfigContext);
+  const configSignal = useContext(configContext);
+
+  if (configSignal === undefined) {
+    throw new Error("useConfig must be used within ConfigProvider");
+  }
 
   return useMemo(
     () => ({
-      $config,
+      configSignal,
 
-      updateConfig<K extends keyof Config>(key: K, value: Config[K]) {
-        $config.value = { ...$config.value, [key]: value };
+      updateConfig<ConfigKey extends keyof Config>(key: ConfigKey, value: Config[ConfigKey]) {
+        configSignal.value = { ...configSignal.value, [key]: value };
       },
     }),
-    [$config],
+    [configSignal],
   );
 }
 
-export function resetConfig($config: Signal<Config>): void {
-  $config.value = { ...typedDefaultConfig };
+export function resetConfig(configSignal: Signal<Config>): void {
+  configSignal.value = { ...typedDefaultConfig };
 }
 
 const encoder = new TextEncoder();
 
-// Source the size from WASM so the overflow guard can't diverge from config_json_buffer (bin/wasm/main.zig).
+// Source the size from WebAssembly so the overflow guard can't diverge from
+// config_json_buffer (bin/wasm/main.zig).
 let cachedBufferSize = 0;
 
 function configJsonBufferSize(): number {
   if (cachedBufferSize === 0) {
-    cachedBufferSize = getWasmModule().getConfigJsonBufferSize();
+    cachedBufferSize = getWebAssemblyModule().getConfigJsonBufferSize();
   }
 
   return cachedBufferSize;
@@ -109,9 +114,9 @@ let lastBuffer: ArrayBuffer | undefined;
 
 export function writeConfigJson(config: Config): number {
   const json = configToJson(config);
-  const buffer = getWasmMemory().buffer;
+  const buffer = getWebAssemblyMemory().buffer;
 
-  // Re-write if config changed or WASM memory grew (detaches the old ArrayBuffer)
+  // Re-write if config changed or WebAssembly memory grew (detaches the old ArrayBuffer).
   if (json === lastWrittenJson && buffer === lastBuffer) {
     return 0;
   }
@@ -120,10 +125,14 @@ export function writeConfigJson(config: Config): number {
   const bufferSize = configJsonBufferSize();
 
   if (bytes.length > bufferSize) {
-    throw new Error(`Config JSON exceeds WASM buffer: ${bytes.length} > ${bufferSize} bytes`);
+    throw new Error(
+      `Config JSON exceeds WebAssembly buffer: ${bytes.length} > ${bufferSize} bytes`,
+    );
   }
 
-  new Uint8Array(buffer, getWasmModule().getConfigJsonBufferPtr(), bytes.length).set(bytes);
+  new Uint8Array(buffer, getWebAssemblyModule().getConfigJsonBufferPointer(), bytes.length).set(
+    bytes,
+  );
 
   lastWrittenJson = json;
   lastBuffer = buffer;

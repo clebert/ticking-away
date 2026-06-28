@@ -1,5 +1,7 @@
-export interface WasmModule {
-  getConfigJsonBufferPtr(): number;
+type WebAssemblyExportFunction = (...values: number[]) => unknown;
+
+export interface WebAssemblyModule {
+  getConfigJsonBufferPointer(): number;
 
   getConfigJsonBufferSize(): number;
 
@@ -13,15 +15,16 @@ export interface WasmModule {
 }
 
 const initialMemoryPages = 32;
-// wasm32 ceiling: 65536 pages (4 GiB). `maximum` only reserves address space; pages commit
-// lazily as the render arena grows, so an unallocatable frame fails the grow and render() returns null.
+// wasm32 ceiling: 65536 pages (4 GiB). `maximum` only reserves address space; pages
+// commit lazily as the render arena grows, so an unallocatable frame fails the grow and
+// render() returns null.
 const maximumMemoryPages = 65536;
 
-let wasmModule: WasmModule | undefined;
-let wasmMemory: WebAssembly.Memory | undefined;
+let webAssemblyModule: WebAssemblyModule | undefined;
+let webAssemblyMemory: WebAssembly.Memory | undefined;
 
-export async function initWasm(): Promise<void> {
-  wasmMemory = new WebAssembly.Memory({
+export async function initializeWebAssembly(): Promise<void> {
+  webAssemblyMemory = new WebAssembly.Memory({
     initial: initialMemoryPages,
     maximum: maximumMemoryPages,
   });
@@ -30,24 +33,66 @@ export async function initWasm(): Promise<void> {
   const bytes = await response.arrayBuffer();
 
   const result = await WebAssembly.instantiate(bytes, {
-    env: { memory: wasmMemory },
+    env: { memory: webAssemblyMemory },
   });
 
-  wasmModule = result.instance.exports as unknown as WasmModule;
+  webAssemblyModule = createWebAssemblyModule(result.instance.exports);
 }
 
-export function getWasmModule(): WasmModule {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized: call initWasm() first");
-  }
+function createWebAssemblyModule(exports: WebAssembly.Exports): WebAssemblyModule {
+  const getConfigJsonBufferPointer = getExportFunction(exports, "getConfigJsonBufferPtr");
+  const getConfigJsonBufferSize = getExportFunction(exports, "getConfigJsonBufferSize");
+  const render = getExportFunction(exports, "render");
 
-  return wasmModule;
+  return {
+    getConfigJsonBufferPointer() {
+      return numberResult("getConfigJsonBufferPtr", getConfigJsonBufferPointer());
+    },
+
+    getConfigJsonBufferSize() {
+      return numberResult("getConfigJsonBufferSize", getConfigJsonBufferSize());
+    },
+
+    render(width, height, hour, minute, configJsonByteLength) {
+      return numberResult("render", render(width, height, hour, minute, configJsonByteLength));
+    },
+  };
 }
 
-export function getWasmMemory(): WebAssembly.Memory {
-  if (!wasmMemory) {
-    throw new Error("WASM memory not initialized: call initWasm() first");
+function getExportFunction(exports: WebAssembly.Exports, name: string): WebAssemblyExportFunction {
+  const value = exports[name];
+
+  if (!isWebAssemblyExportFunction(value)) {
+    throw new Error(`Missing WebAssembly export: ${name}`);
   }
 
-  return wasmMemory;
+  return value;
+}
+
+function isWebAssemblyExportFunction(value: unknown): value is WebAssemblyExportFunction {
+  return typeof value === "function";
+}
+
+function numberResult(name: string, result: unknown): number {
+  if (typeof result !== "number") {
+    throw new Error(`WebAssembly export ${name} returned ${typeof result}`);
+  }
+
+  return result;
+}
+
+export function getWebAssemblyModule(): WebAssemblyModule {
+  if (!webAssemblyModule) {
+    throw new Error("WebAssembly module not initialized: call initializeWebAssembly() first");
+  }
+
+  return webAssemblyModule;
+}
+
+export function getWebAssemblyMemory(): WebAssembly.Memory {
+  if (!webAssemblyMemory) {
+    throw new Error("WebAssembly memory not initialized: call initializeWebAssembly() first");
+  }
+
+  return webAssemblyMemory;
 }

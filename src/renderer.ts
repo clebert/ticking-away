@@ -3,17 +3,17 @@ import { useEffect } from "preact/hooks";
 import { useAnimation } from "./animation.tsx";
 import { getCanvas, resizeCanvas } from "./canvas.ts";
 import { type Config, useConfig, writeConfigJson } from "./config.tsx";
-import { getWasmMemory, getWasmModule } from "./wasm.ts";
+import { getWebAssemblyMemory, getWebAssemblyModule } from "./wasm.ts";
 
 export function useRenderer(): void {
-  const { $hour, $minute } = useAnimation();
-  const { $config } = useConfig();
-  const $resizeTrigger = useSignal(0);
+  const { hourSignal, minuteSignal } = useAnimation();
+  const { configSignal } = useConfig();
+  const resizeTriggerSignal = useSignal(0);
 
   useEffect(() => {
     const handleResize = () => {
       resizeCanvas();
-      $resizeTrigger.value++;
+      resizeTriggerSignal.value += 1;
     };
 
     handleResize();
@@ -22,8 +22,8 @@ export function useRenderer(): void {
   }, []);
 
   useSignalEffect(() => {
-    void $resizeTrigger.value;
-    renderToCanvas($hour.value, $minute.value, $config.value);
+    void resizeTriggerSignal.value;
+    renderToCanvas(hourSignal.value, minuteSignal.value, configSignal.value);
   });
 }
 
@@ -34,19 +34,25 @@ function renderToCanvas(hour: number, minute: number, config: Config): void {
 
   if (width === 0 || height === 0) return;
 
-  const imageDataPtr = getWasmModule().render(width, height, hour, minute, writeConfigJson(config));
+  const imageDataPointer = getWebAssemblyModule().render(
+    width,
+    height,
+    hour,
+    minute,
+    writeConfigJson(config),
+  );
 
-  if (imageDataPtr === 0) {
+  if (imageDataPointer === 0) {
     console.error(
-      `Watchface render failed at ${width}×${height} — config rejected or WASM allocation failed. ` +
-        `Keeping the previous frame.`,
+      `Watchface render failed at ${width}×${height} — config rejected or ` +
+        `WebAssembly allocation failed. Keeping the previous frame.`,
     );
 
     return;
   }
 
   const imageData = new ImageData(
-    new Uint8ClampedArray(getWasmMemory().buffer, imageDataPtr, width * height * 4),
+    new Uint8ClampedArray(getWebAssemblyMemory().buffer, imageDataPointer, width * height * 4),
     width,
     height,
   );

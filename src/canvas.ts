@@ -1,10 +1,21 @@
 export function getCanvas(): HTMLCanvasElement {
-  return document.getElementById("canvas") as HTMLCanvasElement;
+  const element = document.getElementById("canvas");
+
+  if (!(element instanceof HTMLCanvasElement)) {
+    throw new Error("Canvas element not found");
+  }
+
+  return element;
 }
 
 export function resizeCanvas(): void {
   const canvas = getCanvas();
-  const container = canvas.parentElement as HTMLElement;
+  const container = canvas.parentElement;
+
+  if (!(container instanceof HTMLElement)) {
+    throw new Error("Canvas container element not found");
+  }
+
   const containerRect = container.getBoundingClientRect();
   const devicePixelRatio = window.devicePixelRatio || 1;
 

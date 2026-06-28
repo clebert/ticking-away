@@ -12,37 +12,37 @@ import { useContext } from "preact/hooks";
 import { useSettings } from "./settings.tsx";
 
 interface AnimationState {
-  $hour: Signal<number>;
-  $minute: Signal<number>;
-  $fps: ReadonlySignal<number>;
+  hourSignal: Signal<number>;
+  minuteSignal: Signal<number>;
+  framesPerSecondSignal: ReadonlySignal<number>;
 }
 
-const AnimationContext = createContext(undefined as unknown as AnimationState);
+const animationContext = createContext<AnimationState | undefined>(undefined);
 
 export function AnimationProvider({ children }: PropsWithChildren): JSX.Element {
-  const { $settings } = useSettings();
+  const { settingsSignal } = useSettings();
   const now = new Date();
-  const $hour = useSignal(now.getHours() % 12);
-  const $minute = useSignal(now.getMinutes());
-  const $frameDuration = useSignal(0);
+  const hourSignal = useSignal(now.getHours() % 12);
+  const minuteSignal = useSignal(now.getMinutes());
+  const frameDurationSignal = useSignal(0);
 
-  const $fps = useComputed(() => {
-    const duration = $frameDuration.value;
+  const framesPerSecondSignal = useComputed(() => {
+    const duration = frameDurationSignal.value;
     return duration > 0 ? Math.round(1000 / duration) : 0;
   });
 
   useSignalEffect(() => {
-    const { mode_live, mode_accelerated, mode_speed } = $settings.value;
+    const { mode_live, mode_accelerated, mode_speed } = settingsSignal.value;
 
     if (!mode_live) {
-      const minute = $minute.peek();
+      const minute = minuteSignal.peek();
       const rounded = Math.round(minute) % 60;
 
       if (rounded !== minute) {
-        $minute.value = rounded;
+        minuteSignal.value = rounded;
       }
 
-      $frameDuration.value = 0;
+      frameDurationSignal.value = 0;
       return;
     }
 
@@ -52,11 +52,11 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
 
     if (mode_accelerated) {
       const startTimestamp = performance.now();
-      const startMinutes = $hour.peek() * 60 + $minute.peek();
+      const startMinutes = hourSignal.peek() * 60 + minuteSignal.peek();
 
       const animate = (timestamp: number) => {
         if (lastFrameTime > 0) {
-          $frameDuration.value = timestamp - lastFrameTime;
+          frameDurationSignal.value = timestamp - lastFrameTime;
         }
 
         lastFrameTime = timestamp;
@@ -67,8 +67,8 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
         const newMinute = wrappedMinutes % 60;
 
         batch(() => {
-          $hour.value = Math.floor(wrappedMinutes / 60);
-          $minute.value = newMinute;
+          hourSignal.value = Math.floor(wrappedMinutes / 60);
+          minuteSignal.value = newMinute;
         });
 
         animationFrameId = requestAnimationFrame(animate);
@@ -80,7 +80,7 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
         const timestamp = performance.now();
 
         if (lastFrameTime > 0) {
-          $frameDuration.value = timestamp - lastFrameTime;
+          frameDurationSignal.value = timestamp - lastFrameTime;
         }
 
         lastFrameTime = timestamp;
@@ -89,8 +89,8 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
         const fractionalMinute = currentTime.getMinutes() + currentTime.getSeconds() / 60;
 
         batch(() => {
-          $hour.value = currentTime.getHours() % 12;
-          $minute.value = fractionalMinute;
+          hourSignal.value = currentTime.getHours() % 12;
+          minuteSignal.value = fractionalMinute;
         });
       };
 
@@ -101,17 +101,23 @@ export function AnimationProvider({ children }: PropsWithChildren): JSX.Element 
     return () => {
       if (animationFrameId !== undefined) cancelAnimationFrame(animationFrameId);
       if (realtimeIntervalId !== undefined) clearInterval(realtimeIntervalId);
-      $frameDuration.value = 0;
+      frameDurationSignal.value = 0;
     };
   });
 
   return (
-    <AnimationContext.Provider value={{ $hour, $minute, $fps }}>
+    <animationContext.Provider value={{ hourSignal, minuteSignal, framesPerSecondSignal }}>
       {children}
-    </AnimationContext.Provider>
+    </animationContext.Provider>
   );
 }
 
 export function useAnimation(): AnimationState {
-  return useContext(AnimationContext);
+  const animationState = useContext(animationContext);
+
+  if (animationState === undefined) {
+    throw new Error("useAnimation must be used within AnimationProvider");
+  }
+
+  return animationState;
 }

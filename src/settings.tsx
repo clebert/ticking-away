@@ -4,13 +4,13 @@ import type { PropsWithChildren } from "preact/compat";
 import { useContext, useMemo } from "preact/hooks";
 import { z } from "zod/mini";
 
-const SettingsSchema = z.object({
+const settingsSchema = z.object({
   mode_live: z.boolean(),
   mode_accelerated: z.boolean(),
   mode_speed: z.number(),
 });
 
-export type Settings = z.infer<typeof SettingsSchema>;
+export type Settings = z.infer<typeof settingsSchema>;
 
 function createDefaultSettings(): Settings {
   return {
@@ -20,36 +20,46 @@ function createDefaultSettings(): Settings {
   };
 }
 
-const SettingsContext = createContext(undefined as unknown as Signal<Settings>);
+const settingsContext = createContext<Signal<Settings> | undefined>(undefined);
 
 export function SettingsProvider({ children }: PropsWithChildren): JSX.Element {
-  const $settings = useSignal<Settings>(loadSettings());
+  const settingsSignal = useSignal<Settings>(loadSettings());
 
-  useSignalEffect(() => saveSettings($settings.value));
+  useSignalEffect(() => saveSettings(settingsSignal.value));
 
-  return <SettingsContext.Provider value={$settings}>{children}</SettingsContext.Provider>;
+  return <settingsContext.Provider value={settingsSignal}>{children}</settingsContext.Provider>;
 }
 
 export function useSettings(): Readonly<{
-  $settings: Signal<Settings>;
-  updateSettings: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  settingsSignal: Signal<Settings>;
+  updateSettings: <SettingsKey extends keyof Settings>(
+    key: SettingsKey,
+    value: Settings[SettingsKey],
+  ) => void;
 }> {
-  const $settings = useContext(SettingsContext);
+  const settingsSignal = useContext(settingsContext);
+
+  if (settingsSignal === undefined) {
+    throw new Error("useSettings must be used within SettingsProvider");
+  }
 
   return useMemo(
     () => ({
-      $settings,
+      settingsSignal,
 
-      updateSettings<K extends keyof Settings>(key: K, value: Settings[K]) {
-        $settings.value = { ...$settings.value, [key]: value };
+      updateSettings<SettingsKey extends keyof Settings>(
+        key: SettingsKey,
+        value: Settings[SettingsKey],
+      ) {
+        settingsSignal.value = { ...settingsSignal.value, [key]: value };
       },
     }),
-    [$settings],
+    [settingsSignal],
   );
 }
 
-export function resetSettings($settings: Signal<Settings>): void {
-  $settings.value = createDefaultSettings();
+export function resetSettings(settingsSignal: Signal<Settings>): void {
+  settingsSignal.value = createDefaultSettings();
 }
 
 const storageKey = "settings";
@@ -61,7 +71,7 @@ function loadSettings(): Settings {
     const item = localStorage.getItem(storageKey);
 
     if (item) {
-      const result = z.partial(SettingsSchema).safeParse(JSON.parse(item));
+      const result = z.partial(settingsSchema).safeParse(JSON.parse(item));
 
       if (result.success) {
         return Object.assign({ ...defaults }, result.data);

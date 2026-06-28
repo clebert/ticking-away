@@ -5,7 +5,7 @@ import { ConfigProvider } from "./config.tsx";
 import { Controls } from "./controls.tsx";
 import { useRenderer } from "./renderer.ts";
 import { SettingsProvider } from "./settings.tsx";
-import { initWasm } from "./wasm.ts";
+import { initializeWebAssembly } from "./wasm.ts";
 
 const isFullscreen = new URLSearchParams(window.location.search).has("fullscreen");
 
@@ -64,7 +64,7 @@ function App(): JSX.Element {
   );
 }
 
-initWasm()
+initializeWebAssembly()
   .then(() => {
     preactRender(<App />, document.body);
   })

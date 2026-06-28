@@ -3,23 +3,42 @@ import { useAnimation } from "./animation.tsx";
 import { type Config, resetConfig, useConfig } from "./config.tsx";
 import { resetSettings, useSettings } from "./settings.tsx";
 
-function intValue(event: TargetedEvent<HTMLInputElement | HTMLSelectElement>): number {
+function integerValue(event: TargetedEvent<HTMLInputElement | HTMLSelectElement>): number {
   return parseInt(event.currentTarget.value, 10);
 }
 
-type StringKeys<T> = { [K in keyof T]: T[K] extends string ? K : never }[keyof T];
-
-function selectValue<K extends StringKeys<Config>>(
-  _key: K,
+function rainbowPaletteValue(
   event: TargetedEvent<HTMLSelectElement>,
-): Config[K] {
-  return event.currentTarget.value as Config[K];
+): Config["rainbow_palette_id"] {
+  const value = event.currentTarget.value;
+
+  switch (value) {
+    case "oklch_balanced":
+    case "spectral":
+      return value;
+    default:
+      throw new Error(`Unexpected rainbow palette: ${value}`);
+  }
+}
+
+function textureValue(event: TargetedEvent<HTMLSelectElement>): Config["texture"] {
+  const value = event.currentTarget.value;
+
+  switch (value) {
+    case "none":
+    case "grain":
+    case "dither_pebble":
+    case "dither_trmnl":
+      return value;
+    default:
+      throw new Error(`Unexpected texture: ${value}`);
+  }
 }
 
 function ModeSection(): JSX.Element {
-  const { $settings, updateSettings } = useSettings();
-  const { $fps } = useAnimation();
-  const { mode_live, mode_accelerated, mode_speed } = $settings.value;
+  const { settingsSignal, updateSettings } = useSettings();
+  const { framesPerSecondSignal } = useAnimation();
+  const { mode_live, mode_accelerated, mode_speed } = settingsSignal.value;
 
   return (
     <>
@@ -32,7 +51,9 @@ function ModeSection(): JSX.Element {
             onChange={() => updateSettings("mode_live", !mode_live)}
           />{" "}
           Live
-          {mode_live && $fps.value > 0 && <span class="fps">{$fps.value} fps</span>}
+          {mode_live && framesPerSecondSignal.value > 0 && (
+            <span class="fps">{framesPerSecondSignal.value} fps</span>
+          )}
         </label>
       </div>
       <div class="control-group">
@@ -49,7 +70,7 @@ function ModeSection(): JSX.Element {
         <label>Speed</label>
         <select
           value={mode_speed}
-          onChange={(event) => updateSettings("mode_speed", intValue(event))}
+          onChange={(event) => updateSettings("mode_speed", integerValue(event))}
           disabled={!mode_accelerated}
         >
           <option value="1">1 min/sec</option>
@@ -64,9 +85,9 @@ function ModeSection(): JSX.Element {
 }
 
 function TimeSection(): JSX.Element | null {
-  const { $settings } = useSettings();
-  const { mode_live } = $settings.value;
-  const { $hour, $minute } = useAnimation();
+  const { settingsSignal } = useSettings();
+  const { mode_live } = settingsSignal.value;
+  const { hourSignal, minuteSignal } = useAnimation();
 
   if (mode_live) return null;
 
@@ -75,29 +96,29 @@ function TimeSection(): JSX.Element | null {
       <div class="section-title">Time</div>
       <div class="control-group">
         <label>
-          Hour: <span>{$hour.value}</span>
+          Hour: <span>{hourSignal.value}</span>
         </label>
         <input
           type="range"
           min="0"
           max="11"
-          value={$hour.value}
-          onInput={(e) => {
-            $hour.value = intValue(e);
+          value={hourSignal.value}
+          onInput={(event) => {
+            hourSignal.value = integerValue(event);
           }}
         />
       </div>
       <div class="control-group">
         <label>
-          Minute: <span>{$minute.value}</span>
+          Minute: <span>{minuteSignal.value}</span>
         </label>
         <input
           type="range"
           min="0"
           max="59"
-          value={$minute.value}
-          onInput={(e) => {
-            $minute.value = intValue(e);
+          value={minuteSignal.value}
+          onInput={(event) => {
+            minuteSignal.value = integerValue(event);
           }}
         />
       </div>
@@ -107,8 +128,8 @@ function TimeSection(): JSX.Element | null {
           class="action-button"
           onClick={() => {
             const now = new Date();
-            $hour.value = now.getHours() % 12;
-            $minute.value = now.getMinutes();
+            hourSignal.value = now.getHours() % 12;
+            minuteSignal.value = now.getMinutes();
           }}
         >
           Set to Now
@@ -119,8 +140,8 @@ function TimeSection(): JSX.Element | null {
 }
 
 function PrismSection(): JSX.Element {
-  const { $config, updateConfig } = useConfig();
-  const config = $config.value;
+  const { configSignal, updateConfig } = useConfig();
+  const config = configSignal.value;
 
   return (
     <>
@@ -134,7 +155,7 @@ function PrismSection(): JSX.Element {
           min="10"
           max="100"
           value={Math.round(config.prism_normalized_size * 100)}
-          onInput={(e) => updateConfig("prism_normalized_size", intValue(e) / 100)}
+          onInput={(event) => updateConfig("prism_normalized_size", integerValue(event) / 100)}
         />
       </div>
       <div class="control-group">
@@ -146,7 +167,7 @@ function PrismSection(): JSX.Element {
           min="0"
           max="100"
           value={Math.round(config.prism_glow_linear_green * 100)}
-          onInput={(e) => updateConfig("prism_glow_linear_green", intValue(e) / 100)}
+          onInput={(event) => updateConfig("prism_glow_linear_green", integerValue(event) / 100)}
         />
       </div>
       <div class="control-group">
@@ -158,7 +179,9 @@ function PrismSection(): JSX.Element {
           min="0"
           max="50"
           value={Math.round(config.prism_glow_normalized_width * 100)}
-          onInput={(e) => updateConfig("prism_glow_normalized_width", intValue(e) / 100)}
+          onInput={(event) =>
+            updateConfig("prism_glow_normalized_width", integerValue(event) / 100)
+          }
         />
       </div>
     </>
@@ -166,8 +189,8 @@ function PrismSection(): JSX.Element {
 }
 
 function RainbowSection(): JSX.Element {
-  const { $config, updateConfig } = useConfig();
-  const config = $config.value;
+  const { configSignal, updateConfig } = useConfig();
+  const config = configSignal.value;
 
   return (
     <>
@@ -181,7 +204,7 @@ function RainbowSection(): JSX.Element {
           min="0"
           max="100"
           value={Math.round(config.rainbow_normalized_spread * 100)}
-          onInput={(e) => updateConfig("rainbow_normalized_spread", intValue(e) / 100)}
+          onInput={(event) => updateConfig("rainbow_normalized_spread", integerValue(event) / 100)}
         />
       </div>
       <div class="control-group">
@@ -193,14 +216,16 @@ function RainbowSection(): JSX.Element {
           min="0"
           max="20"
           value={Math.round(config.hand_glow_normalized_width * 1000)}
-          onInput={(e) => updateConfig("hand_glow_normalized_width", intValue(e) / 1000)}
+          onInput={(event) =>
+            updateConfig("hand_glow_normalized_width", integerValue(event) / 1000)
+          }
         />
       </div>
       <div class="control-group">
         <label>Color Palette</label>
         <select
           value={config.rainbow_palette_id}
-          onChange={(e) => updateConfig("rainbow_palette_id", selectValue("rainbow_palette_id", e))}
+          onChange={(event) => updateConfig("rainbow_palette_id", rainbowPaletteValue(event))}
         >
           <option value="oklch_balanced">OkLCH Balanced</option>
           <option value="spectral">Spectral</option>
@@ -211,8 +236,8 @@ function RainbowSection(): JSX.Element {
 }
 
 function EffectsSection(): JSX.Element {
-  const { $config, updateConfig } = useConfig();
-  const config = $config.value;
+  const { configSignal, updateConfig } = useConfig();
+  const config = configSignal.value;
 
   return (
     <>
@@ -241,7 +266,7 @@ function EffectsSection(): JSX.Element {
         <label>Texture</label>
         <select
           value={config.texture}
-          onChange={(e) => updateConfig("texture", selectValue("texture", e))}
+          onChange={(event) => updateConfig("texture", textureValue(event))}
         >
           <option value="none">None</option>
           <option value="grain">Grain</option>
@@ -259,7 +284,9 @@ function EffectsSection(): JSX.Element {
             min="0"
             max="100"
             value={Math.round(config.grain_normalized_deviation * 100)}
-            onInput={(e) => updateConfig("grain_normalized_deviation", intValue(e) / 100)}
+            onInput={(event) =>
+              updateConfig("grain_normalized_deviation", integerValue(event) / 100)
+            }
           />
         </div>
       )}
@@ -268,8 +295,8 @@ function EffectsSection(): JSX.Element {
 }
 
 function ResetSection(): JSX.Element {
-  const { $settings } = useSettings();
-  const { $config } = useConfig();
+  const { settingsSignal } = useSettings();
+  const { configSignal } = useConfig();
 
   return (
     <>
@@ -279,8 +306,8 @@ function ResetSection(): JSX.Element {
           type="button"
           class="action-button secondary"
           onClick={() => {
-            resetSettings($settings);
-            resetConfig($config);
+            resetSettings(settingsSignal);
+            resetConfig(configSignal);
           }}
         >
           Reset All to Defaults
