@@ -26,13 +26,11 @@ pub fn render(
 
 /// Renders strip `band_index` (height `band_height`) of the watchface from
 /// `config` into `srgb_buffer` and returns the resulting sRGB band.
-/// `srgb_buffer` must hold exactly `image.width * band_height` pixels;
-/// `linear_buffer` must hold `image.width * band_height * factor * factor`
-/// pixels, where `factor` is `supersampleFactor(config)`.
+/// `srgb_buffer` and `linear_buffer` must each hold exactly
+/// `image.width * band_height` pixels.
 ///
-/// When `config.supersample_enabled` is set, geometry is rendered at `factor ×
-/// factor` and box-averaged down in linear light before quantizing. The circle
-/// boundary is antialiased separately by `Crop`.
+/// Geometry is drawn with analytic coverage antialiasing; the circle boundary is
+/// antialiased separately by `Crop`.
 ///
 /// `config.texture` selects one mutually-exclusive post-process
 /// (`.dither_pebble`, `.dither_trmnl`, `.grain`, `.none`). Both dithers need
@@ -59,8 +57,6 @@ pub fn renderBand(
     );
 
     const viewport = image.viewport();
-    const supersample = supersampleFactor(config);
-    const supersampled = Image.init(image.width * supersample, image.height * supersample);
 
     @memset(
         linear_buffer,
@@ -74,15 +70,9 @@ pub fn renderBand(
         .sharp = config.ray_style == .sharp,
     };
 
-    const supersampled_band = try supersampled.band(Linear, linear_buffer, band_height * supersample, band_index);
+    const linear_band = try image.band(Linear, linear_buffer, band_height, band_index);
 
-    watchface.render(supersampled_band, supersampled.viewport(), clock);
-
-    if (supersample > 1) {
-        downsample(linear_buffer, image.width, band_height, supersample);
-    }
-
-    const linear_band = try image.band(Linear, linear_buffer[0 .. image.width * band_height], band_height, band_index);
+    watchface.render(linear_band, viewport, clock);
 
     // Grain textures the 8-bit sRGB output, whereas the dithers replace the sRGB
     // conversion entirely: dither_pebble quantizes to the 64-colour cube,
@@ -112,45 +102,6 @@ pub fn renderBand(
     }
 
     return srgb_band;
-}
-
-/// Supersample factor: 2 when `config.supersample_enabled`, else 1. Callers size
-/// `linear_buffer` to `width * height * factor * factor`.
-pub fn supersampleFactor(config: Config) usize {
-    return if (config.supersample_enabled) 2 else 1;
-}
-
-/// Box-averages the supersampled image held in `buffer` down to `width * height`,
-/// writing each averaged pixel into the front of the same buffer.
-///
-/// All four channels are averaged straight, including alpha. This is hue-correct
-/// because the renderer accumulates each contribution premultiplied by its coverage
-/// (colour scales with alpha), so averaging an edge pixel with a transparent neighbour
-/// darkens its colour and alpha together rather than leaving a halo.
-///
-/// In-place is safe: destination pixel `i` reads the `factor * factor` source block
-/// whose lowest index is `(i / width) * width * factor² + (i % width) * factor`,
-/// which is always `>= i`. So no source pixel is overwritten before it is read, and
-/// every source pixel is consumed by a destination at an index `<= its own`.
-fn downsample(buffer: []Linear, width: usize, height: usize, factor: usize) void {
-    const supersampled_width = width * factor;
-    const inverse_sample_count: f32 = 1.0 / @as(f32, @floatFromInt(factor * factor));
-
-    for (0..height) |y| {
-        for (0..width) |x| {
-            var sum: @Vector(4, f32) = .{ 0, 0, 0, 0 };
-
-            for (0..factor) |subpixel_y| {
-                const row = (y * factor + subpixel_y) * supersampled_width;
-
-                for (0..factor) |subpixel_x| {
-                    sum += buffer[row + x * factor + subpixel_x].vec;
-                }
-            }
-
-            buffer[y * width + x] = .{ .vec = sum * @as(@Vector(4, f32), @splat(inverse_sample_count)) };
-        }
-    }
 }
 
 const test_time = Time{ .total_minutes = 195.0 };
@@ -280,11 +231,10 @@ test "renderBand strip-by-strip matches a single full-height render" {
     var config = try Config.init(std.testing.allocator);
 
     config.texture = .dither_pebble;
-    config.supersample_enabled = true;
 
     const image = Image.init(test_size, test_size);
 
-    var reference_linear: [test_size * test_size * 4]Linear = undefined;
+    var reference_linear: [test_size * test_size]Linear = undefined;
     var reference_srgb: [test_size * test_size]Srgb = undefined;
     var reference_error: [dither_pebble.errorBufferSize(test_size)]f32 = undefined;
 
@@ -293,7 +243,7 @@ test "renderBand strip-by-strip matches a single full-height render" {
 
     const band_height = 1;
 
-    var band_linear: [test_size * band_height * 4]Linear = undefined;
+    var band_linear: [test_size * band_height]Linear = undefined;
     var band_srgb: [test_size * band_height]Srgb = undefined;
     var band_error: [dither_pebble.errorBufferSize(test_size)]f32 = undefined;
     var banded: [test_size * test_size]Srgb = undefined;
@@ -307,57 +257,30 @@ test "renderBand strip-by-strip matches a single full-height render" {
     try std.testing.expectEqualSlices(Srgb, &reference_copy, &banded);
 }
 
-test "downsample averages each source block in place" {
-    // 4x4 source -> 2x2 target (factor 2). Each pixel's channels carry its flat index,
-    // so a block average is just the mean of its four source indices.
-    var buffer: [16]Linear = undefined;
-
-    for (0..16) |i| {
-        const value: f32 = @floatFromInt(i);
-
-        buffer[i] = Linear.init(value, value, value, value);
-    }
-
-    downsample(&buffer, 2, 2, 2);
-
-    const expected = [_]f32{ 2.5, 4.5, 10.5, 12.5 };
-
-    for (expected, 0..) |mean, i| {
-        try std.testing.expectApproxEqAbs(mean, buffer[i].vec[0], 1e-6);
-    }
-}
-
-test "render with supersampling changes edge pixels" {
+test "render antialiases the circle rim" {
     var config = try Config.init(std.testing.allocator);
 
     config.texture = .none;
-    config.supersample_enabled = false;
+    config.background_enabled = true;
 
     const image = Image.init(test_size, test_size);
 
-    var plain_linear: [test_size * test_size]Linear = undefined;
-    var plain_srgb: [test_size * test_size]Srgb = undefined;
+    var linear_buffer: [test_size * test_size]Linear = undefined;
+    var srgb_buffer: [test_size * test_size]Srgb = undefined;
 
-    const plain = try render(config, test_time, image, &plain_linear, &plain_srgb, null);
-    const plain_copy = plain.buffer[0 .. test_size * test_size].*;
+    const band = try render(config, test_time, image, &linear_buffer, &srgb_buffer, null);
 
-    config.supersample_enabled = true;
+    // With the background enabled, Crop feathers the disc boundary: at least one pixel
+    // must be partially transparent, neither the transparent outside nor the fully opaque
+    // interior. (Ray-edge coverage is exercised by Glow's renderLine feather test.)
+    var found_partial_alpha = false;
 
-    var supersampled_linear: [test_size * test_size * 4]Linear = undefined;
-    var supersampled_srgb: [test_size * test_size]Srgb = undefined;
-
-    const supersampled = try render(config, test_time, image, &supersampled_linear, &supersampled_srgb, null);
-
-    // Antialiasing softens the hard prism/hand/circle edges, so the two frames must
-    // differ somewhere even though the geometry is identical.
-    var differs = false;
-
-    for (plain_copy, supersampled.buffer) |a, b| {
-        if (a.r != b.r or a.g != b.g or a.b != b.b or a.a != b.a) {
-            differs = true;
+    for (band.buffer) |pixel| {
+        if (pixel.a > 0 and pixel.a < 255) {
+            found_partial_alpha = true;
             break;
         }
     }
 
-    try std.testing.expect(differs);
+    try std.testing.expect(found_partial_alpha);
 }

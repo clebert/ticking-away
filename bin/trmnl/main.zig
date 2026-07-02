@@ -54,13 +54,7 @@ const config = lib.Config{
     .ray_style = .glow,
     .texture = .dither_trmnl,
     .grain_normalized_deviation = 0.1,
-    // No supersampling: with software floats it would quadruple the render time, and
-    // the Floyd–Steinberg dither already hides the aliased edges on the panel.
-    .supersample_enabled = false,
 };
-
-// Derived from config so linear_buffer's size always matches the factor renderBand uses.
-const supersample = lib.frame.supersampleFactor(config);
 
 const image = lib.Image.init(width, height);
 
@@ -72,7 +66,7 @@ var plane1: [plane_bytes]u8 = undefined;
 // Frame-scoped render scratch reused across bands. linear_buffer holds the linear
 // strip, srgb_buffer the dithered grey one, dither_error_buffer the Floyd–Steinberg
 // row errors (zeroed by renderBand on band_index 0).
-var linear_buffer: [width * band_height * supersample * supersample]lib.Linear = undefined;
+var linear_buffer: [width * band_height]lib.Linear = undefined;
 var srgb_buffer: [width * band_height]lib.Srgb = undefined;
 var dither_error_buffer: [lib.dither_trmnl.errorBufferSize(width)]f32 = undefined;
 

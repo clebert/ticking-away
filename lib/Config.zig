@@ -16,7 +16,6 @@ rainbow_palette_id: Rainbow.PaletteId,
 ray_style: RayStyle,
 texture: Texture,
 grain_normalized_deviation: f32,
-supersample_enabled: bool,
 
 const json_source = @embedFile("config.json");
 

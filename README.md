@@ -30,7 +30,7 @@ Build and run the PNG export binary to render the watchface to a PNG file:
 
 ```bash
 zig build png -Doptimize=ReleaseFast
-zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither-pebble | --dither-trmnl] [--supersample] [--sharp]
+zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither-pebble | --dither-trmnl] [--sharp]
 ```
 
 - `size`: image size in pixels (square, diameter of the unit circle)
@@ -40,29 +40,30 @@ zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither-pebble |
 - `--grain`: add film grain to the full-colour output
 - `--dither-pebble`: quantize the output to the Pebble 64-colour cube (Floyd–Steinberg)
 - `--dither-trmnl`: quantize the output to the TRMNL e-ink four greyscale levels (Floyd–Steinberg)
-- `--supersample`: render 2×2 and box-average down to antialias edges (off by default)
 - `--sharp`: album-cover look — no glow, solid rainbow bands, and crisp rays
+
+Edges are antialiased analytically (per-pixel coverage), so no supersampling flag is needed.
 
 The texture flags are mutually exclusive; without any, no texture is applied.
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 1024 7 14 logo.png --grain --supersample
+zig-out/bin/png 1024 7 14 logo.png --grain
 ```
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 260 7 14 pebble.png --dither-pebble --supersample
+zig-out/bin/png 260 7 14 pebble.png --dither-pebble
 ```
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 1964 7 14 wallpaper-14-inch.png --grain --supersample
+zig-out/bin/png 1964 7 14 wallpaper-14-inch.png --grain
 ```
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 2234 7 14 wallpaper-16-inch.png --grain --supersample
+zig-out/bin/png 2234 7 14 wallpaper-16-inch.png --grain
 ```
 
 ## Pebble Watchface

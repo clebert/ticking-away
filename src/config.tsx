@@ -16,7 +16,6 @@ const configSchema = z.object({
   ray_style: z.enum(["glow", "sharp"]),
   texture: z.enum(["none", "grain", "dither_pebble", "dither_trmnl"]),
   grain_normalized_deviation: z.number(),
-  supersample_enabled: z.boolean(),
 });
 
 export type Config = z.infer<typeof configSchema>;

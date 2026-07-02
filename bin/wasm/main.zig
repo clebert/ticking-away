@@ -84,20 +84,17 @@ export fn render(
     const image_width: usize = @intCast(width);
     const image_height: usize = @intCast(height);
 
-    const supersample_factor = lib.frame.supersampleFactor(config);
-
     // usize is u32 on wasm32 and this module runs without runtime safety, so an oversize
     // frame would wrap these size products silently and under-size the arena (a heap
     // overflow). Use checked arithmetic and return null on overflow.
     const pixel_count = std.math.mul(usize, image_width, image_height) catch return null;
-    const supersampled_count = std.math.mul(usize, pixel_count, supersample_factor * supersample_factor) catch return null;
     // Sized for dither_pebble (3 channels), the larger of the two dithers, so either
     // texture's error buffer fits when the config switches at runtime.
     const error_count = lib.dither_pebble.errorBufferSize(image_width);
 
     // Lay the buffers out by descending alignment so every offset stays naturally
     // aligned: Linear (16 B) first, then Srgb (4 B), then the f32 error rows.
-    const linear_bytes = std.math.mul(usize, supersampled_count, @sizeOf(lib.Linear)) catch return null;
+    const linear_bytes = std.math.mul(usize, pixel_count, @sizeOf(lib.Linear)) catch return null;
     const srgb_bytes = std.math.mul(usize, pixel_count, @sizeOf(lib.Srgb)) catch return null;
     const error_bytes = std.math.mul(usize, error_count, @sizeOf(f32)) catch return null;
     const error_offset = std.math.add(usize, linear_bytes, srgb_bytes) catch return null;
@@ -105,7 +102,7 @@ export fn render(
 
     arenaReserve(total_bytes) catch return null;
 
-    const linear_buffer = arenaSlice(lib.Linear, 0, supersampled_count);
+    const linear_buffer = arenaSlice(lib.Linear, 0, pixel_count);
     const srgb_buffer = arenaSlice(lib.Srgb, linear_bytes, pixel_count);
     const dither_error_buffer = arenaSlice(f32, error_offset, error_count);
 

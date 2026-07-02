@@ -7,6 +7,5 @@
   "rainbow_palette_id": "oklch_balanced",
   "ray_style": "sharp",
   "texture": "grain",
-  "grain_normalized_deviation": 0.1,
-  "supersample_enabled": false
+  "grain_normalized_deviation": 0.1
 }

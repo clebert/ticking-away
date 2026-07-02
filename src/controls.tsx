@@ -263,16 +263,6 @@ function EffectsSection(): JSX.Element {
         </label>
       </div>
       <div class="control-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={config.supersample_enabled}
-            onChange={() => updateConfig("supersample_enabled", !config.supersample_enabled)}
-          />{" "}
-          Supersampling
-        </label>
-      </div>
-      <div class="control-group">
         <label>Texture</label>
         <select
           value={config.texture}

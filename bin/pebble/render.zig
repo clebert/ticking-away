@@ -24,19 +24,15 @@ const config = lib.Config{
     .ray_style = .glow,
     .texture = .dither_pebble,
     .grain_normalized_deviation = 0.1,
-    .supersample_enabled = true,
 };
-
-// Derived from config so linear_buffer's size always matches the factor renderBand uses.
-const supersample = lib.frame.supersampleFactor(config);
 
 const image = lib.Image.init(width, width);
 
 // Frame-scoped scratch reused across bands; sized at comptime so the app carries no
-// allocator. linear_buffer holds the supersampled strip, srgb_buffer the downsampled
-// one. dither_error_buffer persists Floyd–Steinberg's pending row errors between
-// bands and is zeroed by renderBand when band_index 0 is rendered.
-var linear_buffer: [width * band_height * supersample * supersample]lib.Linear = undefined;
+// allocator. linear_buffer holds one linear strip, srgb_buffer its quantized output.
+// dither_error_buffer persists Floyd–Steinberg's pending row errors between bands and
+// is zeroed by renderBand when band_index 0 is rendered.
+var linear_buffer: [width * band_height]lib.Linear = undefined;
 var srgb_buffer: [width * band_height]lib.Srgb = undefined;
 var dither_error_buffer: [lib.dither_pebble.errorBufferSize(width)]f32 = undefined;
 

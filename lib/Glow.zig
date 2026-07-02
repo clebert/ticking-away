@@ -21,17 +21,20 @@ pub fn renderLine(
     prism_tint: Linear,
     sharp: bool,
 ) void {
-    // width == 0 is a valid "no glow" value: every pixel early-outs below before
-    // any divide by normalized_width.
     std.debug.assert(self.normalized_width >= 0.0 and self.normalized_width <= 1.0);
 
-    const width_squared = self.normalized_width * self.normalized_width;
+    // A zero-width glow draws nothing; returning early keeps the coverage ramp below
+    // from dividing by normalized_width.
+    if (self.normalized_width == 0.0) return;
+
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
-    const width_vec: @Vector(2, f32) = @splat(self.normalized_width);
-    const pixel_a = viewport.toPixel(@min(line.start, line.end) - width_vec);
-    const pixel_b = viewport.toPixel(@max(line.start, line.end) + width_vec);
+    // Pad the bounding box one pixel beyond the glow width so the antialiased feather
+    // at the capsule boundary is not clipped.
+    const pad: @Vector(2, f32) = @splat(self.normalized_width + viewport.inverse_scale);
+    const pixel_a = viewport.toPixel(@min(line.start, line.end) - pad);
+    const pixel_b = viewport.toPixel(@max(line.start, line.end) + pad);
     const min_pixel = @min(pixel_a, pixel_b);
     const max_pixel = @max(pixel_a, pixel_b);
 
@@ -58,8 +61,13 @@ pub fn renderLine(
             if (@reduce(.Add, point * point) > 1.0) continue;
 
             const projection = line.project(point);
+            const distance = @sqrt(projection.distance_squared);
 
-            if (projection.distance_squared >= width_squared) continue;
+            // Analytic antialiasing: feather the capsule's width boundary and rounded
+            // caps over one pixel instead of a hard inside/outside cutoff.
+            const edge_coverage = util.edgeCoverage(self.normalized_width - distance, viewport.scale);
+
+            if (edge_coverage <= 0.0) continue;
 
             const attenuation_proximity = std.math.clamp(
                 1.0 - (projection.normalized_position - attenuation_normalized_distance) / attenuation_length,
@@ -71,11 +79,12 @@ pub fn renderLine(
             // across the width, glow adds a radial cubic falloff.
             const length_brightness = intensity.falloff(1.0 - attenuation_proximity);
 
-            const brightness = if (sharp)
+            const radial_brightness = if (sharp)
                 length_brightness
             else
-                length_brightness *
-                    intensity.falloff(@sqrt(projection.distance_squared) / self.normalized_width);
+                length_brightness * intensity.falloff(distance / self.normalized_width);
+
+            const brightness = edge_coverage * radial_brightness;
 
             // Sharp: grade from self.color toward the prism tint as the ray runs
             // deeper past the prism face (self.color at the rim, where
@@ -99,9 +108,10 @@ pub fn renderPrismEdges(
     viewport: anytype,
     prism: Prism,
 ) void {
-    // width == 0 is a valid "no glow" value: every pixel early-outs below before
-    // any divide by normalized_width.
     std.debug.assert(self.normalized_width >= 0.0 and self.normalized_width <= 1.0);
+
+    // A zero-width glow draws nothing; returning early avoids dividing by normalized_width below.
+    if (self.normalized_width == 0.0) return;
 
     // The prism edge reads as a soft, slightly cool highlight that grades into
     // the tint deeper in, like the cover. The exponent keeps the highlight to a
@@ -114,9 +124,12 @@ pub fn renderPrismEdges(
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
+    // Pad the bounding box one pixel so the silhouette feather just outside the prism
+    // edges is not clipped.
     const prism_bounds = prism.bounds();
-    const pixel_a = viewport.toPixel(.{ prism_bounds[0], prism_bounds[1] });
-    const pixel_b = viewport.toPixel(.{ prism_bounds[2], prism_bounds[3] });
+    const margin = viewport.inverse_scale;
+    const pixel_a = viewport.toPixel(.{ prism_bounds[0] - margin, prism_bounds[1] - margin });
+    const pixel_b = viewport.toPixel(.{ prism_bounds[2] + margin, prism_bounds[3] + margin });
     const min_pixel = @min(pixel_a, pixel_b);
     const max_pixel = @max(pixel_a, pixel_b);
 
@@ -134,8 +147,6 @@ pub fn renderPrismEdges(
             const pixel_x: f32 = @as(f32, @floatFromInt(x)) + 0.5;
             const point = viewport.toNormalized(.{ pixel_x, pixel_y });
 
-            if (!prism.containsPoint(point)) continue;
-
             const projection_right = prism.edges.get(.right).project(point);
             const projection_bottom = prism.edges.get(.bottom).project(point);
             const projection_left = prism.edges.get(.left).project(point);
@@ -146,6 +157,16 @@ pub fn renderPrismEdges(
             );
 
             if (min_distance_squared >= width_squared) continue;
+
+            // Analytic antialiasing: the glow peaks right at the prism edge, so feather the
+            // silhouette over one pixel using the signed distance to the boundary (positive
+            // inside) rather than a hard containsPoint cutoff.
+            const boundary_distance = @sqrt(min_distance_squared);
+            const signed_distance =
+                if (prism.containsPoint(point)) boundary_distance else -boundary_distance;
+            const silhouette_coverage = util.edgeCoverage(signed_distance, viewport.scale);
+
+            if (silhouette_coverage <= 0.0) continue;
 
             // Sum each edge's glow rather than taking only the nearest one:
             // where two edges meet at a corner their fields overlap and add, so
@@ -172,7 +193,7 @@ pub fn renderPrismEdges(
             }
 
             const pixel = band.colorAt(x, local_y);
-            pixel.vec = pixel.vec + contribution;
+            pixel.vec = pixel.vec + contribution * @as(@Vector(4, f32), @splat(silhouette_coverage));
         }
     }
 }
@@ -222,6 +243,42 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
     const dim_avg = dim_sum / @as(f64, @floatFromInt(dim_count));
 
     try std.testing.expect(bright_avg > dim_avg * 3.0);
+}
+
+test "renderLine feathers the sharp edge with partial coverage" {
+    const size = 200;
+    const image = Image.init(size, size);
+    const viewport = image.viewport();
+
+    var buffer = [_]Linear{Linear.black} ** (size * size);
+    const band = try image.band(Linear, &buffer, size, 0);
+
+    // A diagonal sharp beam crosses the pixel grid at every sub-pixel offset, so its
+    // feathered edge must leave pixels lit strictly between black and the beam's peak —
+    // something a hard inside/outside cutoff cannot produce.
+    const glow = Self{ .normalized_width = 0.05, .color = Linear.white };
+    const line = Segment{ .start = .{ -0.5, -0.3 }, .end = .{ 0.5, 0.3 } };
+
+    glow.renderLine(band, viewport, line, 0.0, Linear.white, true);
+
+    var peak: f32 = 0;
+
+    for (&buffer) |pixel| peak = @max(peak, pixel.vec[0]);
+
+    try std.testing.expect(peak > 0);
+
+    var found_partial = false;
+
+    for (&buffer) |pixel| {
+        const value = pixel.vec[0];
+
+        if (value > 0.05 * peak and value < 0.95 * peak) {
+            found_partial = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(found_partial);
 }
 
 test "renderPrismEdges produces glow inside prism" {
