@@ -19,7 +19,6 @@ pub fn renderLine(
     line: Segment,
     attenuation_normalized_distance: f32,
     prism_tint: Linear,
-    sharp: bool,
 ) void {
     std.debug.assert(self.normalized_width >= 0.0 and self.normalized_width <= 1.0);
 
@@ -75,24 +74,13 @@ pub fn renderLine(
                 1.0,
             );
 
-            // Both styles fade out toward the centre along the ray; sharp stays flat
-            // across the width, glow adds a radial cubic falloff.
-            const length_brightness = intensity.falloff(1.0 - attenuation_proximity);
+            // Fades out toward the centre along the ray and stays flat across the beam
+            // width, keeping the beam crisp.
+            const brightness = edge_coverage * intensity.falloff(1.0 - attenuation_proximity);
 
-            const radial_brightness = if (sharp)
-                length_brightness
-            else
-                length_brightness * intensity.falloff(distance / self.normalized_width);
-
-            const brightness = edge_coverage * radial_brightness;
-
-            // Sharp: grade from self.color toward the prism tint as the ray runs
-            // deeper past the prism face (self.color at the rim, where
-            // attenuation_proximity == 1).
-            const color = if (sharp)
-                Linear.lerp(self.color, prism_tint, @sqrt(1.0 - attenuation_proximity))
-            else
-                self.color;
+            // Grade from self.color toward the prism tint as the ray runs deeper past
+            // the prism face (self.color at the rim, where attenuation_proximity == 1).
+            const color = Linear.lerp(self.color, prism_tint, @sqrt(1.0 - attenuation_proximity));
 
             const pixel = band.colorAt(x, local_y);
             const contribution = color.vec * @as(@Vector(4, f32), @splat(brightness));
@@ -212,7 +200,7 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
 
     const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
 
-    glow.renderLine(band, viewport, line, 0.4, Linear.white, false);
+    glow.renderLine(band, viewport, line, 0.4, Linear.white);
 
     var bright_sum: f64 = 0;
     var bright_count: u32 = 0;
@@ -245,7 +233,7 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
     try std.testing.expect(bright_avg > dim_avg * 3.0);
 }
 
-test "renderLine feathers the sharp edge with partial coverage" {
+test "renderLine feathers the beam edge with partial coverage" {
     const size = 200;
     const image = Image.init(size, size);
     const viewport = image.viewport();
@@ -253,13 +241,13 @@ test "renderLine feathers the sharp edge with partial coverage" {
     var buffer = [_]Linear{Linear.black} ** (size * size);
     const band = try image.band(Linear, &buffer, size, 0);
 
-    // A diagonal sharp beam crosses the pixel grid at every sub-pixel offset, so its
+    // A diagonal beam crosses the pixel grid at every sub-pixel offset, so its
     // feathered edge must leave pixels lit strictly between black and the beam's peak —
     // something a hard inside/outside cutoff cannot produce.
     const glow = Self{ .normalized_width = 0.05, .color = Linear.white };
     const line = Segment{ .start = .{ -0.5, -0.3 }, .end = .{ 0.5, 0.3 } };
 
-    glow.renderLine(band, viewport, line, 0.0, Linear.white, true);
+    glow.renderLine(band, viewport, line, 0.0, Linear.white);
 
     var peak: f32 = 0;
 
@@ -385,7 +373,7 @@ test "renderLine with zero width produces no glow" {
     const glow = Self{ .normalized_width = 0.0, .color = Linear.white };
     const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
 
-    glow.renderLine(band, viewport, line, 0.0, Linear.white, false);
+    glow.renderLine(band, viewport, line, 0.0, Linear.white);
 
     for (&buffer) |pixel| {
         try std.testing.expectEqual(Linear.black.vec, pixel.vec);

@@ -6,14 +6,6 @@ const Self = @This();
 
 vec: @Vector(4, f32),
 
-pub fn lerp(a: Self, b: Self, t: f32) Self {
-    std.debug.assert(t >= 0.0 and t <= 1.0);
-
-    const t_vec: @Vector(4, f32) = @splat(t);
-
-    return .{ .vec = a.vec + (b.vec - a.vec) * t_vec };
-}
-
 pub fn toLinear(self: Self) Linear {
     const l = self.vec[0];
     const a = self.vec[1];
@@ -36,23 +28,6 @@ pub fn toLinear(self: Self) Linear {
         @max(-0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3, 0.0),
         self.vec[3],
     } };
-}
-
-test "lerp at t=0 returns first color" {
-    const a: Self = .{ .vec = .{ 0.5, 0.1, -0.1, 1.0 } };
-    const b: Self = .{ .vec = .{ 0.8, -0.1, 0.2, 1.0 } };
-
-    try std.testing.expectEqual(a.vec, lerp(a, b, 0.0).vec);
-}
-
-test "lerp at t=1 returns second color" {
-    const a: Self = .{ .vec = .{ 0.5, 0.1, -0.1, 1.0 } };
-    const b: Self = .{ .vec = .{ 0.8, -0.1, 0.2, 1.0 } };
-    const result = lerp(a, b, 1.0);
-
-    inline for (0..4) |i| {
-        try std.testing.expectApproxEqAbs(b.vec[i], result.vec[i], 1e-6);
-    }
 }
 
 test "round-trip Linear → Oklab → Linear preserves values" {

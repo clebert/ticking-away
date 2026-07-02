@@ -7,32 +7,6 @@ function integerValue(event: TargetedEvent<HTMLInputElement | HTMLSelectElement>
   return parseInt(event.currentTarget.value, 10);
 }
 
-function rainbowPaletteValue(
-  event: TargetedEvent<HTMLSelectElement>,
-): Config["rainbow_palette_id"] {
-  const value = event.currentTarget.value;
-
-  switch (value) {
-    case "oklch_balanced":
-    case "spectral":
-      return value;
-    default:
-      throw new Error(`Unexpected rainbow palette: ${value}`);
-  }
-}
-
-function rayStyleValue(event: TargetedEvent<HTMLSelectElement>): Config["ray_style"] {
-  const value = event.currentTarget.value;
-
-  switch (value) {
-    case "glow":
-    case "sharp":
-      return value;
-    default:
-      throw new Error(`Unexpected ray style: ${value}`);
-  }
-}
-
 function textureValue(event: TargetedEvent<HTMLSelectElement>): Config["texture"] {
   const value = event.currentTarget.value;
 
@@ -220,26 +194,6 @@ function RainbowSection(): JSX.Element {
             updateConfig("hand_glow_normalized_width", integerValue(event) / 1000)
           }
         />
-      </div>
-      <div class="control-group">
-        <label>Color Palette</label>
-        <select
-          value={config.rainbow_palette_id}
-          onChange={(event) => updateConfig("rainbow_palette_id", rainbowPaletteValue(event))}
-        >
-          <option value="oklch_balanced">OkLCH Balanced</option>
-          <option value="spectral">Spectral</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label>Ray Style</label>
-        <select
-          value={config.ray_style}
-          onChange={(event) => updateConfig("ray_style", rayStyleValue(event))}
-        >
-          <option value="glow">Glow</option>
-          <option value="sharp">Sharp</option>
-        </select>
       </div>
     </>
   );

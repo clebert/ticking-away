@@ -44,17 +44,10 @@ const band_height = 1;
 // real reflectance. Set false for the watchface.
 const calibrate = false;
 
-const config = lib.Config{
+const config = lib.Config.default.with(.{
     .background_enabled = false,
-    .prism_normalized_size = 0.9,
-    .prism_glow_normalized_width = 0.07,
-    .rainbow_normalized_spread = 0.5,
-    .hand_glow_normalized_width = 0.02,
-    .rainbow_palette_id = .oklch_balanced,
-    .ray_style = .glow,
     .texture = .dither_trmnl,
-    .grain_normalized_deviation = 0.1,
-};
+});
 
 const image = lib.Image.init(width, height);
 

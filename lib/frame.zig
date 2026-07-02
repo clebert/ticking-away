@@ -66,8 +66,6 @@ pub fn renderBand(
     const watchface = Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
-        .rainbow_palette_id = config.rainbow_palette_id,
-        .sharp = config.ray_style == .sharp,
     };
 
     const linear_band = try image.band(Linear, linear_buffer, band_height, band_index);
@@ -108,7 +106,7 @@ const test_time = Time{ .total_minutes = 195.0 };
 const test_size = 32;
 
 test "render produces visible non-black output with defaults" {
-    const config = try Config.init(std.testing.allocator);
+    const config = Config.default;
 
     var linear_buffer: [test_size * test_size]Linear = undefined;
     var srgb_buffer: [test_size * test_size]Srgb = undefined;
@@ -124,7 +122,7 @@ test "render produces visible non-black output with defaults" {
 }
 
 test "render quantizes to the cube when pebble dithering is enabled" {
-    var config = try Config.init(std.testing.allocator);
+    var config = Config.default;
 
     config.texture = .dither_pebble;
 
@@ -147,7 +145,7 @@ test "render quantizes to the cube when pebble dithering is enabled" {
 }
 
 test "render quantizes to neutral greys when trmnl dithering is enabled" {
-    var config = try Config.init(std.testing.allocator);
+    var config = Config.default;
 
     config.texture = .dither_trmnl;
 
@@ -170,7 +168,7 @@ test "render quantizes to neutral greys when trmnl dithering is enabled" {
 }
 
 test "render leaves the output full-color when dithering is disabled" {
-    var config = try Config.init(std.testing.allocator);
+    var config = Config.default;
 
     config.texture = .none;
 
@@ -195,7 +193,7 @@ test "render leaves the output full-color when dithering is disabled" {
 }
 
 test "render perturbs the sRGB output when texture is grain" {
-    var config = try Config.init(std.testing.allocator);
+    var config = Config.default;
 
     config.grain_normalized_deviation = 0.1;
 
@@ -228,7 +226,7 @@ test "render perturbs the sRGB output when texture is grain" {
 }
 
 test "renderBand strip-by-strip matches a single full-height render" {
-    var config = try Config.init(std.testing.allocator);
+    var config = Config.default;
 
     config.texture = .dither_pebble;
 
@@ -258,7 +256,7 @@ test "renderBand strip-by-strip matches a single full-height render" {
 }
 
 test "render antialiases the circle rim" {
-    var config = try Config.init(std.testing.allocator);
+    var config = Config.default;
 
     config.texture = .none;
     config.background_enabled = true;
