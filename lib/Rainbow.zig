@@ -92,6 +92,19 @@ pub fn interpolate(self: Self, normalized_position: f32) Linear {
     return Oklab.lerp(base, edge_fade, @abs(color_position - clamped_color_position)).toLinear();
 }
 
+/// Snaps a continuous spectrum position to its solid band colour: the palette
+/// colour whose equal 1/N slice of [0, 1] contains normalized_position. No
+/// blending, no edge fade.
+pub fn quantize(self: Self, normalized_position: f32) Linear {
+    std.debug.assert(normalized_position >= 0.0 and normalized_position <= 1.0);
+
+    const color_count_f: f32 = @floatFromInt(color_count);
+    const scaled = normalized_position * color_count_f;
+    const index: usize = @intFromFloat(@min(@floor(scaled), color_count_f - 1.0));
+
+    return self.oklab_colors[index].toLinear();
+}
+
 test "get returns matching rainbow" {
     try std.testing.expectEqual(oklch_balanced.oklab_colors, (get(.oklch_balanced)).oklab_colors);
     try std.testing.expectEqual(spectral.oklab_colors, (get(.spectral)).oklab_colors);
@@ -137,6 +150,21 @@ test "interpolate at color center returns that color" {
         try std.testing.expectApproxEqAbs(expected_red.vec[i], red_center.vec[i], 1e-5);
         try std.testing.expectApproxEqAbs(expected_violet.vec[i], violet_center.vec[i], 1e-5);
     }
+}
+
+test "quantize snaps to the band containing the position" {
+    const first = spectral.quantize(0.0);
+    const last = spectral.quantize(1.0);
+
+    try std.testing.expectEqual(spectral.oklab_colors[0].toLinear().vec, first.vec);
+    try std.testing.expectEqual(spectral.oklab_colors[6].toLinear().vec, last.vec);
+
+    // Two positions inside the same 1/7 band snap to the same solid colour.
+    const low = spectral.quantize(3.01 / 7.0);
+    const high = spectral.quantize(3.99 / 7.0);
+
+    try std.testing.expectEqual(spectral.oklab_colors[3].toLinear().vec, low.vec);
+    try std.testing.expectEqual(low.vec, high.vec);
 }
 
 test "interpolate at edges fades toward dark" {

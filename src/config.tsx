@@ -9,11 +9,11 @@ import { getWebAssemblyMemory, getWebAssemblyModule } from "./wasm.ts";
 const configSchema = z.object({
   background_enabled: z.boolean(),
   prism_normalized_size: z.number(),
-  prism_glow_linear_green: z.number(),
   prism_glow_normalized_width: z.number(),
   rainbow_normalized_spread: z.number(),
   hand_glow_normalized_width: z.number(),
   rainbow_palette_id: z.enum(["oklch_balanced", "spectral"]),
+  ray_style: z.enum(["glow", "sharp"]),
   texture: z.enum(["none", "grain", "dither_pebble", "dither_trmnl"]),
   grain_normalized_deviation: z.number(),
   supersample_enabled: z.boolean(),

@@ -21,6 +21,18 @@ function rainbowPaletteValue(
   }
 }
 
+function rayStyleValue(event: TargetedEvent<HTMLSelectElement>): Config["ray_style"] {
+  const value = event.currentTarget.value;
+
+  switch (value) {
+    case "glow":
+    case "sharp":
+      return value;
+    default:
+      throw new Error(`Unexpected ray style: ${value}`);
+  }
+}
+
 function textureValue(event: TargetedEvent<HTMLSelectElement>): Config["texture"] {
   const value = event.currentTarget.value;
 
@@ -160,18 +172,6 @@ function PrismSection(): JSX.Element {
       </div>
       <div class="control-group">
         <label>
-          Glow Green: <span>{Math.round(config.prism_glow_linear_green * 100)}</span>%
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={Math.round(config.prism_glow_linear_green * 100)}
-          onInput={(event) => updateConfig("prism_glow_linear_green", integerValue(event) / 100)}
-        />
-      </div>
-      <div class="control-group">
-        <label>
           Glow Width: <span>{Math.round(config.prism_glow_normalized_width * 100)}</span>%
         </label>
         <input
@@ -229,6 +229,16 @@ function RainbowSection(): JSX.Element {
         >
           <option value="oklch_balanced">OkLCH Balanced</option>
           <option value="spectral">Spectral</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Ray Style</label>
+        <select
+          value={config.ray_style}
+          onChange={(event) => updateConfig("ray_style", rayStyleValue(event))}
+        >
+          <option value="glow">Glow</option>
+          <option value="sharp">Sharp</option>
         </select>
       </div>
     </>

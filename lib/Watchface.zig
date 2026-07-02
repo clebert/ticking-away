@@ -13,8 +13,14 @@ const Self = @This();
 
 hand_glow_normalized_width: f32,
 prism_glow_normalized_width: f32,
-prism_glow_color: Linear,
 rainbow_palette_id: Rainbow.PaletteId,
+sharp: bool,
+
+// One coherent album blue for the whole prism — its edge glow, the internal
+// beam, and the ray inside it. Matched to patch averages of the Dark Side of
+// the Moon cover (its analog grain averaged out): a saturated blue with green
+// well above red, so the glow reads blue rather than grey.
+const prism_tint = Linear.init(0.03, 0.34, 0.52, 1.0);
 
 pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Clock) void {
     const right_side = clock.hour_hand.get(.green).end[0] > 0;
@@ -32,7 +38,14 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
     const attenuation_origin =
         clock.minute_hand.project(minute_intersection.hit).normalized_position;
 
-    hand_glow.renderLine(band, viewport, clock.minute_hand, attenuation_origin);
+    hand_glow.renderLine(
+        band,
+        viewport,
+        clock.minute_hand,
+        attenuation_origin,
+        prism_tint,
+        self.sharp,
+    );
 
     const spectrum = Spectrum.init(
         .{ 0, 0 },
@@ -43,11 +56,19 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
     const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_hand.get(.green).end);
     const hour_intersection = clock.prism.intersect(hour_ray) orelse unreachable;
 
-    spectrum.render(band, viewport, rainbow, hour_intersection.distance);
+    spectrum.render(
+        band,
+        viewport,
+        rainbow,
+        hour_intersection.distance,
+        clock.prism,
+        prism_tint,
+        self.sharp,
+    );
 
     const prism_glow = Glow{
         .normalized_width = self.prism_glow_normalized_width,
-        .color = self.prism_glow_color,
+        .color = prism_tint,
     };
 
     prism_glow.renderPrismEdges(band, viewport, clock.prism);
@@ -62,8 +83,16 @@ const test_prism_normalized_size: f32 = 0.8;
 const test_watchface = Self{
     .hand_glow_normalized_width = 0.005,
     .prism_glow_normalized_width = 0.15,
-    .prism_glow_color = Linear.init(0.1, 0.75, 1.0, 1.0),
     .rainbow_palette_id = .oklch_balanced,
+    .sharp = false,
+};
+
+const test_watchface_sharp = fixture: {
+    var watchface = test_watchface;
+
+    watchface.sharp = true;
+
+    break :fixture watchface;
 };
 
 fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
@@ -147,6 +176,36 @@ test "render produces rainbow colors" {
     try std.testing.expect(has_red);
     try std.testing.expect(has_green);
     try std.testing.expect(has_blue);
+}
+
+test "sharp ray style differs from glow ray style" {
+    const time = Time{ .total_minutes = 195.0 };
+    const clock = Clock.init(time, test_prism_normalized_size, 0.5);
+    const image = Image.init(test_image_size, test_image_size);
+    const viewport = image.viewport();
+
+    var glow_buffer = [_]Linear{Linear.black} ** (test_image_size * test_image_size);
+    var sharp_buffer = [_]Linear{Linear.black} ** (test_image_size * test_image_size);
+
+    const glow_band = image.band(Linear, &glow_buffer, test_image_size, 0) catch unreachable;
+    const sharp_band = image.band(Linear, &sharp_buffer, test_image_size, 0) catch unreachable;
+
+    test_watchface.render(glow_band, viewport, clock);
+    test_watchface_sharp.render(sharp_band, viewport, clock);
+
+    var differs = false;
+
+    for (glow_buffer, sharp_buffer) |glow_pixel, sharp_pixel| {
+        if (glow_pixel.vec[0] != sharp_pixel.vec[0] or
+            glow_pixel.vec[1] != sharp_pixel.vec[1] or
+            glow_pixel.vec[2] != sharp_pixel.vec[2])
+        {
+            differs = true;
+            break;
+        }
+    }
+
+    try std.testing.expect(differs);
 }
 
 test "render survives full 12-hour cycle" {

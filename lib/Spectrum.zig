@@ -3,6 +3,7 @@ const std = @import("std");
 const Image = @import("Image.zig");
 const intensity = @import("intensity.zig");
 const Linear = @import("Linear.zig");
+const Prism = @import("Prism.zig");
 const Rainbow = @import("Rainbow.zig");
 const util = @import("util.zig");
 const vector = @import("vector.zig");
@@ -59,6 +60,9 @@ pub fn render(
     viewport: anytype,
     rainbow: Rainbow,
     attenuation_normalized_distance: f32,
+    prism: Prism,
+    prism_tint: Linear,
+    sharp: bool,
 ) void {
     // Skip degenerate sectors: near-zero span (directions identical) or
     // near-π span (directions antiparallel) where cross-product interpolation breaks down.
@@ -105,6 +109,8 @@ pub fn render(
             const attenuation_distance =
                 @max(attenuation_normalized_distance, std.math.floatEps(f32));
 
+            // Both styles fade out toward the centre; sharp only swaps the smooth
+            // gradient for solid bands (see the colour below).
             const attenuation_linear =
                 std.math.clamp(@sqrt(distance_squared) / attenuation_distance, 0.0, 1.0);
 
@@ -125,7 +131,16 @@ pub fn render(
             const spectrum_position =
                 if (self.reverse) 1.0 - spectrum_position_raw else spectrum_position_raw;
 
-            const color = rainbow.interpolate(spectrum_position);
+            // Sharp inside the prism: one beam graded from white at the prism face
+            // to the prism tint deeper in, like the input ray; outside: solid colour
+            // bands. Glow: a smooth gradient throughout.
+            const color = if (!sharp)
+                rainbow.interpolate(spectrum_position)
+            else if (prism.containsPoint(point))
+                Linear.lerp(Linear.white, prism_tint, @sqrt(1.0 - attenuation_linear))
+            else
+                rainbow.quantize(spectrum_position);
+
             const pixel = band.colorAt(x, local_y);
 
             pixel.vec = pixel.vec + color.vec * @as(@Vector(4, f32), @splat(attenuation_value));
@@ -189,7 +204,7 @@ test "render produces spectrum with rotated viewport" {
     const band = try image.band(Linear, &buffer, 64, 0);
     const spectrum = Self.init(.{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 });
 
-    spectrum.render(band, viewport, rainbow, 0.5);
+    spectrum.render(band, viewport, rainbow, 0.5, Prism.init(0.8), Linear.white, false);
 
     var found_color = false;
 
@@ -216,7 +231,7 @@ test "attenuation reduces brightness near origin" {
     const band = try image.band(Linear, &buffer, size, 0);
 
     const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.2 }, .{ 1, -0.2 });
-    spectrum.render(band, viewport, rainbow, 0.5);
+    spectrum.render(band, viewport, rainbow, 0.5, Prism.init(0.8), Linear.white, false);
 
     // Sum across multiple rows to average out angular color differences.
     var near_sum: f64 = 0;

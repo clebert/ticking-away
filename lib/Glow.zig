@@ -18,6 +18,8 @@ pub fn renderLine(
     viewport: anytype,
     line: Segment,
     attenuation_normalized_distance: f32,
+    prism_tint: Linear,
+    sharp: bool,
 ) void {
     // width == 0 is a valid "no glow" value: every pixel early-outs below before
     // any divide by normalized_width.
@@ -59,18 +61,32 @@ pub fn renderLine(
 
             if (projection.distance_squared >= width_squared) continue;
 
-            const radial =
-                intensity.falloff(@sqrt(projection.distance_squared) / self.normalized_width);
-
             const attenuation_proximity = std.math.clamp(
                 1.0 - (projection.normalized_position - attenuation_normalized_distance) / attenuation_length,
                 0.0,
                 1.0,
             );
 
+            // Both styles fade out toward the centre along the ray; sharp stays flat
+            // across the width, glow adds a radial cubic falloff.
+            const length_brightness = intensity.falloff(1.0 - attenuation_proximity);
+
+            const brightness = if (sharp)
+                length_brightness
+            else
+                length_brightness *
+                    intensity.falloff(@sqrt(projection.distance_squared) / self.normalized_width);
+
+            // Sharp: grade from self.color toward the prism tint as the ray runs
+            // deeper past the prism face (self.color at the rim, where
+            // attenuation_proximity == 1).
+            const color = if (sharp)
+                Linear.lerp(self.color, prism_tint, @sqrt(1.0 - attenuation_proximity))
+            else
+                self.color;
+
             const pixel = band.colorAt(x, local_y);
-            const brightness = radial * intensity.falloff(1.0 - attenuation_proximity);
-            const contribution = self.color.vec * @as(@Vector(4, f32), @splat(brightness));
+            const contribution = color.vec * @as(@Vector(4, f32), @splat(brightness));
 
             pixel.vec = @max(pixel.vec, contribution);
         }
@@ -87,13 +103,14 @@ pub fn renderPrismEdges(
     // any divide by normalized_width.
     std.debug.assert(self.normalized_width >= 0.0 and self.normalized_width <= 1.0);
 
-    const width = self.normalized_width;
-    const smooth_k = width * 0.5;
+    // The prism edge reads as a soft, slightly cool highlight that grades into
+    // the tint deeper in, like the cover. The exponent keeps the highlight to a
+    // thin band right at the rim.
+    const rim_highlight = Linear.init(0.80, 0.84, 0.90, 1.0);
+    const rim_falloff_exponent = 0.22;
 
-    // smoothMin subtracts at most h²·k·0.25 from the true min, so glow can
-    // appear slightly beyond `width`. Pad the early-out to avoid clipping it.
-    const early_out_threshold = width + smooth_k * 0.25;
-    const early_out_threshold_squared = early_out_threshold * early_out_threshold;
+    const width = self.normalized_width;
+    const width_squared = width * width;
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
@@ -128,46 +145,36 @@ pub fn renderPrismEdges(
                 @min(projection_bottom.distance_squared, projection_left.distance_squared),
             );
 
-            if (min_distance_squared >= early_out_threshold_squared) continue;
+            if (min_distance_squared >= width_squared) continue;
 
-            const distance_right = @sqrt(projection_right.distance_squared);
-            const distance_bottom = @sqrt(projection_bottom.distance_squared);
-            const distance_left = @sqrt(projection_left.distance_squared);
-            const distance = smoothMin(
-                smoothMin(distance_right, distance_bottom, smooth_k),
-                distance_left,
-                smooth_k,
-            );
+            // Sum each edge's glow rather than taking only the nearest one:
+            // where two edges meet at a corner their fields overlap and add, so
+            // the tint stays continuous through the vertex with no dark seam
+            // along the bisector — and still tapers to a point.
+            var contribution = @as(@Vector(4, f32), @splat(0.0));
 
-            if (distance >= width) continue;
+            for ([_]f32{
+                projection_right.distance_squared,
+                projection_bottom.distance_squared,
+                projection_left.distance_squared,
+            }) |distance_squared| {
+                if (distance_squared >= width_squared) continue;
+
+                const normalized_distance = @sqrt(distance_squared) / width;
+                const brightness = intensity.falloff(normalized_distance);
+                const edge_color = Linear.lerp(
+                    rim_highlight,
+                    self.color,
+                    std.math.pow(f32, normalized_distance, rim_falloff_exponent),
+                );
+
+                contribution += edge_color.vec * @as(@Vector(4, f32), @splat(brightness));
+            }
 
             const pixel = band.colorAt(x, local_y);
-            const normalized_distance = @max(distance / width, 0.0);
-            const brightness = intensity.falloff(normalized_distance);
-            const blended_color = Linear.lerp(Linear.white, self.color, @sqrt(normalized_distance));
-            const contribution = blended_color.vec * @as(@Vector(4, f32), @splat(brightness));
-
             pixel.vec = pixel.vec + contribution;
         }
     }
-}
-
-fn smoothMin(a: f32, b: f32, k: f32) f32 {
-    const h = @max(k - @abs(a - b), 0) / k;
-
-    return @min(a, b) - h * h * k * 0.25;
-}
-
-test "smoothMin returns minimum when values are far apart" {
-    const result = smoothMin(1.0, 5.0, 0.5);
-
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), result, 0.01);
-}
-
-test "smoothMin blends when values are equal" {
-    const result = smoothMin(1.0, 1.0, 1.0);
-
-    try std.testing.expectApproxEqAbs(@as(f32, 0.75), result, 1e-6);
 }
 
 test "renderLine attenuation reduces brightness past normalized_distance" {
@@ -184,7 +191,7 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
 
     const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
 
-    glow.renderLine(band, viewport, line, 0.4);
+    glow.renderLine(band, viewport, line, 0.4, Linear.white, false);
 
     var bright_sum: f64 = 0;
     var bright_count: u32 = 0;
@@ -321,7 +328,7 @@ test "renderLine with zero width produces no glow" {
     const glow = Self{ .normalized_width = 0.0, .color = Linear.white };
     const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
 
-    glow.renderLine(band, viewport, line, 0.0);
+    glow.renderLine(band, viewport, line, 0.0, Linear.white, false);
 
     for (&buffer) |pixel| {
         try std.testing.expectEqual(Linear.black.vec, pixel.vec);

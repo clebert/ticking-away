@@ -22,6 +22,8 @@ pub fn main(init: std.process.Init) !void {
 
     config.supersample_enabled = args.supersample;
 
+    config.ray_style = if (args.sharp) .sharp else .glow;
+
     const supersample_factor = lib.frame.supersampleFactor(config);
     const linear_buffer = try allocator.alloc(lib.Linear, pixel_count * supersample_factor * supersample_factor);
     const srgb_buffer = try allocator.alloc(lib.Srgb, pixel_count);
@@ -64,6 +66,7 @@ const Args = struct {
     output_path: []const u8,
     texture: lib.Config.Texture,
     supersample: bool,
+    sharp: bool,
 };
 
 fn parseArgs(process_args: std.process.Args) ?Args {
@@ -75,6 +78,7 @@ fn parseArgs(process_args: std.process.Args) ?Args {
     var positional_count: usize = 0;
     var texture: ?lib.Config.Texture = null;
     var supersample = false;
+    var sharp = false;
     var options_ended = false;
 
     while (arguments.next()) |arg| {
@@ -91,6 +95,8 @@ fn parseArgs(process_args: std.process.Args) ?Args {
             texture = .dither_trmnl;
         } else if (!options_ended and std.mem.eql(u8, arg, "--supersample")) {
             supersample = true;
+        } else if (!options_ended and std.mem.eql(u8, arg, "--sharp")) {
+            sharp = true;
         } else if (!options_ended and std.mem.startsWith(u8, arg, "--")) {
             return null;
         } else {
@@ -118,12 +124,13 @@ fn parseArgs(process_args: std.process.Args) ?Args {
         .output_path = positional[3],
         .texture = texture orelse .none,
         .supersample = supersample,
+        .sharp = sharp,
     };
 }
 
 fn printUsage() void {
     std.debug.print(
-        \\Usage: png <size> <hour> <minute> <output.png> [--grain | --dither-pebble | --dither-trmnl] [--supersample]
+        \\Usage: png <size> <hour> <minute> <output.png> [--grain | --dither-pebble | --dither-trmnl] [--supersample] [--sharp]
         \\
         \\  size            Image size in pixels (square, diameter of the unit circle)
         \\  hour            Hour (0-23)
@@ -133,6 +140,7 @@ fn printUsage() void {
         \\  --dither-pebble Quantize the output to the Pebble 64-colour cube
         \\  --dither-trmnl  Quantize the output to the TRMNL e-ink four greyscale levels
         \\  --supersample   Render 2x2 and box-average down to antialias edges (off by default)
+        \\  --sharp         Album-cover look: no glow, solid rainbow bands, crisp rays
         \\
         \\The texture flags are mutually exclusive; without any, no texture is applied.
         \\

@@ -70,8 +70,8 @@ pub fn renderBand(
     const watchface = Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
-        .prism_glow_color = Linear.init(0.1, config.prism_glow_linear_green, 1.0, 1.0),
         .rainbow_palette_id = config.rainbow_palette_id,
+        .sharp = config.ray_style == .sharp,
     };
 
     const supersampled_band = try supersampled.band(Linear, linear_buffer, band_height * supersample, band_index);

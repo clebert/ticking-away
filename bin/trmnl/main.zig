@@ -47,11 +47,11 @@ const calibrate = false;
 const config = lib.Config{
     .background_enabled = false,
     .prism_normalized_size = 0.9,
-    .prism_glow_linear_green = 0.75,
     .prism_glow_normalized_width = 0.07,
     .rainbow_normalized_spread = 0.5,
     .hand_glow_normalized_width = 0.02,
     .rainbow_palette_id = .oklch_balanced,
+    .ray_style = .glow,
     .texture = .dither_trmnl,
     .grain_normalized_deviation = 0.1,
     // No supersampling: with software floats it would quadruple the render time, and

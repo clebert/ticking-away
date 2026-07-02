@@ -30,7 +30,7 @@ Build and run the PNG export binary to render the watchface to a PNG file:
 
 ```bash
 zig build png -Doptimize=ReleaseFast
-zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither-pebble | --dither-trmnl] [--supersample]
+zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither-pebble | --dither-trmnl] [--supersample] [--sharp]
 ```
 
 - `size`: image size in pixels (square, diameter of the unit circle)
@@ -41,6 +41,7 @@ zig-out/bin/png <size> <hour> <minute> <output.png> [--grain | --dither-pebble |
 - `--dither-pebble`: quantize the output to the Pebble 64-colour cube (Floyd–Steinberg)
 - `--dither-trmnl`: quantize the output to the TRMNL e-ink four greyscale levels (Floyd–Steinberg)
 - `--supersample`: render 2×2 and box-average down to antialias edges (off by default)
+- `--sharp`: album-cover look — no glow, solid rainbow bands, and crisp rays
 
 The texture flags are mutually exclusive; without any, no texture is applied.
 

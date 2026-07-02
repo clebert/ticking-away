@@ -5,14 +5,15 @@ const Rainbow = @import("Rainbow.zig");
 const Self = @This();
 
 pub const Texture = enum { none, grain, dither_pebble, dither_trmnl };
+pub const RayStyle = enum { glow, sharp };
 
 background_enabled: bool,
 prism_normalized_size: f32,
-prism_glow_linear_green: f32,
 prism_glow_normalized_width: f32,
 rainbow_normalized_spread: f32,
 hand_glow_normalized_width: f32,
 rainbow_palette_id: Rainbow.PaletteId,
+ray_style: RayStyle,
 texture: Texture,
 grain_normalized_deviation: f32,
 supersample_enabled: bool,
