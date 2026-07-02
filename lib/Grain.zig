@@ -22,8 +22,12 @@ pub fn apply(self: Self, band: Image.Band(Srgb)) void {
         const row = band.buffer[local_y * band.width ..][0..band.width];
 
         for (row, 0..) |*srgb, x| {
-            // Skip pure black so the dark background stays clean.
-            if (srgb.r == 0 and srgb.g == 0 and srgb.b == 0) continue;
+            // Leave the flat background untouched so it stays clean.
+            const is_black = srgb.r == 0 and srgb.g == 0 and srgb.b == 0;
+            const is_background = srgb.r == Srgb.background.r and
+                srgb.g == Srgb.background.g and srgb.b == Srgb.background.b;
+
+            if (is_black or is_background) continue;
 
             const offset = noiseAt(x, image_y) * strength;
 
@@ -90,6 +94,20 @@ test "apply skips black pixels" {
     const pixel_count = 64 * 64;
 
     var buffer = [_]Srgb{.{ .r = 0, .g = 0, .b = 0 }} ** pixel_count;
+
+    const original = buffer;
+    const band = try (Image.init(64, 64)).band(Srgb, &buffer, 64, 0);
+    const grain = Self{ .normalized_deviation = 0.1 };
+
+    grain.apply(band);
+
+    try std.testing.expectEqualSlices(Srgb, &original, &buffer);
+}
+
+test "apply skips background pixels" {
+    const pixel_count = 64 * 64;
+
+    var buffer = [_]Srgb{Srgb.background} ** pixel_count;
 
     const original = buffer;
     const band = try (Image.init(64, 64)).band(Srgb, &buffer, 64, 0);

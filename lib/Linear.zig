@@ -1,6 +1,5 @@
 const std = @import("std");
 
-const Oklab = @import("Oklab.zig");
 const Srgb = @import("Srgb.zig");
 
 const Self = @This();
@@ -8,6 +7,13 @@ const Self = @This();
 pub const black: Self = .{ .vec = .{ 0, 0, 0, 1 } };
 pub const white: Self = .{ .vec = .{ 1, 1, 1, 1 } };
 pub const transparent: Self = .{ .vec = .{ 0, 0, 0, 0 } };
+
+/// Near-black background tone sampled from the original album cover.
+pub const background: Self = blk: {
+    @setEvalBranchQuota(2000);
+
+    break :blk Srgb.background.toLinear();
+};
 
 vec: @Vector(4, f32),
 
@@ -23,32 +29,9 @@ pub fn lerp(a: Self, b: Self, t: f32) Self {
     return .{ .vec = a.vec + (b.vec - a.vec) * t_vec };
 }
 
-pub fn toOklab(self: Self) Oklab {
-    const r = self.vec[0];
-    const g = self.vec[1];
-    const b = self.vec[2];
-
-    // Linear RGB → LMS
-    const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
-    const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
-    const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
-
-    // LMS → LMS cube roots
-    const lp = cubeRoot(l);
-    const mp = cubeRoot(m);
-    const sp = cubeRoot(s);
-
-    // LMS cube roots → Oklab
-    return .{ .vec = .{
-        0.2104542553 * lp + 0.7936177850 * mp - 0.0040720468 * sp,
-        1.9779984951 * lp - 2.4285922050 * mp + 0.4505937099 * sp,
-        0.0259040371 * lp + 0.7827717662 * mp - 0.8086757660 * sp,
-        self.vec[3],
-    } };
-}
-
 pub fn toSrgb(self: Self) Srgb {
-    // Exact fast path for the common black/transparent background pixels.
+    // Exact fast paths for the flat background pixels that dominate the frame.
+    if (@reduce(.And, self.vec == background.vec)) return .background;
     if (@reduce(.And, self.vec == black.vec)) return .black;
     if (@reduce(.And, self.vec == transparent.vec)) return .transparent;
 
@@ -152,6 +135,15 @@ test "toSrgb converts black correctly" {
     try std.testing.expectEqual(@as(u8, 255), srgb.a);
 }
 
+test "toSrgb fast-paths the background tone" {
+    const srgb = background.toSrgb();
+
+    try std.testing.expectEqual(Srgb.background.r, srgb.r);
+    try std.testing.expectEqual(Srgb.background.g, srgb.g);
+    try std.testing.expectEqual(Srgb.background.b, srgb.b);
+    try std.testing.expectEqual(@as(u8, 255), srgb.a);
+}
+
 test "toSrgb converts white correctly" {
     const srgb = white.toSrgb();
 
@@ -215,22 +207,4 @@ test "cubeRoot computes cube root correctly" {
     try std.testing.expectApproxEqAbs(@as(f32, 2.0), cubeRoot(8.0), 1e-5);
     try std.testing.expectApproxEqAbs(@as(f32, 0.5), cubeRoot(0.125), 1e-5);
     try std.testing.expectEqual(@as(f32, 0.0), cubeRoot(0.0));
-}
-
-test "toOklab produces expected L for white" {
-    const oklab = white.toOklab();
-
-    try std.testing.expectApproxEqAbs(@as(f32, 1.0), oklab.vec[0], 1e-4);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), oklab.vec[1], 1e-4);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.0), oklab.vec[2], 1e-4);
-}
-
-test "round-trip Linear → Oklab → Linear preserves values" {
-    const original = Self.init(0.4, 0.6, 0.2, 1.0);
-    const back = original.toOklab().toLinear();
-
-    try std.testing.expectApproxEqAbs(original.vec[0], back.vec[0], 1e-5);
-    try std.testing.expectApproxEqAbs(original.vec[1], back.vec[1], 1e-5);
-    try std.testing.expectApproxEqAbs(original.vec[2], back.vec[2], 1e-5);
-    try std.testing.expectApproxEqAbs(original.vec[3], back.vec[3], 1e-5);
 }

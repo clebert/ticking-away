@@ -69,9 +69,7 @@ pub fn render(
 
     if (dot_exact > 0.9999 or dot_exact < -0.9999) return;
 
-    // Solid band colours in palette order, converted once per frame; the per-pixel
-    // path only indexes and blends this small array.
-    const band_colors = rainbow.bandColors();
+    const band_colors = rainbow.colors;
 
     const band_height = band.bandHeight();
     const y_offset: f32 = @floatFromInt(band.y_offset);
@@ -263,7 +261,7 @@ fn antialiasedBand(
 }
 
 test "render produces spectrum with rotated viewport" {
-    const rainbow = Rainbow.oklch_balanced;
+    const rainbow = Rainbow.dark_side_of_the_moon;
     const image = Image.init(48, 64);
     const viewport = image.viewportRotated(.clockwise_90);
     const pixel_count = 48 * 64;
@@ -288,7 +286,7 @@ test "render produces spectrum with rotated viewport" {
 }
 
 test "attenuation reduces brightness near origin" {
-    const rainbow = Rainbow.oklch_balanced;
+    const rainbow = Rainbow.dark_side_of_the_moon;
     const size = 200;
     const image = Image.init(size, size);
     const viewport = image.viewport();
@@ -399,8 +397,8 @@ fn spectrumPositionAt(spectrum: Self, point: @Vector(2, f32)) struct {
 }
 
 test "antialiasedBand blends across a seam but stays solid within a band" {
-    const rainbow = Rainbow.oklch_balanced;
-    const band_colors = rainbow.bandColors();
+    const rainbow = Rainbow.dark_side_of_the_moon;
+    const band_colors = rainbow.colors;
     const scale: f32 = 100.0;
     const count: f32 = @floatFromInt(Rainbow.color_count);
 
