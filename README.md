@@ -47,7 +47,7 @@ The texture flags are mutually exclusive; without any, no texture is applied.
 
 ```bash
 zig build png -Doptimize=ReleaseFast && \
-zig-out/bin/png 1024 7 14 logo.png
+zig-out/bin/png 1024 7 14 logo.png --grain
 ```
 
 ```bash

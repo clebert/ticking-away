@@ -88,7 +88,7 @@ pub fn renderBand(
 
         const continuous = try linear_band.toSrgb(srgb_buffer);
 
-        if (config.texture == .grain) grain.apply(continuous);
+        if (config.texture == .grain) grain.apply(continuous, viewport, clock.prism);
 
         break :blk continuous;
     };
