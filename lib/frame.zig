@@ -60,7 +60,7 @@ pub fn renderBand(
 
     @memset(
         linear_buffer,
-        if (config.background_enabled) Linear.background else Linear.transparent,
+        if (config.background_enabled) Linear.black else Linear.transparent,
     );
 
     const watchface = Watchface{

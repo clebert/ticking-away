@@ -8,13 +8,6 @@ pub const black: Self = .{ .vec = .{ 0, 0, 0, 1 } };
 pub const white: Self = .{ .vec = .{ 1, 1, 1, 1 } };
 pub const transparent: Self = .{ .vec = .{ 0, 0, 0, 0 } };
 
-/// Near-black background tone sampled from the original album cover.
-pub const background: Self = blk: {
-    @setEvalBranchQuota(2000);
-
-    break :blk Srgb.background.toLinear();
-};
-
 vec: @Vector(4, f32),
 
 pub fn init(r: f32, g: f32, b: f32, a: f32) Self {
@@ -30,8 +23,7 @@ pub fn lerp(a: Self, b: Self, t: f32) Self {
 }
 
 pub fn toSrgb(self: Self) Srgb {
-    // Exact fast paths for the flat background pixels that dominate the frame.
-    if (@reduce(.And, self.vec == background.vec)) return .background;
+    // Exact fast paths for the flat pixels that dominate the frame.
     if (@reduce(.And, self.vec == black.vec)) return .black;
     if (@reduce(.And, self.vec == transparent.vec)) return .transparent;
 
@@ -132,15 +124,6 @@ test "toSrgb converts black correctly" {
     try std.testing.expectEqual(@as(u8, 0), srgb.r);
     try std.testing.expectEqual(@as(u8, 0), srgb.g);
     try std.testing.expectEqual(@as(u8, 0), srgb.b);
-    try std.testing.expectEqual(@as(u8, 255), srgb.a);
-}
-
-test "toSrgb fast-paths the background tone" {
-    const srgb = background.toSrgb();
-
-    try std.testing.expectEqual(Srgb.background.r, srgb.r);
-    try std.testing.expectEqual(Srgb.background.g, srgb.g);
-    try std.testing.expectEqual(Srgb.background.b, srgb.b);
     try std.testing.expectEqual(@as(u8, 255), srgb.a);
 }
 

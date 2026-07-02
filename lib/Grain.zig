@@ -25,12 +25,10 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype, prism: Prism
         const row = band.buffer[local_y * band.width ..][0..band.width];
 
         for (row, 0..) |*srgb, x| {
-            // Leave the flat background untouched so it stays clean.
+            // Leave the flat black background untouched so it stays clean.
             const is_black = srgb.r == 0 and srgb.g == 0 and srgb.b == 0;
-            const is_background = srgb.r == Srgb.background.r and
-                srgb.g == Srgb.background.g and srgb.b == Srgb.background.b;
 
-            if (is_black or is_background) continue;
+            if (is_black) continue;
 
             const pixel_x: f32 = @as(f32, @floatFromInt(x)) + 0.5;
 
@@ -103,21 +101,6 @@ test "apply skips black pixels" {
     const pixel_count = 64 * 64;
 
     var buffer = [_]Srgb{.{ .r = 0, .g = 0, .b = 0 }} ** pixel_count;
-
-    const original = buffer;
-    const image = Image.init(64, 64);
-    const band = try image.band(Srgb, &buffer, 64, 0);
-    const grain = Self{ .normalized_deviation = 0.1 };
-
-    grain.apply(band, image.viewport(), Prism.init(0.8));
-
-    try std.testing.expectEqualSlices(Srgb, &original, &buffer);
-}
-
-test "apply skips background pixels" {
-    const pixel_count = 64 * 64;
-
-    var buffer = [_]Srgb{Srgb.background} ** pixel_count;
 
     const original = buffer;
     const image = Image.init(64, 64);
