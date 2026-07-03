@@ -21,7 +21,7 @@ prism_glow_normalized_width: f32,
 const prism_tint = Linear.init(0.03, 0.34, 0.52, 1.0);
 
 pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Clock) void {
-    const right_side = clock.hour_hand.get(.green).end[0] > 0;
+    const right_side = clock.hour_center.end[0] > 0;
     const rainbow = if (right_side) Rainbow.dark_side_of_the_moon.reversed() else Rainbow.dark_side_of_the_moon;
 
     const hand_glow = Glow{
@@ -49,7 +49,7 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
         clock.hour_hand.get(.violet).end,
     );
 
-    const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_hand.get(.green).end);
+    const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_center.end);
     const hour_intersection = clock.prism.intersect(hour_ray) orelse unreachable;
 
     spectrum.render(

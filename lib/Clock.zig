@@ -15,6 +15,7 @@ const rainbow_max_spread_radians: f32 = std.math.pi / 6.0;
 prism: Prism,
 minute_hand: Segment,
 hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
+hour_center: Segment,
 
 pub fn init(time: Time, prism_normalized_size: f32, rainbow_normalized_spread: f32) Self {
     const prism = Prism.init(prism_normalized_size);
@@ -35,6 +36,13 @@ pub fn init(time: Time, prism_normalized_size: f32, rainbow_normalized_spread: f
 
     const hour_angle = apex_angle + (@as(f32, @floatFromInt(hour)) / 12.0) *
         std.math.tau + (minute / 60.0) * hour_arc;
+
+    // The centre ray of the band fan, along hour_angle (normalized position 0.5). A single
+    // band ray is off-centre by half a band when the band count is even.
+    const hour_center: Segment = .{
+        .start = .{ 0, 0 },
+        .end = .{ @cos(hour_angle), @sin(hour_angle) },
+    };
 
     const spread_radians = rainbow_normalized_spread * rainbow_max_spread_radians;
 
@@ -58,6 +66,7 @@ pub fn init(time: Time, prism_normalized_size: f32, rainbow_normalized_spread: f
         .prism = prism,
         .minute_hand = minute_hand,
         .hour_hand = hour_hand,
+        .hour_center = hour_center,
     };
 }
 
@@ -123,6 +132,27 @@ test "init hour hand endpoints lie on circle boundary" {
 
         try std.testing.expectApproxEqAbs(1.0, distance, vector.tolerance);
     }
+}
+
+test "init hour center bisects the band fan" {
+    const clock = Self.init(
+        .{ .total_minutes = 195.0 },
+        test_prism_normalized_size,
+        test_rainbow_spread,
+    );
+
+    const center = clock.hour_center.end;
+
+    try std.testing.expectApproxEqAbs(1.0, vector.length(center), vector.tolerance);
+
+    // The extreme bands are symmetric about hour_angle, so their angular bisector is the
+    // centre — independent of the band count.
+    const bisector = vector.normalize(
+        clock.hour_hand.get(.red).end + clock.hour_hand.get(.violet).end,
+    );
+
+    try std.testing.expectApproxEqAbs(bisector[0], center[0], vector.tolerance);
+    try std.testing.expectApproxEqAbs(bisector[1], center[1], vector.tolerance);
 }
 
 test "init handles full 12-hour cycle" {
