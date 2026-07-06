@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const Rainbow = @import("Rainbow.zig");
+
 const Self = @This();
 
 pub const Texture = enum { none, grain, dither_pebble, dither_trmnl };
@@ -8,6 +10,7 @@ background_enabled: bool,
 prism_normalized_size: f32,
 prism_glow_normalized_width: f32,
 rainbow_normalized_spread: f32,
+rainbow_style: Rainbow.Style,
 hand_glow_normalized_width: f32,
 texture: Texture,
 grain_normalized_deviation: f32,

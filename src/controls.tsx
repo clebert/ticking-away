@@ -21,6 +21,19 @@ function textureValue(event: TargetedEvent<HTMLSelectElement>): Config["texture"
   }
 }
 
+function rainbowStyleValue(event: TargetedEvent<HTMLSelectElement>): Config["rainbow_style"] {
+  const value = event.currentTarget.value;
+
+  switch (value) {
+    case "dark_side_of_the_moon":
+    case "vivid":
+    case "spectrum":
+      return value;
+    default:
+      throw new Error(`Unexpected rainbow style: ${value}`);
+  }
+}
+
 function ModeSection(): JSX.Element {
   const { settingsSignal, updateSettings } = useSettings();
   const { framesPerSecondSignal } = useAnimation();
@@ -169,6 +182,17 @@ function RainbowSection(): JSX.Element {
   return (
     <>
       <div class="section-title">Rainbow</div>
+      <div class="control-group">
+        <label>Style</label>
+        <select
+          value={config.rainbow_style}
+          onChange={(event) => updateConfig("rainbow_style", rainbowStyleValue(event))}
+        >
+          <option value="dark_side_of_the_moon">Dark Side of the Moon</option>
+          <option value="vivid">Vivid</option>
+          <option value="spectrum">Spectrum (wavelength)</option>
+        </select>
+      </div>
       <div class="control-group">
         <label>
           Spread: <span>{Math.round(config.rainbow_normalized_spread * 100)}</span>%

@@ -11,6 +11,7 @@ const configSchema = z.object({
   prism_normalized_size: z.number(),
   prism_glow_normalized_width: z.number(),
   rainbow_normalized_spread: z.number(),
+  rainbow_style: z.enum(["dark_side_of_the_moon", "vivid", "spectrum"]),
   hand_glow_normalized_width: z.number(),
   texture: z.enum(["none", "grain", "dither_pebble", "dither_trmnl"]),
   grain_normalized_deviation: z.number(),

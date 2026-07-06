@@ -8,6 +8,7 @@ const dither_trmnl = @import("dither_trmnl.zig");
 const Grain = @import("Grain.zig");
 const Image = @import("Image.zig");
 const Linear = @import("Linear.zig");
+const Rainbow = @import("Rainbow.zig");
 const Srgb = @import("Srgb.zig");
 const Time = @import("Time.zig");
 const Watchface = @import("Watchface.zig");
@@ -50,10 +51,13 @@ pub fn renderBand(
     srgb_buffer: []Srgb,
     dither_error_buffer: ?[]f32,
 ) !Image.Band(Srgb) {
+    const rainbow = Rainbow.get(config.rainbow_style);
+
     const clock = Clock.init(
         time,
         config.prism_normalized_size,
         config.rainbow_normalized_spread,
+        rainbow.len,
     );
 
     const viewport = image.viewport();
@@ -66,6 +70,7 @@ pub fn renderBand(
     const watchface = Watchface{
         .hand_glow_normalized_width = config.hand_glow_normalized_width,
         .prism_glow_normalized_width = config.prism_glow_normalized_width,
+        .rainbow = rainbow,
     };
 
     const linear_band = try image.band(Linear, linear_buffer, band_height, band_index);

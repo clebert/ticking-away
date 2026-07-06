@@ -13,6 +13,7 @@ const Self = @This();
 
 hand_glow_normalized_width: f32,
 prism_glow_normalized_width: f32,
+rainbow: Rainbow,
 
 // One coherent album blue for the whole prism — its edge glow, the internal
 // beam, and the ray inside it. Matched to patch averages of the Dark Side of
@@ -21,8 +22,9 @@ prism_glow_normalized_width: f32,
 const prism_tint = Linear.init(0.03, 0.34, 0.52, 1.0);
 
 pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Clock) void {
+    const base_rainbow = self.rainbow;
     const right_side = clock.hour_center.end[0] > 0;
-    const rainbow = if (right_side) Rainbow.dark_side_of_the_moon.reversed() else Rainbow.dark_side_of_the_moon;
+    const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
 
     const hand_glow = Glow{
         .normalized_width = self.hand_glow_normalized_width,
@@ -45,8 +47,9 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
 
     const spectrum = Spectrum.init(
         .{ 0, 0 },
-        clock.hour_hand.get(.red).end,
-        clock.hour_hand.get(.violet).end,
+        clock.rainbow_start.end,
+        clock.rainbow_end.end,
+        base_rainbow.len,
     );
 
     const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_center.end);
@@ -78,10 +81,16 @@ const test_prism_normalized_size: f32 = 0.8;
 const test_watchface = Self{
     .hand_glow_normalized_width = 0.005,
     .prism_glow_normalized_width = 0.15,
+    .rainbow = Rainbow.dark_side_of_the_moon,
 };
 
-fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
-    const clock = Clock.init(time, test_prism_normalized_size, 0.5);
+fn renderFull(watchface: Self, time: Time) [test_image_size * test_image_size]Linear {
+    const clock = Clock.init(
+        time,
+        test_prism_normalized_size,
+        0.5,
+        watchface.rainbow.len,
+    );
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 
@@ -89,18 +98,23 @@ fn renderFull(time: Time) [test_image_size * test_image_size]Linear {
 
     const full_band = image.band(Linear, &full_buffer, test_image_size, 0) catch unreachable;
 
-    test_watchface.render(full_band, viewport, clock);
+    watchface.render(full_band, viewport, clock);
 
     return full_buffer;
 }
 
 test "multi-band render matches single-band render" {
     const time = Time{ .total_minutes = 195.0 };
-    const clock = Clock.init(time, test_prism_normalized_size, 0.5);
+    const clock = Clock.init(
+        time,
+        test_prism_normalized_size,
+        0.5,
+        test_watchface.rainbow.len,
+    );
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 
-    const reference_buffer = renderFull(time);
+    const reference_buffer = renderFull(test_watchface, time);
 
     var band_buffer: [test_image_size * test_band_height]Linear = undefined;
 
@@ -126,7 +140,25 @@ test "multi-band render matches single-band render" {
 }
 
 test "render produces visible output at 3:15" {
-    const buffer = renderFull(.{ .total_minutes = 195.0 });
+    const buffer = renderFull(test_watchface, .{ .total_minutes = 195.0 });
+
+    var sum: f64 = 0;
+
+    for (&buffer) |pixel| {
+        sum += pixel.vec[0] + pixel.vec[1] + pixel.vec[2];
+    }
+
+    try std.testing.expect(sum > 0);
+}
+
+test "renders a seven-band style" {
+    const watchface = Self{
+        .hand_glow_normalized_width = 0.005,
+        .prism_glow_normalized_width = 0.15,
+        .rainbow = Rainbow.spectrum,
+    };
+
+    const buffer = renderFull(watchface, .{ .total_minutes = 195.0 });
 
     var sum: f64 = 0;
 
@@ -138,7 +170,7 @@ test "render produces visible output at 3:15" {
 }
 
 test "render produces rainbow colors" {
-    const buffer = renderFull(.{ .total_minutes = 195.0 });
+    const buffer = renderFull(test_watchface, .{ .total_minutes = 195.0 });
 
     var has_red = false;
     var has_green = false;
@@ -168,6 +200,6 @@ test "render survives full 12-hour cycle" {
 
     while (minutes < 720.0) : (minutes += 30.0) {
         // The & prevents the compiler from optimizing away the call
-        _ = &renderFull(.{ .total_minutes = minutes });
+        _ = &renderFull(test_watchface, .{ .total_minutes = minutes });
     }
 }

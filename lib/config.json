@@ -3,6 +3,7 @@
   "prism_normalized_size": 0.866,
   "prism_glow_normalized_width": 0.06,
   "rainbow_normalized_spread": 0.5,
+  "rainbow_style": "dark_side_of_the_moon",
   "hand_glow_normalized_width": 0.005,
   "texture": "grain",
   "grain_normalized_deviation": 0.06

@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const Prism = @import("Prism.zig");
-const Rainbow = @import("Rainbow.zig");
 const Segment = @import("Segment.zig");
 const Time = @import("Time.zig");
 const vector = @import("vector.zig");
@@ -14,15 +13,20 @@ const rainbow_max_spread_radians: f32 = std.math.pi / 6.0;
 
 prism: Prism,
 minute_hand: Segment,
-hour_hand: std.EnumArray(Rainbow.ColorId, Segment),
 hour_center: Segment,
+rainbow_start: Segment,
+rainbow_end: Segment,
 
-pub fn init(time: Time, prism_normalized_size: f32, rainbow_normalized_spread: f32) Self {
+pub fn init(
+    time: Time,
+    prism_normalized_size: f32,
+    rainbow_normalized_spread: f32,
+    color_count: usize,
+) Self {
     const prism = Prism.init(prism_normalized_size);
 
-    std.debug.assert(
-        rainbow_normalized_spread >= 0.0 and rainbow_normalized_spread <= 1.0,
-    );
+    std.debug.assert(rainbow_normalized_spread >= 0.0 and rainbow_normalized_spread <= 1.0);
+    std.debug.assert(color_count >= 2);
 
     const hour_count: usize = @intFromFloat(time.total_minutes / 60.0);
     const hour: u4 = @intCast(@mod(hour_count, 12));
@@ -37,48 +41,47 @@ pub fn init(time: Time, prism_normalized_size: f32, rainbow_normalized_spread: f
     const hour_angle = apex_angle + (@as(f32, @floatFromInt(hour)) / 12.0) *
         std.math.tau + (minute / 60.0) * hour_arc;
 
-    // The centre ray of the band fan, along hour_angle (normalized position 0.5). A single
-    // band ray is off-centre by half a band when the band count is even.
-    const hour_center: Segment = .{
-        .start = .{ 0, 0 },
-        .end = .{ @cos(hour_angle), @sin(hour_angle) },
-    };
-
     const spread_radians = rainbow_normalized_spread * rainbow_max_spread_radians;
 
-    var hour_hand: std.EnumArray(Rainbow.ColorId, Segment) = undefined;
-
-    for (std.enums.values(Rainbow.ColorId)) |color_id| {
-        const color_index: f32 = @floatFromInt(@intFromEnum(color_id));
-
-        const normalized_position =
-            (color_index + 0.5) / @as(f32, @floatFromInt(Rainbow.color_count));
-
-        const color_angle = hour_angle + (0.5 - normalized_position) * spread_radians;
-
-        hour_hand.set(color_id, .{
-            .start = .{ 0, 0 },
-            .end = .{ @cos(color_angle), @sin(color_angle) },
-        });
-    }
+    // The hour hand fans into the rainbow, symmetric about hour_angle: hour_center is the
+    // hand's true aim, and the first and last band centres sit at ±half_spread. Spectrum
+    // fills the interior bands between the two extremes, so only these three rays matter.
+    const count: f32 = @floatFromInt(color_count);
+    const half_spread = (0.5 - 0.5 / count) * spread_radians;
 
     return .{
         .prism = prism,
         .minute_hand = minute_hand,
-        .hour_hand = hour_hand,
-        .hour_center = hour_center,
+        .hour_center = ray(hour_angle),
+        .rainbow_start = ray(hour_angle + half_spread),
+        .rainbow_end = ray(hour_angle - half_spread),
     };
+}
+
+fn ray(angle: f32) Segment {
+    return .{ .start = .{ 0, 0 }, .end = .{ @cos(angle), @sin(angle) } };
 }
 
 const test_prism_normalized_size: f32 = 0.8;
 const test_rainbow_spread: f32 = 0.5;
+const test_color_count: usize = 6;
 
 test "init at 12:00" {
-    _ = Self.init(.{ .total_minutes = 0.0 }, test_prism_normalized_size, test_rainbow_spread);
+    _ = Self.init(
+        .{ .total_minutes = 0.0 },
+        test_prism_normalized_size,
+        test_rainbow_spread,
+        test_color_count,
+    );
 }
 
 test "init at 3:15" {
-    _ = Self.init(.{ .total_minutes = 195.0 }, test_prism_normalized_size, test_rainbow_spread);
+    _ = Self.init(
+        .{ .total_minutes = 195.0 },
+        test_prism_normalized_size,
+        test_rainbow_spread,
+        test_color_count,
+    );
 }
 
 test "init minute hand starts on circle boundary" {
@@ -86,6 +89,7 @@ test "init minute hand starts on circle boundary" {
         .{ .total_minutes = 0.0 },
         test_prism_normalized_size,
         test_rainbow_spread,
+        test_color_count,
     );
 
     const start_distance = vector.length(clock.minute_hand.start);
@@ -98,39 +102,25 @@ test "init minute hand ends at origin" {
         .{ .total_minutes = 0.0 },
         test_prism_normalized_size,
         test_rainbow_spread,
+        test_color_count,
     );
 
     try std.testing.expectApproxEqAbs(@as(f32, 0.0), clock.minute_hand.end[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(@as(f32, 0.0), clock.minute_hand.end[1], vector.tolerance);
 }
 
-test "init hour hand starts at origin" {
-    const clock = Self.init(
-        .{ .total_minutes = 0.0 },
-        test_prism_normalized_size,
-        test_rainbow_spread,
-    );
-
-    for (std.enums.values(Rainbow.ColorId)) |color_id| {
-        const start = clock.hour_hand.get(color_id).start;
-
-        try std.testing.expectApproxEqAbs(@as(f32, 0.0), start[0], vector.tolerance);
-        try std.testing.expectApproxEqAbs(@as(f32, 0.0), start[1], vector.tolerance);
-    }
-}
-
-test "init hour hand endpoints lie on circle boundary" {
+test "init hour rays start at origin and end on the circle boundary" {
     const clock = Self.init(
         .{ .total_minutes = 195.0 },
         test_prism_normalized_size,
         test_rainbow_spread,
+        test_color_count,
     );
 
-    for (std.enums.values(Rainbow.ColorId)) |color_id| {
-        const end = clock.hour_hand.get(color_id).end;
-        const distance = vector.length(end);
-
-        try std.testing.expectApproxEqAbs(1.0, distance, vector.tolerance);
+    for ([_]Segment{ clock.hour_center, clock.rainbow_start, clock.rainbow_end }) |hand| {
+        try std.testing.expectApproxEqAbs(@as(f32, 0.0), hand.start[0], vector.tolerance);
+        try std.testing.expectApproxEqAbs(@as(f32, 0.0), hand.start[1], vector.tolerance);
+        try std.testing.expectApproxEqAbs(1.0, vector.length(hand.end), vector.tolerance);
     }
 }
 
@@ -139,17 +129,16 @@ test "init hour center bisects the band fan" {
         .{ .total_minutes = 195.0 },
         test_prism_normalized_size,
         test_rainbow_spread,
+        test_color_count,
     );
 
     const center = clock.hour_center.end;
 
     try std.testing.expectApproxEqAbs(1.0, vector.length(center), vector.tolerance);
 
-    // The extreme bands are symmetric about hour_angle, so their angular bisector is the
+    // The extreme band rays are symmetric about hour_angle, so their bisector is the
     // centre — independent of the band count.
-    const bisector = vector.normalize(
-        clock.hour_hand.get(.red).end + clock.hour_hand.get(.violet).end,
-    );
+    const bisector = vector.normalize(clock.rainbow_start.end + clock.rainbow_end.end);
 
     try std.testing.expectApproxEqAbs(bisector[0], center[0], vector.tolerance);
     try std.testing.expectApproxEqAbs(bisector[1], center[1], vector.tolerance);
@@ -163,6 +152,7 @@ test "init handles full 12-hour cycle" {
             .{ .total_minutes = minutes },
             test_prism_normalized_size,
             test_rainbow_spread,
+            test_color_count,
         );
     }
 }
