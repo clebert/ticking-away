@@ -47,8 +47,15 @@ pub fn renderLine(
     // bounding box falls entirely outside the band.
     if (x_start >= x_end or y_start >= y_end) return;
 
-    // Full brightness up to normalized_distance, then fades to zero at the endpoint.
+    // Depth into the disc past the prism face, used only for the tint grade below; the
+    // beam holds full brightness along its length and reaches the rainbow at the centre.
     const attenuation_length = @max(1.0 - attenuation_normalized_distance, std.math.floatEps(f32));
+
+    // Taper the ray to a sharp point at the centre (.end): a high power holds the body near
+    // full half-width and concentrates the narrowing at the apex, where the width reaches
+    // zero. A linear taper would thin the whole ray to a sliver, too slight beside the
+    // rainbow inside the prism.
+    const taper_exponent = 10.0;
 
     for (y_start..y_end) |local_y| {
         const pixel_y: f32 = @as(f32, @floatFromInt(band.imageY(local_y))) + 0.5;
@@ -62,9 +69,13 @@ pub fn renderLine(
             const projection = line.project(point);
             const distance = @sqrt(projection.distance_squared);
 
-            // Analytic antialiasing: feather the capsule's width boundary and rounded
-            // caps over one pixel instead of a hard inside/outside cutoff.
-            const edge_coverage = util.edgeCoverage(self.normalized_width - distance, viewport.scale);
+            const along = projection.normalized_position;
+            const half_width =
+                self.normalized_width * (1.0 - std.math.pow(f32, along, taper_exponent));
+
+            // Analytic antialiasing: feather the tapering edge over one pixel instead of a
+            // hard inside/outside cutoff.
+            const edge_coverage = util.edgeCoverage(half_width - distance, viewport.scale);
 
             if (edge_coverage <= 0.0) continue;
 
@@ -74,16 +85,12 @@ pub fn renderLine(
                 1.0,
             );
 
-            // Fades out toward the centre along the ray and stays flat across the beam
-            // width, keeping the beam crisp.
-            const brightness = edge_coverage * intensity.falloff(1.0 - attenuation_proximity);
-
             // Grade from self.color toward the prism tint as the ray runs deeper past
             // the prism face (self.color at the rim, where attenuation_proximity == 1).
             const color = Linear.lerp(self.color, prism_tint, @sqrt(1.0 - attenuation_proximity));
 
             const pixel = band.colorAt(x, local_y);
-            const contribution = color.vec * @as(@Vector(4, f32), @splat(brightness));
+            const contribution = color.vec * @as(@Vector(4, f32), @splat(edge_coverage));
 
             pixel.vec = @max(pixel.vec, contribution);
         }
@@ -186,7 +193,7 @@ pub fn renderPrismEdges(
     }
 }
 
-test "renderLine attenuation reduces brightness past normalized_distance" {
+test "renderLine keeps the beam bright along its full length" {
     const size = 200;
     const image = Image.init(size, size);
     const viewport = image.viewport();
@@ -202,10 +209,10 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
 
     glow.renderLine(band, viewport, line, 0.4, Linear.white);
 
-    var bright_sum: f64 = 0;
-    var bright_count: u32 = 0;
-    var dim_sum: f64 = 0;
-    var dim_count: u32 = 0;
+    var near_sum: f64 = 0;
+    var near_count: u32 = 0;
+    var far_sum: f64 = 0;
+    var far_count: u32 = 0;
 
     for (0..size) |x| {
         const pixel = buffer[center * size + x];
@@ -216,21 +223,65 @@ test "renderLine attenuation reduces brightness past normalized_distance" {
         const position = @as(f32, @floatFromInt(x)) / @as(f32, @floatFromInt(center));
 
         if (position >= 0.1 and position < 0.3) {
-            bright_sum += brightness;
-            bright_count += 1;
+            near_sum += brightness;
+            near_count += 1;
         } else if (position >= 0.6 and position < 0.9) {
-            dim_sum += brightness;
-            dim_count += 1;
+            far_sum += brightness;
+            far_count += 1;
         }
     }
 
-    try std.testing.expect(bright_count > 0);
-    try std.testing.expect(dim_count > 0);
+    try std.testing.expect(near_count > 0);
+    try std.testing.expect(far_count > 0);
 
-    const bright_avg = bright_sum / @as(f64, @floatFromInt(bright_count));
-    const dim_avg = dim_sum / @as(f64, @floatFromInt(dim_count));
+    const near_avg = near_sum / @as(f64, @floatFromInt(near_count));
+    const far_avg = far_sum / @as(f64, @floatFromInt(far_count));
 
-    try std.testing.expect(bright_avg > dim_avg * 3.0);
+    // Brightness is flat along the beam, so the far zone is as bright as the near zone
+    // rather than a fraction of it — the beam reaches the centre at full strength.
+    try std.testing.expect(far_avg > near_avg * 0.9);
+}
+
+// Red channel sampled at a normalized point, for probing a rendered beam's width.
+fn sampleRed(
+    viewport: anytype,
+    buffer: []const Linear,
+    stride: usize,
+    point: @Vector(2, f32),
+) f32 {
+    const pixel = viewport.toPixel(point);
+    const x: usize = @intFromFloat(pixel[0]);
+    const y: usize = @intFromFloat(pixel[1]);
+
+    return buffer[y * stride + x].vec[0];
+}
+
+test "renderLine holds its body wide then pinches to a sharp point at the centre" {
+    const size = 200;
+    const image = Image.init(size, size);
+    const viewport = image.viewport();
+
+    var buffer = [_]Linear{Linear.black} ** (size * size);
+    const band = try image.band(Linear, &buffer, size, 0);
+
+    // The beam runs along the -x axis and ends at the origin, where its apex meets the
+    // rainbow.
+    const glow = Self{ .normalized_width = 0.1, .color = Linear.white };
+    const line = Segment{ .start = .{ -1, 0 }, .end = .{ 0, 0 } };
+
+    glow.renderLine(band, viewport, line, 0.0, Linear.white);
+
+    // Well past the midpoint the ray still carries most of its width — a plain linear
+    // taper would already be a thin sliver at this offset, leaving it too slight beside
+    // the rainbow.
+    try std.testing.expect(sampleRed(viewport, &buffer, size, .{ -0.3, 0.04 }) > 0.5);
+
+    // Only close to the centre has it narrowed past that offset.
+    try std.testing.expectEqual(@as(f32, 0.0), sampleRed(viewport, &buffer, size, .{ -0.05, 0.05 }));
+
+    // The apex is a point at the origin: nothing lit beyond it or abreast of it.
+    try std.testing.expectEqual(@as(f32, 0.0), sampleRed(viewport, &buffer, size, .{ 0.06, 0.0 }));
+    try std.testing.expectEqual(@as(f32, 0.0), sampleRed(viewport, &buffer, size, .{ 0.0, 0.05 }));
 }
 
 test "renderLine feathers the beam edge with partial coverage" {

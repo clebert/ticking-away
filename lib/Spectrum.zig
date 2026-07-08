@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const Image = @import("Image.zig");
-const intensity = @import("intensity.zig");
 const Linear = @import("Linear.zig");
 const Prism = @import("Prism.zig");
 const Rainbow = @import("Rainbow.zig");
@@ -127,47 +126,46 @@ pub fn render(
 
             if (distance_squared > 1.0) continue;
 
-            const attenuation_distance =
-                @max(attenuation_normalized_distance, std.math.floatEps(f32));
-
-            // Fades out toward the centre of the disc.
-            const attenuation_linear =
-                std.math.clamp(@sqrt(distance_squared) / attenuation_distance, 0.0, 1.0);
-
-            const attenuation_value =
-                angular_coverage * intensity.falloff(1.0 - attenuation_linear);
-
-            // Cross-product ratio gives angular position within the sector
-            const cross_start_exact =
-                self.direction_start_exact[0] * dy - self.direction_start_exact[1] * dx;
-
-            const cross_end_exact =
-                self.direction_end_exact[0] * dy - self.direction_end_exact[1] * dx;
-
-            // Origin pixel: cross_start_exact == cross_end_exact == 0 → 0/0 = NaN, but
-            // clamp() yields a finite value and attenuation_value == 0 here, so it adds nothing.
-            const spectrum_position_raw =
-                std.math.clamp(cross_start_exact / (cross_start_exact - cross_end_exact), 0, 1);
-
-            const spectrum_position =
-                if (self.reverse) 1.0 - spectrum_position_raw else spectrum_position_raw;
-
             // Inside the prism: one beam graded from white at the prism face to the
             // prism tint deeper in, like the input ray. Outside: solid colour bands.
-            const color = if (prism.containsPoint(point))
-                Linear.lerp(Linear.white, prism_tint, @sqrt(1.0 - attenuation_linear))
-            else
-                self.antialiasedBand(
+            const color = if (prism.containsPoint(point)) inside: {
+                const attenuation_distance =
+                    @max(attenuation_normalized_distance, std.math.floatEps(f32));
+
+                // Grades the beam's colour from white at the prism face to the tint at the
+                // centre; its brightness is flat, so it reaches the centre undimmed.
+                const attenuation_linear =
+                    std.math.clamp(@sqrt(distance_squared) / attenuation_distance, 0.0, 1.0);
+
+                break :inside Linear.lerp(Linear.white, prism_tint, @sqrt(1.0 - attenuation_linear));
+            } else outside: {
+                // Cross-product ratio gives angular position within the sector. Only the
+                // origin makes both crosses zero (0/0 = NaN); it lies inside the prism and
+                // never reaches this branch, so the NaN never arises.
+                const cross_start_exact =
+                    self.direction_start_exact[0] * dy - self.direction_start_exact[1] * dx;
+
+                const cross_end_exact =
+                    self.direction_end_exact[0] * dy - self.direction_end_exact[1] * dx;
+
+                const spectrum_position_raw =
+                    std.math.clamp(cross_start_exact / (cross_start_exact - cross_end_exact), 0, 1);
+
+                const spectrum_position =
+                    if (self.reverse) 1.0 - spectrum_position_raw else spectrum_position_raw;
+
+                break :outside self.antialiasedBand(
                     band_colors,
                     spectrum_position,
                     cross_start_exact,
                     cross_end_exact,
                     viewport.scale,
                 );
+            };
 
             const pixel = band.colorAt(x, local_y);
 
-            pixel.vec = pixel.vec + color.vec * @as(@Vector(4, f32), @splat(attenuation_value));
+            pixel.vec = pixel.vec + color.vec * @as(@Vector(4, f32), @splat(angular_coverage));
         }
     }
 }
@@ -293,7 +291,7 @@ test "render produces spectrum with rotated viewport" {
     try std.testing.expect(found_color);
 }
 
-test "attenuation reduces brightness near origin" {
+test "the in-prism beam reaches the centre without fading" {
     const rainbow = Rainbow.dark_side_of_the_moon;
     const size = 200;
     const image = Image.init(size, size);
@@ -345,8 +343,9 @@ test "attenuation reduces brightness near origin" {
     const near_avg = near_sum / @as(f64, @floatFromInt(near_count));
     const far_avg = far_sum / @as(f64, @floatFromInt(far_count));
 
-    // Cubic attenuation makes the far zone much brighter than the near zone.
-    try std.testing.expect(far_avg > near_avg * 3.0);
+    // Brightness is flat with depth, so the near-origin zone is as bright as the far zone
+    // rather than a fraction of it — the beam reaches the centre.
+    try std.testing.expect(near_avg > far_avg * 0.5);
 }
 
 test "sectorBounds first quadrant" {
