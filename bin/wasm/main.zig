@@ -88,9 +88,9 @@ export fn render(
     // frame would wrap these size products silently and under-size the arena (a heap
     // overflow). Use checked arithmetic and return null on overflow.
     const pixel_count = std.math.mul(usize, image_width, image_height) catch return null;
-    // Sized for dither_pebble (3 channels), the larger of the two dithers, so either
+    // Sized for dither.pebble (3 channels), the larger of the two dithers, so either
     // texture's error buffer fits when the config switches at runtime.
-    const error_count = lib.dither_pebble.errorBufferSize(image_width);
+    const error_count = lib.dither.pebble.errorBufferSize(image_width);
 
     // Lay the buffers out by descending alignment so every offset stays naturally
     // aligned: Linear (16 B) first, then Srgb (4 B), then the f32 error rows.
@@ -109,7 +109,7 @@ export fn render(
     const image = lib.Image.init(image_width, image_height);
 
     _ = lib.frame.render(
-        config,
+        &config,
         lib.Time.init(hour, minute),
         image,
         linear_buffer,

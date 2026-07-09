@@ -8,13 +8,6 @@ const Self = @This();
 width: usize,
 height: usize,
 
-pub fn init(width: usize, height: usize) Self {
-    std.debug.assert(width > 0);
-    std.debug.assert(height > 0);
-
-    return .{ .width = width, .height = height };
-}
-
 pub const Rotation = enum {
     none,
     clockwise_90,
@@ -26,15 +19,15 @@ pub fn Viewport(comptime rotation: Rotation) type {
         inverse_scale: f32,
         center: @Vector(2, f32),
 
-        const forward_90cw = [2]@Vector(2, f32){ .{ 0, 1 }, .{ -1, 0 } };
-        const inverse_90cw = [2]@Vector(2, f32){ .{ 0, -1 }, .{ 1, 0 } };
+        const forward_clockwise_90 = [2]@Vector(2, f32){ .{ 0, 1 }, .{ -1, 0 } };
+        const inverse_clockwise_90 = [2]@Vector(2, f32){ .{ 0, -1 }, .{ 1, 0 } };
 
         pub fn toPixel(self: @This(), point: @Vector(2, f32)) @Vector(2, f32) {
             const unrotated = switch (rotation) {
                 .none => point,
                 .clockwise_90 => @Vector(2, f32){
-                    @reduce(.Add, inverse_90cw[0] * point),
-                    @reduce(.Add, inverse_90cw[1] * point),
+                    @reduce(.Add, inverse_clockwise_90[0] * point),
+                    @reduce(.Add, inverse_clockwise_90[1] * point),
                 },
             };
 
@@ -42,32 +35,17 @@ pub fn Viewport(comptime rotation: Rotation) type {
         }
 
         pub fn toNormalized(self: @This(), pixel: @Vector(2, f32)) @Vector(2, f32) {
-            const centered = (pixel - self.center) * @as(@Vector(2, f32), @splat(self.inverse_scale));
+            const centered =
+                (pixel - self.center) * @as(@Vector(2, f32), @splat(self.inverse_scale));
 
             return switch (rotation) {
                 .none => centered,
                 .clockwise_90 => @Vector(2, f32){
-                    @reduce(.Add, forward_90cw[0] * centered),
-                    @reduce(.Add, forward_90cw[1] * centered),
+                    @reduce(.Add, forward_clockwise_90[0] * centered),
+                    @reduce(.Add, forward_clockwise_90[1] * centered),
                 },
             };
         }
-    };
-}
-
-pub fn viewport(self: Self) Viewport(.none) {
-    return self.viewportRotated(.none);
-}
-
-pub fn viewportRotated(self: Self, comptime rotation: Rotation) Viewport(rotation) {
-    const width: f32 = @floatFromInt(self.width);
-    const height: f32 = @floatFromInt(self.height);
-    const scale = @min(width, height) / 2.0;
-
-    return .{
-        .scale = scale,
-        .inverse_scale = 1.0 / scale,
-        .center = .{ width / 2.0, height / 2.0 },
     };
 }
 
@@ -77,8 +55,8 @@ pub fn Band(comptime Color: type) type {
         width: usize,
         y_offset: usize,
 
-        pub fn bandHeight(self: Band(Color)) usize {
-            return self.buffer.len / self.width;
+        pub fn height(self: Band(Color)) usize {
+            return @divExact(self.buffer.len, self.width);
         }
 
         pub fn imageY(self: Band(Color), y: usize) usize {
@@ -103,6 +81,29 @@ pub fn Band(comptime Color: type) type {
     };
 }
 
+pub fn init(width: usize, height: usize) Self {
+    std.debug.assert(width > 0);
+    std.debug.assert(height > 0);
+
+    return .{ .width = width, .height = height };
+}
+
+pub fn viewport(self: Self) Viewport(.none) {
+    return self.viewportRotated(.none);
+}
+
+pub fn viewportRotated(self: Self, comptime rotation: Rotation) Viewport(rotation) {
+    const width: f32 = @floatFromInt(self.width);
+    const height: f32 = @floatFromInt(self.height);
+    const scale = @min(width, height) / 2.0;
+
+    return .{
+        .scale = scale,
+        .inverse_scale = 1.0 / scale,
+        .center = .{ width / 2.0, height / 2.0 },
+    };
+}
+
 pub fn band(
     self: Self,
     comptime Color: type,
@@ -118,7 +119,7 @@ pub fn band(
         return error.BufferSizeMismatch;
     }
 
-    if (band_index >= self.height / band_height) {
+    if (band_index >= @divExact(self.height, band_height)) {
         return error.InvalidBandIndex;
     }
 
@@ -273,14 +274,14 @@ test "band returns error for out-of-range band index" {
     try std.testing.expectError(error.InvalidBandIndex, result);
 }
 
-test "bandHeight returns buffer rows" {
+test "height returns buffer rows" {
     const image = Self.init(10, 100);
 
     var linear_buffer: [50]Linear = undefined;
 
     const linear_band = try image.band(Linear, &linear_buffer, 5, 0);
 
-    try std.testing.expectEqual(@as(usize, 5), linear_band.bandHeight());
+    try std.testing.expectEqual(@as(usize, 5), linear_band.height());
 }
 
 test "imageY adds y_offset" {
@@ -302,7 +303,7 @@ test "colorAt returns pointer to correct pixel" {
 
     linear_band.colorAt(2, 1).* = Linear.white;
 
-    try std.testing.expectEqual(Linear.white.vec, linear_buffer[6].vec);
+    try std.testing.expectEqual(Linear.white.vector, linear_buffer[6].vector);
 }
 
 test "toSrgb converts all pixels" {

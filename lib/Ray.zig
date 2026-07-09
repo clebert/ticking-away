@@ -8,24 +8,29 @@ const Self = @This();
 origin: @Vector(2, f32),
 direction: @Vector(2, f32),
 
-pub fn init(origin: @Vector(2, f32), target: @Vector(2, f32)) Self {
-    return .{
-        .origin = origin,
-        .direction = vector.normalize(target - origin),
-    };
-}
+pub const Options = struct {
+    origin: @Vector(2, f32),
+    target: @Vector(2, f32),
+};
 
 pub const Intersection = struct {
     distance: f32,
     hit: @Vector(2, f32),
 
     pub fn closest(a: ?Intersection, b: ?Intersection) ?Intersection {
-        const a_val = a orelse return b;
-        const b_val = b orelse return a;
+        const a_value = a orelse return b;
+        const b_value = b orelse return a;
 
-        return if (a_val.distance <= b_val.distance) a else b;
+        return if (a_value.distance <= b_value.distance) a else b;
     }
 };
+
+pub fn init(options: Options) Self {
+    return .{
+        .origin = options.origin,
+        .direction = vector.normalize(options.target - options.origin),
+    };
+}
 
 pub fn intersectSegment(self: Self, segment: Segment) ?Intersection {
     std.debug.assert(vector.isNormalized(self.direction));
@@ -58,7 +63,7 @@ pub fn intersectSegment(self: Self, segment: Segment) ?Intersection {
 }
 
 test "intersectSegment returns intersection at segment midpoint" {
-    const ray = Self.init(.{ -0.5, 0.0 }, .{ 0.5, 0.0 });
+    const ray = Self.init(.{ .origin = .{ -0.5, 0.0 }, .target = .{ 0.5, 0.0 } });
     const segment = Segment{ .start = .{ 0.0, -0.5 }, .end = .{ 0.0, 0.5 } };
 
     const intersection = ray.intersectSegment(segment).?;
@@ -69,7 +74,7 @@ test "intersectSegment returns intersection at segment midpoint" {
 }
 
 test "intersectSegment returns intersection at segment start" {
-    const ray = Self.init(.{ -0.5, -0.5 }, .{ 0.5, -0.5 });
+    const ray = Self.init(.{ .origin = .{ -0.5, -0.5 }, .target = .{ 0.5, -0.5 } });
     const segment = Segment{ .start = .{ 0.0, -0.5 }, .end = .{ 0.0, 0.5 } };
 
     const intersection = ray.intersectSegment(segment).?;
@@ -80,7 +85,7 @@ test "intersectSegment returns intersection at segment start" {
 }
 
 test "intersectSegment returns intersection at segment end" {
-    const ray = Self.init(.{ -0.5, 0.5 }, .{ 0.5, 0.5 });
+    const ray = Self.init(.{ .origin = .{ -0.5, 0.5 }, .target = .{ 0.5, 0.5 } });
     const segment = Segment{ .start = .{ 0.0, -0.5 }, .end = .{ 0.0, 0.5 } };
 
     const intersection = ray.intersectSegment(segment).?;
@@ -91,7 +96,7 @@ test "intersectSegment returns intersection at segment end" {
 }
 
 test "intersectSegment returns null when ray misses segment" {
-    const ray = Self.init(.{ -0.5, 0.0 }, .{ 0.5, 0.0 });
+    const ray = Self.init(.{ .origin = .{ -0.5, 0.0 }, .target = .{ 0.5, 0.0 } });
     const segment = Segment{ .start = .{ 0.0, 0.5 }, .end = .{ 0.0, 0.9 } };
 
     const intersection = ray.intersectSegment(segment);
@@ -100,7 +105,7 @@ test "intersectSegment returns null when ray misses segment" {
 }
 
 test "intersectSegment returns null when ray points away from segment" {
-    const ray = Self.init(.{ 0.5, 0.0 }, .{ 0.9, 0.0 });
+    const ray = Self.init(.{ .origin = .{ 0.5, 0.0 }, .target = .{ 0.9, 0.0 } });
     const segment = Segment{ .start = .{ 0.0, -0.5 }, .end = .{ 0.0, 0.5 } };
 
     const intersection = ray.intersectSegment(segment);
@@ -109,7 +114,7 @@ test "intersectSegment returns null when ray points away from segment" {
 }
 
 test "intersectSegment returns null when ray and segment are parallel" {
-    const ray = Self.init(.{ -0.5, 0.0 }, .{ 0.5, 0.0 });
+    const ray = Self.init(.{ .origin = .{ -0.5, 0.0 }, .target = .{ 0.5, 0.0 } });
     const segment = Segment{ .start = .{ -0.5, 0.5 }, .end = .{ 0.5, 0.5 } };
 
     const intersection = ray.intersectSegment(segment);
@@ -118,7 +123,7 @@ test "intersectSegment returns null when ray and segment are parallel" {
 }
 
 test "intersectSegment handles diagonal ray and segment" {
-    const ray = Self.init(.{ -0.5, -0.5 }, .{ 0.5, 0.5 });
+    const ray = Self.init(.{ .origin = .{ -0.5, -0.5 }, .target = .{ 0.5, 0.5 } });
     const segment = Segment{ .start = .{ -0.5, 0.5 }, .end = .{ 0.5, -0.5 } };
 
     const intersection = ray.intersectSegment(segment).?;
@@ -128,7 +133,7 @@ test "intersectSegment handles diagonal ray and segment" {
 }
 
 test "intersectSegment returns null when ray origin is on segment" {
-    const ray = Self.init(.{ 0.0, 0.0 }, .{ 0.5, 0.0 });
+    const ray = Self.init(.{ .origin = .{ 0.0, 0.0 }, .target = .{ 0.5, 0.0 } });
     const segment = Segment{ .start = .{ 0.0, -0.5 }, .end = .{ 0.0, 0.5 } };
 
     const intersection = ray.intersectSegment(segment);

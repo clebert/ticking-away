@@ -24,15 +24,15 @@ pub fn main(init: std.process.Init) !void {
     const srgb_buffer = try allocator.alloc(lib.Srgb, pixel_count);
 
     const error_buffer: ?[]f32 = switch (config.texture) {
-        .dither_pebble => try allocator.alloc(f32, lib.dither_pebble.errorBufferSize(size)),
-        .dither_trmnl => try allocator.alloc(f32, lib.dither_trmnl.errorBufferSize(size)),
+        .dither_pebble => try allocator.alloc(f32, lib.dither.pebble.errorBufferSize(size)),
+        .dither_trmnl => try allocator.alloc(f32, lib.dither.trmnl.errorBufferSize(size)),
         .grain, .none => null,
     };
 
     const image = lib.Image.init(size, size);
 
     _ = try lib.frame.render(
-        config,
+        &config,
         lib.Time.init(args.hour, @floatFromInt(args.minute)),
         image,
         linear_buffer,

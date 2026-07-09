@@ -5,6 +5,9 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
+colors: [color_count_max]Linear,
+len: usize,
+
 pub const Style = enum {
     dark_side_of_the_moon,
     vivid,
@@ -12,24 +15,7 @@ pub const Style = enum {
 };
 
 /// Upper bound on the band count across every style; sizes the fixed `colors` array.
-pub const max_color_count: usize = 7;
-
-colors: [max_color_count]Linear,
-len: usize,
-
-fn init(comptime len: usize, srgb_colors: [len]Srgb) Self {
-    @setEvalBranchQuota(10000);
-
-    comptime std.debug.assert(len >= 2 and len <= max_color_count);
-
-    var colors = [_]Linear{Linear.black} ** max_color_count;
-
-    for (srgb_colors, colors[0..len]) |srgb, *color| {
-        color.* = srgb.toLinear();
-    }
-
-    return .{ .colors = colors, .len = len };
-}
+pub const color_count_max: usize = 7;
 
 /// The six band colours sampled from the original album cover, in spectral order.
 pub const dark_side_of_the_moon: Self = init(6, .{
@@ -63,6 +49,20 @@ pub const spectrum: Self = init(7, .{
     .{ .r = 106, .g = 0, .b = 255 },
 });
 
+fn init(comptime len: usize, srgb_colors: [len]Srgb) Self {
+    @setEvalBranchQuota(10000);
+
+    comptime std.debug.assert(len >= 2 and len <= color_count_max);
+
+    var colors = [_]Linear{Linear.black} ** color_count_max;
+
+    for (srgb_colors, colors[0..len]) |srgb, *color| {
+        color.* = srgb.toLinear();
+    }
+
+    return .{ .colors = colors, .len = len };
+}
+
 pub fn get(style: Style) Self {
     return switch (style) {
         .dark_side_of_the_moon => dark_side_of_the_moon,
@@ -82,7 +82,7 @@ pub fn reversed(self: Self) Self {
 test "init converts sRGB band colours to linear light" {
     const expected = (Srgb{ .r = 210, .g = 36, .b = 46 }).toLinear();
 
-    try std.testing.expectEqual(expected.vec, dark_side_of_the_moon.colors[0].vec);
+    try std.testing.expectEqual(expected.vector, dark_side_of_the_moon.colors[0].vector);
 }
 
 test "styles carry their own band count" {
@@ -93,8 +93,8 @@ test "styles carry their own band count" {
 test "get returns the palette for a style" {
     try std.testing.expectEqual(spectrum.len, get(.spectrum).len);
     try std.testing.expectEqual(
-        dark_side_of_the_moon.colors[0].vec,
-        get(.dark_side_of_the_moon).colors[0].vec,
+        dark_side_of_the_moon.colors[0].vector,
+        get(.dark_side_of_the_moon).colors[0].vector,
     );
 }
 
@@ -105,8 +105,8 @@ test "reversed mirrors the palette order within its length" {
 
     for (0..dark_side_of_the_moon.len) |i| {
         try std.testing.expectEqual(
-            dark_side_of_the_moon.colors[i].vec,
-            mirrored.colors[dark_side_of_the_moon.len - 1 - i].vec,
+            dark_side_of_the_moon.colors[i].vector,
+            mirrored.colors[dark_side_of_the_moon.len - 1 - i].vector,
         );
     }
 }

@@ -1,7 +1,10 @@
-//! Floyd–Steinberg error-diffusion dithering to the 64-colour Pebble cube (every
-//! channel in {0, 85, 170, 255}). Channels are quantized in the gamma-encoded
-//! sRGB domain (cube levels evenly spaced 85 apart) and rounding error is
-//! diffused with the standard 7/3/5/1 weights along a serpentine scan.
+//! Floyd–Steinberg error-diffusion dithering to the TRMNL e-ink panel's four
+//! greyscale levels (every pixel in {0, 85, 170, 255}). Each pixel is reduced to a
+//! single Rec. 709 luminance computed in linear light, encoded into the gamma-
+//! encoded sRGB domain (levels evenly spaced 85 apart), quantized to one level, and
+//! written back as a neutral grey (r = g = b) so the existing sRGB/RGBA preview path
+//! shows exactly what the panel is fed. Rounding error is diffused with the standard
+//! 7/3/5/1 weights along a serpentine scan.
 //!
 //! The only state is a two-row error buffer the caller owns and sizes with
 //! `errorBufferSize(width)`. Pending row errors are carried forward between bands,
@@ -12,19 +15,21 @@
 
 const std = @import("std");
 
-const Image = @import("Image.zig");
-const Linear = @import("Linear.zig");
-const Srgb = @import("Srgb.zig");
+const Image = @import("../Image.zig");
+const Linear = @import("../Linear.zig");
+const Srgb = @import("../Srgb.zig");
 
-const channels = 3;
-
-// The cube's four levels are spaced 85 sRGB units apart: 0, 85, 170, 255.
+// The four levels are spaced 85 sRGB units apart: 0, 85, 170, 255.
 const level_step = 85.0;
-const max_level = 3.0;
+const level_max = 3.0;
 
-/// f32 count for `apply`'s two-row error buffer.
+// Rec. 709 luminance weights, applied to the premultiplied linear colour (alpha
+// lane zeroed).
+const luminance_weights: @Vector(4, f32) = .{ 0.2126, 0.7152, 0.0722, 0.0 };
+
+/// f32 count for `apply`'s two-row error buffer (one channel, so one f32 per pixel).
 pub fn errorBufferSize(width: usize) usize {
-    return width * channels * 2;
+    return width * 2;
 }
 
 pub fn apply(
@@ -33,83 +38,64 @@ pub fn apply(
     error_buffer: []f32,
 ) !Image.Band(Srgb) {
     const width = band.width;
-    const height = band.bandHeight();
+    const height = band.height();
 
     if (srgb_buffer.len != band.buffer.len) return error.BufferSizeMismatch;
 
-    const stride = width * channels;
-
-    if (error_buffer.len < stride * 2) return error.BufferSizeMismatch;
+    if (error_buffer.len < width * 2) return error.BufferSizeMismatch;
 
     // Zero both rows on the first band; later bands inherit pending errors in row 0.
     if (band.y_offset == 0) {
-        @memset(error_buffer[0 .. stride * 2], 0);
+        @memset(error_buffer[0 .. width * 2], 0);
     }
 
     var current_row_index: usize = 0;
 
     for (0..height) |y| {
         const right_to_left = (band.imageY(y) % 2) == 1;
-        const current = error_buffer[current_row_index * stride ..][0..stride];
-        const next = error_buffer[(1 - current_row_index) * stride ..][0..stride];
+        const current = error_buffer[current_row_index * width ..][0..width];
+        const next = error_buffer[(1 - current_row_index) * width ..][0..width];
 
         for (0..width) |scan_index| {
             const x = if (right_to_left) width - 1 - scan_index else scan_index;
 
             const linear = band.colorAt(x, y).*;
-            const alpha = Srgb.clampedByte(linear.vec[3] * 255.0);
-            const error_offset = x * channels;
+            const alpha = Srgb.clampedByte(linear.vector[3] * 255.0);
 
             // The black background dominates the frame and must not accrue a diffused
-            // halo, so quantize it straight to cube black and diffuse nothing.
-            if (linear.vec[0] == 0 and linear.vec[1] == 0 and linear.vec[2] == 0) {
+            // halo, so quantize it straight to level 0 and diffuse nothing.
+            if (linear.vector[0] == 0 and linear.vector[1] == 0 and linear.vector[2] == 0) {
                 srgb_buffer[y * width + x] = .{ .r = 0, .g = 0, .b = 0, .a = alpha };
                 continue;
             }
 
-            var quantized: [channels]u8 = undefined;
-            var quantization_error: [channels]f32 = undefined;
+            const luminance = @reduce(.Add, luminance_weights * linear.vector);
+            const encoded = Linear.toSrgbComponent(luminance) * 255.0;
+            const adjusted = encoded + current[x];
+            const level = std.math.clamp(@round(adjusted / level_step), 0.0, level_max);
+            const value = level * level_step;
+            const grey: u8 = @intFromFloat(value);
+            const quantization_error = adjusted - value;
 
-            inline for (0..channels) |channel| {
-                const encoded = Linear.linearToSrgbComponent(linear.vec[channel]) * 255.0;
-                const adjusted = encoded + current[error_offset + channel];
-                const level = std.math.clamp(@round(adjusted / level_step), 0.0, max_level);
-                const value = level * level_step;
-
-                quantized[channel] = @intFromFloat(value);
-                quantization_error[channel] = adjusted - value;
-            }
-
-            srgb_buffer[y * width + x] = .{
-                .r = quantized[0],
-                .g = quantized[1],
-                .b = quantized[2],
-                .a = alpha,
-            };
+            srgb_buffer[y * width + x] = .{ .r = grey, .g = grey, .b = grey, .a = alpha };
 
             const ahead_valid = if (right_to_left) x > 0 else x + 1 < width;
             const behind_valid = if (right_to_left) x + 1 < width else x > 0;
 
             if (ahead_valid) {
-                const ahead_offset = (if (right_to_left) x - 1 else x + 1) * channels;
+                const ahead = if (right_to_left) x - 1 else x + 1;
 
-                inline for (0..channels) |channel| {
-                    current[ahead_offset + channel] += quantization_error[channel] * (7.0 / 16.0);
-                    next[ahead_offset + channel] += quantization_error[channel] * (1.0 / 16.0);
-                }
+                current[ahead] += quantization_error * (7.0 / 16.0);
+                next[ahead] += quantization_error * (1.0 / 16.0);
             }
 
             if (behind_valid) {
-                const behind_offset = (if (right_to_left) x + 1 else x - 1) * channels;
+                const behind = if (right_to_left) x + 1 else x - 1;
 
-                inline for (0..channels) |channel| {
-                    next[behind_offset + channel] += quantization_error[channel] * (3.0 / 16.0);
-                }
+                next[behind] += quantization_error * (3.0 / 16.0);
             }
 
-            inline for (0..channels) |channel| {
-                next[error_offset + channel] += quantization_error[channel] * (5.0 / 16.0);
-            }
+            next[x] += quantization_error * (5.0 / 16.0);
         }
 
         @memset(current, 0);
@@ -119,22 +105,22 @@ pub fn apply(
 
     // Restore the invariant (pending errors in row 0) after an odd-height band.
     if (current_row_index != 0) {
-        @memcpy(error_buffer[0..stride], error_buffer[stride..][0..stride]);
-        @memset(error_buffer[stride..][0..stride], 0);
+        @memcpy(error_buffer[0..width], error_buffer[width..][0..width]);
+        @memset(error_buffer[width..][0..width], 0);
     }
 
     return .{ .buffer = srgb_buffer, .width = width, .y_offset = band.y_offset };
 }
 
-pub fn isCubeChannel(channel: u8) bool {
+pub fn isGreyLevel(channel: u8) bool {
     return channel == 0 or channel == 85 or channel == 170 or channel == 255;
 }
 
-test "errorBufferSize covers two rows of per-channel error" {
-    try std.testing.expectEqual(@as(usize, 10 * 3 * 2), errorBufferSize(10));
+test "errorBufferSize covers two rows of per-pixel error" {
+    try std.testing.expectEqual(@as(usize, 10 * 2), errorBufferSize(10));
 }
 
-test "apply quantizes every channel to a cube level" {
+test "apply quantizes every pixel to a neutral grey level" {
     const image = Image.init(8, 8);
     const pixel_count = 8 * 8;
 
@@ -156,9 +142,9 @@ test "apply quantizes every channel to a cube level" {
     const result = try apply(band, &srgb_buffer, &error_buffer);
 
     for (result.buffer) |pixel| {
-        try std.testing.expect(isCubeChannel(pixel.r));
-        try std.testing.expect(isCubeChannel(pixel.g));
-        try std.testing.expect(isCubeChannel(pixel.b));
+        try std.testing.expect(isGreyLevel(pixel.r));
+        try std.testing.expectEqual(pixel.r, pixel.g);
+        try std.testing.expectEqual(pixel.r, pixel.b);
     }
 }
 
@@ -177,7 +163,7 @@ test "apply preserves alpha" {
     }
 }
 
-test "apply maps pure black to cube black" {
+test "apply maps pure black to level 0" {
     const image = Image.init(4, 4);
 
     var linear_buffer = [_]Linear{Linear.black} ** 16;
@@ -189,8 +175,6 @@ test "apply maps pure black to cube black" {
 
     for (result.buffer) |pixel| {
         try std.testing.expectEqual(@as(u8, 0), pixel.r);
-        try std.testing.expectEqual(@as(u8, 0), pixel.g);
-        try std.testing.expectEqual(@as(u8, 0), pixel.b);
     }
 }
 
@@ -200,9 +184,9 @@ test "apply dithers a between-levels mid-tone to more than one level" {
     const image = Image.init(width, height);
     const pixel_count = width * height;
 
-    // sRGB ~42 sits halfway between cube levels 0 and 85, so error diffusion must
-    // split the field between the two rather than snapping it all one way.
-    const mid = Srgb.srgbToLinearComponent(42.0 / 255.0);
+    // A neutral grey's luminance equals its component value, so sRGB ~42 sits halfway
+    // between levels 0 and 85: error diffusion must split the field between the two.
+    const mid = Srgb.toLinearComponent(42.0 / 255.0);
 
     var linear_buffer = [_]Linear{Linear.init(mid, mid, mid, 1.0)} ** pixel_count;
     var srgb_buffer: [pixel_count]Srgb = undefined;
@@ -253,7 +237,7 @@ test "multi-band apply matches single-band apply" {
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
     for (band_heights) |band_height| {
-        const band_count = height / band_height;
+        const band_count = @divExact(height, band_height);
 
         var banded_output: [pixel_count]Srgb = undefined;
         var band_srgb_buffer: [pixel_count]Srgb = undefined;

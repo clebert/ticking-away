@@ -11,7 +11,7 @@ normalized_deviation: f32,
 
 /// Adds film-like grain: a per-pixel luminance jitter applied to the 8-bit sRGB band.
 /// Confined to the prism interior, so the dispersed rainbow outside it stays smooth.
-pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype, prism: Prism) void {
+pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype, prism: *const Prism) void {
     std.debug.assert(self.normalized_deviation >= 0.0 and self.normalized_deviation <= 1.0);
 
     if (self.normalized_deviation == 0.0) return;
@@ -19,7 +19,7 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype, prism: Prism
     // ×255×2 maps deviation 1.0 to a full ±255 swing.
     const strength = self.normalized_deviation * 255.0 * 2.0;
 
-    for (0..band.bandHeight()) |local_y| {
+    for (0..band.height()) |local_y| {
         const image_y = band.imageY(local_y);
         const pixel_y: f32 = @as(f32, @floatFromInt(image_y)) + 0.5;
         const row = band.buffer[local_y * band.width ..][0..band.width];
@@ -48,15 +48,15 @@ fn noiseAt(x: usize, image_y: usize) f32 {
     const hash_y: u32 = @as(u32, @bitCast(@as(i32, @intCast(image_y)))) *% 668265263;
     const hash_x: u32 = @intCast(x);
 
-    var h = hash_x *% 374761393 +% hash_y;
+    var hash = hash_x *% 374761393 +% hash_y;
 
-    h = (h ^ (h >> 13)) *% 1274126177;
-    h ^= h >> 16;
+    hash = (hash ^ (hash >> 13)) *% 1274126177;
+    hash ^= hash >> 16;
 
     // Upper 24 bits (>> 8) pair with the 2^24-1 divisor below.
-    const hash_f: f32 = @floatFromInt(h >> 8);
+    const hash_float: f32 = @floatFromInt(hash >> 8);
 
-    return hash_f * (1.0 / 16777215.0) - 0.5;
+    return hash_float * (1.0 / 16777215.0) - 0.5;
 }
 
 test "apply modifies non-black pixels" {
@@ -68,7 +68,8 @@ test "apply modifies non-black pixels" {
     const band = try image.band(Srgb, &buffer, 64, 0);
     const grain = Self{ .normalized_deviation = 0.1 };
 
-    grain.apply(band, image.viewport(), Prism.init(0.8));
+    const prism = Prism.init(0.8);
+    grain.apply(band, image.viewport(), &prism);
 
     var changed = false;
 
@@ -92,7 +93,8 @@ test "apply is no-op when deviation is zero" {
     const band = try image.band(Srgb, &buffer, 64, 0);
     const grain = Self{ .normalized_deviation = 0.0 };
 
-    grain.apply(band, image.viewport(), Prism.init(0.8));
+    const prism = Prism.init(0.8);
+    grain.apply(band, image.viewport(), &prism);
 
     try std.testing.expectEqualSlices(Srgb, &original, &buffer);
 }
@@ -107,7 +109,8 @@ test "apply skips black pixels" {
     const band = try image.band(Srgb, &buffer, 64, 0);
     const grain = Self{ .normalized_deviation = 0.1 };
 
-    grain.apply(band, image.viewport(), Prism.init(0.8));
+    const prism = Prism.init(0.8);
+    grain.apply(band, image.viewport(), &prism);
 
     try std.testing.expectEqualSlices(Srgb, &original, &buffer);
 }
@@ -125,14 +128,14 @@ test "apply is confined to the prism interior" {
     const band = try image.band(Srgb, &buffer, size, 0);
     const grain = Self{ .normalized_deviation = 0.1 };
 
-    grain.apply(band, viewport, prism);
+    grain.apply(band, viewport, &prism);
 
     var changed_outside: usize = 0;
     var changed_inside: usize = 0;
 
     for (buffer, 0..) |pixel, i| {
         const x: f32 = @as(f32, @floatFromInt(i % size)) + 0.5;
-        const y: f32 = @as(f32, @floatFromInt(i / size)) + 0.5;
+        const y: f32 = @as(f32, @floatFromInt(@divFloor(i, size))) + 0.5;
         const inside = prism.containsPoint(viewport.toNormalized(.{ x, y }));
 
         if (pixel.r == 180 and pixel.g == 180 and pixel.b == 180) continue;
@@ -153,10 +156,10 @@ test "multi-band grain matches single-band grain" {
     var input: [pixel_count]Srgb = undefined;
 
     for (0..height) |y| {
-        const t: u8 = @intCast(y * 255 / (height - 1));
+        const t: u8 = @intCast(@divFloor(y * 255, height - 1));
 
         for (0..width) |x| {
-            const s: u8 = @intCast(x * 255 / (width - 1));
+            const s: u8 = @intCast(@divFloor(x * 255, width - 1));
 
             input[y * width + x] = .{ .r = t, .g = s, .b = 128 };
         }
@@ -170,12 +173,12 @@ test "multi-band grain matches single-band grain" {
 
     const full_band = try image.band(Srgb, &reference, height, 0);
 
-    grain.apply(full_band, viewport, prism);
+    grain.apply(full_band, viewport, &prism);
 
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
     for (band_heights) |band_height| {
-        const band_count = height / band_height;
+        const band_count = @divExact(height, band_height);
 
         var banded_output = input;
 
@@ -190,11 +193,11 @@ test "multi-band grain matches single-band grain" {
                 band_index,
             );
 
-            grain.apply(narrow_band, viewport, prism);
+            grain.apply(narrow_band, viewport, &prism);
         }
 
         for (&reference, &banded_output, 0..) |ref, actual, i| {
-            const y = i / width;
+            const y = @divFloor(i, width);
             const x = i % width;
 
             std.testing.expectEqual(ref.r, actual.r) catch {

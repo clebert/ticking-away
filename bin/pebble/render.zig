@@ -27,14 +27,14 @@ const image = lib.Image.init(width, width);
 // is zeroed by renderBand when band_index 0 is rendered.
 var linear_buffer: [width * band_height]lib.Linear = undefined;
 var srgb_buffer: [width * band_height]lib.Srgb = undefined;
-var dither_error_buffer: [lib.dither_pebble.errorBufferSize(width)]f32 = undefined;
+var dither_error_buffer: [lib.dither.pebble.errorBufferSize(width)]f32 = undefined;
 
 /// Renders strip `band_index` of the frame into `out` as one GColor8 byte per pixel
 /// (`AARRGGBB`, opaque). Bands must be rendered top-to-bottom (0, 1, 2, …): the dither
 /// diffuses error downward and keeps it in `dither_error_buffer` between calls.
 export fn pebbleRenderBand(out: [*]u8, band_index: u16, hour: u8, minute: u8) callconv(.c) void {
     const band = lib.frame.renderBand(
-        config,
+        &config,
         lib.Time.init(hour, @floatFromInt(minute)),
         image,
         band_height,

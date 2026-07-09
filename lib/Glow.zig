@@ -13,7 +13,7 @@ normalized_width: f32,
 color: Linear,
 
 pub fn renderLine(
-    self: Self,
+    self: *const Self,
     band: Image.Band(Linear),
     viewport: anytype,
     line: Segment,
@@ -26,7 +26,7 @@ pub fn renderLine(
     // from dividing by normalized_width.
     if (self.normalized_width == 0.0) return;
 
-    const band_height = band.bandHeight();
+    const band_height = band.height();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
     // Pad the bounding box one pixel beyond the glow width so the antialiased feather
@@ -34,13 +34,13 @@ pub fn renderLine(
     const pad: @Vector(2, f32) = @splat(self.normalized_width + viewport.inverse_scale);
     const pixel_a = viewport.toPixel(@min(line.start, line.end) - pad);
     const pixel_b = viewport.toPixel(@max(line.start, line.end) + pad);
-    const min_pixel = @min(pixel_a, pixel_b);
-    const max_pixel = @max(pixel_a, pixel_b);
+    const pixel_min = @min(pixel_a, pixel_b);
+    const pixel_max = @max(pixel_a, pixel_b);
 
-    const x_start = util.floorClamped(min_pixel[0], band.width);
-    const x_end = util.ceilClamped(max_pixel[0], band.width);
-    const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
-    const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
+    const x_start = util.floorClamped(pixel_min[0], band.width);
+    const x_end = util.ceilClamped(pixel_max[0], band.width);
+    const y_start = util.floorClamped(pixel_min[1] - y_offset, band_height);
+    const y_end = util.ceilClamped(pixel_max[1] - y_offset, band_height);
 
     // Guard: on ARM ReleaseFast, for(a..b) compiles as do-while that runs
     // ~4 billion iterations when a >= b. Bounds can be equal when the
@@ -80,7 +80,7 @@ pub fn renderLine(
             if (edge_coverage <= 0.0) continue;
 
             const attenuation_proximity = std.math.clamp(
-                1.0 - (projection.normalized_position - attenuation_normalized_distance) / attenuation_length,
+                1.0 - (along - attenuation_normalized_distance) / attenuation_length,
                 0.0,
                 1.0,
             );
@@ -90,18 +90,18 @@ pub fn renderLine(
             const color = Linear.lerp(self.color, prism_tint, @sqrt(1.0 - attenuation_proximity));
 
             const pixel = band.colorAt(x, local_y);
-            const contribution = color.vec * @as(@Vector(4, f32), @splat(edge_coverage));
+            const contribution = color.vector * @as(@Vector(4, f32), @splat(edge_coverage));
 
-            pixel.vec = @max(pixel.vec, contribution);
+            pixel.vector = @max(pixel.vector, contribution);
         }
     }
 }
 
 pub fn renderPrismEdges(
-    self: Self,
+    self: *const Self,
     band: Image.Band(Linear),
     viewport: anytype,
-    prism: Prism,
+    prism: *const Prism,
 ) void {
     std.debug.assert(self.normalized_width >= 0.0 and self.normalized_width <= 1.0);
 
@@ -116,7 +116,7 @@ pub fn renderPrismEdges(
 
     const width = self.normalized_width;
     const width_squared = width * width;
-    const band_height = band.bandHeight();
+    const band_height = band.height();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
     // Pad the bounding box one pixel so the silhouette feather just outside the prism
@@ -125,13 +125,13 @@ pub fn renderPrismEdges(
     const margin = viewport.inverse_scale;
     const pixel_a = viewport.toPixel(.{ prism_bounds[0] - margin, prism_bounds[1] - margin });
     const pixel_b = viewport.toPixel(.{ prism_bounds[2] + margin, prism_bounds[3] + margin });
-    const min_pixel = @min(pixel_a, pixel_b);
-    const max_pixel = @max(pixel_a, pixel_b);
+    const pixel_min = @min(pixel_a, pixel_b);
+    const pixel_max = @max(pixel_a, pixel_b);
 
-    const x_start = util.floorClamped(min_pixel[0], band.width);
-    const x_end = util.ceilClamped(max_pixel[0], band.width);
-    const y_start = util.floorClamped(min_pixel[1] - y_offset, band_height);
-    const y_end = util.ceilClamped(max_pixel[1] - y_offset, band_height);
+    const x_start = util.floorClamped(pixel_min[0], band.width);
+    const x_end = util.ceilClamped(pixel_max[0], band.width);
+    const y_start = util.floorClamped(pixel_min[1] - y_offset, band_height);
+    const y_end = util.ceilClamped(pixel_max[1] - y_offset, band_height);
 
     if (x_start >= x_end or y_start >= y_end) return;
 
@@ -184,11 +184,12 @@ pub fn renderPrismEdges(
                     std.math.pow(f32, normalized_distance, rim_falloff_exponent),
                 );
 
-                contribution += edge_color.vec * @as(@Vector(4, f32), @splat(brightness));
+                contribution += edge_color.vector * @as(@Vector(4, f32), @splat(brightness));
             }
 
             const pixel = band.colorAt(x, local_y);
-            pixel.vec = pixel.vec + contribution * @as(@Vector(4, f32), @splat(silhouette_coverage));
+            pixel.vector =
+                pixel.vector + contribution * @as(@Vector(4, f32), @splat(silhouette_coverage));
         }
     }
 }
@@ -198,7 +199,7 @@ test "renderLine keeps the beam bright along its full length" {
     const image = Image.init(size, size);
     const viewport = image.viewport();
     const pixel_count = size * size;
-    const center = size / 2;
+    const center = @divExact(size, 2);
 
     var buffer = [_]Linear{Linear.black} ** pixel_count;
 
@@ -216,7 +217,7 @@ test "renderLine keeps the beam bright along its full length" {
 
     for (0..size) |x| {
         const pixel = buffer[center * size + x];
-        const brightness = pixel.vec[0];
+        const brightness = pixel.vector[0];
 
         if (brightness == 0) continue;
 
@@ -253,7 +254,7 @@ fn sampleRed(
     const x: usize = @intFromFloat(pixel[0]);
     const y: usize = @intFromFloat(pixel[1]);
 
-    return buffer[y * stride + x].vec[0];
+    return buffer[y * stride + x].vector[0];
 }
 
 test "renderLine holds its body wide then pinches to a sharp point at the centre" {
@@ -277,7 +278,10 @@ test "renderLine holds its body wide then pinches to a sharp point at the centre
     try std.testing.expect(sampleRed(viewport, &buffer, size, .{ -0.3, 0.04 }) > 0.5);
 
     // Only close to the centre has it narrowed past that offset.
-    try std.testing.expectEqual(@as(f32, 0.0), sampleRed(viewport, &buffer, size, .{ -0.05, 0.05 }));
+    try std.testing.expectEqual(
+        @as(f32, 0.0),
+        sampleRed(viewport, &buffer, size, .{ -0.05, 0.05 }),
+    );
 
     // The apex is a point at the origin: nothing lit beyond it or abreast of it.
     try std.testing.expectEqual(@as(f32, 0.0), sampleRed(viewport, &buffer, size, .{ 0.06, 0.0 }));
@@ -302,14 +306,14 @@ test "renderLine feathers the beam edge with partial coverage" {
 
     var peak: f32 = 0;
 
-    for (&buffer) |pixel| peak = @max(peak, pixel.vec[0]);
+    for (&buffer) |pixel| peak = @max(peak, pixel.vector[0]);
 
     try std.testing.expect(peak > 0);
 
     var found_partial = false;
 
     for (&buffer) |pixel| {
-        const value = pixel.vec[0];
+        const value = pixel.vector[0];
 
         if (value > 0.05 * peak and value < 0.95 * peak) {
             found_partial = true;
@@ -331,12 +335,12 @@ test "renderPrismEdges produces glow inside prism" {
     const band = try image.band(Linear, &buffer, image_size, 0);
     const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
-    glow.renderPrismEdges(band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, &prism);
 
     var found_glow = false;
 
     for (&buffer) |pixel| {
-        if (pixel.vec[0] > 0) {
+        if (pixel.vector[0] > 0) {
             found_glow = true;
             break;
         }
@@ -356,12 +360,12 @@ test "renderPrismEdges produces glow with rotated viewport" {
     const band = try image.band(Linear, &buffer, 64, 0);
     const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
-    glow.renderPrismEdges(band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, &prism);
 
     var found_glow = false;
 
     for (&buffer) |pixel| {
-        if (pixel.vec[0] > 0) {
+        if (pixel.vector[0] > 0) {
             found_glow = true;
             break;
         }
@@ -381,10 +385,10 @@ test "renderPrismEdges does not write outside prism" {
     const band = try image.band(Linear, &buffer, image_size, 0);
     const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
-    glow.renderPrismEdges(band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, &prism);
 
-    try std.testing.expectEqual(Linear.black.vec, buffer[0].vec);
-    try std.testing.expectEqual(Linear.black.vec, buffer[image_size * image_size - 1].vec);
+    try std.testing.expectEqual(Linear.black.vector, buffer[0].vector);
+    try std.testing.expectEqual(Linear.black.vector, buffer[image_size * image_size - 1].vector);
 }
 
 test "renderPrismEdges uses additive blending" {
@@ -399,12 +403,12 @@ test "renderPrismEdges uses additive blending" {
     const band = try image.band(Linear, &buffer, image_size, 0);
     const glow = Self{ .normalized_width = 0.15, .color = Linear.white };
 
-    glow.renderPrismEdges(band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, &prism);
 
     var found_additive = false;
 
     for (&buffer) |pixel| {
-        if (pixel.vec[0] > base.vec[0] + 0.01) {
+        if (pixel.vector[0] > base.vector[0] + 0.01) {
             found_additive = true;
             break;
         }
@@ -427,7 +431,7 @@ test "renderLine with zero width produces no glow" {
     glow.renderLine(band, viewport, line, 0.0, Linear.white);
 
     for (&buffer) |pixel| {
-        try std.testing.expectEqual(Linear.black.vec, pixel.vec);
+        try std.testing.expectEqual(Linear.black.vector, pixel.vector);
     }
 }
 
@@ -442,9 +446,9 @@ test "renderPrismEdges with zero width produces no glow" {
     const band = try image.band(Linear, &buffer, size, 0);
     const glow = Self{ .normalized_width = 0.0, .color = Linear.white };
 
-    glow.renderPrismEdges(band, viewport, prism);
+    glow.renderPrismEdges(band, viewport, &prism);
 
     for (&buffer) |pixel| {
-        try std.testing.expectEqual(Linear.black.vec, pixel.vec);
+        try std.testing.expectEqual(Linear.black.vector, pixel.vector);
     }
 }

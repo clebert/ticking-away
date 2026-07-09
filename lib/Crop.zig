@@ -13,7 +13,7 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
     const center_x = viewport.center[0];
     const center_y = viewport.center[1];
 
-    for (0..band.bandHeight()) |local_y| {
+    for (0..band.height()) |local_y| {
         const y: f32 = @floatFromInt(band.imageY(local_y));
         const dy = y + 0.5 - center_y;
         const row = band.buffer[local_y * band.width ..][0..band.width];
@@ -115,7 +115,15 @@ fn applyAntialiasedRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: 
     self.blendRim(row, center_x, dy, radius, @max(core_end, covered_start), covered_end);
 }
 
-fn blendRim(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32, from: usize, to: usize) void {
+fn blendRim(
+    self: Self,
+    row: []Srgb,
+    center_x: f32,
+    dy: f32,
+    radius: f32,
+    from: usize,
+    to: usize,
+) void {
     for (from..to) |x| {
         const coverage = pixelCoverage(center_x, dy, radius, x);
 
@@ -215,10 +223,10 @@ test "multi-band crop matches single-band crop" {
     var input: [pixel_count]Srgb = undefined;
 
     for (0..height) |y| {
-        const t: u8 = @intCast(y * 255 / (height - 1));
+        const t: u8 = @intCast(@divFloor(y * 255, height - 1));
 
         for (0..width) |x| {
-            const s: u8 = @intCast(x * 255 / (width - 1));
+            const s: u8 = @intCast(@divFloor(x * 255, width - 1));
 
             input[y * width + x] = .{ .r = t, .g = s, .b = 128 };
         }
@@ -236,7 +244,7 @@ test "multi-band crop matches single-band crop" {
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
     for (band_heights) |band_height| {
-        const band_count = height / band_height;
+        const band_count = @divExact(height, band_height);
 
         var banded_output = input;
 
@@ -255,7 +263,7 @@ test "multi-band crop matches single-band crop" {
         }
 
         for (&reference, &banded_output, 0..) |ref, actual, i| {
-            const y = i / width;
+            const y = @divFloor(i, width);
             const x = i % width;
 
             std.testing.expectEqual(ref, actual) catch {
@@ -350,10 +358,10 @@ test "multi-band antialias crop matches single-band" {
     var input: [pixel_count]Srgb = undefined;
 
     for (0..height) |y| {
-        const t: u8 = @intCast(y * 255 / (height - 1));
+        const t: u8 = @intCast(@divFloor(y * 255, height - 1));
 
         for (0..width) |x| {
-            const s: u8 = @intCast(x * 255 / (width - 1));
+            const s: u8 = @intCast(@divFloor(x * 255, width - 1));
 
             input[y * width + x] = .{ .r = t, .g = s, .b = 128 };
         }
@@ -370,7 +378,7 @@ test "multi-band antialias crop matches single-band" {
     const band_heights = [_]usize{ 1, 2, 3, 4, 8, 16 };
 
     for (band_heights) |band_height| {
-        const band_count = height / band_height;
+        const band_count = @divExact(height, band_height);
 
         var banded_output = input;
 
@@ -389,7 +397,7 @@ test "multi-band antialias crop matches single-band" {
         }
 
         for (&reference, &banded_output, 0..) |ref, actual, i| {
-            const y = i / width;
+            const y = @divFloor(i, width);
             const x = i % width;
 
             std.testing.expectEqual(ref, actual) catch {

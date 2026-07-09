@@ -17,23 +17,25 @@ direction_end_exact: @Vector(2, f32),
 reverse: bool,
 color_count: usize,
 
-pub fn init(
+pub const Options = struct {
     origin: @Vector(2, f32),
     first_end: @Vector(2, f32),
     last_end: @Vector(2, f32),
     color_count: usize,
-) Self {
-    std.debug.assert(color_count >= 2);
+};
 
-    const direction_first = vector.normalize(first_end - origin);
-    const direction_last = vector.normalize(last_end - origin);
+pub fn init(options: Options) Self {
+    std.debug.assert(options.color_count >= 2);
+
+    const direction_first = vector.normalize(options.first_end - options.origin);
+    const direction_last = vector.normalize(options.last_end - options.origin);
 
     const cross = vector.cross2d(direction_first, direction_last);
     const span = std.math.atan2(cross, vector.dot(direction_first, direction_last));
 
     // Widen the sector by half a band at each end so the outermost half-bands reach full
     // width; the band centres only span the inner (color_count - 1)/color_count of it.
-    const edge_margin_factor = 0.5 / (@as(f32, @floatFromInt(color_count)) - 1.0);
+    const edge_margin_factor = 0.5 / (@as(f32, @floatFromInt(options.color_count)) - 1.0);
     const abs_margin = @abs(span) * edge_margin_factor;
     const cos_margin = @cos(abs_margin);
     const sin_margin = @sin(abs_margin);
@@ -51,23 +53,23 @@ pub fn init(
     const sin_epsilon = comptime @sin(@as(f32, 0.002));
 
     return .{
-        .origin = origin,
+        .origin = options.origin,
         .direction_start = rotateBy(start_exact, cos_epsilon, -sin_epsilon),
         .direction_end = rotateBy(end_exact, cos_epsilon, sin_epsilon),
         .direction_start_exact = start_exact,
         .direction_end_exact = end_exact,
         .reverse = reverse,
-        .color_count = color_count,
+        .color_count = options.color_count,
     };
 }
 
 pub fn render(
-    self: Self,
+    self: *const Self,
     band: Image.Band(Linear),
     viewport: anytype,
-    rainbow: Rainbow,
+    rainbow: *const Rainbow,
     attenuation_normalized_distance: f32,
-    prism: Prism,
+    prism: *const Prism,
     prism_tint: Linear,
 ) void {
     std.debug.assert(rainbow.len == self.color_count);
@@ -80,7 +82,7 @@ pub fn render(
 
     const band_colors = rainbow.colors[0..rainbow.len];
 
-    const band_height = band.bandHeight();
+    const band_height = band.height();
     const y_offset: f32 = @floatFromInt(band.y_offset);
 
     const normalized_bounds = sectorBounds(self.direction_start, self.direction_end);
@@ -88,15 +90,17 @@ pub fn render(
     // Pad the bounding box one pixel so the angular feather at the fan edges is not
     // clipped where an edge grazes the box (notably the apex near the disc centre).
     const margin = viewport.inverse_scale;
-    const pixel_a = viewport.toPixel(.{ normalized_bounds[0] - margin, normalized_bounds[1] - margin });
-    const pixel_b = viewport.toPixel(.{ normalized_bounds[2] + margin, normalized_bounds[3] + margin });
-    const min_pixel = @min(pixel_a, pixel_b);
-    const max_pixel = @max(pixel_a, pixel_b);
+    const pixel_a =
+        viewport.toPixel(.{ normalized_bounds[0] - margin, normalized_bounds[1] - margin });
+    const pixel_b =
+        viewport.toPixel(.{ normalized_bounds[2] + margin, normalized_bounds[3] + margin });
+    const pixel_min = @min(pixel_a, pixel_b);
+    const pixel_max = @max(pixel_a, pixel_b);
 
-    const x_min = util.floorClamped(min_pixel[0], band.width);
-    const x_max = util.ceilClamped(max_pixel[0], band.width);
-    const y_min = util.floorClamped(min_pixel[1] - y_offset, band_height);
-    const y_max = util.ceilClamped(max_pixel[1] - y_offset, band_height);
+    const x_min = util.floorClamped(pixel_min[0], band.width);
+    const x_max = util.ceilClamped(pixel_max[0], band.width);
+    const y_min = util.floorClamped(pixel_min[1] - y_offset, band_height);
+    const y_max = util.ceilClamped(pixel_max[1] - y_offset, band_height);
 
     if (x_min >= x_max or y_min >= y_max) return;
 
@@ -137,7 +141,11 @@ pub fn render(
                 const attenuation_linear =
                     std.math.clamp(@sqrt(distance_squared) / attenuation_distance, 0.0, 1.0);
 
-                break :inside Linear.lerp(Linear.white, prism_tint, @sqrt(1.0 - attenuation_linear));
+                break :inside Linear.lerp(
+                    Linear.white,
+                    prism_tint,
+                    @sqrt(1.0 - attenuation_linear),
+                );
             } else outside: {
                 // Cross-product ratio gives angular position within the sector. Only the
                 // origin makes both crosses zero (0/0 = NaN); it lies inside the prism and
@@ -165,7 +173,8 @@ pub fn render(
 
             const pixel = band.colorAt(x, local_y);
 
-            pixel.vec = pixel.vec + color.vec * @as(@Vector(4, f32), @splat(angular_coverage));
+            pixel.vector =
+                pixel.vector + color.vector * @as(@Vector(4, f32), @splat(angular_coverage));
         }
     }
 }
@@ -219,7 +228,7 @@ fn directionInSector(
 /// the band; the exact cross products give the boundary's screen-space slope
 /// (d position / d pixel) so the seam spans one pixel at any distance from the apex.
 fn antialiasedBand(
-    self: Self,
+    self: *const Self,
     band_colors: []const Linear,
     spectrum_position: f32,
     cross_start_exact: f32,
@@ -258,8 +267,8 @@ fn antialiasedBand(
 
     // Signed pixel distance from the boundary toward increasing position; the upper
     // band (band_colors[boundary_index]) sits on the positive side.
-    const signed_pixels =
-        (spectrum_position - boundary / count) * spread * spread * pixels_per_unit / gradient_magnitude;
+    const signed_pixels = (spectrum_position - boundary / count) *
+        spread * spread * pixels_per_unit / gradient_magnitude;
 
     const coverage = std.math.clamp(signed_pixels + 0.5, 0.0, 1.0);
 
@@ -275,14 +284,20 @@ test "render produces spectrum with rotated viewport" {
     var buffer = [_]Linear{Linear.black} ** pixel_count;
 
     const band = try image.band(Linear, &buffer, 64, 0);
-    const spectrum = Self.init(.{ 0, 0 }, .{ 0.8, 0.3 }, .{ 0.8, -0.3 }, rainbow.len);
+    const spectrum = Self.init(.{
+        .origin = .{ 0, 0 },
+        .first_end = .{ 0.8, 0.3 },
+        .last_end = .{ 0.8, -0.3 },
+        .color_count = rainbow.len,
+    });
 
-    spectrum.render(band, viewport, rainbow, 0.5, Prism.init(0.8), Linear.white);
+    const prism = Prism.init(0.8);
+    spectrum.render(band, viewport, &rainbow, 0.5, &prism, Linear.white);
 
     var found_color = false;
 
     for (&buffer) |pixel| {
-        if (pixel.vec[0] > 0 or pixel.vec[1] > 0 or pixel.vec[2] > 0) {
+        if (pixel.vector[0] > 0 or pixel.vector[1] > 0 or pixel.vector[2] > 0) {
             found_color = true;
             break;
         }
@@ -297,14 +312,21 @@ test "the in-prism beam reaches the centre without fading" {
     const image = Image.init(size, size);
     const viewport = image.viewport();
     const pixel_count = size * size;
-    const center = size / 2;
+    const center = @divExact(size, 2);
 
     var buffer = [_]Linear{Linear.black} ** pixel_count;
 
     const band = try image.band(Linear, &buffer, size, 0);
 
-    const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.2 }, .{ 1, -0.2 }, rainbow.len);
-    spectrum.render(band, viewport, rainbow, 0.5, Prism.init(0.8), Linear.white);
+    const spectrum = Self.init(.{
+        .origin = .{ 0, 0 },
+        .first_end = .{ 1, 0.2 },
+        .last_end = .{ 1, -0.2 },
+        .color_count = rainbow.len,
+    });
+
+    const prism = Prism.init(0.8);
+    spectrum.render(band, viewport, &rainbow, 0.5, &prism, Linear.white);
 
     // Sum across multiple rows to average out angular color differences.
     var near_sum: f64 = 0;
@@ -315,7 +337,7 @@ test "the in-prism beam reaches the centre without fading" {
     for (0..size) |y| {
         for (0..size) |x| {
             const pixel = buffer[y * size + x];
-            const brightness = pixel.vec[0] + pixel.vec[1] + pixel.vec[2];
+            const brightness = pixel.vector[0] + pixel.vector[1] + pixel.vector[2];
 
             if (brightness == 0) continue;
 
@@ -377,23 +399,27 @@ test "sectorBounds wrap-around" {
 
 // The unit direction whose spectrum position is band_parameter / color_count: the
 // projective coordinate of (color_count - t)*start + t*end works out to exactly t/N.
-fn rayDirection(spectrum: Self, band_parameter: f32, color_count: usize) @Vector(2, f32) {
+fn rayDirection(spectrum: *const Self, band_parameter: f32, color_count: usize) @Vector(2, f32) {
     const count: f32 = @floatFromInt(color_count);
     const lower: @Vector(2, f32) = @splat(count - band_parameter);
     const upper: @Vector(2, f32) = @splat(band_parameter);
 
-    return vector.normalize(lower * spectrum.direction_start_exact + upper * spectrum.direction_end_exact);
+    return vector.normalize(
+        lower * spectrum.direction_start_exact + upper * spectrum.direction_end_exact,
+    );
 }
 
-fn spectrumPositionAt(spectrum: Self, point: @Vector(2, f32)) struct {
+fn spectrumPositionAt(spectrum: *const Self, point: @Vector(2, f32)) struct {
     position: f32,
     cross_start: f32,
     cross_end: f32,
 } {
     const dx = point[0] - spectrum.origin[0];
     const dy = point[1] - spectrum.origin[1];
-    const cross_start = spectrum.direction_start_exact[0] * dy - spectrum.direction_start_exact[1] * dx;
-    const cross_end = spectrum.direction_end_exact[0] * dy - spectrum.direction_end_exact[1] * dx;
+    const cross_start =
+        spectrum.direction_start_exact[0] * dy - spectrum.direction_start_exact[1] * dx;
+    const cross_end =
+        spectrum.direction_end_exact[0] * dy - spectrum.direction_end_exact[1] * dx;
     const raw = std.math.clamp(cross_start / (cross_start - cross_end), 0, 1);
 
     return .{
@@ -409,12 +435,17 @@ test "antialiasedBand blends across a seam but stays solid within a band" {
     const scale: f32 = 100.0;
     const count: f32 = @floatFromInt(rainbow.len);
 
-    const spectrum = Self.init(.{ 0, 0 }, .{ 1, 0.25 }, .{ 1, -0.25 }, rainbow.len);
+    const spectrum = Self.init(.{
+        .origin = .{ 0, 0 },
+        .first_end = .{ 1, 0.25 },
+        .last_end = .{ 1, -0.25 },
+        .color_count = rainbow.len,
+    });
 
     // A point sitting on the seam of an interior band, well away from the apex, mixes
     // the two neighbouring bands about half and half.
-    const on_seam = @as(@Vector(2, f32), @splat(0.6)) * rayDirection(spectrum, 3.0, rainbow.len);
-    const seam_sample = spectrumPositionAt(spectrum, on_seam);
+    const on_seam = @as(@Vector(2, f32), @splat(0.6)) * rayDirection(&spectrum, 3.0, rainbow.len);
+    const seam_sample = spectrumPositionAt(&spectrum, on_seam);
     const seam_index: usize = @intFromFloat(@round(seam_sample.position * count));
 
     try std.testing.expect(seam_index >= 1 and seam_index < rainbow.len);
@@ -428,17 +459,18 @@ test "antialiasedBand blends across a seam but stays solid within a band" {
     );
 
     inline for (0..3) |channel| {
-        const midpoint =
-            0.5 * (band_colors[seam_index - 1].vec[channel] + band_colors[seam_index].vec[channel]);
+        const midpoint = 0.5 * (band_colors[seam_index - 1].vector[channel] +
+            band_colors[seam_index].vector[channel]);
 
-        try std.testing.expectApproxEqAbs(midpoint, blended.vec[channel], 0.02);
+        try std.testing.expectApproxEqAbs(midpoint, blended.vector[channel], 0.02);
     }
 
     // A third of a band off the seam is many pixels away at this scale, so the blend
     // saturates back to the plain solid band colour.
-    const in_band = @as(@Vector(2, f32), @splat(0.6)) * rayDirection(spectrum, 3.3, rainbow.len);
-    const deep_sample = spectrumPositionAt(spectrum, in_band);
-    const deep_index: usize = @intFromFloat(@min(@floor(deep_sample.position * count), count - 1.0));
+    const in_band = @as(@Vector(2, f32), @splat(0.6)) * rayDirection(&spectrum, 3.3, rainbow.len);
+    const deep_sample = spectrumPositionAt(&spectrum, in_band);
+    const deep_index: usize =
+        @intFromFloat(@min(@floor(deep_sample.position * count), count - 1.0));
 
     const solid = spectrum.antialiasedBand(
         band_colors,
@@ -449,6 +481,10 @@ test "antialiasedBand blends across a seam but stays solid within a band" {
     );
 
     inline for (0..3) |channel| {
-        try std.testing.expectApproxEqAbs(band_colors[deep_index].vec[channel], solid.vec[channel], 1e-6);
+        try std.testing.expectApproxEqAbs(
+            band_colors[deep_index].vector[channel],
+            solid.vector[channel],
+            1e-6,
+        );
     }
 }

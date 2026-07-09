@@ -4,8 +4,6 @@ const Rainbow = @import("Rainbow.zig");
 
 const Self = @This();
 
-pub const Texture = enum { none, grain, dither_pebble, dither_trmnl };
-
 background_enabled: bool,
 prism_normalized_size: f32,
 prism_glow_normalized_width: f32,
@@ -14,6 +12,8 @@ rainbow_style: Rainbow.Style,
 hand_glow_normalized_width: f32,
 texture: Texture,
 grain_normalized_deviation: f32,
+
+pub const Texture = enum { none, grain, dither_pebble, dither_trmnl };
 
 const json_source = @embedFile("config.json");
 
@@ -33,10 +33,15 @@ pub const default: Self = value: {
     var buffer: [json_source.len]u8 = undefined;
     var fixed_buffer = std.heap.FixedBufferAllocator.init(&buffer);
 
-    const config = std.json.parseFromSliceLeaky(Self, fixed_buffer.allocator(), json_source, .{}) catch |err|
+    const config = std.json.parseFromSliceLeaky(
+        Self,
+        fixed_buffer.allocator(),
+        json_source,
+        .{},
+    ) catch |err|
         @compileError("config.json failed to parse: " ++ @errorName(err));
 
-    validateRanges(config) catch |err|
+    validateRanges(&config) catch |err|
         @compileError("config.json is out of range: " ++ @errorName(err));
 
     break :value config;
@@ -63,12 +68,12 @@ pub fn parse(allocator: std.mem.Allocator, json_text: []const u8) !Self {
 
     defer parsed.deinit();
 
-    try validateRanges(parsed.value);
+    try validateRanges(&parsed.value);
 
     return parsed.value;
 }
 
-fn validateRanges(config: Self) !void {
+fn validateRanges(config: *const Self) !void {
     inline for (@typeInfo(Self).@"struct".fields) |field| {
         if (field.type == f32) {
             const value = @field(config, field.name);
@@ -87,7 +92,10 @@ test "with replaces only the named fields" {
     try std.testing.expectEqual(false, config.background_enabled);
     try std.testing.expectEqual(Texture.dither_trmnl, config.texture);
     try std.testing.expectEqual(default.prism_normalized_size, config.prism_normalized_size);
-    try std.testing.expectEqual(default.prism_glow_normalized_width, config.prism_glow_normalized_width);
+    try std.testing.expectEqual(
+        default.prism_glow_normalized_width,
+        config.prism_glow_normalized_width,
+    );
 }
 
 test "validateRanges rejects zero-size prism" {
@@ -95,5 +103,5 @@ test "validateRanges rejects zero-size prism" {
 
     config.prism_normalized_size = 0.0;
 
-    try std.testing.expectError(error.OutOfRange, validateRanges(config));
+    try std.testing.expectError(error.OutOfRange, validateRanges(&config));
 }

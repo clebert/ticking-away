@@ -5,7 +5,7 @@
 // (save-image then write-bin), which the ROM first-stage loader copies into SRAM
 // and runs with no second-stage bootloader.
 //
-// The shared `lib` render core rasterises the watchface band-by-band; dither_trmnl
+// The shared `lib` render core rasterises the watchface band-by-band; dither.trmnl
 // reduces each pixel to one of {0, 85, 170, 255}, and packBand splits that into the
 // two 1-bit planes the UC8179 combines into 4 greys.
 //
@@ -61,7 +61,7 @@ var plane1: [plane_bytes]u8 = undefined;
 // row errors (zeroed by renderBand on band_index 0).
 var linear_buffer: [width * band_height]lib.Linear = undefined;
 var srgb_buffer: [width * band_height]lib.Srgb = undefined;
-var dither_error_buffer: [lib.dither_trmnl.errorBufferSize(width)]f32 = undefined;
+var dither_error_buffer: [lib.dither.trmnl.errorBufferSize(width)]f32 = undefined;
 
 // GDEY075T7 4-gray waveform LUTs loaded into the UC8179's LUT registers. Each is
 // 7 phase-groups of 6 bytes; the (old,new) plane pair routes a pixel to
@@ -183,7 +183,7 @@ fn renderWatchface() void {
 
     for (0..height / band_height) |band_index| {
         const band = lib.frame.renderBand(
-            config,
+            &config,
             time,
             image,
             band_height,
@@ -226,7 +226,7 @@ inline fn emitLevel(row: usize, x: usize, level: u8) void {
 }
 
 fn packBand(band: lib.Image.Band(lib.Srgb)) void {
-    for (0..band.bandHeight()) |y| {
+    for (0..band.height()) |y| {
         const row = band.imageY(y) * (width / 8);
 
         for (0..width) |x| {

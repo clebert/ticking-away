@@ -4,36 +4,11 @@ const Srgb = @import("Srgb.zig");
 
 const Self = @This();
 
-pub const black: Self = .{ .vec = .{ 0, 0, 0, 1 } };
-pub const white: Self = .{ .vec = .{ 1, 1, 1, 1 } };
-pub const transparent: Self = .{ .vec = .{ 0, 0, 0, 0 } };
+vector: @Vector(4, f32),
 
-vec: @Vector(4, f32),
-
-pub fn init(r: f32, g: f32, b: f32, a: f32) Self {
-    return .{ .vec = .{ r, g, b, a } };
-}
-
-pub fn lerp(a: Self, b: Self, t: f32) Self {
-    std.debug.assert(t >= 0.0 and t <= 1.0);
-
-    const t_vec: @Vector(4, f32) = @splat(t);
-
-    return .{ .vec = a.vec + (b.vec - a.vec) * t_vec };
-}
-
-pub fn toSrgb(self: Self) Srgb {
-    // Exact fast paths for the flat pixels that dominate the frame.
-    if (@reduce(.And, self.vec == black.vec)) return .black;
-    if (@reduce(.And, self.vec == transparent.vec)) return .transparent;
-
-    return .{
-        .r = linearToSrgbByte(self.vec[0]),
-        .g = linearToSrgbByte(self.vec[1]),
-        .b = linearToSrgbByte(self.vec[2]),
-        .a = Srgb.clampedByte(self.vec[3] * 255.0),
-    };
-}
+pub const black: Self = .{ .vector = .{ 0, 0, 0, 1 } };
+pub const white: Self = .{ .vector = .{ 1, 1, 1, 1 } };
+pub const transparent: Self = .{ .vector = .{ 0, 0, 0, 0 } };
 
 const srgb_lookup_table: [4096]u8 = blk: {
     @setEvalBranchQuota(100_000);
@@ -43,20 +18,45 @@ const srgb_lookup_table: [4096]u8 = blk: {
     for (0..4096) |i| {
         const linear: f32 = @as(f32, @floatFromInt(i)) / 4095.0;
 
-        table[i] = @intFromFloat(@round(linearToSrgbComponent(linear) * 255.0));
+        table[i] = @intFromFloat(@round(toSrgbComponent(linear) * 255.0));
     }
 
     break :blk table;
 };
 
-fn linearToSrgbByte(linear: f32) u8 {
+pub fn init(r: f32, g: f32, b: f32, a: f32) Self {
+    return .{ .vector = .{ r, g, b, a } };
+}
+
+pub fn lerp(a: Self, b: Self, t: f32) Self {
+    std.debug.assert(t >= 0.0 and t <= 1.0);
+
+    const t_vector: @Vector(4, f32) = @splat(t);
+
+    return .{ .vector = a.vector + (b.vector - a.vector) * t_vector };
+}
+
+pub fn toSrgb(self: Self) Srgb {
+    // Exact fast paths for the flat pixels that dominate the frame.
+    if (@reduce(.And, self.vector == black.vector)) return .black;
+    if (@reduce(.And, self.vector == transparent.vector)) return .transparent;
+
+    return .{
+        .r = toSrgbByte(self.vector[0]),
+        .g = toSrgbByte(self.vector[1]),
+        .b = toSrgbByte(self.vector[2]),
+        .a = Srgb.clampedByte(self.vector[3] * 255.0),
+    };
+}
+
+fn toSrgbByte(linear: f32) u8 {
     const clamped = std.math.clamp(linear, 0.0, 1.0);
     const index: usize = @intFromFloat(@round(clamped * 4095.0));
 
     return srgb_lookup_table[index];
 }
 
-pub fn linearToSrgbComponent(linear: f32) f32 {
+pub fn toSrgbComponent(linear: f32) f32 {
     if (linear <= 0.0031308) {
         return linear * 12.92;
     }
@@ -82,7 +82,7 @@ fn cubeRoot(x: f32) f32 {
 
     // Initial guess via IEEE-754 bit manipulation (cube-root nth-root trick),
     // refined by Newton iterations on f(y) = y^3 - x.
-    var y: f32 = @bitCast(@as(u32, @bitCast(x)) / 3 + 709921077);
+    var y: f32 = @bitCast(@divFloor(@as(u32, @bitCast(x)), 3) + 709921077);
 
     y = (2.0 * y + x / (y * y)) / 3.0;
     y = (2.0 * y + x / (y * y)) / 3.0;
@@ -96,7 +96,7 @@ test "lerp at t=0 returns first color" {
     const b = Self.init(0.8, 0.6, 0.4, 0.5);
     const result = lerp(a, b, 0.0);
 
-    try std.testing.expectEqual(a.vec, result.vec);
+    try std.testing.expectEqual(a.vector, result.vector);
 }
 
 test "lerp at t=1 returns second color" {
@@ -104,7 +104,7 @@ test "lerp at t=1 returns second color" {
     const b = Self.init(0.8, 0.6, 0.4, 0.5);
     const result = lerp(a, b, 1.0);
 
-    try std.testing.expectEqual(b.vec, result.vec);
+    try std.testing.expectEqual(b.vector, result.vector);
 }
 
 test "lerp at t=0.5 returns midpoint" {
@@ -112,10 +112,10 @@ test "lerp at t=0.5 returns midpoint" {
     const b = Self.init(1.0, 1.0, 1.0, 1.0);
     const result = lerp(a, b, 0.5);
 
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vec[0], 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vec[1], 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vec[2], 1e-6);
-    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vec[3], 1e-6);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vector[0], 1e-6);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vector[1], 1e-6);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vector[2], 1e-6);
+    try std.testing.expectApproxEqAbs(@as(f32, 0.5), result.vector[3], 1e-6);
 }
 
 test "toSrgb converts black correctly" {
@@ -163,18 +163,18 @@ test "sRGB round-trip preserves values within tolerance" {
     const back = srgb.toLinear();
 
     // 0.01 tolerance: 1/255 quantization amplified by gamma.
-    try std.testing.expectApproxEqAbs(original.vec[0], back.vec[0], 0.01);
-    try std.testing.expectApproxEqAbs(original.vec[1], back.vec[1], 0.01);
-    try std.testing.expectApproxEqAbs(original.vec[2], back.vec[2], 0.01);
-    try std.testing.expectApproxEqAbs(original.vec[3], back.vec[3], 0.01);
+    try std.testing.expectApproxEqAbs(original.vector[0], back.vector[0], 0.01);
+    try std.testing.expectApproxEqAbs(original.vector[1], back.vector[1], 0.01);
+    try std.testing.expectApproxEqAbs(original.vector[2], back.vector[2], 0.01);
+    try std.testing.expectApproxEqAbs(original.vector[3], back.vector[3], 0.01);
 }
 
-test "linearToSrgbComponent applies correct gamma curve" {
-    const low_value = linearToSrgbComponent(0.001);
+test "toSrgbComponent applies correct gamma curve" {
+    const low_value = toSrgbComponent(0.001);
 
     try std.testing.expectApproxEqAbs(@as(f32, 0.001 * 12.92), low_value, 1e-6);
 
-    const at_threshold = linearToSrgbComponent(0.0031308);
+    const at_threshold = toSrgbComponent(0.0031308);
 
     try std.testing.expectApproxEqAbs(@as(f32, 0.0031308 * 12.92), at_threshold, 1e-5);
 }

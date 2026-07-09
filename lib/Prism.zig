@@ -6,6 +6,9 @@ const vector = @import("vector.zig");
 
 const Self = @This();
 
+vertices: std.EnumArray(VertexId, @Vector(2, f32)),
+edges: std.EnumArray(EdgeId, Segment),
+
 pub const VertexId = enum(u2) {
     apex = 0,
     bottom_right = 1,
@@ -25,9 +28,6 @@ pub const EdgeId = enum(u2) {
         return @enumFromInt((@as(u3, @intFromEnum(self)) + 1) % 3);
     }
 };
-
-vertices: std.EnumArray(VertexId, @Vector(2, f32)),
-edges: std.EnumArray(EdgeId, Segment),
 
 /// Creates an equilateral triangle prism centered at the origin (0, 0).
 pub fn init(normalized_size: f32) Self {
@@ -56,7 +56,7 @@ pub fn init(normalized_size: f32) Self {
     return .{ .vertices = vertices, .edges = edges };
 }
 
-pub fn containsPoint(self: Self, point: @Vector(2, f32)) bool {
+pub fn containsPoint(self: *const Self, point: @Vector(2, f32)) bool {
     const apex = self.vertices.get(.apex);
     const bottom_right = self.vertices.get(.bottom_right);
     const bottom_left = self.vertices.get(.bottom_left);
@@ -71,7 +71,7 @@ pub fn containsPoint(self: Self, point: @Vector(2, f32)) bool {
     return !(has_neg and has_pos);
 }
 
-pub fn bounds(self: Self) @Vector(4, f32) {
+pub fn bounds(self: *const Self) @Vector(4, f32) {
     var bounds_min: @Vector(2, f32) = @splat(std.math.inf(f32));
     var bounds_max: @Vector(2, f32) = @splat(-std.math.inf(f32));
 
@@ -85,7 +85,7 @@ pub fn bounds(self: Self) @Vector(4, f32) {
     return .{ bounds_min[0], bounds_min[1], bounds_max[0], bounds_max[1] };
 }
 
-pub fn intersect(self: Self, ray: Ray) ?Ray.Intersection {
+pub fn intersect(self: *const Self, ray: Ray) ?Ray.Intersection {
     return Ray.Intersection.closest(
         Ray.Intersection.closest(
             ray.intersectSegment(self.edges.get(.right)),

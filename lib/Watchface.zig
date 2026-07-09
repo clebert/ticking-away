@@ -21,7 +21,12 @@ rainbow: Rainbow,
 // well above red, so the glow reads blue rather than grey.
 const prism_tint = Linear.init(0.03, 0.34, 0.52, 1.0);
 
-pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Clock) void {
+pub fn render(
+    self: *const Self,
+    band: Image.Band(Linear),
+    viewport: anytype,
+    clock: *const Clock,
+) void {
     const base_rainbow = self.rainbow;
     const right_side = clock.hour_center.end[0] > 0;
     const rainbow = if (right_side) base_rainbow.reversed() else base_rainbow;
@@ -31,7 +36,10 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
         .color = Linear.white,
     };
 
-    const minute_ray = Ray.init(clock.minute_hand.start, clock.minute_hand.end);
+    const minute_ray = Ray.init(.{
+        .origin = clock.minute_hand.start,
+        .target = clock.minute_hand.end,
+    });
     const minute_intersection = clock.prism.intersect(minute_ray) orelse unreachable;
 
     const attenuation_origin =
@@ -45,22 +53,22 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
         prism_tint,
     );
 
-    const spectrum = Spectrum.init(
-        .{ 0, 0 },
-        clock.rainbow_start.end,
-        clock.rainbow_end.end,
-        base_rainbow.len,
-    );
+    const spectrum = Spectrum.init(.{
+        .origin = .{ 0, 0 },
+        .first_end = clock.rainbow_start.end,
+        .last_end = clock.rainbow_end.end,
+        .color_count = base_rainbow.len,
+    });
 
-    const hour_ray = Ray.init(.{ 0, 0 }, clock.hour_center.end);
+    const hour_ray = Ray.init(.{ .origin = .{ 0, 0 }, .target = clock.hour_center.end });
     const hour_intersection = clock.prism.intersect(hour_ray) orelse unreachable;
 
     spectrum.render(
         band,
         viewport,
-        rainbow,
+        &rainbow,
         hour_intersection.distance,
-        clock.prism,
+        &clock.prism,
         prism_tint,
     );
 
@@ -69,12 +77,12 @@ pub fn render(self: Self, band: Image.Band(Linear), viewport: anytype, clock: Cl
         .color = prism_tint,
     };
 
-    prism_glow.renderPrismEdges(band, viewport, clock.prism);
+    prism_glow.renderPrismEdges(band, viewport, &clock.prism);
 }
 
 const test_image_size = 64;
 const test_band_height = 8;
-const test_band_count = test_image_size / test_band_height;
+const test_band_count = @divExact(test_image_size, test_band_height);
 
 const test_prism_normalized_size: f32 = 0.8;
 
@@ -84,13 +92,12 @@ const test_watchface = Self{
     .rainbow = Rainbow.dark_side_of_the_moon,
 };
 
-fn renderFull(watchface: Self, time: Time) [test_image_size * test_image_size]Linear {
-    const clock = Clock.init(
-        time,
-        test_prism_normalized_size,
-        0.5,
-        watchface.rainbow.len,
-    );
+fn renderFull(watchface: *const Self, time: Time) [test_image_size * test_image_size]Linear {
+    const clock = Clock.init(time, .{
+        .prism_normalized_size = test_prism_normalized_size,
+        .rainbow_normalized_spread = 0.5,
+        .color_count = watchface.rainbow.len,
+    });
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 
@@ -98,23 +105,22 @@ fn renderFull(watchface: Self, time: Time) [test_image_size * test_image_size]Li
 
     const full_band = image.band(Linear, &full_buffer, test_image_size, 0) catch unreachable;
 
-    watchface.render(full_band, viewport, clock);
+    watchface.render(full_band, viewport, &clock);
 
     return full_buffer;
 }
 
 test "multi-band render matches single-band render" {
     const time = Time{ .total_minutes = 195.0 };
-    const clock = Clock.init(
-        time,
-        test_prism_normalized_size,
-        0.5,
-        test_watchface.rainbow.len,
-    );
+    const clock = Clock.init(time, .{
+        .prism_normalized_size = test_prism_normalized_size,
+        .rainbow_normalized_spread = 0.5,
+        .color_count = test_watchface.rainbow.len,
+    });
     const image = Image.init(test_image_size, test_image_size);
     const viewport = image.viewport();
 
-    const reference_buffer = renderFull(test_watchface, time);
+    const reference_buffer = renderFull(&test_watchface, time);
 
     var band_buffer: [test_image_size * test_band_height]Linear = undefined;
 
@@ -124,7 +130,7 @@ test "multi-band render matches single-band render" {
         const narrow_band =
             try image.band(Linear, &band_buffer, test_band_height, band_index);
 
-        test_watchface.render(narrow_band, viewport, clock);
+        test_watchface.render(narrow_band, viewport, &clock);
 
         const row_start = band_index * test_image_size * test_band_height;
 
@@ -132,20 +138,20 @@ test "multi-band render matches single-band render" {
             band_buffer,
             reference_buffer[row_start..][0 .. test_image_size * test_band_height],
         ) |actual, expected| {
-            try std.testing.expectApproxEqAbs(expected.vec[0], actual.vec[0], 1e-6);
-            try std.testing.expectApproxEqAbs(expected.vec[1], actual.vec[1], 1e-6);
-            try std.testing.expectApproxEqAbs(expected.vec[2], actual.vec[2], 1e-6);
+            try std.testing.expectApproxEqAbs(expected.vector[0], actual.vector[0], 1e-6);
+            try std.testing.expectApproxEqAbs(expected.vector[1], actual.vector[1], 1e-6);
+            try std.testing.expectApproxEqAbs(expected.vector[2], actual.vector[2], 1e-6);
         }
     }
 }
 
 test "render produces visible output at 3:15" {
-    const buffer = renderFull(test_watchface, .{ .total_minutes = 195.0 });
+    const buffer = renderFull(&test_watchface, .{ .total_minutes = 195.0 });
 
     var sum: f64 = 0;
 
     for (&buffer) |pixel| {
-        sum += pixel.vec[0] + pixel.vec[1] + pixel.vec[2];
+        sum += pixel.vector[0] + pixel.vector[1] + pixel.vector[2];
     }
 
     try std.testing.expect(sum > 0);
@@ -158,36 +164,36 @@ test "renders a seven-band style" {
         .rainbow = Rainbow.spectrum,
     };
 
-    const buffer = renderFull(watchface, .{ .total_minutes = 195.0 });
+    const buffer = renderFull(&watchface, .{ .total_minutes = 195.0 });
 
     var sum: f64 = 0;
 
     for (&buffer) |pixel| {
-        sum += pixel.vec[0] + pixel.vec[1] + pixel.vec[2];
+        sum += pixel.vector[0] + pixel.vector[1] + pixel.vector[2];
     }
 
     try std.testing.expect(sum > 0);
 }
 
 test "render produces rainbow colors" {
-    const buffer = renderFull(test_watchface, .{ .total_minutes = 195.0 });
+    const buffer = renderFull(&test_watchface, .{ .total_minutes = 195.0 });
 
     var has_red = false;
     var has_green = false;
     var has_blue = false;
 
     for (&buffer) |pixel| {
-        if (pixel.vec[0] > 0.1 and
-            pixel.vec[0] > pixel.vec[1] * 2 and
-            pixel.vec[0] > pixel.vec[2] * 2) has_red = true;
+        if (pixel.vector[0] > 0.1 and
+            pixel.vector[0] > pixel.vector[1] * 2 and
+            pixel.vector[0] > pixel.vector[2] * 2) has_red = true;
 
-        if (pixel.vec[1] > 0.1 and
-            pixel.vec[1] > pixel.vec[0] * 2 and
-            pixel.vec[1] > pixel.vec[2] * 2) has_green = true;
+        if (pixel.vector[1] > 0.1 and
+            pixel.vector[1] > pixel.vector[0] * 2 and
+            pixel.vector[1] > pixel.vector[2] * 2) has_green = true;
 
-        if (pixel.vec[2] > 0.1 and
-            pixel.vec[2] > pixel.vec[0] * 2 and
-            pixel.vec[2] > pixel.vec[1] * 2) has_blue = true;
+        if (pixel.vector[2] > 0.1 and
+            pixel.vector[2] > pixel.vector[0] * 2 and
+            pixel.vector[2] > pixel.vector[1] * 2) has_blue = true;
     }
 
     try std.testing.expect(has_red);
@@ -200,6 +206,6 @@ test "render survives full 12-hour cycle" {
 
     while (minutes < 720.0) : (minutes += 30.0) {
         // The & prevents the compiler from optimizing away the call
-        _ = &renderFull(test_watchface, .{ .total_minutes = minutes });
+        _ = &renderFull(&test_watchface, .{ .total_minutes = minutes });
     }
 }
