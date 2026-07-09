@@ -36,18 +36,18 @@ pub fn init(options: Options) Self {
     // Widen the sector by half a band at each end so the outermost half-bands reach full
     // width; the band centres only span the inner (color_count - 1)/color_count of it.
     const edge_margin_factor = 0.5 / (@as(f32, @floatFromInt(options.color_count)) - 1.0);
-    const abs_margin = @abs(span) * edge_margin_factor;
-    const cos_margin = @cos(abs_margin);
-    const sin_margin = @sin(abs_margin);
+    const margin_magnitude = @abs(span) * edge_margin_factor;
+    const cos_margin = @cos(margin_magnitude);
+    const sin_margin = @sin(margin_magnitude);
 
     const reverse = span < 0;
 
-    const ccw_earlier = if (reverse) direction_last else direction_first;
-    const ccw_later = if (reverse) direction_first else direction_last;
+    const sweep_start = if (reverse) direction_last else direction_first;
+    const sweep_end = if (reverse) direction_first else direction_last;
 
     // Widen sector: rotate edges outward by the margin
-    const start_exact = rotateBy(ccw_earlier, cos_margin, -sin_margin);
-    const end_exact = rotateBy(ccw_later, cos_margin, sin_margin);
+    const start_exact = rotateBy(sweep_start, cos_margin, -sin_margin);
+    const end_exact = rotateBy(sweep_end, cos_margin, sin_margin);
 
     const cos_epsilon = comptime @cos(@as(f32, 0.002));
     const sin_epsilon = comptime @sin(@as(f32, 0.002));
@@ -114,10 +114,12 @@ pub fn render(
             // Sector containment first (cheaper than the distance test). The cross
             // products are signed perpendicular distances to the sector's edge rays
             // (the directions are unit vectors), so they feed the coverage ramp directly.
-            const dx = point[0] - self.origin[0];
-            const dy = point[1] - self.origin[1];
-            const cross_start = self.direction_start[0] * dy - self.direction_start[1] * dx;
-            const cross_end = self.direction_end[0] * dy - self.direction_end[1] * dx;
+            const delta_x = point[0] - self.origin[0];
+            const delta_y = point[1] - self.origin[1];
+            const cross_start =
+                self.direction_start[0] * delta_y - self.direction_start[1] * delta_x;
+            const cross_end =
+                self.direction_end[0] * delta_y - self.direction_end[1] * delta_x;
 
             // Analytic antialiasing: feather both angular edges of the fan over one
             // pixel. The outer arc rides the disc rim and is left to Crop.
@@ -151,10 +153,12 @@ pub fn render(
                 // origin makes both crosses zero (0/0 = NaN); it lies inside the prism and
                 // never reaches this branch, so the NaN never arises.
                 const cross_start_exact =
-                    self.direction_start_exact[0] * dy - self.direction_start_exact[1] * dx;
+                    self.direction_start_exact[0] * delta_y -
+                    self.direction_start_exact[1] * delta_x;
 
                 const cross_end_exact =
-                    self.direction_end_exact[0] * dy - self.direction_end_exact[1] * dx;
+                    self.direction_end_exact[0] * delta_y -
+                    self.direction_end_exact[1] * delta_x;
 
                 const spectrum_position_raw =
                     std.math.clamp(cross_start_exact / (cross_start_exact - cross_end_exact), 0, 1);
@@ -212,7 +216,7 @@ fn sectorBounds(
     return .{ bounds_min[0], bounds_min[1], bounds_max[0], bounds_max[1] };
 }
 
-/// Tests if a direction lies within the CCW sector from start to end (span <= π).
+/// Tests if a direction lies within the counterclockwise sector from start to end (span <= π).
 fn directionInSector(
     direction: @Vector(2, f32),
     sector_start: @Vector(2, f32),
@@ -341,13 +345,15 @@ test "the in-prism beam reaches the centre without fading" {
 
             if (brightness == 0) continue;
 
-            const dx: f32 = (@as(f32, @floatFromInt(x)) + 0.5 - @as(f32, @floatFromInt(center))) /
+            const delta_x: f32 =
+                (@as(f32, @floatFromInt(x)) + 0.5 - @as(f32, @floatFromInt(center))) /
                 @as(f32, @floatFromInt(center));
 
-            const dy: f32 = (@as(f32, @floatFromInt(y)) + 0.5 - @as(f32, @floatFromInt(center))) /
+            const delta_y: f32 =
+                (@as(f32, @floatFromInt(y)) + 0.5 - @as(f32, @floatFromInt(center))) /
                 @as(f32, @floatFromInt(center));
 
-            const distance = @sqrt(dx * dx + dy * dy);
+            const distance = @sqrt(delta_x * delta_x + delta_y * delta_y);
 
             if (distance >= 0.05 and distance < 0.15) {
                 near_sum += brightness;
@@ -409,17 +415,17 @@ fn rayDirection(spectrum: *const Self, band_parameter: f32, color_count: usize) 
     );
 }
 
-fn spectrumPositionAt(spectrum: *const Self, point: @Vector(2, f32)) struct {
+fn positionAt(spectrum: *const Self, point: @Vector(2, f32)) struct {
     position: f32,
     cross_start: f32,
     cross_end: f32,
 } {
-    const dx = point[0] - spectrum.origin[0];
-    const dy = point[1] - spectrum.origin[1];
+    const delta_x = point[0] - spectrum.origin[0];
+    const delta_y = point[1] - spectrum.origin[1];
     const cross_start =
-        spectrum.direction_start_exact[0] * dy - spectrum.direction_start_exact[1] * dx;
+        spectrum.direction_start_exact[0] * delta_y - spectrum.direction_start_exact[1] * delta_x;
     const cross_end =
-        spectrum.direction_end_exact[0] * dy - spectrum.direction_end_exact[1] * dx;
+        spectrum.direction_end_exact[0] * delta_y - spectrum.direction_end_exact[1] * delta_x;
     const raw = std.math.clamp(cross_start / (cross_start - cross_end), 0, 1);
 
     return .{
@@ -445,7 +451,7 @@ test "antialiasedBand blends across a seam but stays solid within a band" {
     // A point sitting on the seam of an interior band, well away from the apex, mixes
     // the two neighbouring bands about half and half.
     const on_seam = @as(@Vector(2, f32), @splat(0.6)) * rayDirection(&spectrum, 3.0, rainbow.len);
-    const seam_sample = spectrumPositionAt(&spectrum, on_seam);
+    const seam_sample = positionAt(&spectrum, on_seam);
     const seam_index: usize = @intFromFloat(@round(seam_sample.position * count));
 
     try std.testing.expect(seam_index >= 1 and seam_index < rainbow.len);
@@ -468,7 +474,7 @@ test "antialiasedBand blends across a seam but stays solid within a band" {
     // A third of a band off the seam is many pixels away at this scale, so the blend
     // saturates back to the plain solid band colour.
     const in_band = @as(@Vector(2, f32), @splat(0.6)) * rayDirection(&spectrum, 3.3, rainbow.len);
-    const deep_sample = spectrumPositionAt(&spectrum, in_band);
+    const deep_sample = positionAt(&spectrum, in_band);
     const deep_index: usize =
         @intFromFloat(@min(@floor(deep_sample.position * count), count - 1.0));
 

@@ -10,7 +10,7 @@ pub const black: Self = .{ .vector = .{ 0, 0, 0, 1 } };
 pub const white: Self = .{ .vector = .{ 1, 1, 1, 1 } };
 pub const transparent: Self = .{ .vector = .{ 0, 0, 0, 0 } };
 
-const srgb_lookup_table: [4096]u8 = blk: {
+const srgb_lookup_table: [4096]u8 = lookup: {
     @setEvalBranchQuota(100_000);
 
     var table: [4096]u8 = undefined;
@@ -21,7 +21,7 @@ const srgb_lookup_table: [4096]u8 = blk: {
         table[i] = @intFromFloat(@round(toSrgbComponent(linear) * 255.0));
     }
 
-    break :blk table;
+    break :lookup table;
 };
 
 pub fn init(r: f32, g: f32, b: f32, a: f32) Self {

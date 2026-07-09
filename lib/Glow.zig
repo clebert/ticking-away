@@ -146,17 +146,17 @@ pub fn renderPrismEdges(
             const projection_bottom = prism.edges.get(.bottom).project(point);
             const projection_left = prism.edges.get(.left).project(point);
 
-            const min_distance_squared = @min(
+            const distance_squared_min = @min(
                 projection_right.distance_squared,
                 @min(projection_bottom.distance_squared, projection_left.distance_squared),
             );
 
-            if (min_distance_squared >= width_squared) continue;
+            if (distance_squared_min >= width_squared) continue;
 
             // Analytic antialiasing: the glow peaks right at the prism edge, so feather the
             // silhouette over one pixel using the signed distance to the boundary (positive
             // inside) rather than a hard containsPoint cutoff.
-            const boundary_distance = @sqrt(min_distance_squared);
+            const boundary_distance = @sqrt(distance_squared_min);
             const signed_distance =
                 if (prism.containsPoint(point)) boundary_distance else -boundary_distance;
             const silhouette_coverage = util.edgeCoverage(signed_distance, viewport.scale);

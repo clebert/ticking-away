@@ -89,15 +89,15 @@ pub fn renderBand(
     // dither.trmnl to the e-ink panel's four greyscale levels.
     const grain = Grain{ .normalized_deviation = config.grain_normalized_deviation };
 
-    const srgb_band = blk: {
+    const srgb_band = srgb: {
         if (dither_error_buffer != null) {
             switch (config.texture) {
-                .dither_pebble => break :blk try dither.pebble.apply(
+                .dither_pebble => break :srgb try dither.pebble.apply(
                     linear_band,
                     srgb_buffer,
                     dither_error_buffer.?,
                 ),
-                .dither_trmnl => break :blk try dither.trmnl.apply(
+                .dither_trmnl => break :srgb try dither.trmnl.apply(
                     linear_band,
                     srgb_buffer,
                     dither_error_buffer.?,
@@ -110,7 +110,7 @@ pub fn renderBand(
 
         if (config.texture == .grain) grain.apply(continuous, viewport, &clock.prism);
 
-        break :blk continuous;
+        break :srgb continuous;
     };
 
     if (config.background_enabled) {

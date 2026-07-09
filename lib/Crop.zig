@@ -15,29 +15,29 @@ pub fn apply(self: Self, band: Image.Band(Srgb), viewport: anytype) void {
 
     for (0..band.height()) |local_y| {
         const y: f32 = @floatFromInt(band.imageY(local_y));
-        const dy = y + 0.5 - center_y;
+        const delta_y = y + 0.5 - center_y;
         const row = band.buffer[local_y * band.width ..][0..band.width];
 
         if (self.antialias) {
-            self.applyAntialiasedRow(row, center_x, dy, radius);
+            self.applyAntialiasedRow(row, center_x, delta_y, radius);
         } else {
-            self.applyHardRow(row, center_x, dy, radius);
+            self.applyHardRow(row, center_x, delta_y, radius);
         }
     }
 }
 
-fn applyHardRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) void {
-    const dx_max_squared = radius * radius - dy * dy;
+fn applyHardRow(self: Self, row: []Srgb, center_x: f32, delta_y: f32, radius: f32) void {
+    const delta_x_max_squared = radius * radius - delta_y * delta_y;
 
-    if (dx_max_squared < 0.0) {
+    if (delta_x_max_squared < 0.0) {
         @memset(row, self.outside_color);
 
         return;
     }
 
-    const dx_max = @sqrt(dx_max_squared);
-    const x_low = center_x - 0.5 - dx_max;
-    const x_high = center_x - 0.5 + dx_max;
+    const delta_x_max = @sqrt(delta_x_max_squared);
+    const x_low = center_x - 0.5 - delta_x_max;
+    const x_high = center_x - 0.5 + delta_x_max;
 
     // @ceil keeps the left/right margins symmetric.
     const x_start: usize = if (x_low < 0) 0 else @intFromFloat(@ceil(x_low));
@@ -60,9 +60,9 @@ fn applyHardRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) vo
 // radius + 0.5; the one-pixel band between is the antialiased rim. Grading every covered
 // pixel by its own coverage smooths the whole rim: along the near-horizontal top and bottom
 // arcs the partially covered pixels span the middle of a row, not only its edges.
-fn applyAntialiasedRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: f32) void {
+fn applyAntialiasedRow(self: Self, row: []Srgb, center_x: f32, delta_y: f32, radius: f32) void {
     const outer = radius + 0.5;
-    const outer_squared = outer * outer - dy * dy;
+    const outer_squared = outer * outer - delta_y * delta_y;
 
     if (outer_squared <= 0.0) {
         @memset(row, self.outside_color);
@@ -70,9 +70,9 @@ fn applyAntialiasedRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: 
         return;
     }
 
-    const outer_dx = @sqrt(outer_squared);
-    const covered_low = center_x - 0.5 - outer_dx;
-    const covered_high = center_x - 0.5 + outer_dx;
+    const outer_delta_x = @sqrt(outer_squared);
+    const covered_low = center_x - 0.5 - outer_delta_x;
+    const covered_high = center_x - 0.5 + outer_delta_x;
 
     const covered_start: usize = if (covered_low < 0) 0 else @intFromFloat(@floor(covered_low));
 
@@ -90,19 +90,19 @@ fn applyAntialiasedRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: 
     }
 
     const inner = radius - 0.5;
-    const inner_squared = inner * inner - dy * dy;
+    const inner_squared = inner * inner - delta_y * delta_y;
 
     if (inner_squared <= 0.0) {
         // Near the top and bottom of the circle the rim spans the whole covered run with no
         // fully opaque core, so every covered pixel belongs to the antialiased arc.
-        self.blendRim(row, center_x, dy, radius, covered_start, covered_end);
+        self.blendRim(row, center_x, delta_y, radius, covered_start, covered_end);
 
         return;
     }
 
-    const inner_dx = @sqrt(inner_squared);
-    const core_low = center_x - 0.5 - inner_dx;
-    const core_high = center_x - 0.5 + inner_dx;
+    const inner_delta_x = @sqrt(inner_squared);
+    const core_low = center_x - 0.5 - inner_delta_x;
+    const core_high = center_x - 0.5 + inner_delta_x;
 
     const core_start: usize = if (core_low < 0) 0 else @intFromFloat(@ceil(core_low));
 
@@ -111,21 +111,21 @@ fn applyAntialiasedRow(self: Self, row: []Srgb, center_x: f32, dy: f32, radius: 
         row.len,
     );
 
-    self.blendRim(row, center_x, dy, radius, covered_start, @min(core_start, covered_end));
-    self.blendRim(row, center_x, dy, radius, @max(core_end, covered_start), covered_end);
+    self.blendRim(row, center_x, delta_y, radius, covered_start, @min(core_start, covered_end));
+    self.blendRim(row, center_x, delta_y, radius, @max(core_end, covered_start), covered_end);
 }
 
 fn blendRim(
     self: Self,
     row: []Srgb,
     center_x: f32,
-    dy: f32,
+    delta_y: f32,
     radius: f32,
     from: usize,
     to: usize,
 ) void {
     for (from..to) |x| {
-        const coverage = pixelCoverage(center_x, dy, radius, x);
+        const coverage = pixelCoverage(center_x, delta_y, radius, x);
 
         if (coverage >= 1.0) continue;
 
@@ -139,9 +139,9 @@ fn blendRim(
     }
 }
 
-fn pixelCoverage(center_x: f32, dy: f32, radius: f32, x: usize) f32 {
-    const dx = @as(f32, @floatFromInt(x)) + 0.5 - center_x;
-    const distance = @sqrt(dx * dx + dy * dy);
+fn pixelCoverage(center_x: f32, delta_y: f32, radius: f32, x: usize) f32 {
+    const delta_x = @as(f32, @floatFromInt(x)) + 0.5 - center_x;
+    const distance = @sqrt(delta_x * delta_x + delta_y * delta_y);
 
     return std.math.clamp(radius - distance + 0.5, 0.0, 1.0);
 }
@@ -268,8 +268,21 @@ test "multi-band crop matches single-band crop" {
 
             std.testing.expectEqual(ref, actual) catch {
                 std.debug.print(
-                    "band_height={d}: mismatch at ({d},{d}) expected ({d},{d},{d},{d}), got ({d},{d},{d},{d})\n",
-                    .{ band_height, x, y, ref.r, ref.g, ref.b, ref.a, actual.r, actual.g, actual.b, actual.a },
+                    "band_height={d}: mismatch at ({d},{d}) " ++
+                        "expected ({d},{d},{d},{d}), got ({d},{d},{d},{d})\n",
+                    .{
+                        band_height,
+                        x,
+                        y,
+                        ref.r,
+                        ref.g,
+                        ref.b,
+                        ref.a,
+                        actual.r,
+                        actual.g,
+                        actual.b,
+                        actual.a,
+                    },
                 );
 
                 return error.TestUnexpectedResult;
@@ -402,8 +415,21 @@ test "multi-band antialias crop matches single-band" {
 
             std.testing.expectEqual(ref, actual) catch {
                 std.debug.print(
-                    "band_height={d}: mismatch at ({d},{d}) expected ({d},{d},{d},{d}), got ({d},{d},{d},{d})\n",
-                    .{ band_height, x, y, ref.r, ref.g, ref.b, ref.a, actual.r, actual.g, actual.b, actual.a },
+                    "band_height={d}: mismatch at ({d},{d}) " ++
+                        "expected ({d},{d},{d},{d}), got ({d},{d},{d},{d})\n",
+                    .{
+                        band_height,
+                        x,
+                        y,
+                        ref.r,
+                        ref.g,
+                        ref.b,
+                        ref.a,
+                        actual.r,
+                        actual.g,
+                        actual.b,
+                        actual.a,
+                    },
                 );
 
                 return error.TestUnexpectedResult;
